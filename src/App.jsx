@@ -40,14 +40,17 @@ import Supplements from "./components/supplements/Supplements";
 import ProTips from "./components/pro-tips/ProTips";
 import Calendar from "./components/calendar/Calendar";
 import { useCalendarEvents } from "./components/calendar/useCalendarEvents";
+import { auth } from "./components/auth/firebaseConfig";
+import { onAuthStateChanged } from "firebase/auth";
 
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
 function App() {
   // Kullanıcı Yönetimi
-  const [user, setUser] = useState(localStorage.getItem("currentUser") || null);
+  const [user, setUser] = useState(null);
   const [loginData, setLoginData] = useState({ username: "", password: "" });
   const [isRegister, setIsRegister] = useState(false);
+  const [errors, setErrors] = useState({ username: false, password: false });
 
   // Bildirim İzni
   useEffect(() => {
@@ -325,8 +328,14 @@ function App() {
     }
   }, []);
 
-  //Error handling
-  const [errors, setErrors] = useState({ username: false, password: false });
+  // Kullanıcı oturumunu izleme
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+    });
+
+    return unsubscribe;
+  }, []);
 
   return !user ? (
     <Container maxWidth="sm" sx={{ mt: 4 }}>
@@ -378,6 +387,16 @@ function App() {
             onClick={() => {
               setUser(null);
               localStorage.removeItem("currentUser");
+
+              // Eğer bir servis çalışanı kayıtlıysa, ona LOGOUT mesajı gönder
+              if (
+                navigator.serviceWorker &&
+                navigator.serviceWorker.controller
+              ) {
+                navigator.serviceWorker.controller.postMessage({
+                  type: "LOGOUT",
+                });
+              }
             }}
           >
             Çıkış Yap

@@ -1,7 +1,6 @@
-// userAuth.js
 import React from "react";
 import { Paper, Typography, TextField, Button } from "@mui/material";
-import { handleLogin, handleRegister } from "./AuthHandlers"; // authHandlers dosyasından handleLogin ve handleRegister fonksiyonlarını import edin.
+import { handleLogin, handleRegister } from "./AuthHandlers";
 
 const UserAuth = ({
   isRegister,
@@ -28,19 +27,18 @@ const UserAuth = ({
         <TextField
           name="loginUsername"
           id="loginUserName"
-          label="Kullanıcı adı"
+          label="Email"
+          type="email"
           fullWidth
           margin="normal"
           value={loginData.username}
           onChange={(e) => {
             setLoginData({ ...loginData, username: e.target.value });
-            setErrors({ ...errors, username: e.target.value.length < 6 });
+            setErrors({ ...errors, username: !e.target.value.includes("@") });
           }}
           required
           error={errors.username}
-          helperText={
-            errors.username ? "Kullanıcı adı en az 6 karakter olmalı" : ""
-          }
+          helperText={errors.username ? "Geçerli bir email adresi giriniz" : ""}
         />
 
         <TextField
@@ -57,11 +55,7 @@ const UserAuth = ({
           }}
           required
           error={errors.password}
-          helperText={
-            isRegister
-              ? "En az 8 karakter, 1 büyük harf, 1 küçük harf, 1 rakam ve 1 özel karakter"
-              : ""
-          }
+          helperText={isRegister ? "En az 8 karakter olmalıdır" : ""}
         />
 
         <Button

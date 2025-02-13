@@ -1,6 +1,10 @@
 import React from "react";
 import { Paper, Typography, TextField, Button } from "@mui/material";
-import { handleLogin, handleRegister } from "./AuthHandlers";
+import {
+  handleLogin,
+  handleRegister,
+  handlePasswordReset,
+} from "./AuthHandlers";
 
 const UserAuth = ({
   isRegister,
@@ -68,6 +72,16 @@ const UserAuth = ({
           {isRegister ? "Kayıt Ol" : "Giriş Yap"}
         </Button>
       </form>
+
+      {!isRegister && (
+        <Button
+          onClick={() => handlePasswordReset(loginData.username)}
+          fullWidth
+          sx={{ mt: 1 }}
+        >
+          Şifremi Unuttum
+        </Button>
+      )}
 
       <Button
         onClick={() => {

@@ -14,6 +14,7 @@ import {
   Tab,
   Select,
   MenuItem,
+  Paper,
 } from "@mui/material";
 import "react-toastify/dist/ReactToastify.css";
 import "tippy.js/dist/tippy.css";
@@ -42,12 +43,25 @@ import Calendar from "./components/calendar/Calendar";
 import { useCalendarEvents } from "./components/calendar/useCalendarEvents";
 import { auth } from "./components/auth/firebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
+import { sendEmailVerification } from "firebase/auth";
 
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
 function App() {
   // Kullanıcı Yönetimi
-  const [user, setUser] = useState(null);
+
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem("currentUser");
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  const [isLoading, setIsLoading] = useState(true);
+  // State'i localStorage'dan okuyarak başlat
+  const [count, setCount] = useState(() => {
+    const savedCount = localStorage.getItem("emailCount");
+    return savedCount ? parseInt(savedCount) : 0;
+  });
+
   const [loginData, setLoginData] = useState({ username: "", password: "" });
   const [isRegister, setIsRegister] = useState(false);
   const [errors, setErrors] = useState({ username: false, password: false });
@@ -329,13 +343,70 @@ function App() {
   }, []);
 
   // Kullanıcı oturumunu izleme
+
+  // Email doğrulama kontrolü için bu effect'i ekledik
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+      if (user) {
+        setUser(user);
+        localStorage.setItem("currentUser", JSON.stringify(user));
+      } else {
+        setUser(null);
+        localStorage.removeItem("currentUser");
+      }
+      setIsLoading(false);
     });
-
-    return unsubscribe;
+    return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (user && !user.emailVerified) {
+      const interval = setInterval(async () => {
+        try {
+          await user.reload(); // Kullanıcı bilgilerini yenile
+          const updatedUser = auth.currentUser; // Güncel kullanıcıyı al
+          if (updatedUser?.emailVerified) {
+            setUser(updatedUser); // Yeni kullanıcı bilgilerini state'e aktar
+          }
+        } catch (error) {
+          console.error("Yenileme hatası:", error);
+        }
+      }, 3000);
+      return () => clearInterval(interval); // Component unmount olduğunda temizle
+    }
+  }, [user]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (count > 0) {
+      const timer = setInterval(() => {
+        setCount((prevCount) => {
+          const newCount = prevCount - 1;
+          // Update localStorage with new count
+          if (newCount <= 0) {
+            localStorage.removeItem("emailCount");
+            return 0;
+          }
+          localStorage.setItem("emailCount", newCount.toString());
+          return newCount;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [count]); // Add count as dependency
+
+  const handleResendEmail = async () => {
+    try {
+      await sendEmailVerification(user);
+      console.log("Email gönderildi, sayaç başlatılıyor");
+      setCount(60);
+      localStorage.setItem("emailCount", "60");
+    } catch (error) {
+      console.error("Email gönderme hatası:", error);
+      setCount(0);
+      localStorage.removeItem("emailCount");
+    }
+  };
 
   return !user ? (
     <Container maxWidth="sm" sx={{ mt: 4 }}>
@@ -350,18 +421,47 @@ function App() {
           setErrors={setErrors}
         />
       </Box>
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-      />
+      <ToastContainer />
+    </Container>
+  ) : !user.emailVerified ? (
+    <Container maxWidth="sm" sx={{ mt: 4 }}>
+      <Paper sx={{ p: 4, textAlign: "center" }}>
+        <Box
+          sx={{
+            mb: 3,
+            p: 2,
+            border: "1px solid #ccc",
+          }}
+        >
+          <Typography variant="h5" gutterBottom>
+            Email Doğrulama
+          </Typography>
+
+          <Typography variant="body1" sx={{ mb: 3 }}>
+            Lütfen email adresinize gönderilen doğrulama linkine tıklayın.
+          </Typography>
+          <Button onClick={handleResendEmail} disabled={count > 0}>
+            {count > 0
+              ? `Yeniden Gönder (${count})`
+              : "Doğrulama Emailini Gönder"}
+          </Button>
+
+          <Typography variant="body2" sx={{ mt: 2 }}>
+            Email almadıysanız lütfen spam kutunuzu kontrol edin. Email
+            gelmediyse, lütfen 1 dakika bekleyin ve tekrar deneyin.
+          </Typography>
+        </Box>
+        <Button
+          variant="outlined"
+          onClick={() => {
+            auth.signOut();
+            setUser(null);
+          }}
+          fullWidth
+        >
+          Çıkış Yap
+        </Button>
+      </Paper>
     </Container>
   ) : (
     <div className="app-container">
@@ -385,25 +485,15 @@ function App() {
           <Button
             color="inherit"
             onClick={() => {
+              auth.signOut();
               setUser(null);
               localStorage.removeItem("currentUser");
-
-              // Eğer bir servis çalışanı kayıtlıysa, ona LOGOUT mesajı gönder
-              if (
-                navigator.serviceWorker &&
-                navigator.serviceWorker.controller
-              ) {
-                navigator.serviceWorker.controller.postMessage({
-                  type: "LOGOUT",
-                });
-              }
             }}
           >
             Çıkış Yap
           </Button>
         </Toolbar>
       </AppBar>
-
       <Tabs
         value={activeTab}
         onChange={(e, newTab) => handleTabChange(newTab)}
@@ -422,7 +512,6 @@ function App() {
         <Tab label="Pro Öneriler" />
         <Tab label="Takvim" />
       </Tabs>
-
       {activeTab === 0 && (
         <DailyRoutine
           routines={routines}
@@ -438,7 +527,6 @@ function App() {
           totalRoutines={totalRoutines}
         />
       )}
-
       {activeTab === 1 && (
         <Exercises
           exercises={exercises}
@@ -448,7 +536,6 @@ function App() {
           setEditingExercise={setEditingExercise}
         />
       )}
-
       {activeTab === 2 && (
         <Supplements
           supplements={supplements}
@@ -458,9 +545,7 @@ function App() {
           setEditingSupplement={setEditingSupplement}
         />
       )}
-
       {activeTab === 3 && <ProTips additionalInfo={additionalInfo} />}
-
       {activeTab === 4 && (
         <>
           <Calendar
@@ -510,7 +595,6 @@ function App() {
           )}
         </>
       )}
-
       <Box className="footer-container">
         <Typography variant="body2">© 2025 Sağlık Takip Sistemi</Typography>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>

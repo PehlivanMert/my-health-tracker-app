@@ -3,6 +3,8 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
+  sendEmailVerification,
+  sendPasswordResetEmail,
 } from "firebase/auth";
 import { auth } from "./firebaseConfig";
 
@@ -55,11 +57,16 @@ export const handleRegister = async (
       loginData.password
     );
 
+    // E-posta doğrulama gönderimi
+    await sendEmailVerification(userCredential.user);
+
     setUser(userCredential.user);
-    toast.success("Kayıt başarılı! Hoş geldiniz.");
+    toast.success("Kayıt başarılı! E-posta doğrulama gönderildi.");
     setLoginData({ username: "", password: "" });
   } catch (error) {
     console.error("Kayıt hatası:", error);
+
+    // Hata kodlarına göre özelleştirilmiş toast mesajları
     switch (error.code) {
       case "auth/email-already-in-use":
         toast.error("Bu email adresi zaten kullanımda");
@@ -76,12 +83,23 @@ export const handleRegister = async (
   }
 };
 
-export const handleLogout = async () => {
+export const handleLogout = async (setUser) => {
   try {
     await signOut(auth);
+    setUser(null);
     toast.success("Çıkış yapıldı");
   } catch (error) {
     console.error("Çıkış hatası:", error);
     toast.error("Çıkış işlemi başarısız oldu");
+  }
+};
+
+export const handlePasswordReset = async (email) => {
+  try {
+    await sendPasswordResetEmail(auth, email);
+    toast.success("Şifre sıfırlama e-postası gönderildi!");
+  } catch (error) {
+    console.error("Şifre sıfırlama hatası:", error);
+    toast.error("Şifre sıfırlama işlemi başarısız oldu");
   }
 };

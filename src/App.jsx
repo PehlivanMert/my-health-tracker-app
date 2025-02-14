@@ -1,5 +1,5 @@
 // App.js
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from "chart.js";
 import { format } from "date-fns";
 import { ToastContainer, toast } from "react-toastify";
@@ -33,6 +33,8 @@ import {
   initialSupplements,
   initialRoutines,
   defaultEvents,
+  // Takvim etkinlikleri artık alt koleksiyonda olduğundan,
+  // user dokümanında saklanmasına gerek yok
   additionalInfo as constantAdditionalInfo,
 } from "./utils/constant/ConstantData";
 import DailyRoutine from "./components/daily-routine/DailyRoutine";
@@ -41,69 +43,65 @@ import Supplements from "./components/supplements/Supplements";
 import ProTips from "./components/pro-tips/ProTips";
 import Calendar from "./components/calendar/Calendar";
 import { useCalendarEvents } from "./components/calendar/useCalendarEvents";
-import { auth } from "./components/auth/firebaseConfig";
+import { auth, db } from "./components/auth/firebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
 import { sendEmailVerification } from "firebase/auth";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
 function App() {
-  // Kullanıcı Yönetimi
-
-  const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem("currentUser");
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
-
+  // -------------------------
+  // Kullanıcı, Oturum & Genel State'ler
+  // -------------------------
+  const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  // State'i localStorage'dan okuyarak başlat
-  const [count, setCount] = useState(() => {
-    const savedCount = localStorage.getItem("emailCount");
-    return savedCount ? parseInt(savedCount) : 0;
-  });
+  const [count, setCount] = useState(0); // Email count
 
   const [loginData, setLoginData] = useState({ username: "", password: "" });
   const [isRegister, setIsRegister] = useState(false);
   const [errors, setErrors] = useState({ username: false, password: false });
 
-  // Bildirim İzni
+  // Bildirim izni
   useEffect(() => {
     requestNotificationPermission();
   }, []);
 
-  // Tema Yönetimi
+  // Tema ve Additional Info
+  // additionalInfo yalnızca ilk oluşturulurken eklenip, sonrasında kullanıcı müdahalesi kapalı
   const [theme, setTheme] = useState(getInitialTheme);
+  const [additionalInfo, setAdditionalInfo] = useState(constantAdditionalInfo);
 
-  // Additional Info
-  const [additionalInfo] = useState(() => {
-    // Destructure sadece ilk değeri al
-    const savedData = localStorage.getItem("additionalInfo");
-    return savedData ? JSON.parse(savedData) : constantAdditionalInfo;
-  });
-
+  // -------------------------
   // Sekme Yönetimi
-  const [activeTab, setActiveTab] = useState(() => {
-    return Number(localStorage.getItem("activeTab")) || 0;
-  });
+  // -------------------------
+  const [activeTab, setActiveTab] = useState(0);
   const handleTabChange = (newTab) => {
     setActiveTab(newTab);
-    localStorage.setItem("activeTab", newTab); // Seçili sekmeyi kaydet
+    if (user) {
+      const userDocRef = doc(db, "users", user.uid);
+      updateDoc(userDocRef, { activeTab: newTab }).catch((error) =>
+        console.error("Active tab güncelleme hatası:", error)
+      );
+    }
   };
 
-  // Zaman ve Hava Durumu
+  // -------------------------
+  // Zaman & Hava Durumu
+  // -------------------------
   const [currentTime, setCurrentTime] = useState(new Date());
-
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Rutinler
+  // -------------------------
+  // Rutinler (Daily Routine)
+  // -------------------------
   const [routines, setRoutines] = useState([]);
   const [newRoutine, setNewRoutine] = useState({ time: "08:00", title: "" });
   const [editRoutineId, setEditRoutineId] = useState(null);
+
   const handleSaveRoutine = useCallback(() => {
     let updatedRoutines;
     if (editRoutineId) {
@@ -115,64 +113,63 @@ function App() {
     } else {
       updatedRoutines = [
         ...routines,
-        {
-          ...newRoutine,
-          id: Date.now().toString(),
-          checked: false,
-        },
+        { ...newRoutine, id: Date.now().toString(), checked: false },
       ];
     }
-
-    // Zamanına göre sırala
     updatedRoutines.sort((a, b) => a.time.localeCompare(b.time));
-
     setRoutines(updatedRoutines);
     setEditRoutineId(null);
     setNewRoutine({ time: "08:00", title: "" });
   }, [routines, editRoutineId, newRoutine]);
+
   const deleteRoutine = (id) => {
-    // İlgili rutini listeden çıkart
     setRoutines(routines.filter((routine) => routine.id !== id));
   };
 
+  // -------------------------
   // Egzersiz ve Takviyeler
-  const [exercises, setExercises] = useState(
-    JSON.parse(localStorage.getItem(`${user}-exercises`)) || initialExercises
-  );
-  const [supplements, setSupplements] = useState(
-    JSON.parse(localStorage.getItem(`${user}-supplements`)) ||
-      initialSupplements
-  );
+  // -------------------------
+  const [exercises, setExercises] = useState(initialExercises);
+  const [supplements, setSupplements] = useState(initialSupplements);
   const [editingExercise, setEditingExercise] = useState(null);
   const [editingSupplement, setEditingSupplement] = useState(null);
 
-  // DRAG-DROP DÜZELTMELERİ BAŞLANGICI
-  const onDragEnd = (result) => {
-    if (!result.destination) return;
+  const handleExerciseSubmit = useCallback((exercise) => {
+    setExercises((prev) =>
+      exercise.id
+        ? prev.map((e) => (e.id === exercise.id ? exercise : e))
+        : [...prev, { ...exercise, id: Date.now().toString() }]
+    );
+    setEditingExercise(null);
+  }, []);
 
-    // Yeni sıralamayı oluştur
-    const items = Array.from(routines);
-    const [removed] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, removed);
+  const handleSupplementSubmit = useCallback((supplement) => {
+    setSupplements((prev) =>
+      supplement.id
+        ? prev.map((s) => (s.id === supplement.id ? supplement : s))
+        : [...prev, { ...supplement, id: Date.now().toString() }]
+    );
+    setEditingSupplement(null);
+  }, []);
 
-    localStorage.setItem(`${user}-routines`, JSON.stringify(items));
-    setRoutines(items);
-  };
-
-  // İlerleme Grafiği
   const totalRoutines = routines.length;
   const completedRoutines = routines.filter((r) => r.checked).length;
 
-  // Service Worker Kaydı (componentDidMount benzeri)
+  // -------------------------
+  // Service Worker Kaydı
+  // -------------------------
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
         .register("/sw.js")
         .then((registration) => console.log("SW registered"))
-        .catch((err) => console.log("SW registration failed"));
+        .catch((err) => console.log("SW registration failed", err));
     }
   }, []);
 
+  // -------------------------
+  // Calendar (Takvim) İşlemleri
+  // -------------------------
   const {
     selectedDate,
     setSelectedDate,
@@ -192,222 +189,217 @@ function App() {
     handleUndo,
     confirmModalOpen,
     setConfirmModalOpen,
-    editingEvent, // Artık hook’tan alıyoruz
-    setEditingEvent, // Artık hook’tan alıyoruz
+    editingEvent,
+    setEditingEvent,
     isEditModalOpen,
     setIsEditModalOpen,
     confirmUpdateModalOpen,
     setConfirmUpdateModalOpen,
   } = useCalendarEvents(user);
 
-  // Exercise ve Supplement Form Gösterme
-  const handleExerciseSubmit = useCallback((exercise) => {
-    setExercises((prev) => {
-      const newExercises = exercise.id
-        ? prev.map((e) => (e.id === exercise.id ? exercise : e))
-        : [...prev, { ...exercise, id: Date.now().toString() }];
-      return newExercises;
-    });
-    setEditingExercise(null);
-  }, []);
-
-  const handleSupplementSubmit = useCallback((supplement) => {
-    setSupplements((prev) => {
-      const newSupplements = supplement.id
-        ? prev.map((s) => (s.id === supplement.id ? supplement : s))
-        : [...prev, { ...supplement, id: Date.now().toString() }];
-      return newSupplements;
-    });
-    setEditingSupplement(null);
-  }, []);
-
-  // Tema ve Hava Durumu
+  // -------------------------
+  // Tema Güncellemesi
+  // -------------------------
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("selectedTheme", theme); // Added to persist theme
-  }, [theme]);
+    if (user) {
+      const userDocRef = doc(db, "users", user.uid);
+      updateDoc(userDocRef, { theme }).catch((error) =>
+        console.error("Tema güncelleme hatası:", error)
+      );
+    }
+  }, [theme, user]);
 
-  // App.js'deki tüm veri yükleme useEffect'lerini tek bir yapıda birleştirin
-  // App.js'deki veri yükleme useEffect'ini düzenleyin
+  // -------------------------
+  // Firestore’dan Kullanıcı Verilerini Yükleme
+  // (Additional Info: Sadece ilk oluşturma sırasında eklenir, sonrasında güncellenmez)
+  // -------------------------
+
+  const isInitialLoad = useRef(true); // İlk yükleme kontrolü
+
   useEffect(() => {
-    const loadUserData = () => {
-      if (!user) return; // Kullanıcı yoksa işlem yapma
+    const loadUserData = async () => {
+      if (!user) return;
 
       try {
-        const storedRoutines = localStorage.getItem(`${user}-routines`);
-        const routinesData = storedRoutines
-          ? JSON.parse(storedRoutines)
-          : initialRoutines;
+        const userDocRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(userDocRef, { source: "server" });
 
-        if (!storedRoutines) {
-          localStorage.setItem(
-            `${user}-routines`,
-            JSON.stringify(initialRoutines)
-          );
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+
+          setRoutines(data.routines ?? initialRoutines);
+          setExercises(data.exercises ?? initialExercises);
+          setSupplements(data.supplements ?? initialSupplements);
+          setActiveTab(data.activeTab ?? 0);
+          setAdditionalInfo(data.additionalInfo ?? constantAdditionalInfo);
+          setTheme(data.theme ?? getInitialTheme());
+          setCount(data.emailCount ?? 0);
+
+          let updatedData = {};
+          if (data.additionalInfo === undefined) {
+            updatedData.additionalInfo = constantAdditionalInfo;
+          }
+          if (Object.keys(updatedData).length > 0) {
+            await updateDoc(userDocRef, updatedData);
+          }
+        } else {
+          const initialData = {
+            routines: initialRoutines,
+            exercises: initialExercises,
+            supplements: initialSupplements,
+            activeTab: 0,
+            additionalInfo: constantAdditionalInfo,
+            theme: getInitialTheme(),
+            emailCount: 0,
+          };
+          await setDoc(userDocRef, initialData);
+          setRoutines(initialRoutines);
+          setExercises(initialExercises);
+          setSupplements(initialSupplements);
+          setActiveTab(0);
+          setAdditionalInfo(constantAdditionalInfo);
+          setTheme(getInitialTheme());
+          setCount(0);
         }
 
-        setRoutines(routinesData);
-
-        // Diğer verileri yükle
-        const calendarData =
-          JSON.parse(localStorage.getItem(`${user}-calendarEvents`)) || [];
-        const exercisesData =
-          JSON.parse(localStorage.getItem(`${user}-exercises`)) ||
-          initialExercises;
-        const supplementsData =
-          JSON.parse(localStorage.getItem(`${user}-supplements`)) ||
-          initialSupplements;
-
-        setCalendarEvents(calendarData);
-        setExercises(exercisesData);
-        setSupplements(supplementsData);
+        isInitialLoad.current = false; // İlk yükleme tamamlandı
       } catch (error) {
         console.error("Veri yükleme hatası:", error);
-        toast.error("Veri yüklenirken hata oluştu");
       }
     };
 
     loadUserData();
-  }, [user, setCalendarEvents]); // Eksik bağımlılıkları ekledik
+  }, [user]);
 
-  // useEffect içinde daha güçlü bir veri yükleme mekanizması
+  // -------------------------
+  // Rutinler Güncelleme (Firestore’a yazma)
+  // -------------------------
   useEffect(() => {
-    if (user) {
-      const savedEvents =
-        JSON.parse(localStorage.getItem(`${user}-calendarEvents`)) || [];
+    if (!user || isInitialLoad.current) return; // İlk yüklemede çalışmasın
 
-      if (
-        savedEvents.length === 0 &&
-        !localStorage.getItem(`${user}-hasAddedEvent`)
-      ) {
-        const recurringEvents = defaultEvents.flatMap((event) =>
-          generateRecurringEvents(event)
-        );
-        savedEvents.push(...recurringEvents);
-        localStorage.setItem(
-          `${user}-calendarEvents`,
-          JSON.stringify(savedEvents)
-        );
-        localStorage.setItem(`${user}-hasAddedEvent`, "true");
-      }
-
-      // Tarihleri Date nesnelerine dönüştür
-      const parsedEvents = savedEvents.map((event) => ({
-        ...event,
-        start: new Date(event.start),
-        end: new Date(event.end),
-        // notify ve repeat değerlerini kontrol et
-        notify: typeof event.notify === "string" ? event.notify : "none",
-        repeat: typeof event.repeat === "string" ? event.repeat : "none",
-      }));
-      setCalendarEvents(parsedEvents);
-    }
-  }, [user, generateRecurringEvents, setCalendarEvents]);
-
-  // Etkinlikler değiştiğinde localStorage'a yaz
-  useEffect(() => {
-    if (user && routines.length > 0) {
+    const updateRoutinesInFirestore = async () => {
       try {
-        localStorage.setItem(`${user}-routines`, JSON.stringify(routines));
+        const userDocRef = doc(db, "users", user.uid);
+        await updateDoc(userDocRef, { routines });
       } catch (error) {
         console.error("Rutin kaydetme hatası:", error);
-        toast.error("Rutinler kaydedilemedi");
       }
-    }
+    };
+
+    updateRoutinesInFirestore();
   }, [routines, user]);
 
-  // Diğer verileri kaydetme useEffect'i
+  // -------------------------
+  // Egzersiz ve Takviyeler Güncelleme (Firestore’a yazma)
+  // -------------------------
   useEffect(() => {
-    if (user) {
+    if (!user || isInitialLoad.current) return; // İlk yüklemede çalışmasın
+
+    const updateExercisesSupplementsInFirestore = async () => {
       try {
-        localStorage.setItem(`${user}-exercises`, JSON.stringify(exercises));
-        localStorage.setItem(
-          `${user}-supplements`,
-          JSON.stringify(supplements)
-        );
+        const userDocRef = doc(db, "users", user.uid);
+        await updateDoc(userDocRef, { exercises, supplements });
       } catch (error) {
         console.error("Veri kaydetme hatası:", error);
-        toast.error("Veriler kaydedilemedi");
       }
-    }
+    };
+
+    updateExercisesSupplementsInFirestore();
   }, [exercises, supplements, user]);
 
-  //sw control
+  // -------------------------
+  // Firebase Auth: Kullanıcı Oturumunu İzleme
+  // -------------------------
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then((reg) => console.log("Service Worker kaydedildi:", reg))
-        .catch((err) => console.error("SW kaydı başarısız:", err));
-    }
-  }, []);
-
-  // Kullanıcı oturumunu izleme
-
-  // Email doğrulama kontrolü için bu effect'i ekledik
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setUser(user);
-        localStorage.setItem("currentUser", JSON.stringify(user));
-      } else {
-        setUser(null);
-        localStorage.removeItem("currentUser");
-      }
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser ? firebaseUser : null);
       setIsLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
+  // -------------------------
+  // Email Doğrulama Kontrolü
+  // -------------------------
   useEffect(() => {
     if (user && !user.emailVerified) {
       const interval = setInterval(async () => {
         try {
-          await user.reload(); // Kullanıcı bilgilerini yenile
-          const updatedUser = auth.currentUser; // Güncel kullanıcıyı al
+          await user.reload();
+          const updatedUser = auth.currentUser;
           if (updatedUser?.emailVerified) {
-            setUser(updatedUser); // Yeni kullanıcı bilgilerini state'e aktar
+            setUser(updatedUser);
           }
         } catch (error) {
           console.error("Yenileme hatası:", error);
         }
       }, 3000);
-      return () => clearInterval(interval); // Component unmount olduğunda temizle
+      return () => clearInterval(interval);
     }
   }, [user]);
 
-  // Countdown timer
+  // -------------------------
+  // Countdown Timer (Email Count)
+  // -------------------------
   useEffect(() => {
     if (count > 0) {
       const timer = setInterval(() => {
         setCount((prevCount) => {
           const newCount = prevCount - 1;
-          // Update localStorage with new count
-          if (newCount <= 0) {
-            localStorage.removeItem("emailCount");
-            return 0;
+          if (user) {
+            const userDocRef = doc(db, "users", user.uid);
+            updateDoc(userDocRef, { emailCount: newCount }).catch((error) =>
+              console.error("Email count güncelleme hatası:", error)
+            );
           }
-          localStorage.setItem("emailCount", newCount.toString());
-          return newCount;
+          return newCount <= 0 ? 0 : newCount;
         });
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [count]); // Add count as dependency
+  }, [count, user]);
 
+  // -------------------------
+  // Email Doğrulama: Yeniden Gönderme İşlemi
+  // -------------------------
   const handleResendEmail = async () => {
     try {
       await sendEmailVerification(user);
       console.log("Email gönderildi, sayaç başlatılıyor");
       setCount(60);
-      localStorage.setItem("emailCount", "60");
+      if (user) {
+        const userDocRef = doc(db, "users", user.uid);
+        updateDoc(userDocRef, { emailCount: 60 }).catch((error) =>
+          console.error("Email count güncelleme hatası:", error)
+        );
+      }
     } catch (error) {
       console.error("Email gönderme hatası:", error);
       setCount(0);
-      localStorage.removeItem("emailCount");
+      if (user) {
+        const userDocRef = doc(db, "users", user.uid);
+        updateDoc(userDocRef, { emailCount: 0 }).catch((error) =>
+          console.error("Email count güncelleme hatası:", error)
+        );
+      }
     }
   };
 
+  // -------------------------
+  // Yükleme Durumu: "Loading..." ekranı
+  // -------------------------
+  if (isLoading) {
+    return (
+      <Typography variant="h5" align="center" sx={{ mt: 4 }}>
+        Loading...
+      </Typography>
+    );
+  }
+
+  // -------------------------
+  // Render: Kullanıcı oturumu, email doğrulama, ana ekran
+  // -------------------------
   return !user ? (
     <Container maxWidth="sm" sx={{ mt: 4 }}>
       <Box>
@@ -426,17 +418,10 @@ function App() {
   ) : !user.emailVerified ? (
     <Container maxWidth="sm" sx={{ mt: 4 }}>
       <Paper sx={{ p: 4, textAlign: "center" }}>
-        <Box
-          sx={{
-            mb: 3,
-            p: 2,
-            border: "1px solid #ccc",
-          }}
-        >
+        <Box sx={{ mb: 3, p: 2, border: "1px solid #ccc" }}>
           <Typography variant="h5" gutterBottom>
             Email Doğrulama
           </Typography>
-
           <Typography variant="body1" sx={{ mb: 3 }}>
             Lütfen email adresinize gönderilen doğrulama linkine tıklayın.
           </Typography>
@@ -445,7 +430,6 @@ function App() {
               ? `Yeniden Gönder (${count})`
               : "Doğrulama Emailini Gönder"}
           </Button>
-
           <Typography variant="body2" sx={{ mt: 2 }}>
             Email almadıysanız lütfen spam kutunuzu kontrol edin. Email
             gelmediyse, lütfen 1 dakika bekleyin ve tekrar deneyin.
@@ -462,6 +446,7 @@ function App() {
           Çıkış Yap
         </Button>
       </Paper>
+      <ToastContainer />
     </Container>
   ) : (
     <div className="app-container">
@@ -496,13 +481,13 @@ function App() {
       </AppBar>
       <Tabs
         value={activeTab}
-        onChange={(e, newTab) => handleTabChange(newTab)}
-        variant="scrollable" // Sekmeler kaydırılabilir hale gelir
-        scrollButtons="auto" // Kaydırma butonları otomatik görünür (mobilde dokunarak kaydırabilirsiniz)
+        onChange={(event, newTab) => handleTabChange(newTab)}
+        variant="scrollable"
+        scrollButtons="auto"
         sx={{
-          justifyContent: "center", // PC'de ortalama
+          justifyContent: "center",
           "& .MuiTabs-flexContainer": {
-            justifyContent: { xs: "flex-start", md: "center" }, // Mobilde sola hizalı, PC'de ortalı
+            justifyContent: { xs: "flex-start", md: "center" },
           },
         }}
       >
@@ -515,13 +500,12 @@ function App() {
       {activeTab === 0 && (
         <DailyRoutine
           routines={routines}
-          setRoutines={setRoutines} // ✅ Bu satırı ekleyin
+          setRoutines={setRoutines}
           newRoutine={newRoutine}
           setNewRoutine={setNewRoutine}
           handleSaveRoutine={handleSaveRoutine}
           editRoutineId={editRoutineId}
           setEditRoutineId={setEditRoutineId}
-          onDragEnd={onDragEnd}
           deleteRoutine={deleteRoutine}
           completedRoutines={completedRoutines}
           totalRoutines={totalRoutines}
@@ -575,7 +559,7 @@ function App() {
             <Box
               sx={{
                 position: "fixed",
-                bottom: 20, // İstediğin mesafeyi belirleyebilirsin
+                bottom: 20,
                 left: "50%",
                 transform: "translateX(-50%)",
                 zIndex: 1100,
@@ -615,6 +599,7 @@ function App() {
           </Select>
         </Box>
       </Box>
+      {/* İhtiyaca göre ToastContainer'lardan bir tanesini kullanabilirsiniz */}
       <ToastContainer position="bottom-right" autoClose={3000} />
       <ToastContainer
         position="top-right"

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Paper, Typography, TextField, Button } from "@mui/material";
 import {
   handleLogin,
@@ -6,17 +6,14 @@ import {
   handlePasswordReset,
 } from "./AuthHandlers";
 
-const UserAuth = ({
-  isRegister,
-  setIsRegister,
-  loginData,
-  setLoginData,
-  setUser,
-  errors,
-  setErrors,
-}) => {
+const UserAuth = ({ setUser }) => {
+  // Bileşen içi state’ler
+  const [isRegister, setIsRegister] = useState(false);
+  const [loginData, setLoginData] = useState({ username: "", password: "" });
+  const [errors, setErrors] = useState({ username: false, password: false });
+
   return (
-    <Paper elevation={3} sx={{ p: 4 }}>
+    <Paper elevation={3} sx={{ p: 4, maxWidth: 400, margin: "auto", mt: 8 }}>
       <Typography variant="h4" align="center" gutterBottom>
         {isRegister ? "Kayıt Ol" : "Giriş Yap"}
       </Typography>
@@ -47,7 +44,7 @@ const UserAuth = ({
 
         <TextField
           name="loginPassword"
-          id="loginpassword"
+          id="loginPassword"
           label="Şifre"
           type="password"
           fullWidth

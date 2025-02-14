@@ -65,8 +65,6 @@ export const handleRegister = async (
     setLoginData({ username: "", password: "" });
   } catch (error) {
     console.error("Kayıt hatası:", error);
-
-    // Hata kodlarına göre özelleştirilmiş toast mesajları
     switch (error.code) {
       case "auth/email-already-in-use":
         toast.error("Bu email adresi zaten kullanımda");

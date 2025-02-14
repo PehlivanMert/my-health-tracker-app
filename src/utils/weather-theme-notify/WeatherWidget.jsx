@@ -9,7 +9,9 @@ const WeatherWidget = () => {
   const fetchWeather = async (lat, lon) => {
     try {
       const response = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`
+        `${
+          import.meta.env.VITE_OPEN_METEO_API_URL
+        }?latitude=${lat}&longitude=${lon}&current_weather=true`
       );
       const data = await response.json();
       if (data.current_weather) {
@@ -39,10 +41,10 @@ const WeatherWidget = () => {
           navigator.geolocation.getCurrentPosition(
             (position) => {
               const { latitude, longitude } = position.coords;
-              window.open(
-                `https://weather.com/tr-TR/weather/today/l/${latitude},${longitude}`,
-                "_blank"
-              );
+              const weatherUrl = `${
+                import.meta.env.VITE_WEATHER_COM_URL
+              }/${latitude},${longitude}`;
+              window.open(weatherUrl, "_blank");
             },
             (error) => toast.error("Konum erişimi reddedildi")
           );

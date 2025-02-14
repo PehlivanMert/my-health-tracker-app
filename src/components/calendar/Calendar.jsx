@@ -19,16 +19,13 @@ import tippy from "tippy.js";
 import ConfirmUpdateModal from "../../utils/modal/ConfirmUpdateModal";
 import EditEventModal from "../../utils/modal/EditEventModal";
 import { toast } from "react-toastify";
-import { addOneHour } from "./calendarHelpers";
 
 const Calendar = ({
-  user,
   selectedDate,
   setSelectedDate,
   newEvent,
   setNewEvent,
   calendarEvents,
-  setCalendarEvents,
   addCalendarEvent,
   handleEventDrop,
   handleEventResize,
@@ -40,14 +37,12 @@ const Calendar = ({
   isEditModalOpen,
   setIsEditModalOpen,
   handleUpdateEvent,
-  handleConfirmUpdate,
+  handleConfirmUpdate, // Bu fonksiyonu parent'dan iletmeniz gerekiyor (varsa)
   deletedEvents,
-  setDeletedEvents,
   handleUndo,
 }) => {
   const calendarRef = useRef(null);
 
-  // Calendar.js
   useEffect(() => {
     if (calendarRef.current) {
       const calendarApi = calendarRef.current.getApi();
@@ -55,7 +50,6 @@ const Calendar = ({
     }
   }, [calendarEvents]);
 
-  // Etkinlik tıklama düzeltmesi
   const handleEventDoubleClick = (clickInfo) => {
     const existingEvent = calendarEvents?.find(
       (ev) => ev.id === clickInfo.event.id
@@ -94,7 +88,6 @@ const Calendar = ({
       >
         📅 Takvim
       </Typography>
-      {/* Takvim Girdi Alanları */}
       <Box
         sx={{
           mb: 2,
@@ -121,7 +114,15 @@ const Calendar = ({
           value={newEvent.startTime}
           onChange={(e) => {
             const newStartTime = e.target.value;
-            const newEndTime = addOneHour(newStartTime);
+            // Basit saat hesaplaması:
+            const [h, m] = newStartTime.split(":").map(Number);
+            const date = new Date();
+            date.setHours(h, m, 0, 0);
+            date.setHours(date.getHours() + 1);
+            const newEndTime = `${String(date.getHours()).padStart(
+              2,
+              "0"
+            )}:${String(date.getMinutes()).padStart(2, "0")}`;
             setNewEvent({
               ...newEvent,
               startTime: newStartTime,
@@ -153,10 +154,7 @@ const Calendar = ({
           name="notifycalendar"
           value={newEvent.notify || "none"}
           onChange={(e) => setNewEvent({ ...newEvent, notify: e.target.value })}
-          sx={{
-            width: { xs: "100%", sm: 120 },
-            mt: { xs: 2, sm: 1 },
-          }}
+          sx={{ width: { xs: "100%", sm: 120 }, mt: { xs: 2, sm: 1 } }}
           displayEmpty
         >
           <MenuItem value="none">Hatırlatma Yok</MenuItem>
@@ -170,10 +168,7 @@ const Calendar = ({
           name="repeatcalendar"
           value={newEvent.repeat || "none"}
           onChange={(e) => setNewEvent({ ...newEvent, repeat: e.target.value })}
-          sx={{
-            width: { xs: "100%", sm: 120 },
-            mt: { xs: 2, sm: 1 },
-          }}
+          sx={{ width: { xs: "100%", sm: 120 }, mt: { xs: 2, sm: 1 } }}
           displayEmpty
         >
           <MenuItem value="none">Tekrarlama</MenuItem>
@@ -191,33 +186,25 @@ const Calendar = ({
           Ekle
         </Button>
       </Box>
-      {/* Takvim Görüntüleme Alanı */}
       <Box id="calendar-container">
         <FullCalendar
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="dayGridMonth" // İlk view burada tanımlı, ancak view değişiklikleri kullanıcı tarafından yapılabiliyor.
+          initialView="dayGridMonth"
           events={calendarEvents}
           editable
           selectable
           selectMirror
           eventClick={(info) => {
-            console.log("Etkinlik tıklandı:", info);
             handleEventDoubleClick(info);
           }}
           eventResizableFromStart
           eventDrop={(info) => {
-            console.log("Drop Info:", {
-              newStart: info.event.start,
-              newEnd: info.event.end,
-              revert: info.revert,
-            });
             handleEventDrop({
               event: info.event,
               oldEvent: info.oldEvent,
               revert: info.revert,
             });
-            // Tooltip güncellemesi:
             const start = format(new Date(info.event.start), "HH:mm");
             const end = format(new Date(info.event.end), "HH:mm");
             if (info.el._tippy) {
@@ -230,13 +217,11 @@ const Calendar = ({
             }
           }}
           eventResize={(info) => {
-            // Durum güncellemesi
             handleEventResize({
               event: info.event,
               oldEvent: info.oldEvent,
               revert: info.revert,
             });
-            // Tooltip güncellemesi:
             const start = format(new Date(info.event.start), "HH:mm");
             const end = format(new Date(info.event.end), "HH:mm");
             if (info.el._tippy) {
@@ -259,7 +244,6 @@ const Calendar = ({
           }}
           eventContent={(info) => {
             if (!info.event.start || !info.event.end) return null;
-
             return (
               <div
                 style={{
@@ -298,24 +282,24 @@ const Calendar = ({
           }}
         />
       </Box>
-      {/* Etkinlik Düzenleme Modali */}
       {isEditModalOpen && editingEvent && (
         <EditEventModal
-          key={editingEvent.id} // ✅ Modal stabil hale gelecek
+          key={editingEvent.id}
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
           event={editingEvent}
           onSave={handleUpdateEvent}
         />
       )}
-
-      {/* Onaylama  Modali */}
       <ConfirmUpdateModal
         isOpen={confirmUpdateModalOpen}
         onClose={() => setConfirmUpdateModalOpen(false)}
-        onConfirm={(updateAll) => handleConfirmUpdate(updateAll, editingEvent)}
+        onConfirm={(updateAll) =>
+          handleConfirmUpdate && handleConfirmUpdate(updateAll, editingEvent)
+        }
       />
     </Paper>
   );
 };
+
 export default Calendar;

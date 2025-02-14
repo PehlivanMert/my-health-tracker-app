@@ -1,9 +1,13 @@
 rules_version = '2';
-
 service firebase.storage {
   match /b/{bucket}/o {
-    match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+    // Örneğin, kullanıcılar kendi klasörlerinde bulunan dosyalarına erişsin:
+    match /{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+    // Tüm dosyalara erişimi açmak için (test amaçlı, üretimde kullanmayın):
+    // match /{allPaths=**} {
+    //   allow read, write: if request.auth != null;
+    // }
   }
 }

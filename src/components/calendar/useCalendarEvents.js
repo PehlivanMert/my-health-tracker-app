@@ -1,32 +1,26 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import { toast } from "react-toastify";
+import {
+  doc,
+  collection,
+  query,
+  where,
+  getDocs,
+  writeBatch,
+  onSnapshot,
+  updateDoc,
+  Timestamp,
+} from "firebase/firestore";
+import { db } from "../auth/firebaseConfig";
 import { scheduleNotification } from "../../utils/weather-theme-notify/NotificationManager";
-import { generateEventId } from "./calendarHelpers";
 
 export const useCalendarEvents = (user) => {
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [confirmUpdateModalOpen, setConfirmUpdateModalOpen] = useState(false);
-  const [selectedEventId, setSelectedEventId] = useState(null);
-  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [calendarEvents, setCalendarEvents] = useState([]);
+  const [deletedEvents, setDeletedEvents] = useState([]);
   const [selectedDate, setSelectedDate] = useState(() =>
     format(new Date(), "yyyy-MM-dd")
   );
-
-  // Etkinlik ekleme fonksiyonu
-  const [calendarEvents, setCalendarEvents] = useState(() => {
-    try {
-      const storedEvents = localStorage.getItem(`${user}-calendarEvents`);
-      if (storedEvents) {
-        return JSON.parse(storedEvents);
-      }
-      return [];
-    } catch (error) {
-      console.error("Error loading calendar events:", error);
-      return [];
-    }
-  });
-
   const [newEvent, setNewEvent] = useState({
     title: "",
     startTime: format(new Date(), "HH:mm"),
@@ -34,289 +28,245 @@ export const useCalendarEvents = (user) => {
     notify: "none",
     repeat: "none",
   });
-
   const [editingEvent, setEditingEvent] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [confirmUpdateModalOpen, setConfirmUpdateModalOpen] = useState(false);
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState(null);
 
-  // Bir saat ekleyen yardımcı fonksiyon
+  const eventsRef = user
+    ? collection(db, "users", user.uid, "calendarEvents")
+    : null;
+
+  useEffect(() => {
+    if (!eventsRef) return;
+
+    const unsubscribe = onSnapshot(eventsRef, (snapshot) => {
+      const events = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          ...data,
+          start: data.start.toDate(),
+          end: data.end.toDate(),
+          extendedProps: {
+            notify: data.notify || "none",
+            repeat: data.repeat || "none",
+          },
+        };
+      });
+      setCalendarEvents(events);
+    });
+
+    return () => unsubscribe();
+  }, [eventsRef]);
+
   const addOneHour = (time) => {
     const [hours, minutes] = time.split(":").map(Number);
     const date = new Date();
     date.setHours(hours, minutes, 0, 0);
-    date.setHours(date.getHours() + 1); // 1 saat ekle
+    date.setHours(date.getHours() + 1);
     return `${String(date.getHours()).padStart(2, "0")}:${String(
       date.getMinutes()
     ).padStart(2, "0")}`;
   };
 
-  // Etkinlik Ekleme Fonksiyonu (Güncellenmiş)
-  const addCalendarEvent = () => {
-    if (Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-
-    if (newEvent.title.trim() && selectedDate) {
-      const startDateTime = new Date(`${selectedDate}T${newEvent.startTime}`);
-      const endDateTime = new Date(`${selectedDate}T${newEvent.endTime}`);
-
-      const baseEvent = {
-        id: generateEventId("event"),
-        title: newEvent.title,
-        start: startDateTime,
-        end: endDateTime,
-        allDay: newEvent.startTime === "00:00" && newEvent.endTime === "23:59",
-        extendedProps: {
-          notify: newEvent.notify,
-          repeat: newEvent.repeat,
-        },
-      };
-
-      const eventsToAdd = generateRecurringEvents(baseEvent);
-      const updatedEvents = [...calendarEvents, ...eventsToAdd];
-
-      setCalendarEvents(updatedEvents);
-      localStorage.setItem(
-        `${user}-calendarEvents`,
-        JSON.stringify(updatedEvents)
-      );
-      scheduleNotification(newEvent.title, startDateTime, newEvent.notify);
-
-      setNewEvent({
-        title: "",
-        startTime: format(new Date(), "HH:mm"),
-        endTime: format(new Date(Date.now() + 60 * 60000), "HH:mm"),
-        notify: "none",
-        repeat: "none",
-      });
-
-      toast.success("Etkinlik başarıyla eklendi");
-    }
-  };
-
-  const handleEventDrop = (dropInfo) => {
-    setCalendarEvents((prevEvents) => {
-      const updatedEvents = prevEvents.map((event) =>
-        event.id === dropInfo.event.id
-          ? {
-              ...event,
-              start: dropInfo.event.start,
-              end: dropInfo.event.end,
-              allDay: dropInfo.event.allDay,
-            }
-          : event
-      );
-      localStorage.setItem(
-        `${user}-calendarEvents`,
-        JSON.stringify(updatedEvents)
-      );
-      return updatedEvents;
-    });
-  };
-
-  // Tekrarlı Etkinlik Üretme Fonksiyonu
   const generateRecurringEvents = useCallback((baseEvent) => {
     const events = [];
-    const repeatId = generateEventId("repeat");
+    const repeatId = Date.now().toString();
     const duration = baseEvent.end - baseEvent.start;
-    const repeatDuration = 30;
 
     if (baseEvent.extendedProps?.repeat === "daily") {
-      for (let i = 0; i < repeatDuration; i++) {
+      for (let i = 0; i < 30; i++) {
         const newStart = new Date(baseEvent.start);
         newStart.setDate(newStart.getDate() + i);
         const newEnd = new Date(newStart.getTime() + duration);
 
         events.push({
           ...baseEvent,
-          id: generateEventId(baseEvent.id),
           start: newStart,
           end: newEnd,
           extendedProps: {
             ...baseEvent.extendedProps,
-            repeatId: repeatId,
+            repeatId,
           },
         });
       }
-      return events;
     }
-    return [baseEvent];
-  }, []); // Bağımlılık yok
+    return events.length > 0 ? events : [baseEvent];
+  }, []);
 
-  // Event Silme Fonksiyonu
-  const [deletedEvents, setDeletedEvents] = useState(() => {
-    try {
-      const storedData = localStorage.getItem(`${user}-deletedEvents`);
-      return storedData ? JSON.parse(storedData) : [];
-    } catch (error) {
-      return [];
-    }
-  });
-  // Güncelleme fonksiyonu
-  const handleUpdateEvent = (updatedEventData) => {
-    setEditingEvent(updatedEventData);
-    setIsEditModalOpen(false);
-    setConfirmUpdateModalOpen(true);
-  };
-  // Onay fonksiyonu
-  const handleConfirmUpdate = (updateAll) => {
-    const updatedEvents = calendarEvents.map((ev) => {
-      const evStartDate =
-        ev.start instanceof Date ? ev.start : new Date(ev.start);
-      const startDateString = format(evStartDate, "yyyy-MM-dd");
+  const addCalendarEvent = async () => {
+    if (!eventsRef || !newEvent.title.trim()) return;
 
-      if (ev.id === editingEvent.id) {
-        return {
-          ...ev,
-          title: editingEvent.title,
-          start: new Date(`${startDateString}T${editingEvent.startTime}`),
-          end: new Date(`${startDateString}T${editingEvent.endTime}`),
-          extendedProps: {
-            ...ev.extendedProps,
-            notify: editingEvent.notify,
-          },
-        };
-      }
+    const startDateTime = new Date(`${selectedDate}T${newEvent.startTime}`);
+    const endDateTime = new Date(`${selectedDate}T${newEvent.endTime}`);
 
-      if (
-        updateAll &&
-        ev.extendedProps?.repeatId === editingEvent.extendedProps?.repeatId
-      ) {
-        return {
-          ...ev,
-          title: editingEvent.title,
-          start: new Date(`${startDateString}T${editingEvent.startTime}`),
-          end: new Date(`${startDateString}T${editingEvent.endTime}`),
-          extendedProps: {
-            ...ev.extendedProps,
-            notify: editingEvent.notify,
-          },
-        };
-      }
-
-      return ev;
-    });
-
-    // Direkt JSON.stringify ile kaydet
-    setCalendarEvents(updatedEvents);
-    localStorage.setItem(
-      `${user}-calendarEvents`,
-      JSON.stringify(updatedEvents)
-    );
-
-    setEditingEvent(null);
-    setConfirmUpdateModalOpen(false);
-    toast.success("Etkinlik başarıyla güncellendi");
-  };
-
-  // Yeni eventResize handler ekleyin
-  const handleEventResize = (resizeInfo) => {
-    setCalendarEvents((prevEvents) => {
-      const updatedEvents = prevEvents.map((event) =>
-        event.id === resizeInfo.event.id
-          ? {
-              ...event,
-              start: resizeInfo.event.start,
-              end: resizeInfo.event.end,
-              allDay: resizeInfo.event.allDay,
-            }
-          : event
-      );
-      localStorage.setItem(
-        `${user}-calendarEvents`,
-        JSON.stringify(updatedEvents)
-      );
-      return updatedEvents;
-    });
-  };
-
-  const handleDeleteConfirm = (deleteAll) => {
-    if (!selectedEventId) return;
-
-    const eventToDelete = calendarEvents.find((e) => e.id === selectedEventId);
-    let eventsToDelete = [];
-    let updatedEvents;
-
-    if (deleteAll && eventToDelete?.extendedProps?.repeatId) {
-      updatedEvents = calendarEvents.filter(
-        (e) =>
-          e.extendedProps?.repeatId !== eventToDelete.extendedProps?.repeatId
-      );
-      eventsToDelete = calendarEvents.filter(
-        (e) =>
-          e.extendedProps?.repeatId === eventToDelete.extendedProps?.repeatId
-      );
-    } else {
-      updatedEvents = calendarEvents.filter((e) => e.id !== selectedEventId);
-      eventsToDelete = [eventToDelete];
-    }
-
-    setDeletedEvents((prev) => [...prev, ...eventsToDelete]);
-    setCalendarEvents(updatedEvents);
+    const baseEvent = {
+      title: newEvent.title,
+      start: startDateTime,
+      end: endDateTime,
+      allDay: newEvent.startTime === "00:00" && newEvent.endTime === "23:59",
+      notify: newEvent.notify,
+      repeat: newEvent.repeat,
+    };
 
     try {
-      // Direkt JSON.stringify ile kaydet
-      localStorage.setItem(
-        `${user}-calendarEvents`,
-        JSON.stringify(updatedEvents)
-      );
-      localStorage.setItem(
-        `${user}-deletedEvents`,
-        JSON.stringify([...deletedEvents, ...eventsToDelete])
-      );
+      const eventsToAdd = generateRecurringEvents(baseEvent);
+      const batch = writeBatch(db);
 
-      toast.success("Etkinlik başarıyla silindi");
+      eventsToAdd.forEach((event) => {
+        const docRef = doc(eventsRef);
+        batch.set(docRef, {
+          ...event,
+          start: Timestamp.fromDate(event.start),
+          end: Timestamp.fromDate(event.end),
+          notify: event.notify,
+          repeat: event.repeat,
+        });
+        scheduleNotification(event.title, event.start, event.notify);
+      });
+
+      await batch.commit();
+      toast.success("Etkinlik(ler) başarıyla eklendi");
+      setNewEvent({
+        title: "",
+        startTime: format(new Date(), "HH:mm"),
+        endTime: addOneHour(format(new Date(), "HH:mm")),
+        notify: "none",
+        repeat: "none",
+      });
     } catch (error) {
-      console.error("Storage error:", error);
-      toast.error("Etkinlik silinirken bir hata oluştu");
+      toast.error("Etkinlik eklenemedi: " + error.message);
     }
-
-    setConfirmModalOpen(false);
   };
 
-  const deleteEvent = (eventId) => {
+  const deleteEvent = async (eventId) => {
+    if (!eventsRef) return;
     setSelectedEventId(eventId);
     setConfirmModalOpen(true);
   };
 
-  // 🟢 Silme işlemi için geri alma fonksiyonu
-  const handleUndo = () => {
-    if (deletedEvents.length === 0) return;
+  const handleDeleteConfirm = async (deleteAll) => {
+    if (!selectedEventId || !eventsRef) return;
 
     try {
-      const restoredEvents = [...calendarEvents, ...deletedEvents];
-      setCalendarEvents(restoredEvents);
-      setDeletedEvents([]);
-
-      // Direkt JSON.stringify ile kaydet
-      localStorage.setItem(
-        `${user}-calendarEvents`,
-        JSON.stringify(restoredEvents)
+      const eventToDelete = calendarEvents.find(
+        (e) => e.id === selectedEventId
       );
-      localStorage.removeItem(`${user}-deletedEvents`);
+      if (!eventToDelete) return;
 
-      toast.success("Etkinlikler başarıyla geri yüklendi", {
-        toastId: "undoSuccess",
-      });
+      const eventsToDelete =
+        deleteAll && eventToDelete.extendedProps?.repeatId
+          ? calendarEvents.filter(
+              (e) =>
+                e.extendedProps?.repeatId ===
+                eventToDelete.extendedProps.repeatId
+            )
+          : [eventToDelete];
+
+      setDeletedEvents((prev) => [...prev, ...eventsToDelete]);
+
+      const batch = writeBatch(db);
+      if (deleteAll && eventToDelete.extendedProps?.repeatId) {
+        const q = query(
+          eventsRef,
+          where(
+            "extendedProps.repeatId",
+            "==",
+            eventToDelete.extendedProps.repeatId
+          )
+        );
+        const snapshot = await getDocs(q);
+        snapshot.forEach((docSnap) => batch.delete(docSnap.ref));
+      } else {
+        batch.delete(doc(eventsRef, selectedEventId));
+      }
+
+      await batch.commit();
+      toast.success(
+        deleteAll ? "Tüm tekrarlayan etkinlikler silindi" : "Etkinlik silindi"
+      );
     } catch (error) {
-      console.error("Geri alma işlemi başarısız oldu:", error);
-      toast.error("Geri alma işlemi başarısız oldu");
+      toast.error("Silme işlemi başarısız: " + error.message);
+    }
+    setConfirmModalOpen(false);
+  };
+
+  const handleUndo = async () => {
+    if (!eventsRef || deletedEvents.length === 0) return;
+
+    try {
+      const batch = writeBatch(db);
+      deletedEvents.forEach((event) => {
+        const docRef = doc(eventsRef, event.id);
+        batch.set(docRef, {
+          ...event,
+          start: Timestamp.fromDate(event.start),
+          end: Timestamp.fromDate(event.end),
+        });
+      });
+      await batch.commit();
+      setDeletedEvents([]);
+      toast.success("Etkinlikler geri yüklendi");
+    } catch (error) {
+      toast.error("Geri alma başarısız: " + error.message);
     }
   };
 
-  // Timer'ı useEffect içinde kullanın
   useEffect(() => {
-    if (deletedEvents.length > 0) {
-      const cleanupTimer = setTimeout(() => {
-        setDeletedEvents((prev) => {
-          if (prev.length === 0) return prev;
-          toast.info("Geri alma süresi doldu. Silinenler temizlendi.");
-          localStorage.removeItem(`${user}-deletedEvents`);
-          return [];
-        });
-      }, 30000);
+    if (deletedEvents.length === 0) return;
 
-      return () => clearTimeout(cleanupTimer);
+    const timer = setTimeout(() => {
+      setDeletedEvents([]);
+      toast.info("Geri alma süresi doldu");
+    }, 30000);
+
+    return () => clearTimeout(timer);
+  }, [deletedEvents]);
+
+  const handleEventDrop = async (dropInfo) => {
+    if (!eventsRef) return;
+
+    try {
+      await updateDoc(doc(eventsRef, dropInfo.event.id), {
+        start: Timestamp.fromDate(dropInfo.event.start),
+        end: Timestamp.fromDate(dropInfo.event.end),
+        allDay: dropInfo.event.allDay,
+      });
+    } catch (error) {
+      toast.error("Güncelleme başarısız: " + error.message);
     }
-  }, [deletedEvents, user]);
+  };
+
+  const handleEventResize = async (resizeInfo) => {
+    if (!eventsRef) return;
+
+    try {
+      await updateDoc(doc(eventsRef, resizeInfo.event.id), {
+        start: Timestamp.fromDate(resizeInfo.event.start),
+        end: Timestamp.fromDate(resizeInfo.event.end),
+      });
+    } catch (error) {
+      toast.error("Güncelleme başarısız: " + error.message);
+    }
+  };
+
+  const handleUpdateEvent = async (updatedEvent) => {
+    if (!eventsRef) return;
+
+    try {
+      await updateDoc(doc(eventsRef, updatedEvent.id), {
+        title: updatedEvent.title,
+        start: Timestamp.fromDate(updatedEvent.start),
+        end: Timestamp.fromDate(updatedEvent.end),
+        "extendedProps.notify": updatedEvent.extendedProps.notify,
+      });
+      toast.success("Etkinlik güncellendi");
+    } catch (error) {
+      toast.error("Güncelleme başarısız: " + error.message);
+    }
+  };
 
   return {
     selectedDate,
@@ -324,26 +274,23 @@ export const useCalendarEvents = (user) => {
     newEvent,
     setNewEvent,
     calendarEvents,
-    setCalendarEvents,
     addOneHour,
     addCalendarEvent,
     handleEventDrop,
     generateRecurringEvents,
     handleUpdateEvent,
-    handleConfirmUpdate,
     handleEventResize,
-    handleDeleteConfirm,
     deleteEvent,
+    handleDeleteConfirm,
     handleUndo,
-    editingEvent, // EKLENDİ
-    setEditingEvent, // EKLENDİ
+    editingEvent,
+    setEditingEvent,
     isEditModalOpen,
-    confirmUpdateModalOpen,
-    confirmModalOpen,
     setIsEditModalOpen,
-    setConfirmUpdateModalOpen,
+    confirmModalOpen,
     setConfirmModalOpen,
+    confirmUpdateModalOpen,
+    setConfirmUpdateModalOpen,
     deletedEvents,
-    setDeletedEvents,
   };
 };

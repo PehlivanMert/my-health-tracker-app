@@ -8,7 +8,7 @@ import {
   IconButton,
   Checkbox,
 } from "@mui/material";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Delete, Edit } from "@mui/icons-material";
 import ProgressChart from "../../utils/ProgressChart";
 

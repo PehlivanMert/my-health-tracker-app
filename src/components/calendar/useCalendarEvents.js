@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { format } from "date-fns";
 import { toast } from "react-toastify";
 import {
@@ -6,7 +6,6 @@ import {
   collection,
   query,
   where,
-  getDocs,
   writeBatch,
   onSnapshot,
   updateDoc,
@@ -17,7 +16,12 @@ import { scheduleNotification } from "../../utils/weather-theme-notify/Notificat
 
 export const useCalendarEvents = (user) => {
   const [calendarEvents, setCalendarEvents] = useState([]);
+  // deletedEvents: UI’da silinmiş (beklemede olan) etkinlikleri tutar.
   const [deletedEvents, setDeletedEvents] = useState([]);
+  // 30 saniyelik bekleme süresi için timer ID'si
+  const [deleteTimer, setDeleteTimer] = useState(null);
+  const pendingDeletionRef = useRef([]); // Silinmesi beklenen etkinlikleri saklamak için
+
   const [selectedDate, setSelectedDate] = useState(() =>
     format(new Date(), "yyyy-MM-dd")
   );
@@ -38,10 +42,24 @@ export const useCalendarEvents = (user) => {
     ? collection(db, "users", user.uid, "calendarEvents")
     : null;
 
+  // Sadece seçili tarihin bulunduğu ayın etkinliklerini getiriyoruz.
   useEffect(() => {
     if (!eventsRef) return;
 
-    const unsubscribe = onSnapshot(eventsRef, (snapshot) => {
+    // selectedDate üzerinden ay başlangıcı ve bitişi hesaplanıyor.
+    const current = new Date(selectedDate);
+    const monthStart = new Date(current.getFullYear(), current.getMonth(), 1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0);
+    monthEnd.setHours(23, 59, 59, 999);
+
+    const qEvents = query(
+      eventsRef,
+      where("start", ">=", Timestamp.fromDate(monthStart)),
+      where("start", "<=", Timestamp.fromDate(monthEnd))
+    );
+
+    const unsubscribe = onSnapshot(qEvents, (snapshot) => {
       const events = snapshot.docs.map((docSnap) => {
         const data = docSnap.data();
         return {
@@ -52,6 +70,7 @@ export const useCalendarEvents = (user) => {
           extendedProps: {
             notify: data.notify || "none",
             repeat: data.repeat || "none",
+            repeatId: data.extendedProps?.repeatId || null,
           },
         };
       });
@@ -59,7 +78,12 @@ export const useCalendarEvents = (user) => {
     });
 
     return () => unsubscribe();
-  }, [eventsRef]);
+  }, [eventsRef, selectedDate]);
+
+  // UI’da silinmiş (beklemede) etkinlikleri göstermiyoruz.
+  const visibleCalendarEvents = calendarEvents.filter(
+    (event) => !deletedEvents.some((de) => de.id === event.id)
+  );
 
   const addOneHour = (time) => {
     const [hours, minutes] = time.split(":").map(Number);
@@ -76,7 +100,7 @@ export const useCalendarEvents = (user) => {
     const repeatId = Date.now().toString();
     const duration = baseEvent.end - baseEvent.start;
 
-    if (baseEvent.extendedProps?.repeat === "daily") {
+    if (baseEvent.repeat === "daily") {
       for (let i = 0; i < 30; i++) {
         const newStart = new Date(baseEvent.start);
         newStart.setDate(newStart.getDate() + i);
@@ -87,7 +111,8 @@ export const useCalendarEvents = (user) => {
           start: newStart,
           end: newEnd,
           extendedProps: {
-            ...baseEvent.extendedProps,
+            notify: baseEvent.notify,
+            repeat: baseEvent.repeat,
             repeatId,
           },
         });
@@ -123,6 +148,7 @@ export const useCalendarEvents = (user) => {
           end: Timestamp.fromDate(event.end),
           notify: event.notify,
           repeat: event.repeat,
+          extendedProps: event.extendedProps || {},
         });
         scheduleNotification(event.title, event.start, event.notify);
       });
@@ -141,93 +167,148 @@ export const useCalendarEvents = (user) => {
     }
   };
 
-  const deleteEvent = async (eventId) => {
+  // Silme modalı açılır.
+  const deleteEvent = (eventId) => {
     if (!eventsRef) return;
     setSelectedEventId(eventId);
     setConfirmModalOpen(true);
   };
 
-  const handleDeleteConfirm = async (deleteAll) => {
+  /* 
+    handleDeleteConfirm:
+    - Modalda tek veya toplu silme seçeneğine göre silinecek etkinlik(ler) belirlenir.
+    - Belirlenen etkinlik(ler) UI’dan kaldırılır (deletedEvents state güncellenir)
+      ve aynı zamanda pendingDeletionRef üzerinden saklanır.
+    - 30 saniyelik timer başlatılır; sürenin sonunda commitDeletion çağrılarak Firestore’dan kalıcı silinir.
+  */
+  const handleDeleteConfirm = (deleteAll) => {
     if (!selectedEventId || !eventsRef) return;
 
+    const eventToDelete = calendarEvents.find((e) => e.id === selectedEventId);
+    if (!eventToDelete) return;
+
+    let eventsToDelete = [];
+    if (deleteAll && eventToDelete.extendedProps?.repeatId) {
+      eventsToDelete = calendarEvents.filter(
+        (e) =>
+          e.extendedProps?.repeatId === eventToDelete.extendedProps.repeatId
+      );
+    } else {
+      eventsToDelete = [eventToDelete];
+    }
+
+    // Önceden ayakta timer varsa temizleyelim.
+    if (deleteTimer) {
+      clearTimeout(deleteTimer);
+    }
+
+    // Pending deletion için ref ve state güncelleniyor.
+    pendingDeletionRef.current = eventsToDelete;
+    setDeletedEvents(eventsToDelete);
+
+    // 30 saniye sonra commitDeletion çağrılır.
+    const timer = setTimeout(() => {
+      commitDeletion();
+    }, 30000);
+    setDeleteTimer(timer);
+    setConfirmModalOpen(false);
+    toast.info("Etkinlik(ler) silindi. 30 saniye içinde geri alabilirsiniz.");
+  };
+
+  // 30 saniye sonunda veya başka şekilde beklemeden commitDeletion çağrılarak Firestore'dan kalıcı silme yapılır.
+  const commitDeletion = async () => {
+    const eventsToDelete = pendingDeletionRef.current;
+    if (!eventsToDelete.length || !eventsRef) return;
     try {
-      const eventToDelete = calendarEvents.find(
-        (e) => e.id === selectedEventId
-      );
-      if (!eventToDelete) return;
-
-      const eventsToDelete =
-        deleteAll && eventToDelete.extendedProps?.repeatId
-          ? calendarEvents.filter(
-              (e) =>
-                e.extendedProps?.repeatId ===
-                eventToDelete.extendedProps.repeatId
-            )
-          : [eventToDelete];
-
-      setDeletedEvents((prev) => [...prev, ...eventsToDelete]);
-
       const batch = writeBatch(db);
-      if (deleteAll && eventToDelete.extendedProps?.repeatId) {
-        const q = query(
-          eventsRef,
-          where(
-            "extendedProps.repeatId",
-            "==",
-            eventToDelete.extendedProps.repeatId
-          )
-        );
-        const snapshot = await getDocs(q);
-        snapshot.forEach((docSnap) => batch.delete(docSnap.ref));
-      } else {
-        batch.delete(doc(eventsRef, selectedEventId));
-      }
-
+      eventsToDelete.forEach((event) => {
+        const docRef = doc(eventsRef, event.id);
+        batch.delete(docRef);
+      });
       await batch.commit();
-      toast.success(
-        deleteAll ? "Tüm tekrarlayan etkinlikler silindi" : "Etkinlik silindi"
-      );
+      toast.success("Silme işlemi tamamlandı.");
     } catch (error) {
       toast.error("Silme işlemi başarısız: " + error.message);
     }
-    setConfirmModalOpen(false);
+    // Hem ref hem de state temizleniyor.
+    pendingDeletionRef.current = [];
+    setDeletedEvents([]);
+    setDeleteTimer(null);
   };
 
-  const handleUndo = async () => {
-    if (!eventsRef || deletedEvents.length === 0) return;
+  // Kullanıcı geri alma tuşuna basarsa: timer iptal edilir, pending deletion iptal edilir ve etkinlikler UI’da yeniden görünür.
+  const handleUndo = () => {
+    if (deleteTimer) {
+      clearTimeout(deleteTimer);
+      setDeleteTimer(null);
+    }
+    pendingDeletionRef.current = [];
+    setDeletedEvents([]);
+    toast.success("Silme işlemi geri alındı.");
+  };
+
+  /* 
+    handleUpdateEvent:
+    - Güncelleme öncesinde start ve end değerlerinin Date nesnesi olduğundan emin olunur.
+    - Eğer toplu güncelleme seçilmişse, ilgili repeatId’ye sahip tüm etkinlikler batch ile güncellenir.
+    - Aksi halde sadece seçili etkinlik güncellenir.
+  */
+  const handleUpdateEvent = async (updatedEvent) => {
+    if (!eventsRef) return;
 
     try {
-      const batch = writeBatch(db);
-      deletedEvents.forEach((event) => {
-        const docRef = doc(eventsRef, event.id);
-        batch.set(docRef, {
-          ...event,
-          start: Timestamp.fromDate(event.start),
-          end: Timestamp.fromDate(event.end),
+      const startDate =
+        updatedEvent.start instanceof Date
+          ? updatedEvent.start
+          : new Date(updatedEvent.start);
+      const endDate =
+        updatedEvent.end instanceof Date
+          ? updatedEvent.end
+          : new Date(updatedEvent.end);
+
+      if (confirmUpdateModalOpen && updatedEvent.extendedProps?.repeatId) {
+        const eventsToUpdate = calendarEvents.filter(
+          (e) =>
+            e.extendedProps?.repeatId === updatedEvent.extendedProps.repeatId
+        );
+        const batch = writeBatch(db);
+        eventsToUpdate.forEach((event) => {
+          const docRef = doc(eventsRef, event.id);
+          batch.update(docRef, {
+            title: updatedEvent.title,
+            start: Timestamp.fromDate(startDate),
+            end: Timestamp.fromDate(endDate),
+            "extendedProps.notify": updatedEvent.extendedProps.notify,
+          });
+          scheduleNotification(
+            updatedEvent.title,
+            startDate,
+            updatedEvent.extendedProps.notify
+          );
         });
-      });
-      await batch.commit();
-      setDeletedEvents([]);
-      toast.success("Etkinlikler geri yüklendi");
+        await batch.commit();
+        toast.success("Tüm tekrarlayan etkinlikler güncellendi");
+      } else {
+        await updateDoc(doc(eventsRef, updatedEvent.id), {
+          title: updatedEvent.title,
+          start: Timestamp.fromDate(startDate),
+          end: Timestamp.fromDate(endDate),
+          "extendedProps.notify": updatedEvent.extendedProps.notify,
+        });
+        scheduleNotification(
+          updatedEvent.title,
+          startDate,
+          updatedEvent.extendedProps.notify
+        );
+        toast.success("Etkinlik güncellendi");
+      }
     } catch (error) {
-      toast.error("Geri alma başarısız: " + error.message);
+      toast.error("Güncelleme başarısız: " + error.message);
     }
   };
 
-  useEffect(() => {
-    if (deletedEvents.length === 0) return;
-
-    const timer = setTimeout(() => {
-      setDeletedEvents([]);
-      toast.info("Geri alma süresi doldu");
-    }, 30000);
-
-    return () => clearTimeout(timer);
-  }, [deletedEvents]);
-
   const handleEventDrop = async (dropInfo) => {
     if (!eventsRef) return;
-
     try {
       await updateDoc(doc(eventsRef, dropInfo.event.id), {
         start: Timestamp.fromDate(dropInfo.event.start),
@@ -241,7 +322,6 @@ export const useCalendarEvents = (user) => {
 
   const handleEventResize = async (resizeInfo) => {
     if (!eventsRef) return;
-
     try {
       await updateDoc(doc(eventsRef, resizeInfo.event.id), {
         start: Timestamp.fromDate(resizeInfo.event.start),
@@ -252,28 +332,13 @@ export const useCalendarEvents = (user) => {
     }
   };
 
-  const handleUpdateEvent = async (updatedEvent) => {
-    if (!eventsRef) return;
-
-    try {
-      await updateDoc(doc(eventsRef, updatedEvent.id), {
-        title: updatedEvent.title,
-        start: Timestamp.fromDate(updatedEvent.start),
-        end: Timestamp.fromDate(updatedEvent.end),
-        "extendedProps.notify": updatedEvent.extendedProps.notify,
-      });
-      toast.success("Etkinlik güncellendi");
-    } catch (error) {
-      toast.error("Güncelleme başarısız: " + error.message);
-    }
-  };
-
   return {
     selectedDate,
     setSelectedDate,
     newEvent,
     setNewEvent,
-    calendarEvents,
+    // UI’da gösterim için silinmiş (beklemede) etkinlikler hariç tutuluyor.
+    calendarEvents: visibleCalendarEvents,
     addOneHour,
     addCalendarEvent,
     handleEventDrop,
@@ -291,6 +356,7 @@ export const useCalendarEvents = (user) => {
     setConfirmModalOpen,
     confirmUpdateModalOpen,
     setConfirmUpdateModalOpen,
+    // UI’da "Geri Al" butonunun görünmesi için deletedEvents döndürülüyor.
     deletedEvents,
   };
 };

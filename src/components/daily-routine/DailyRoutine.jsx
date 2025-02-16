@@ -8,19 +8,18 @@ import {
   IconButton,
   Checkbox,
 } from "@mui/material";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Delete, Edit } from "@mui/icons-material";
+import { motion, AnimatePresence } from "framer-motion";
 import ProgressChart from "../../utils/ProgressChart";
 
 const DailyRoutine = ({
   routines,
-  setRoutines, // ✅ Bu satırı ekleyin
+  setRoutines,
   newRoutine,
   setNewRoutine,
   handleSaveRoutine,
   editRoutineId,
   setEditRoutineId,
-  onDragEnd,
   deleteRoutine,
   completedRoutines,
   totalRoutines,
@@ -73,104 +72,102 @@ const DailyRoutine = ({
         </Button>
       </Box>
 
-      {/* Rutinlerin Listelenmesi ve Sıralanması */}
-
-      <DragDropContext onDragEnd={onDragEnd}>
-        <Droppable droppableId="routines">
-          {(provided) => (
-            <div
-              {...provided.droppableProps}
-              ref={provided.innerRef}
-              style={{ minHeight: "100px" }} // ✅ Boş liste için minimum yükseklik
-            >
-              {routines.length === 0 ? (
-                <Box
+      {/* Rutinlerin Listelenmesi */}
+      <Box sx={{ minHeight: "100px" }}>
+        {routines.length === 0 ? (
+          <Box
+            sx={{
+              textAlign: "center",
+              py: 4,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 2,
+            }}
+          >
+            <img
+              src="/empty-state.svg"
+              alt="Boş rutin"
+              style={{ height: 150, opacity: 0.8 }}
+            />
+            <Typography variant="h6" color="textSecondary">
+              Henüz rutin eklenmemiş
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              Yukarıdaki formu kullanarak yeni rutinler ekleyebilirsiniz
+            </Typography>
+          </Box>
+        ) : (
+          <AnimatePresence>
+            {routines.map((routine) => (
+              <motion.div
+                key={routine.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Paper
                   sx={{
-                    textAlign: "center",
-                    py: 4,
                     display: "flex",
-                    flexDirection: "column",
                     alignItems: "center",
-                    gap: 2,
+                    p: 2,
+                    mb: 1,
+                    borderRadius: 2,
+                    transition:
+                      "transform 0.2s ease-in-out, box-shadow 0.3s ease-in-out",
+                    background: routine.checked
+                      ? "rgba(0, 0, 0, 0.05)"
+                      : "transparent", // Seçilen öğe için daha soluk bir arka plan
+                    boxShadow: routine.checked
+                      ? "none"
+                      : "0px 2px 4px rgba(0, 0, 0, 0.1)", // Seçilen öğe için gölge yok
+                    "&:hover": {
+                      transform: "translateY(-3px)",
+                      boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.2)", // Hover durumunda biraz daha belirgin gölge
+                    },
+                    textDecoration: routine.checked ? "line-through" : "none", // Seçilen rutin için yazı üstü çizili
+                    opacity: routine.checked ? 0.6 : 1, // Seçilen rutin için daha soluk
                   }}
+                  elevation={3}
                 >
-                  <img
-                    src="/empty-state.svg"
-                    alt="Boş rutin"
-                    style={{ height: 150, opacity: 0.8 }}
+                  <Checkbox
+                    checked={routine.checked}
+                    onChange={() =>
+                      setRoutines(
+                        routines.map((r) =>
+                          r.id === routine.id
+                            ? { ...r, checked: !r.checked }
+                            : r
+                        )
+                      )
+                    }
                   />
-                  <Typography variant="h6" color="textSecondary">
-                    Henüz rutin eklenmemiş
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Yukarıdaki formu kullanarak yeni rutinler ekleyebilirsiniz
-                  </Typography>
-                </Box>
-              ) : (
-                routines.map((routine, index) => (
-                  <Draggable
-                    key={routine.id}
-                    draggableId={routine.id}
-                    index={index}
+                  <Box sx={{ flex: 1 }}>
+                    <Typography
+                      variant="body1"
+                      sx={{ opacity: routine.checked ? 0.6 : 1 }}
+                    >
+                      {routine.time} | {routine.title}
+                    </Typography>
+                  </Box>
+                  <IconButton
+                    onClick={() => {
+                      setNewRoutine(routine);
+                      setEditRoutineId(routine.id);
+                    }}
                   >
-                    {(provided) => (
-                      <Box
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          p: 2,
-                          mb: 1,
-                          background:
-                            "linear-gradient(145deg, #ffffff 0%, #f5f5f5 100%)",
-                          borderRadius: 2,
-                          transition: "transform 0.2s ease-in-out",
-                          "&:hover": {
-                            transform: "translateY(-3px)",
-                            boxShadow: 3,
-                          },
-                        }}
-                      >
-                        <Checkbox
-                          checked={routine.checked}
-                          onChange={() =>
-                            setRoutines(
-                              routines.map((r) =>
-                                r.id === routine.id
-                                  ? { ...r, checked: !r.checked }
-                                  : r
-                              )
-                            )
-                          }
-                        />
-                        <Box sx={{ flex: 1 }}>
-                          <Typography variant="body1">
-                            {routine.time} | {routine.title}
-                          </Typography>
-                        </Box>
-                        <IconButton
-                          onClick={() => {
-                            setNewRoutine(routine);
-                            setEditRoutineId(routine.id);
-                          }}
-                        >
-                          <Edit fontSize="small" />
-                        </IconButton>
-                        <IconButton onClick={() => deleteRoutine(routine.id)}>
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      </Box>
-                    )}
-                  </Draggable>
-                ))
-              )}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+                    <Edit fontSize="small" />
+                  </IconButton>
+                  <IconButton onClick={() => deleteRoutine(routine.id)}>
+                    <Delete fontSize="small" />
+                  </IconButton>
+                </Paper>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        )}
+      </Box>
 
       {/* Rutin İlerleme Grafiği */}
       <ProgressChart

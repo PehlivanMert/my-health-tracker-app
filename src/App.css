@@ -429,3 +429,65 @@ body {
   background: var(--primary-accent);
   color: var(--body-color);
 }
+@media (max-width: 600px) {
+  #calendar-container {
+    width: 90%;
+    position: absolute;
+  }
+  /* FullCalendar'ın kendi kapsayıcısını ortalamak için */
+  #calendar-container .fc {
+    margin: 0 auto;
+    min-height: 600px; /* 10 saatlik alanı gösterecek yükseklik */
+  }
+  .tab-panel {
+    padding: 1rem !important;
+    margin: 0.3rem !important;
+  }
+}
+@media (max-width: 600px) {
+  /* Header (toolbar) ortalama */
+  .toolbar-container {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    text-align: center;
+  }
+
+  /* Tabs (sekme) ortalama */
+  .MuiTabs-root {
+    justify-content: center !important;
+  }
+
+  /* Takvim kapsayıcısı ortalama ve minimum yükseklik ayarı */
+  #calendar-container {
+    width: 90%;
+    margin: 1rem auto; /* Yatayda ortalama */
+    /* position: absolute; --> kaldırıldı, böylece container doğal akışta yer alır */
+  }
+  #calendar-container .fc {
+    margin: 0 auto;
+    min-height: 600px; /* Yaklaşık 10 saatlik alan */
+  }
+
+  /* Eğer tab-panel da varsa, ufak ayarlar */
+  .tab-panel {
+    padding: 1rem !important;
+    margin: 0.3rem !important;
+  }
+}
+
+/* Footer'ı her zaman ekranın en altında sabit tutma */
+.footer-container {
+  position: fixed;
+  animation: slideIn 0.4s ease-out;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: var(--body-bg);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  z-index: 1000;
+}

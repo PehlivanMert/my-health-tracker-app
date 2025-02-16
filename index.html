@@ -1,33 +1,374 @@
 <!DOCTYPE html>
 <html lang="tr">
   <head>
-    <meta charset="utf-8" />
-    <link rel="icon" href="/electrocardiogram.svg" />
-    <link rel="manifest" href="/manifest.json" />
-    <script>
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/sw.js");
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Eğlenceli Bakım Sayfası</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
       }
-    </script>
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
-    />
-    <meta http-equiv="ScreenOrientation" content="autoRotate:disabled" />
-    <meta name="theme-color" content="#000000" />
-    <meta name="Sağlık Takip Sistemi" content="Sağlık Takip Sistemi" />
-    <link rel="apple-touch-icon" href="/electrocardiogram.svg" />
-    <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
-    <link rel="manifest" href="/manifest.json" />
-    <title>Sağlık Takip Sistemi</title>
+
+      body {
+        min-height: 100vh;
+        background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+        font-family: "Arial", sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+
+      .container {
+        text-align: center;
+        color: white;
+        padding: 20px;
+        position: relative;
+      }
+
+      .robot {
+        width: 200px;
+        height: 200px;
+        margin: 0 auto 30px;
+        position: relative;
+      }
+
+      .head {
+        width: 100px;
+        height: 100px;
+        background: #333;
+        border-radius: 20px;
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        animation: headBob 2s ease-in-out infinite;
+      }
+
+      .eye {
+        width: 20px;
+        height: 20px;
+        background: #4ecdc4;
+        border-radius: 50%;
+        position: absolute;
+        top: 30px;
+        animation: blink 3s infinite;
+      }
+
+      .eye.left {
+        left: 20px;
+      }
+      .eye.right {
+        right: 20px;
+      }
+
+      .antenna {
+        width: 10px;
+        height: 30px;
+        background: #ff6b6b;
+        position: absolute;
+        top: -20px;
+        left: 50%;
+        transform: translateX(-50%);
+        animation: antennaGlow 1s ease-in-out infinite;
+      }
+
+      .body {
+        width: 150px;
+        height: 100px;
+        background: #444;
+        border-radius: 15px;
+        position: absolute;
+        top: 90px;
+        left: 50%;
+        transform: translateX(-50%);
+        animation: bodyShake 0.5s ease-in-out infinite;
+      }
+
+      .arm {
+        width: 20px;
+        height: 80px;
+        background: #555;
+        position: absolute;
+        top: 20px;
+      }
+
+      .arm.left {
+        left: -30px;
+        transform-origin: top center;
+        animation: leftArmWave 2s ease-in-out infinite;
+      }
+
+      .arm.right {
+        right: -30px;
+        transform-origin: top center;
+        animation: rightArmWave 2s ease-in-out infinite;
+      }
+
+      .wrench {
+        font-size: 40px;
+        position: absolute;
+        animation: float 3s ease-in-out infinite;
+      }
+
+      .wrench:nth-child(1) {
+        top: 20px;
+        left: 20%;
+        animation-delay: 0.2s;
+      }
+
+      .wrench:nth-child(2) {
+        top: 60px;
+        right: 20%;
+        animation-delay: 0.4s;
+      }
+
+      h1 {
+        font-size: 3em;
+        margin: 20px 0;
+        text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
+        animation: rainbow 5s linear infinite;
+      }
+
+      .message {
+        font-size: 1.5em;
+        margin: 20px 0;
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      .progress-bar {
+        width: 300px;
+        height: 20px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 10px;
+        margin: 20px auto;
+        overflow: hidden;
+      }
+
+      .progress {
+        width: 100%;
+        height: 100%;
+        background: #4ecdc4;
+        animation: progress 3s ease-in-out infinite;
+      }
+
+      @keyframes headBob {
+        0%,
+        100% {
+          transform: translateX(-50%) translateY(0);
+        }
+        50% {
+          transform: translateX(-50%) translateY(-10px);
+        }
+      }
+
+      @keyframes blink {
+        0%,
+        45%,
+        55%,
+        100% {
+          height: 20px;
+        }
+        50% {
+          height: 2px;
+        }
+      }
+
+      @keyframes antennaGlow {
+        0%,
+        100% {
+          box-shadow: 0 0 10px #ff6b6b;
+        }
+        50% {
+          box-shadow: 0 0 20px #ff6b6b;
+        }
+      }
+
+      @keyframes bodyShake {
+        0%,
+        100% {
+          transform: translateX(-50%) rotate(0deg);
+        }
+        25% {
+          transform: translateX(-50%) rotate(1deg);
+        }
+        75% {
+          transform: translateX(-50%) rotate(-1deg);
+        }
+      }
+
+      @keyframes leftArmWave {
+        0%,
+        100% {
+          transform: rotate(0deg);
+        }
+        50% {
+          transform: rotate(-30deg);
+        }
+      }
+
+      @keyframes rightArmWave {
+        0%,
+        100% {
+          transform: rotate(0deg);
+        }
+        50% {
+          transform: rotate(30deg);
+        }
+      }
+
+      @keyframes float {
+        0%,
+        100% {
+          transform: translateY(0) rotate(0deg);
+        }
+        50% {
+          transform: translateY(-20px) rotate(180deg);
+        }
+      }
+
+      @keyframes rainbow {
+        0% {
+          color: #ff6b6b;
+        }
+        25% {
+          color: #4ecdc4;
+        }
+        50% {
+          color: #ffe66d;
+        }
+        75% {
+          color: #95e1d3;
+        }
+        100% {
+          color: #ff6b6b;
+        }
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
+      }
+
+      @keyframes progress {
+        0% {
+          transform: translateX(-100%);
+        }
+        50% {
+          transform: translateX(0);
+        }
+        100% {
+          transform: translateX(100%);
+        }
+      }
+
+      .tools {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+
+      .tool {
+        position: absolute;
+        font-size: 2em;
+        animation: toolFloat 4s ease-in-out infinite;
+      }
+
+      @keyframes toolFloat {
+        0%,
+        100% {
+          transform: translate(0, 0) rotate(0deg);
+        }
+        25% {
+          transform: translate(20px, -20px) rotate(90deg);
+        }
+        50% {
+          transform: translate(0, -40px) rotate(180deg);
+        }
+        75% {
+          transform: translate(-20px, -20px) rotate(270deg);
+        }
+      }
+
+      .sparkle {
+        position: absolute;
+        width: 4px;
+        height: 4px;
+        background: white;
+        border-radius: 50%;
+        animation: sparkle 2s linear infinite;
+      }
+
+      @keyframes sparkle {
+        0% {
+          transform: scale(0) rotate(0deg);
+          opacity: 0;
+        }
+        50% {
+          transform: scale(1) rotate(180deg);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(0) rotate(360deg);
+          opacity: 0;
+        }
+      }
+    </style>
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
-    <!-- Vite giriş dosyası -->
-    <script type="module" src="/src/main.jsx"></script>
+    <div class="container">
+      <div class="tools">
+        <span class="tool" style="top: 10%; left: 10%">🔧</span>
+        <span class="tool" style="top: 20%; right: 15%">⚡</span>
+        <span class="tool" style="bottom: 30%; left: 20%">🛠️</span>
+        <span class="tool" style="bottom: 20%; right: 25%">⚙️</span>
+      </div>
+
+      <div class="robot">
+        <div class="head">
+          <div class="antenna"></div>
+          <div class="eye left"></div>
+          <div class="eye right"></div>
+        </div>
+        <div class="body">
+          <div class="arm left"></div>
+          <div class="arm right"></div>
+        </div>
+      </div>
+
+      <h1>Site Bakımda</h1>
+      <div class="message">Robotlarımız siteyi yeniliyor! 🤖</div>
+      <p style="font-size: 1.2em; margin: 10px 0">
+        Çok yakında daha güzel bir site ile karşınızda olacağız!
+      </p>
+
+      <div class="progress-bar">
+        <div class="progress"></div>
+      </div>
+    </div>
+
+    <script>
+      // Sparkle efekti için
+      function createSparkles() {
+        const container = document.querySelector(".container");
+        for (let i = 0; i < 20; i++) {
+          const sparkle = document.createElement("div");
+          sparkle.className = "sparkle";
+          sparkle.style.left = Math.random() * 100 + "%";
+          sparkle.style.top = Math.random() * 100 + "%";
+          sparkle.style.animationDelay = Math.random() * 2 + "s";
+          container.appendChild(sparkle);
+        }
+      }
+      createSparkles();
+    </script>
   </body>
 </html>

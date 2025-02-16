@@ -1,4 +1,13 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "calendarEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "start", "order": "ASCENDING" },
+        { "fieldPath": "end", "order": "ASCENDING" }
+      ]
+    }
+  ],
   "fieldOverrides": []
-}
+}  

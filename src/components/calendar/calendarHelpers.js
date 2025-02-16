@@ -9,5 +9,8 @@ export const addOneHour = (time) => {
   ).padStart(2, "0")}`;
 };
 
-export const generateEventId = (baseId) =>
-  `${baseId}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+export const generateEventId = (prefix = "event") => {
+  const timestamp = Date.now().toString(36);
+  const randomPart = Math.random().toString(36).substr(2, 5);
+  return `${prefix}_${timestamp}_${randomPart}`;
+};

@@ -19,4 +19,15 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
+// Offline persistence’ı etkinleştiriyoruz:
+/* enableIndexedDbPersistence(db).catch((err) => {
+  if (err.code === "failed-precondition") {
+    console.error(
+      "Persistence etkinleştirilemedi: Aynı anda birden fazla sekme açık olabilir."
+    );
+  } else if (err.code === "unimplemented") {
+    console.error("Persistence desteği bu tarayıcıda mevcut değil.");
+  }
+}); */
+
 export { app, auth, db, storage };

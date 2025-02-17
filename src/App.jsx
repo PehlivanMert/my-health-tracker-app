@@ -19,7 +19,6 @@ import {
 import "react-toastify/dist/ReactToastify.css";
 import "tippy.js/dist/tippy.css";
 import "./App.css";
-import ConfirmModal from "./utils/modal/ConfirmModal";
 import UserAuth from "./components/auth/UserAuth";
 import {
   getInitialTheme,
@@ -41,8 +40,7 @@ import DailyRoutine from "./components/daily-routine/DailyRoutine";
 import Exercises from "./components/exercises/exercise";
 import Supplements from "./components/supplements/Supplements";
 import ProTips from "./components/pro-tips/ProTips";
-import Calendar from "./components/calendar/Calendar";
-import { useCalendarEvents } from "./components/calendar/useCalendarEvents";
+import CalendarComponent from "./components/calendar/CalendarComponent";
 import { auth, db } from "./components/auth/firebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
 import { sendEmailVerification } from "firebase/auth";
@@ -170,32 +168,6 @@ function App() {
   // -------------------------
   // Calendar (Takvim) İşlemleri
   // -------------------------
-  const {
-    selectedDate,
-    setSelectedDate,
-    newEvent,
-    setNewEvent,
-    calendarEvents,
-    setCalendarEvents,
-    addCalendarEvent,
-    handleEventDrop,
-    handleEventResize,
-    generateRecurringEvents,
-    handleUpdateEvent,
-    handleConfirmUpdate,
-    deletedEvents,
-    handleDeleteConfirm,
-    deleteEvent,
-    handleUndo,
-    confirmModalOpen,
-    setConfirmModalOpen,
-    editingEvent,
-    setEditingEvent,
-    isEditModalOpen,
-    setIsEditModalOpen,
-    confirmUpdateModalOpen,
-    setConfirmUpdateModalOpen,
-  } = useCalendarEvents(user);
 
   // -------------------------
   // Tema Güncellemesi
@@ -450,13 +422,6 @@ function App() {
     </Container>
   ) : (
     <div className="app-container">
-      {confirmModalOpen && (
-        <ConfirmModal
-          open={confirmModalOpen}
-          onClose={() => setConfirmModalOpen(false)}
-          onConfirm={handleDeleteConfirm}
-        />
-      )}
       <AppBar position="static">
         <Toolbar className="toolbar-container">
           <Box className="time-date-box">
@@ -530,55 +495,8 @@ function App() {
         />
       )}
       {activeTab === 3 && <ProTips additionalInfo={additionalInfo} />}
-      {activeTab === 4 && (
-        <>
-          <Calendar
-            user={user}
-            selectedDate={selectedDate}
-            setSelectedDate={setSelectedDate}
-            newEvent={newEvent}
-            setNewEvent={setNewEvent}
-            calendarEvents={calendarEvents}
-            setCalendarEvents={setCalendarEvents}
-            addCalendarEvent={addCalendarEvent}
-            handleEventDrop={handleEventDrop}
-            handleEventResize={handleEventResize}
-            deleteEvent={deleteEvent}
-            confirmUpdateModalOpen={confirmUpdateModalOpen}
-            setConfirmUpdateModalOpen={setConfirmUpdateModalOpen}
-            editingEvent={editingEvent}
-            setEditingEvent={setEditingEvent}
-            isEditModalOpen={isEditModalOpen}
-            setIsEditModalOpen={setIsEditModalOpen}
-            handleUpdateEvent={handleUpdateEvent}
-            handleConfirmUpdate={handleConfirmUpdate}
-            deletedEvents={deletedEvents}
-            handleUndo={handleUndo}
-          />
-          {deletedEvents?.length > 0 && (
-            <Box
-              sx={{
-                position: "fixed",
-                bottom: 20,
-                left: "50%",
-                transform: "translateX(-50%)",
-                zIndex: 1100,
-              }}
-            >
-              <Button
-                variant="outlined"
-                onClick={handleUndo}
-                sx={{
-                  backgroundColor: "background.paper",
-                  boxShadow: 2,
-                }}
-              >
-                Geri Al ({deletedEvents.length})
-              </Button>
-            </Box>
-          )}
-        </>
-      )}
+      {activeTab === 4 && <CalendarComponent user={user} />}
+
       <Box className="footer-container">
         <Typography variant="body2">© 2025 Sağlık Takip Sistemi</Typography>
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>

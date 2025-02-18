@@ -31,9 +31,6 @@ import {
   initialExercises,
   initialSupplements,
   initialRoutines,
-  defaultEvents,
-  // Takvim etkinlikleri artık alt koleksiyonda olduğundan,
-  // user dokümanında saklanmasına gerek yok
   additionalInfo as constantAdditionalInfo,
 } from "./utils/constant/ConstantData";
 import DailyRoutine from "./components/daily-routine/DailyRoutine";
@@ -53,12 +50,14 @@ function App() {
   // Kullanıcı, Oturum & Genel State'ler
   // -------------------------
   const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [count, setCount] = useState(0); // Email count
-
+  const [lastEmailSent, setLastEmailSent] = useState(
+    localStorage.getItem("lastEmailSent") || 0
+  );
+  const [authChecked, setAuthChecked] = useState(false);
   const [loginData, setLoginData] = useState({ username: "", password: "" });
   const [isRegister, setIsRegister] = useState(false);
   const [errors, setErrors] = useState({ username: false, password: false });
+  const [remainingTime, setRemainingTime] = useState(0);
 
   // Bildirim izni
   useEffect(() => {
@@ -73,15 +72,16 @@ function App() {
   // -------------------------
   // Sekme Yönetimi
   // -------------------------
-  const [activeTab, setActiveTab] = useState(0);
+
+  // Sekme state'ini localStorage'dan oku
+  const [activeTab, setActiveTab] = useState(() => {
+    return parseInt(localStorage.getItem("activeTab")) || 0;
+  });
+
+  // handleTabChange fonksiyonunu değiştir
   const handleTabChange = (newTab) => {
     setActiveTab(newTab);
-    if (user) {
-      const userDocRef = doc(db, "users", user.uid);
-      updateDoc(userDocRef, { activeTab: newTab }).catch((error) =>
-        console.error("Active tab güncelleme hatası:", error)
-      );
-    }
+    localStorage.setItem("activeTab", newTab);
   };
 
   // -------------------------
@@ -166,10 +166,6 @@ function App() {
   }, []);
 
   // -------------------------
-  // Calendar (Takvim) İşlemleri
-  // -------------------------
-
-  // -------------------------
   // Tema Güncellemesi
   // -------------------------
   useEffect(() => {
@@ -203,10 +199,8 @@ function App() {
           setRoutines(data.routines ?? initialRoutines);
           setExercises(data.exercises ?? initialExercises);
           setSupplements(data.supplements ?? initialSupplements);
-          setActiveTab(data.activeTab ?? 0);
           setAdditionalInfo(data.additionalInfo ?? constantAdditionalInfo);
           setTheme(data.theme ?? getInitialTheme());
-          setCount(data.emailCount ?? 0);
 
           let updatedData = {};
           if (data.additionalInfo === undefined) {
@@ -220,19 +214,15 @@ function App() {
             routines: initialRoutines,
             exercises: initialExercises,
             supplements: initialSupplements,
-            activeTab: 0,
             additionalInfo: constantAdditionalInfo,
             theme: getInitialTheme(),
-            emailCount: 0,
           };
           await setDoc(userDocRef, initialData);
           setRoutines(initialRoutines);
           setExercises(initialExercises);
           setSupplements(initialSupplements);
-          setActiveTab(0);
           setAdditionalInfo(constantAdditionalInfo);
           setTheme(getInitialTheme());
-          setCount(0);
         }
 
         isInitialLoad.current = false; // İlk yükleme tamamlandı
@@ -283,10 +273,21 @@ function App() {
   // -------------------------
   // Firebase Auth: Kullanıcı Oturumunu İzleme
   // -------------------------
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser ? firebaseUser : null);
-      setIsLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        if (!firebaseUser.emailVerified) {
+          await firebaseUser.reload();
+          const updatedUser = auth.currentUser;
+          setUser(updatedUser?.emailVerified ? updatedUser : null);
+        } else {
+          setUser(firebaseUser);
+        }
+      } else {
+        setUser(null);
+      }
+      setAuthChecked(true); // Sadece bu satır kalsın
     });
     return () => unsubscribe();
   }, []);
@@ -312,66 +313,41 @@ function App() {
   }, [user]);
 
   // -------------------------
-  // Countdown Timer (Email Count)
-  // -------------------------
-  useEffect(() => {
-    if (count > 0) {
-      const timer = setInterval(() => {
-        setCount((prevCount) => {
-          const newCount = prevCount - 1;
-          if (user) {
-            const userDocRef = doc(db, "users", user.uid);
-            updateDoc(userDocRef, { emailCount: newCount }).catch((error) =>
-              console.error("Email count güncelleme hatası:", error)
-            );
-          }
-          return newCount <= 0 ? 0 : newCount;
-        });
-      }, 1000);
-      return () => clearInterval(timer);
-    }
-  }, [count, user]);
-
-  // -------------------------
   // Email Doğrulama: Yeniden Gönderme İşlemi
   // -------------------------
+
+  useEffect(() => {
+    const savedTime = localStorage.getItem("lastEmailSent");
+    if (savedTime) {
+      const remaining = Math.max(0, 60000 - (Date.now() - parseInt(savedTime)));
+      setRemainingTime(remaining);
+
+      if (remaining > 0) {
+        const timer = setInterval(() => {
+          setRemainingTime((prev) => Math.max(0, prev - 1000));
+        }, 1000);
+        return () => clearInterval(timer);
+      }
+    }
+  }, []);
+
   const handleResendEmail = async () => {
     try {
-      await sendEmailVerification(user);
-      console.log("Email gönderildi, sayaç başlatılıyor");
-      setCount(60);
-      if (user) {
-        const userDocRef = doc(db, "users", user.uid);
-        updateDoc(userDocRef, { emailCount: 60 }).catch((error) =>
-          console.error("Email count güncelleme hatası:", error)
-        );
-      }
+      await sendEmailVerification(auth.currentUser);
+      const now = Date.now();
+      localStorage.setItem("lastEmailSent", now);
+      setRemainingTime(60000);
     } catch (error) {
-      console.error("Email gönderme hatası:", error);
-      setCount(0);
-      if (user) {
-        const userDocRef = doc(db, "users", user.uid);
-        updateDoc(userDocRef, { emailCount: 0 }).catch((error) =>
-          console.error("Email count güncelleme hatası:", error)
-        );
-      }
+      toast.error("Gönderme hatası: " + error.message);
     }
   };
 
-  // -------------------------
-  // Yükleme Durumu: "Loading..." ekranı
-  // -------------------------
-  if (isLoading) {
-    return (
-      <Typography variant="h5" align="center" sx={{ mt: 4 }}>
-        Loading...
-      </Typography>
-    );
-  }
+  if (!authChecked) return <div style={{ display: "none" }}></div>;
 
   // -------------------------
   // Render: Kullanıcı oturumu, email doğrulama, ana ekran
   // -------------------------
+
   return !user ? (
     <Container maxWidth="sm" sx={{ mt: 4 }}>
       <Box>
@@ -397,9 +373,9 @@ function App() {
           <Typography variant="body1" sx={{ mb: 3 }}>
             Lütfen email adresinize gönderilen doğrulama linkine tıklayın.
           </Typography>
-          <Button onClick={handleResendEmail} disabled={count > 0}>
-            {count > 0
-              ? `Yeniden Gönder (${count})`
+          <Button onClick={handleResendEmail} disabled={remainingTime > 0}>
+            {remainingTime > 0
+              ? `${Math.ceil(remainingTime / 1000)} saniye sonra tekrar deneyin`
               : "Doğrulama Emailini Gönder"}
           </Button>
           <Typography variant="body2" sx={{ mt: 2 }}>

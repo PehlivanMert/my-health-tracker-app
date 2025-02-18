@@ -209,30 +209,11 @@ body {
 }
 
 /* Takvim */
-#calendar-container {
-  margin: 1rem auto;
-  max-width: 1200px;
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-  overflow-x: auto; /* Yatay kaydırma ekler */
-  max-width: 100%; /* Taşmayı önler */
-}
-
-#calendar-container .fc {
-  background: var(--body-bg);
-  color: var(--body-color);
-  min-width: 375px; /* Çok sıkışmasını önler */
-}
 
 .fc-header-toolbar,
 .fc-col-header-cell {
   background: var(--nav-bg) !important;
   color: var(--body-color) !important;
-}
-
-.fc-daygrid-day {
-  background: var(--body-bg) !important;
-  border-color: var(--nav-bg) !important;
 }
 
 .fc-view {
@@ -245,9 +226,9 @@ body {
 }
 
 .fc-event {
-  background: var(--primary-accent) !important;
-  border-color: var(--primary-accent) !important;
-  color: var(--body-color) !important;
+  background: var(--primary-accent);
+  border-color: var(--primary-accent);
+  color: var(--body-color);
 }
 
 /* Geçmiş etkinlikler için dark tema düzenlemesi */
@@ -268,14 +249,7 @@ body {
 /* Sürüklenen etkinliğin stilleri */
 .fc-dragging {
   opacity: 0.7 !important;
-  background: #1976d2 !important; /* All-Day rengi */
   color: white !important;
-}
-
-/* Saatlik etkinlikler için */
-.fc-dragging:not(.fc-all-day) {
-  background: #ff9800 !important; /* Saatlik rengi */
-  color: black !important;
 }
 
 .fc-event {
@@ -423,9 +397,4 @@ body {
   max-width: 500px;
   width: 100%;
   position: relative;
-}
-
-#calendar-container .fc-event {
-  background: var(--primary-accent);
-  color: var(--body-color);
 }

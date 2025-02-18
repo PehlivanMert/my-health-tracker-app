@@ -10,10 +10,7 @@ import {
   Paper,
   Box,
   TextField,
-  Select,
-  MenuItem,
   Button,
-  Snackbar,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -21,8 +18,13 @@ import {
   FormControl,
   InputLabel,
   Chip,
+  MenuItem,
+  Select,
+  Checkbox,
+  FormControlLabel,
   useTheme,
   Typography,
+  colors,
 } from "@mui/material";
 import { Delete, Add, Edit } from "@mui/icons-material";
 import { toast } from "react-toastify";
@@ -44,41 +46,28 @@ import "@fullcalendar/daygrid";
 import "@fullcalendar/timegrid";
 import "@fullcalendar/multimonth";
 
-const timeZones = [
-  "Europe/Istanbul",
-  "Europe/London",
-  "America/New_York",
-  "Asia/Tokyo",
-];
-
 const CalendarComponent = ({ user }) => {
   const theme = useTheme();
   const calendarRef = useRef(null);
-  const [currentView, setCurrentView] = useState("dayGridMonth");
-  const [currentTimeZone, setCurrentTimeZone] = useState("Europe/Istanbul");
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [editEvent, setEditEvent] = useState(null);
   const [newEvent, setNewEvent] = useState({
     title: "",
-    start: DateTime.now().setZone("Europe/Istanbul"),
-    end: DateTime.now().setZone("Europe/Istanbul"),
-    calendarId: "1",
-    allDay: false,
+    start: DateTime.local().startOf("day"),
+    end: DateTime.local().endOf("day"),
+    allDay: true,
+    color: theme.palette.primary.main,
   });
   const [openDialog, setOpenDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
-  const [deletedEvents, setDeletedEvents] = useState([]);
-
-  const headerToolbar = {
-    left: "prev,next today",
-    center: "title",
-    right: "dayGridMonth,timeGridWeek,timeGridDay,multiMonthYear",
-  };
 
   const calendarColors = {
-    1: theme.palette.primary.main,
-    2: theme.palette.secondary.main,
+    primary: theme.palette.primary.main,
+    secondary: theme.palette.secondary.main,
+    error: colors.red[600],
+    warning: colors.orange[600],
+    success: colors.green[600],
   };
 
   const fetchEvents = useCallback(async () => {
@@ -89,35 +78,26 @@ const CalendarComponent = ({ user }) => {
       const q = query(eventsRef);
       const snapshot = await getDocs(q);
 
-      const eventsData = snapshot.docs
-        .map((doc) => {
-          const data = doc.data();
-          const start = DateTime.fromJSDate(data.start.toDate()).setZone(
-            currentTimeZone
-          );
-          const end = DateTime.fromJSDate(data.end.toDate()).setZone(
-            currentTimeZone
-          );
-
-          return {
-            id: doc.id,
-            title: data.title,
-            start: start.isValid ? start.toJSDate() : null,
-            end: end.isValid ? end.toJSDate() : null,
-            allDay: data.allDay,
-            extendedProps: {
-              calendarId: data.calendarId,
-            },
-            backgroundColor: calendarColors[data.calendarId],
-          };
-        })
-        .filter((event) => event.start && event.end);
+      const eventsData = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          title: data.title,
+          start: data.start.toDate(),
+          end: data.end.toDate(),
+          allDay: data.allDay,
+          color: data.color || calendarColors.primary,
+          extendedProps: {
+            calendarId: data.calendarId,
+          },
+        };
+      });
 
       setEvents(eventsData);
     } catch (error) {
       toast.error(`Etkinlikler yüklenemedi: ${error.message}`);
     }
-  }, [user, currentTimeZone]);
+  }, [user, calendarColors.primary]);
 
   useEffect(() => {
     fetchEvents();
@@ -138,7 +118,7 @@ const CalendarComponent = ({ user }) => {
         start: Timestamp.fromDate(newEvent.start.toJSDate()),
         end: Timestamp.fromDate(newEvent.end.toJSDate()),
         allDay: newEvent.allDay,
-        calendarId: newEvent.calendarId,
+        color: newEvent.color,
       };
 
       const docRef = doc(eventsRef);
@@ -147,6 +127,13 @@ const CalendarComponent = ({ user }) => {
 
       await fetchEvents();
       setOpenDialog(false);
+      setNewEvent({
+        title: "",
+        start: DateTime.local().startOf("day"),
+        end: DateTime.local().endOf("day"),
+        allDay: true,
+        color: theme.palette.primary.main,
+      });
       toast.success("Etkinlik başarıyla eklendi");
     } catch (error) {
       toast.error(`Etkinlik oluşturma hatası: ${error.message}`);
@@ -156,7 +143,6 @@ const CalendarComponent = ({ user }) => {
   const handleDeleteEvent = async (eventId) => {
     try {
       await deleteDoc(doc(db, "users", user.uid, "calendarEvents", eventId));
-      setDeletedEvents((prev) => [...prev, eventId]);
       await fetchEvents();
       toast.success("Etkinlik silindi");
       setSelectedEvent(null);
@@ -174,7 +160,7 @@ const CalendarComponent = ({ user }) => {
           start: Timestamp.fromDate(editEvent.start.toJSDate()),
           end: Timestamp.fromDate(editEvent.end.toJSDate()),
           allDay: editEvent.allDay,
-          calendarId: editEvent.calendarId,
+          color: editEvent.color || calendarColors.primary, // Eklendi
         }
       );
       await fetchEvents();
@@ -187,72 +173,81 @@ const CalendarComponent = ({ user }) => {
 
   const handleDateSelect = (selectInfo) => {
     setNewEvent({
-      ...newEvent,
-      start: DateTime.fromJSDate(selectInfo.start).setZone(currentTimeZone),
-      end: DateTime.fromJSDate(selectInfo.end).setZone(currentTimeZone),
+      title: "",
+      start: DateTime.fromJSDate(selectInfo.start),
+      end: DateTime.fromJSDate(selectInfo.end),
       allDay: selectInfo.allDay,
+      color: calendarColors.primary,
     });
     setOpenDialog(true);
   };
 
-  const handleDateTimeChange = (value, isStart) => {
-    const dt = DateTime.fromISO(value, { zone: "local" });
-    if (dt.isValid) {
-      const converted = dt.setZone(currentTimeZone);
-      setNewEvent((prev) => ({
-        ...prev,
-        [isStart ? "start" : "end"]: converted,
-      }));
+  const handleEventDrop = async (dropInfo) => {
+    try {
+      const event = {
+        id: dropInfo.event.id,
+        start: DateTime.fromJSDate(dropInfo.event.start),
+        end: DateTime.fromJSDate(dropInfo.event.end),
+        allDay: dropInfo.event.allDay,
+      };
+
+      await updateDoc(doc(db, "users", user.uid, "calendarEvents", event.id), {
+        start: Timestamp.fromDate(event.start.toJSDate()),
+        end: Timestamp.fromDate(event.end.toJSDate()),
+        allDay: event.allDay,
+      });
+      await fetchEvents();
+    } catch (error) {
+      toast.error(`Güncelleme hatası: ${error.message}`);
     }
   };
 
-  const handleEditDateTimeChange = (value, isStart) => {
-    const dt = DateTime.fromISO(value, { zone: "local" });
-    if (dt.isValid) {
-      const converted = dt.setZone(currentTimeZone);
-      setEditEvent((prev) => ({
-        ...prev,
-        [isStart ? "start" : "end"]: converted,
-      }));
+  const handleEventResize = async (resizeInfo) => {
+    try {
+      const event = {
+        id: resizeInfo.event.id,
+        start: DateTime.fromJSDate(resizeInfo.event.start),
+        end: DateTime.fromJSDate(resizeInfo.event.end),
+        allDay: resizeInfo.event.allDay,
+      };
+
+      await updateDoc(doc(db, "users", user.uid, "calendarEvents", event.id), {
+        start: Timestamp.fromDate(event.start.toJSDate()),
+        end: Timestamp.fromDate(event.end.toJSDate()),
+      });
+      await fetchEvents();
+    } catch (error) {
+      toast.error(`Güncelleme hatası: ${error.message}`);
     }
+  };
+
+  const handleDateTimeChange = (value, isStart, event, setEvent) => {
+    const dt = DateTime.fromISO(value);
+    if (!dt.isValid) return;
+
+    setEvent((prev) => {
+      const newValue = { ...prev };
+      if (isStart) {
+        newValue.start = dt;
+        if (prev.allDay) newValue.start = newValue.start.startOf("day");
+      } else {
+        newValue.end = dt;
+        if (prev.allDay) newValue.end = newValue.end.endOf("day");
+      }
+      return newValue;
+    });
   };
 
   return (
     <Paper sx={styles.container}>
       <Box sx={styles.controls}>
-        <Box sx={styles.controlsGroup}>
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={() => setOpenDialog(true)}
-            sx={{ mr: 2 }}
-          >
-            Yeni Etkinlik
-          </Button>
-
-          <Select
-            value={currentView}
-            onChange={(e) => setCurrentView(e.target.value)}
-            sx={styles.viewSelector}
-          >
-            <MenuItem value="dayGridMonth">Aylık</MenuItem>
-            <MenuItem value="timeGridWeek">Haftalık</MenuItem>
-            <MenuItem value="timeGridDay">Günlük</MenuItem>
-            <MenuItem value="multiMonthYear">Çoklu Ay</MenuItem>
-          </Select>
-
-          <Select
-            value={currentTimeZone}
-            onChange={(e) => setCurrentTimeZone(e.target.value)}
-            sx={styles.timezoneSelector}
-          >
-            {timeZones.map((tz) => (
-              <MenuItem key={tz} value={tz}>
-                {tz}
-              </MenuItem>
-            ))}
-          </Select>
-        </Box>
+        <Button
+          variant="contained"
+          startIcon={<Add />}
+          onClick={() => setOpenDialog(true)}
+        >
+          Yeni Etkinlik
+        </Button>
       </Box>
 
       <Box sx={styles.calendarWrapper}>
@@ -264,97 +259,66 @@ const CalendarComponent = ({ user }) => {
             interactionPlugin,
             multiMonthPlugin,
           ]}
-          initialView={currentView}
-          headerToolbar={headerToolbar}
+          initialView="dayGridMonth"
+          headerToolbar={{
+            left: "prev,next today",
+            center: "title",
+            right: "dayGridMonth,timeGridWeek,timeGridDay,multiMonthYear",
+          }}
           events={events}
           editable={true}
           selectable={true}
           locale="tr"
-          timeZone={currentTimeZone}
           eventContent={renderEventContent}
           select={handleDateSelect}
+          eventDrop={handleEventDrop}
+          eventResize={handleEventResize}
           eventClick={(clickInfo) => {
             const event = {
-              ...clickInfo.event,
               id: clickInfo.event.id,
               title: clickInfo.event.title,
               start: DateTime.fromJSDate(clickInfo.event.start),
               end: DateTime.fromJSDate(clickInfo.event.end),
+              color:
+                clickInfo.event.extendedProps.color || calendarColors.primary, // Eklendi
               allDay: clickInfo.event.allDay,
-              calendarId: clickInfo.event.extendedProps.calendarId,
             };
             setSelectedEvent(event);
           }}
           height="100%"
+          nowIndicator={true}
+          dayHeaderClassNames="fc-day-header"
+          dayCellClassNames="fc-day-cell"
         />
       </Box>
 
-      {/* Yeni Etkinlik Dialog */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-        <DialogTitle>Yeni Etkinlik Oluştur</DialogTitle>
-        <DialogContent sx={styles.dialogContent}>
-          <TextField
-            label="Etkinlik Başlığı"
-            fullWidth
-            margin="normal"
-            value={newEvent.title}
-            onChange={(e) =>
-              setNewEvent({ ...newEvent, title: e.target.value })
-            }
-          />
+      <EventDialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        title="Yeni Etkinlik Oluştur"
+        event={newEvent}
+        setEvent={setNewEvent}
+        onSubmit={handleCreateEvent}
+        colors={calendarColors}
+        handleDateTimeChange={handleDateTimeChange}
+      />
 
-          <Box sx={styles.timeInputs}>
-            <TextField
-              label="Başlangıç"
-              type="datetime-local"
-              InputLabelProps={{ shrink: true }}
-              value={newEvent.start.toFormat("yyyy-MM-dd'T'HH:mm")}
-              onChange={(e) => handleDateTimeChange(e.target.value, true)}
-              error={!newEvent.start.isValid}
-              helperText={!newEvent.start.isValid && "Geçersiz tarih"}
-            />
-            <TextField
-              label="Bitiş"
-              type="datetime-local"
-              InputLabelProps={{ shrink: true }}
-              value={newEvent.end.toFormat("yyyy-MM-dd'T'HH:mm")}
-              onChange={(e) => handleDateTimeChange(e.target.value, false)}
-              error={!newEvent.end.isValid}
-              helperText={!newEvent.end.isValid && "Geçersiz tarih"}
-            />
-          </Box>
+      <EventDialog
+        open={openEditDialog}
+        onClose={() => setOpenEditDialog(false)}
+        title="Etkinliği Düzenle"
+        event={editEvent}
+        setEvent={setEditEvent}
+        onSubmit={handleUpdateEvent}
+        colors={calendarColors}
+        handleDateTimeChange={handleDateTimeChange}
+      />
 
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Takvim</InputLabel>
-            <Select
-              value={newEvent.calendarId}
-              onChange={(e) =>
-                setNewEvent({ ...newEvent, calendarId: e.target.value })
-              }
-            >
-              <MenuItem value="1">
-                <Chip sx={{ bgcolor: calendarColors["1"], mr: 1 }} /> Kişisel
-              </MenuItem>
-              <MenuItem value="2">
-                <Chip sx={{ bgcolor: calendarColors["2"], mr: 1 }} /> İş
-              </MenuItem>
-            </Select>
-          </FormControl>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>İptal</Button>
-          <Button
-            variant="contained"
-            onClick={handleCreateEvent}
-            disabled={!newEvent.start.isValid || !newEvent.end.isValid}
-          >
-            Kaydet
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Etkinlik Detayları Dialog */}
-      <Dialog open={!!selectedEvent} onClose={() => setSelectedEvent(null)}>
+      <Dialog
+        open={!!selectedEvent}
+        onClose={() => setSelectedEvent(null)}
+        disableEnforceFocus
+      >
         <DialogTitle>Etkinlik Detayları</DialogTitle>
         <DialogContent sx={styles.dialogContent}>
           <Typography variant="h6" gutterBottom>
@@ -389,87 +353,142 @@ const CalendarComponent = ({ user }) => {
           </Box>
         </DialogContent>
       </Dialog>
-
-      {/* Etkinlik Düzenleme Dialog */}
-      <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)}>
-        <DialogTitle>Etkinliği Düzenle</DialogTitle>
-        <DialogContent sx={styles.dialogContent}>
-          <TextField
-            label="Etkinlik Başlığı"
-            fullWidth
-            margin="normal"
-            value={editEvent?.title || ""}
-            onChange={(e) =>
-              setEditEvent({ ...editEvent, title: e.target.value })
-            }
-          />
-
-          <Box sx={styles.timeInputs}>
-            <TextField
-              label="Başlangıç"
-              type="datetime-local"
-              InputLabelProps={{ shrink: true }}
-              value={editEvent?.start.toFormat("yyyy-MM-dd'T'HH:mm")}
-              onChange={(e) => handleEditDateTimeChange(e.target.value, true)}
-              error={!editEvent?.start.isValid}
-              helperText={!editEvent?.start.isValid && "Geçersiz tarih"}
-            />
-            <TextField
-              label="Bitiş"
-              type="datetime-local"
-              InputLabelProps={{ shrink: true }}
-              value={editEvent?.end.toFormat("yyyy-MM-dd'T'HH:mm")}
-              onChange={(e) => handleEditDateTimeChange(e.target.value, false)}
-              error={!editEvent?.end.isValid}
-              helperText={!editEvent?.end.isValid && "Geçersiz tarih"}
-            />
-          </Box>
-
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Takvim</InputLabel>
-            <Select
-              value={editEvent?.calendarId || "1"}
-              onChange={(e) =>
-                setEditEvent({ ...editEvent, calendarId: e.target.value })
-              }
-            >
-              <MenuItem value="1">
-                <Chip sx={{ bgcolor: calendarColors["1"], mr: 1 }} /> Kişisel
-              </MenuItem>
-              <MenuItem value="2">
-                <Chip sx={{ bgcolor: calendarColors["2"], mr: 1 }} /> İş
-              </MenuItem>
-            </Select>
-          </FormControl>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenEditDialog(false)}>İptal</Button>
-          <Button
-            variant="contained"
-            onClick={handleUpdateEvent}
-            disabled={!editEvent?.start.isValid || !editEvent?.end.isValid}
-          >
-            Kaydet
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Snackbar
-        open={deletedEvents.length > 0}
-        autoHideDuration={3000}
-        onClose={() => setDeletedEvents([])}
-        message="Etkinlik silindi"
-      />
     </Paper>
   );
 };
 
+const EventDialog = ({
+  open,
+  onClose,
+  title,
+  event,
+  setEvent,
+  onSubmit,
+  colors,
+  handleDateTimeChange,
+}) => {
+  const handleAllDayChange = (e) => {
+    setEvent((prev) => ({
+      ...prev,
+      allDay: e.target.checked,
+      start: e.target.checked ? prev.start.startOf("day") : prev.start,
+      end: e.target.checked ? prev.end.endOf("day") : prev.end,
+    }));
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose}>
+      <DialogTitle>{title}</DialogTitle>
+      <DialogContent sx={styles.dialogContent}>
+        <TextField
+          label="Etkinlik Başlığı"
+          fullWidth
+          margin="normal"
+          value={event?.title || ""}
+          onChange={(e) => setEvent({ ...event, title: e.target.value })}
+        />
+
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={event?.allDay ?? true}
+              onChange={handleAllDayChange}
+            />
+          }
+          label="Tüm Gün"
+          sx={{ mt: 1 }}
+        />
+
+        <Box sx={styles.timeInputs}>
+          <TextField
+            label="Başlangıç"
+            type={event?.allDay ? "date" : "datetime-local"}
+            InputLabelProps={{ shrink: true }}
+            value={
+              event?.start?.isValid
+                ? event.start.toFormat(
+                    event.allDay ? "yyyy-MM-dd" : "yyyy-MM-dd'T'HH:mm"
+                  )
+                : ""
+            }
+            onChange={(e) =>
+              handleDateTimeChange(e.target.value, true, event, setEvent)
+            }
+            fullWidth
+          />
+          <TextField
+            label="Bitiş"
+            type={event?.allDay ? "date" : "datetime-local"}
+            InputLabelProps={{ shrink: true }}
+            value={
+              event?.end?.isValid
+                ? event.end.toFormat(
+                    event.allDay ? "yyyy-MM-dd" : "yyyy-MM-dd'T'HH:mm"
+                  )
+                : ""
+            }
+            onChange={(e) =>
+              handleDateTimeChange(e.target.value, false, event, setEvent)
+            }
+            fullWidth
+          />
+        </Box>
+
+        <FormControl fullWidth margin="normal">
+          <InputLabel>Renk</InputLabel>
+          <Select
+            value={event?.color || colors.primary}
+            onChange={(e) => setEvent({ ...event, color: e.target.value })}
+          >
+            {Object.entries(colors).map(([name, color]) => (
+              <MenuItem key={name} value={color}>
+                <Chip
+                  sx={{
+                    bgcolor: color,
+                    width: 24,
+                    height: 24,
+                    mr: 1,
+                    borderRadius: "4px",
+                  }}
+                />
+                {name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>İptal</Button>
+        <Button
+          variant="contained"
+          onClick={onSubmit}
+          disabled={!event?.start?.isValid || !event?.end?.isValid}
+        >
+          Kaydet
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
 const renderEventContent = (eventInfo) => (
-  <Box sx={styles.eventContent}>
-    <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+  <Box
+    sx={{
+      ...styles.eventContent,
+      backgroundColor: eventInfo.event.extendedProps.color,
+      padding: "2px 8px",
+      borderRadius: "4px",
+      lineHeight: 1.2,
+    }}
+  >
+    <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.8rem" }}>
       {eventInfo.event.title}
     </Typography>
-    <Typography variant="caption">{eventInfo.timeText}</Typography>
+    {!eventInfo.event.allDay && (
+      <Typography variant="caption" sx={{ fontSize: "0.7rem" }}>
+        {eventInfo.timeText}
+      </Typography>
+    )}
   </Box>
 );
 
@@ -485,24 +504,7 @@ const styles = {
     height: "95vh",
   },
   controls: {
-    display: "flex",
-    justifyContent: "space-between",
     mb: 2,
-    gap: 2,
-    flexWrap: "wrap",
-  },
-  controlsGroup: {
-    display: "flex",
-    gap: 1,
-    alignItems: "center",
-  },
-  viewSelector: {
-    minWidth: 160,
-    "& .MuiSelect-select": { py: 1 },
-  },
-  timezoneSelector: {
-    minWidth: 200,
-    "& .MuiSelect-select": { py: 1 },
   },
   calendarWrapper: {
     flex: 1,
@@ -516,20 +518,28 @@ const styles = {
         backgroundColor: "action.selected",
         padding: "8px 4px",
       },
+      "& .fc-day-today": {
+        backgroundColor: "action.hover !important",
+      },
+      "& .fc-daygrid-day.fc-day-today": {
+        backgroundColor: "action.hover !important",
+      },
+      "& .fc-timegrid-col.fc-day-today": {
+        backgroundColor: "action.hover !important",
+      },
       "& .fc-event": {
         border: "none",
-        borderRadius: 4,
         boxShadow: 1,
-        padding: "2px 4px",
+        cursor: "move",
+        transition: "all 0.2s",
+        "&:hover": {
+          boxShadow: 3,
+        },
+      },
+      "& .fc-now-indicator": {
+        borderColor: colors.red[600],
       },
     },
-  },
-  eventContent: {
-    p: 0.5,
-    px: 1,
-    color: "common.white",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
   },
   dialogContent: {
     py: 2,
@@ -541,6 +551,9 @@ const styles = {
     gap: 2,
     gridTemplateColumns: "1fr 1fr",
     my: 2,
+  },
+  eventContent: {
+    color: "common.white",
   },
 };
 

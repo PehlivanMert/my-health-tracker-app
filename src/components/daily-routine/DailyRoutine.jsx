@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 import {
   Box,
   Button,
@@ -11,19 +12,38 @@ import {
   Card,
   CardContent,
   Fade,
+  Grid,
+  useMediaQuery,
+  useTheme,
+  InputAdornment,
 } from "@mui/material";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { Delete, Edit, CheckCircle, RemoveCircle } from "@mui/icons-material";
+import {
+  DeleteForever,
+  EventNote,
+  NotificationImportant,
+  NotificationsOff,
+  DoneAll,
+  HighlightOff,
+  Add,
+  Edit,
+  PlaylistAdd,
+  DeleteSweep,
+  AccessTime,
+  CheckCircleOutline,
+  RadioButtonUnchecked,
+} from "@mui/icons-material";
 import ProgressChart from "../../utils/ProgressChart";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import {
   requestNotificationPermission,
   scheduleNotification,
 } from "../../utils/weather-theme-notify/NotificationManager";
 
-// Eğlenceli istatistik kartı komponenti
 const StatCard = ({ title, value, total, icon, color }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const percentage = (value / total) * 100 || 0;
 
   const handleClick = () => {
@@ -36,31 +56,35 @@ const StatCard = ({ title, value, total, icon, color }) => {
 
   return (
     <motion.div
-      whileHover={{
-        scale: 1.05,
-        rotate: [0, -1, 1, -1, 0],
-        transition: { duration: 0.3 },
-      }}
+      whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
+      style={{ width: "100%" }}
     >
       <Card
         onClick={handleClick}
         sx={{
-          minWidth: 250,
+          width: "100%",
           cursor: "pointer",
           background: `linear-gradient(135deg, ${color}20 0%, ${color}05 100%)`,
           border: `1px solid ${color}30`,
+          borderRadius: 2,
+          boxShadow: theme.shadows[4],
         }}
       >
         <CardContent>
-          <Stack spacing={2} alignItems="center">
-            {icon}
-            <Typography variant="h6" color="text.secondary" align="center">
+          <Stack spacing={1} alignItems="center">
+            <Box sx={{ fontSize: isMobile ? 32 : 40 }}>{icon}</Box>
+            <Typography
+              variant={isMobile ? "body1" : "h6"}
+              color="text.secondary"
+              align="center"
+              sx={{ fontWeight: 500 }}
+            >
               {title}
             </Typography>
             <Box sx={{ position: "relative", width: "100%" }}>
               <Typography
-                variant="h3"
+                variant={isMobile ? "h4" : "h3"}
                 align="center"
                 sx={{
                   fontWeight: "bold",
@@ -91,101 +115,150 @@ const StatCard = ({ title, value, total, icon, color }) => {
 const DailyRoutine = ({
   routines = [],
   setRoutines,
-  newRoutine,
-  setNewRoutine,
-  handleSaveRoutine,
-  editRoutineId,
-  setEditRoutineId,
-  onDragEnd,
   deleteRoutine,
-  completedRoutines = 0,
-  totalRoutines = 0,
+  onDragEnd,
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const [newRoutine, setNewRoutine] = useState({ title: "", time: "" });
+  const [editRoutineId, setEditRoutineId] = useState(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState({});
-  const [stats, setStats] = useState({
-    daily: { completed: 0, total: 0 },
-    weekly: { completed: 0, total: 0 },
-    monthly: { completed: 0, total: 0 },
-  });
+  const [weeklyStats, setWeeklyStats] = useState({ completed: 0, total: 0 });
+  const [monthlyStats, setMonthlyStats] = useState({ completed: 0, total: 0 });
+
+  // Tarih yardımcı fonksiyonları
+  const getWeekNumber = (date) => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+    const yearStart = new Date(d.getFullYear(), 0, 1);
+    return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  };
+
+  const isSameMonth = (date1, date2) => {
+    return (
+      date1.getFullYear() === date2.getFullYear() &&
+      date1.getMonth() === date2.getMonth()
+    );
+  };
 
   useEffect(() => {
     requestNotificationPermission();
   }, []);
 
-  // İstatistikleri hesaplama
+  // İstatistikleri güncelleme
   useEffect(() => {
-    const dailyStats = {
-      completed: routines.filter((r) => r.checked).length,
-      total: routines.length,
-    };
+    const now = new Date();
+    const currentWeek = getWeekNumber(now);
+    const currentMonth = now.getMonth();
 
-    const weeklyStats = {
-      completed: dailyStats.completed * 7,
-      total: dailyStats.total * 7,
-    };
+    const weeklyCompleted = routines.filter(
+      (r) =>
+        r.checked && getWeekNumber(new Date(r.completionDate)) === currentWeek
+    ).length;
 
-    const monthlyStats = {
-      completed: dailyStats.completed * 30,
-      total: dailyStats.total * 30,
-    };
+    const monthlyCompleted = routines.filter(
+      (r) => r.checked && isSameMonth(new Date(r.completionDate), now)
+    ).length;
 
-    setStats({
-      daily: dailyStats,
-      weekly: weeklyStats,
-      monthly: monthlyStats,
+    setWeeklyStats({
+      completed: weeklyCompleted,
+      total: routines.filter(
+        (r) => getWeekNumber(new Date(r.createdAt)) === currentWeek
+      ).length,
+    });
+
+    setMonthlyStats({
+      completed: monthlyCompleted,
+      total: routines.filter((r) => isSameMonth(new Date(r.createdAt), now))
+        .length,
     });
   }, [routines]);
 
-  // Gece yarısı reset
+  // Haftalık ve aylık resetleme
   useEffect(() => {
-    const midnightReset = setInterval(() => {
+    const checkReset = () => {
       const now = new Date();
-      if (now.getHours() === 0 && now.getMinutes() === 0) {
-        setRoutines((prevRoutines) =>
-          prevRoutines.map((routine) => ({ ...routine, checked: false }))
-        );
-      }
-    }, 60000);
+      const nextMonday = new Date(now);
+      nextMonday.setDate(now.getDate() + ((1 + 7 - now.getDay()) % 7));
+      nextMonday.setHours(0, 0, 0, 0);
 
-    return () => clearInterval(midnightReset);
-  }, [setRoutines]);
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-  const handleNotificationChange = (routineId) => {
-    setNotificationsEnabled((prev) => ({
-      ...prev,
-      [routineId]: !prev[routineId],
-    }));
+      const timeoutWeekly = setTimeout(() => {
+        setWeeklyStats({ completed: 0, total: 0 });
+      }, nextMonday - now);
 
-    if (!notificationsEnabled[routineId]) {
-      const routine = routines.find((r) => r.id === routineId);
-      const routineTime = new Date(
-        `${new Date().toDateString()} ${routine.time}`
+      const timeoutMonthly = setTimeout(() => {
+        setMonthlyStats({ completed: 0, total: 0 });
+      }, nextMonth - now);
+
+      return () => {
+        clearTimeout(timeoutWeekly);
+        clearTimeout(timeoutMonthly);
+      };
+    };
+
+    const timer = setInterval(checkReset, 3600000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleSaveRoutine = () => {
+    if (!newRoutine.title || !newRoutine.time) return;
+
+    if (editRoutineId) {
+      setRoutines(
+        routines.map((r) =>
+          r.id === editRoutineId ? { ...newRoutine, id: r.id } : r
+        )
       );
-      const reminderTime = new Date(routineTime - 15 * 60 * 1000);
-
-      scheduleNotification(
-        `Hatırlatma: ${routine.title}`,
-        reminderTime,
-        "15-minutes"
-      );
-
-      scheduleNotification(
-        `Hatırlatma: ${routine.title}`,
-        routineTime,
-        "on-time"
-      );
+      setEditRoutineId(null);
+    } else {
+      setRoutines([
+        ...routines,
+        {
+          ...newRoutine,
+          id: uuidv4(),
+          createdAt: new Date().toISOString(),
+          completionDate: null,
+          checked: false,
+        },
+      ]);
     }
+    setNewRoutine({ title: "", time: "" });
+  };
+
+  const handleCheckboxChange = (routineId) => {
+    setRoutines(
+      routines.map((r) =>
+        r.id === routineId
+          ? {
+              ...r,
+              checked: !r.checked,
+              completionDate: !r.checked ? new Date().toISOString() : null,
+            }
+          : r
+      )
+    );
   };
 
   const handleSelectAll = () => {
-    setRoutines((prevRoutines) =>
-      prevRoutines.map((routine) => ({ ...routine, checked: true }))
+    setRoutines(
+      routines.map((r) => ({
+        ...r,
+        checked: true,
+        completionDate: new Date().toISOString(),
+      }))
     );
   };
 
   const handleUnselectAll = () => {
-    setRoutines((prevRoutines) =>
-      prevRoutines.map((routine) => ({ ...routine, checked: false }))
+    setRoutines(
+      routines.map((r) => ({
+        ...r,
+        checked: false,
+        completionDate: null,
+      }))
     );
   };
 
@@ -193,279 +266,412 @@ const DailyRoutine = ({
     setRoutines([]);
   };
 
+  const handleNotificationChange = (routineId) => {
+    const routine = routines.find((r) => r.id === routineId);
+    if (!routine) return;
+
+    const isEnabled = !notificationsEnabled[routineId];
+    setNotificationsEnabled((prev) => ({
+      ...prev,
+      [routineId]: isEnabled,
+    }));
+
+    if (isEnabled) {
+      const [hours, minutes] = routine.time.split(":");
+      const targetTime = new Date();
+      targetTime.setHours(parseInt(hours));
+      targetTime.setMinutes(parseInt(minutes));
+      targetTime.setSeconds(0);
+      targetTime.setMilliseconds(0);
+
+      // Geçmiş saatler için ertesi günü ayarla
+      if (targetTime < new Date()) {
+        targetTime.setDate(targetTime.getDate() + 1);
+      }
+
+      // 15 dakika önce hatırlatma
+      const reminderTime = new Date(targetTime.getTime() - 15 * 60000);
+
+      scheduleNotification(
+        `Hatırlatma: ${routine.title}`,
+        reminderTime,
+        "15-minutes"
+      );
+
+      // Ana bildirim
+      scheduleNotification(routine.title, targetTime, "on-time");
+    }
+  };
+
+  const dailyStats = {
+    completed: routines.filter((r) => r.checked).length,
+    total: routines.length,
+  };
+
   return (
-    <Box sx={{ maxWidth: 1200, mx: "auto", p: 3 }}>
-      {/* İstatistik Kartları */}
-      <Stack
-        direction={{ xs: "column", md: "row" }}
-        spacing={3}
+    <Box
+      sx={{
+        width: "100%",
+        maxWidth: 1200,
+        mx: "auto",
+        p: isMobile ? 1 : 3,
+      }}
+    >
+      <Grid container spacing={2} sx={{ mb: 4 }}>
+        <Grid item xs={12} sm={4}>
+          <StatCard
+            title="Günlük Başarı"
+            value={dailyStats.completed}
+            total={dailyStats.total}
+            icon={<DoneAll fontSize="inherit" />}
+            color="#4CAF50"
+          />
+        </Grid>
+        <Grid item xs={12} sm={4}>
+          <StatCard
+            title="Haftalık Başarı"
+            value={weeklyStats.completed}
+            total={weeklyStats.total}
+            icon={<CheckCircleOutline fontSize="inherit" />}
+            color="#2196F3"
+          />
+        </Grid>
+        <Grid item xs={12} sm={4}>
+          <StatCard
+            title="Aylık Başarı"
+            value={monthlyStats.completed}
+            total={monthlyStats.total}
+            icon={<PlaylistAdd fontSize="inherit" />}
+            color="#9C27B0"
+          />
+        </Grid>
+      </Grid>
+
+      <Paper
         sx={{
-          mb: 6,
-          justifyContent: "center",
-          alignItems: "center",
+          p: isMobile ? 1 : 3,
+          borderRadius: 4,
+          mb: 2,
+          background: "linear-gradient(145deg, #f5f5f5 0%, #ffffff 100%)",
+          boxShadow: theme.shadows[3],
         }}
       >
-        <StatCard
-          title="Günlük Başarı"
-          value={stats.daily.completed}
-          total={stats.daily.total}
-          icon={<CheckCircle sx={{ fontSize: 40 }} />}
-          color="#4CAF50"
-        />
-        <StatCard
-          title="Haftalık Başarı"
-          value={stats.weekly.completed}
-          total={stats.weekly.total}
-          icon={<CheckCircle sx={{ fontSize: 40 }} />}
-          color="#2196F3"
-        />
-        <StatCard
-          title="Aylık Başarı"
-          value={stats.monthly.completed}
-          total={stats.monthly.total}
-          icon={<CheckCircle sx={{ fontSize: 40 }} />}
-          color="#9C27B0"
-        />
-      </Stack>
-
-      {/* Ana İçerik */}
-      <Paper sx={{ p: 3, borderRadius: 2, mb: 4 }}>
         <Typography
-          variant="h5"
+          variant={isMobile ? "h6" : "h5"}
           sx={{
-            mb: 4,
+            mb: 2,
             display: "flex",
             alignItems: "center",
             gap: 1,
             color: "primary.main",
             fontWeight: "bold",
+            fontFamily: "'Poppins', sans-serif",
           }}
         >
-          ⏰ Günlük Rutin
+          <AccessTime fontSize={isMobile ? "small" : "medium"} /> Günlük Rutin
         </Typography>
 
-        {/* Rutin Ekleme Formu */}
-        <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+        <Stack
+          direction={isMobile ? "column" : "row"}
+          spacing={2}
+          sx={{ mb: 2 }}
+        >
           <TextField
             id="routine-time"
             name="time"
             label="Saat"
             type="time"
+            size={isMobile ? "small" : "medium"}
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <AccessTime />
+                </InputAdornment>
+              ),
+            }}
             value={newRoutine.time || ""}
             onChange={(e) =>
               setNewRoutine({ ...newRoutine, time: e.target.value })
             }
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 2,
+                backgroundColor: theme.palette.background.paper,
+              },
+            }}
           />
           <TextField
             id="routine-title"
             name="title"
             label="Rutin Açıklaması"
-            placeholder="Rutin açıklaması"
+            placeholder="Örn: Kahvaltı Yap"
+            size={isMobile ? "small" : "medium"}
+            fullWidth
             value={newRoutine.title || ""}
             onChange={(e) =>
               setNewRoutine({ ...newRoutine, title: e.target.value })
             }
-            sx={{ flex: 1 }}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 2,
+                backgroundColor: theme.palette.background.paper,
+              },
+            }}
           />
           <Button
             variant="contained"
+            startIcon={editRoutineId ? <Edit /> : <Add />}
             onClick={handleSaveRoutine}
-            disabled={!newRoutine.title}
+            disabled={!newRoutine.title || !newRoutine.time}
+            size={isMobile ? "small" : "medium"}
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+              whiteSpace: "nowrap",
+              minWidth: 120,
+              px: 2,
+              fontSize: isMobile ? "0.75rem" : "0.875rem",
+              background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
+              boxShadow: theme.shadows[2],
+              "&:hover": {
+                boxShadow: theme.shadows[4],
+                transform: "translateY(-1px)",
+              },
+              transition: "all 0.2s ease",
+            }}
           >
-            {editRoutineId ? "Güncelle" : "Ekle"}
+            {editRoutineId ? "Güncelle" : "Yeni Ekle"}
           </Button>
-        </Box>
+        </Stack>
 
-        {/* Rutinler Listesi */}
         <DragDropContext onDragEnd={onDragEnd}>
           <Droppable droppableId="routines">
             {(provided) => (
               <div
                 {...provided.droppableProps}
                 ref={provided.innerRef}
-                style={{ minHeight: "100px" }}
+                style={{ minHeight: 100 }}
               >
-                {routines.length === 0 ? (
-                  <Box
-                    sx={{
-                      textAlign: "center",
-                      py: 4,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: 2,
-                    }}
-                  >
-                    <img
-                      src="/empty-state.svg"
-                      alt="Boş rutin"
-                      style={{ height: 150, opacity: 0.8 }}
-                    />
-                    <Typography variant="h6" color="textSecondary">
-                      Henüz rutin eklenmemiş
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      Yukarıdaki formu kullanarak yeni rutinler ekleyebilirsiniz
-                    </Typography>
-                  </Box>
-                ) : (
-                  routines.map((routine, index) => (
-                    <Draggable
-                      key={routine.id}
-                      draggableId={routine.id}
-                      index={index}
+                <AnimatePresence>
+                  {routines.length === 0 ? (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
                     >
-                      {(provided) => (
-                        <Fade in>
-                          <Box
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              p: 2,
-                              mb: 1,
-                              background:
-                                "linear-gradient(145deg, #ffffff 0%, #f5f5f5 100%)",
-                              borderRadius: 2,
-                              transition: "all 0.2s ease-in-out",
-                              opacity: routine.checked ? 0.4 : 1,
-                              textDecoration: routine.checked
-                                ? "line-through"
-                                : "none",
-                              // Border ve shadow eklemeleri
-                              border: `2px solid ${
-                                routine.checked ? "#d3d3d3" : "#d3d3d3"
-                              }`, // Border rengi
-                              boxShadow: routine.checked
-                                ? "0px 4px 8px rgba(0, 0, 0, 0.1)" // Hafif gölge
-                                : "0px 8px 16px rgba(0, 0, 0, 0.2)", // Daha güçlü gölge
-                              "&.MuiFade-entered": {
-                                opacity: `${
-                                  routine.checked ? 0.4 : 1
-                                } !important`,
-                                textDecoration: `${
-                                  routine.checked ? "line-through" : "none"
-                                } !important`,
-                              },
-                              "&:hover": {
-                                transform: "translateY(-3px)",
-                                boxShadow: routine.checked
-                                  ? "0px 6px 12px rgba(0, 0, 0, 0.15)" // Hover sırasında daha belirgin gölge
-                                  : "0px 12px 24px rgba(0, 0, 0, 0.3)", // Hover'da daha güçlü gölge
-                                border: `2px solid ${
-                                  routine.checked ? "#b0b0b0" : "#d3d3d3"
-                                }`, // Hover'da border rengi değişimi
-                              },
-                            }}
+                      <Box
+                        sx={{
+                          textAlign: "center",
+                          py: 4,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: 2,
+                        }}
+                      >
+                        <img
+                          src="/empty-state.svg"
+                          alt="Boş rutin"
+                          style={{ height: 100, opacity: 0.8 }}
+                        />
+                        <Typography variant="body1" color="textSecondary">
+                          Henüz rutin eklenmemiş
+                        </Typography>
+                      </Box>
+                    </motion.div>
+                  ) : (
+                    routines.map((routine, index) => (
+                      <Draggable
+                        key={routine.id}
+                        draggableId={routine.id}
+                        index={index}
+                      >
+                        {(provided) => (
+                          <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            transition={{ duration: 0.2 }}
                           >
-                            <Checkbox
-                              checked={routine.checked || false}
-                              onChange={() =>
-                                setRoutines(
-                                  routines.map((r) =>
-                                    r.id === routine.id
-                                      ? { ...r, checked: !r.checked }
-                                      : r
-                                  )
-                                )
-                              }
-                            />
-                            <Box sx={{ flex: 1 }}>
-                              <Typography
-                                variant="body1"
+                            <Box
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                p: 1,
+                                mb: 1,
+                                background:
+                                  "linear-gradient(145deg, #ffffff 0%, #f8f8f8 100%)",
+                                borderRadius: 2,
+                                transition: "all 0.2s ease-in-out",
+                                opacity: routine.checked ? 0.4 : 1,
+                                textDecoration: routine.checked
+                                  ? "line-through"
+                                  : "none",
+                                border: `1px solid ${
+                                  routine.checked ? "#d3d3d3" : "#e0e0e0"
+                                }`,
+                                "&:hover": {
+                                  transform: "translateX(5px)",
+                                  boxShadow: theme.shadows[1],
+                                },
+                              }}
+                            >
+                              <Checkbox
+                                checked={routine.checked || false}
+                                onChange={() =>
+                                  handleCheckboxChange(routine.id)
+                                }
+                                icon={<RadioButtonUnchecked />}
+                                checkedIcon={<CheckCircleOutline />}
+                                size="small"
+                                color="primary"
+                              />
+                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    textDecoration: routine.checked
+                                      ? "line-through"
+                                      : "none",
+                                    color: routine.checked
+                                      ? "text.secondary"
+                                      : "text.primary",
+                                    whiteSpace: "nowrap",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    fontFamily: "'Poppins', sans-serif",
+                                  }}
+                                >
+                                  {routine.time} | {routine.title}
+                                </Typography>
+                              </Box>
+                              <IconButton
+                                onClick={() => {
+                                  setNewRoutine(routine);
+                                  setEditRoutineId(routine.id);
+                                }}
+                                size="small"
+                                sx={{ color: theme.palette.primary.main }}
+                              >
+                                <EventNote fontSize="small" />
+                              </IconButton>
+                              <IconButton
+                                onClick={() => deleteRoutine(routine.id)}
+                                size="small"
+                                sx={{ color: theme.palette.error.main }}
+                              >
+                                <DeleteForever fontSize="small" />
+                              </IconButton>
+                              <IconButton
+                                onClick={() =>
+                                  handleNotificationChange(routine.id)
+                                }
+                                size="small"
                                 sx={{
-                                  textDecoration: routine.checked
-                                    ? "line-through"
-                                    : "none",
-                                  color: routine.checked
-                                    ? "text.secondary"
-                                    : "text.primary",
+                                  color: notificationsEnabled[routine.id]
+                                    ? theme.palette.warning.main
+                                    : "text.secondary",
                                 }}
                               >
-                                {routine.time} | {routine.title}
-                              </Typography>
+                                {notificationsEnabled[routine.id] ? (
+                                  <NotificationImportant fontSize="small" />
+                                ) : (
+                                  <NotificationsOff fontSize="small" />
+                                )}
+                              </IconButton>
                             </Box>
-                            <IconButton
-                              onClick={() => {
-                                setNewRoutine(routine);
-                                setEditRoutineId(routine.id);
-                              }}
-                            >
-                              <Edit fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              onClick={() => deleteRoutine(routine.id)}
-                            >
-                              <Delete fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              onClick={() =>
-                                handleNotificationChange(routine.id)
-                              }
-                              sx={{
-                                color: notificationsEnabled[routine.id]
-                                  ? "primary.main"
-                                  : "text.secondary",
-                              }}
-                            >
-                              {notificationsEnabled[routine.id] ? "🔔" : "🔕"}
-                            </IconButton>
-                          </Box>
-                        </Fade>
-                      )}
-                    </Draggable>
-                  ))
-                )}
+                          </motion.div>
+                        )}
+                      </Draggable>
+                    ))
+                  )}
+                </AnimatePresence>
                 {provided.placeholder}
               </div>
             )}
           </Droppable>
         </DragDropContext>
-        {/* Rutin İlerleme Grafiği */}
+
         <ProgressChart
-          completedRoutines={completedRoutines}
-          totalRoutines={totalRoutines}
+          completedRoutines={dailyStats.completed}
+          totalRoutines={dailyStats.total}
           sx={{
-            mt: 4,
+            mt: 2,
             mx: "auto",
             maxWidth: 400,
+            height: 100,
           }}
         />
       </Paper>
 
-      {/* Alt Aksiyonlar */}
       <Stack
-        direction="row"
+        direction={isMobile ? "column" : "row"}
         spacing={2}
         sx={{
           justifyContent: "center",
-          mt: 4,
+          mt: 2,
         }}
       >
         <Button
-          variant="outlined"
-          startIcon={<CheckCircle />}
+          variant="contained"
+          startIcon={<DoneAll />}
           onClick={handleSelectAll}
-          size="large"
+          size="small"
+          fullWidth={isMobile}
+          sx={{
+            background: "linear-gradient(45deg, #4CAF50 30%, #81C784 90%)",
+            color: "white",
+            borderRadius: 2,
+            textTransform: "none",
+            boxShadow: theme.shadows[2],
+            "&:hover": {
+              boxShadow: theme.shadows[4],
+            },
+          }}
         >
           Tümünü İşaretle
         </Button>
         <Button
-          variant="outlined"
-          startIcon={<RemoveCircle />}
+          variant="contained"
+          startIcon={<HighlightOff />}
           onClick={handleUnselectAll}
-          size="large"
+          size="small"
+          fullWidth={isMobile}
+          sx={{
+            background: "linear-gradient(45deg, #FFA726 30%, #FFB74D 90%)",
+            color: "white",
+            borderRadius: 2,
+            textTransform: "none",
+            boxShadow: theme.shadows[2],
+            "&:hover": {
+              boxShadow: theme.shadows[4],
+            },
+          }}
         >
           İşaretleri Kaldır
         </Button>
         <Button
-          variant="outlined"
+          variant="contained"
           color="error"
-          startIcon={<Delete />}
+          startIcon={<DeleteSweep />}
           onClick={handleDeleteAll}
-          size="large"
+          size="small"
+          fullWidth={isMobile}
+          sx={{
+            background: "linear-gradient(45deg, #F44336 30%, #EF5350 90%)",
+            color: "white",
+            borderRadius: 2,
+            textTransform: "none",
+            boxShadow: theme.shadows[2],
+            "&:hover": {
+              boxShadow: theme.shadows[4],
+            },
+          }}
         >
           Tümünü Sil
         </Button>

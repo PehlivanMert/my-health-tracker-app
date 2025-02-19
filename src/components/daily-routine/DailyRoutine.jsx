@@ -11,11 +11,14 @@ import {
   Stack,
   Card,
   CardContent,
-  Fade,
   Grid,
   useMediaQuery,
   useTheme,
   InputAdornment,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import {
@@ -32,6 +35,8 @@ import {
   AccessTime,
   CheckCircleOutline,
   RadioButtonUnchecked,
+  NotificationsActive,
+  NotificationsNone,
 } from "@mui/icons-material";
 import ProgressChart from "../../utils/ProgressChart";
 import { motion, AnimatePresence } from "framer-motion";
@@ -39,6 +44,7 @@ import confetti from "canvas-confetti";
 import {
   requestNotificationPermission,
   scheduleNotification,
+  cancelScheduledNotifications,
 } from "../../utils/weather-theme-notify/NotificationManager";
 
 const StatCard = ({ title, value, total, icon, color }) => {
@@ -69,13 +75,14 @@ const StatCard = ({ title, value, total, icon, color }) => {
           border: `1px solid ${color}30`,
           borderRadius: 2,
           boxShadow: theme.shadows[4],
+          height: 200,
         }}
       >
         <CardContent>
           <Stack spacing={1} alignItems="center">
             <Box sx={{ fontSize: isMobile ? 32 : 40 }}>{icon}</Box>
             <Typography
-              variant={isMobile ? "body1" : "h6"}
+              variant={isMobile ? "body2" : "body1"}
               color="text.secondary"
               align="center"
               sx={{ fontWeight: 500 }}
@@ -84,7 +91,7 @@ const StatCard = ({ title, value, total, icon, color }) => {
             </Typography>
             <Box sx={{ position: "relative", width: "100%" }}>
               <Typography
-                variant={isMobile ? "h4" : "h3"}
+                variant={isMobile ? "h5" : "h4"}
                 align="center"
                 sx={{
                   fontWeight: "bold",
@@ -125,8 +132,10 @@ const DailyRoutine = ({
   const [notificationsEnabled, setNotificationsEnabled] = useState({});
   const [weeklyStats, setWeeklyStats] = useState({ completed: 0, total: 0 });
   const [monthlyStats, setMonthlyStats] = useState({ completed: 0, total: 0 });
+  const [modalOpen, setModalOpen] = useState(false);
+  const [allNotifications, setAllNotifications] = useState(false);
+  const [scheduledNotifications, setScheduledNotifications] = useState({});
 
-  // Tarih yardımcı fonksiyonları
   const getWeekNumber = (date) => {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
@@ -146,7 +155,6 @@ const DailyRoutine = ({
     requestNotificationPermission();
   }, []);
 
-  // İstatistikleri güncelleme
   useEffect(() => {
     const now = new Date();
     const currentWeek = getWeekNumber(now);
@@ -175,7 +183,6 @@ const DailyRoutine = ({
     });
   }, [routines]);
 
-  // Haftalık ve aylık resetleme
   useEffect(() => {
     const checkReset = () => {
       const now = new Date();
@@ -212,7 +219,6 @@ const DailyRoutine = ({
           r.id === editRoutineId ? { ...newRoutine, id: r.id } : r
         )
       );
-      setEditRoutineId(null);
     } else {
       setRoutines([
         ...routines,
@@ -225,7 +231,9 @@ const DailyRoutine = ({
         },
       ]);
     }
+    setModalOpen(false);
     setNewRoutine({ title: "", time: "" });
+    setEditRoutineId(null);
   };
 
   const handleCheckboxChange = (routineId) => {
@@ -264,6 +272,39 @@ const DailyRoutine = ({
 
   const handleDeleteAll = () => {
     setRoutines([]);
+    // Tüm zamanlanmış bildirimleri iptal et
+    Object.values(scheduledNotifications).forEach((ids) => {
+      ids.forEach((id) => cancelScheduledNotifications(id));
+    });
+    setScheduledNotifications({});
+  };
+
+  const scheduleNewNotification = (routine) => {
+    const [hours, minutes] = routine.time.split(":");
+    const targetTime = new Date();
+    targetTime.setHours(parseInt(hours));
+    targetTime.setMinutes(parseInt(minutes));
+    targetTime.setSeconds(0);
+    targetTime.setMilliseconds(0);
+
+    if (targetTime < new Date()) {
+      targetTime.setDate(targetTime.getDate() + 1);
+    }
+
+    const reminderTime = new Date(targetTime.getTime() - 15 * 60000);
+
+    const reminderId = scheduleNotification(
+      `Hatırlatma: ${routine.title}`,
+      reminderTime,
+      "15-minutes"
+    );
+
+    const mainId = scheduleNotification(routine.title, targetTime, "on-time");
+
+    setScheduledNotifications((prev) => ({
+      ...prev,
+      [routine.id]: [reminderId, mainId],
+    }));
   };
 
   const handleNotificationChange = (routineId) => {
@@ -271,36 +312,51 @@ const DailyRoutine = ({
     if (!routine) return;
 
     const isEnabled = !notificationsEnabled[routineId];
+
+    if (isEnabled) {
+      scheduleNewNotification(routine);
+    } else {
+      // Bildirimleri iptal et
+      const ids = scheduledNotifications[routineId];
+      if (ids) {
+        ids.forEach((id) => cancelScheduledNotifications(id));
+        setScheduledNotifications((prev) => {
+          const newState = { ...prev };
+          delete newState[routineId];
+          return newState;
+        });
+      }
+    }
+
     setNotificationsEnabled((prev) => ({
       ...prev,
       [routineId]: isEnabled,
     }));
+  };
 
-    if (isEnabled) {
-      const [hours, minutes] = routine.time.split(":");
-      const targetTime = new Date();
-      targetTime.setHours(parseInt(hours));
-      targetTime.setMinutes(parseInt(minutes));
-      targetTime.setSeconds(0);
-      targetTime.setMilliseconds(0);
+  const toggleAllNotifications = () => {
+    const newState = !allNotifications;
+    setAllNotifications(newState);
+    const updatedNotifications = {};
 
-      // Geçmiş saatler için ertesi günü ayarla
-      if (targetTime < new Date()) {
-        targetTime.setDate(targetTime.getDate() + 1);
+    routines.forEach((r) => {
+      updatedNotifications[r.id] = newState;
+      if (newState) {
+        scheduleNewNotification(r);
+      } else {
+        const ids = scheduledNotifications[r.id];
+        if (ids) {
+          ids.forEach((id) => cancelScheduledNotifications(id));
+          setScheduledNotifications((prev) => {
+            const newState = { ...prev };
+            delete newState[r.id];
+            return newState;
+          });
+        }
       }
+    });
 
-      // 15 dakika önce hatırlatma
-      const reminderTime = new Date(targetTime.getTime() - 15 * 60000);
-
-      scheduleNotification(
-        `Hatırlatma: ${routine.title}`,
-        reminderTime,
-        "15-minutes"
-      );
-
-      // Ana bildirim
-      scheduleNotification(routine.title, targetTime, "on-time");
-    }
+    setNotificationsEnabled(updatedNotifications);
   };
 
   const dailyStats = {
@@ -318,7 +374,7 @@ const DailyRoutine = ({
       }}
     >
       <Grid container spacing={2} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={4}>
+        <Grid item xs={4} sm={4}>
           <StatCard
             title="Günlük Başarı"
             value={dailyStats.completed}
@@ -327,7 +383,7 @@ const DailyRoutine = ({
             color="#4CAF50"
           />
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid item xs={4} sm={4}>
           <StatCard
             title="Haftalık Başarı"
             value={weeklyStats.completed}
@@ -336,7 +392,7 @@ const DailyRoutine = ({
             color="#2196F3"
           />
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid item xs={4} sm={4}>
           <StatCard
             title="Aylık Başarı"
             value={monthlyStats.completed}
@@ -356,95 +412,56 @@ const DailyRoutine = ({
           boxShadow: theme.shadows[3],
         }}
       >
-        <Typography
-          variant={isMobile ? "h6" : "h5"}
+        <Box
           sx={{
-            mb: 2,
             display: "flex",
+            justifyContent: "space-between",
             alignItems: "center",
-            gap: 1,
-            color: "primary.main",
-            fontWeight: "bold",
-            fontFamily: "'Poppins', sans-serif",
+            mb: 2,
           }}
         >
-          <AccessTime fontSize={isMobile ? "small" : "medium"} /> Günlük Rutin
-        </Typography>
-
-        <Stack
-          direction={isMobile ? "column" : "row"}
-          spacing={2}
-          sx={{ mb: 2 }}
-        >
-          <TextField
-            id="routine-time"
-            name="time"
-            label="Saat"
-            type="time"
-            size={isMobile ? "small" : "medium"}
-            fullWidth
-            InputLabelProps={{ shrink: true }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <AccessTime />
-                </InputAdornment>
-              ),
-            }}
-            value={newRoutine.time || ""}
-            onChange={(e) =>
-              setNewRoutine({ ...newRoutine, time: e.target.value })
-            }
+          <Typography
+            variant={isMobile ? "h6" : "h5"}
             sx={{
-              "& .MuiOutlinedInput-root": {
-                borderRadius: 2,
-                backgroundColor: theme.palette.background.paper,
-              },
-            }}
-          />
-          <TextField
-            id="routine-title"
-            name="title"
-            label="Rutin Açıklaması"
-            placeholder="Örn: Kahvaltı Yap"
-            size={isMobile ? "small" : "medium"}
-            fullWidth
-            value={newRoutine.title || ""}
-            onChange={(e) =>
-              setNewRoutine({ ...newRoutine, title: e.target.value })
-            }
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                borderRadius: 2,
-                backgroundColor: theme.palette.background.paper,
-              },
-            }}
-          />
-          <Button
-            variant="contained"
-            startIcon={editRoutineId ? <Edit /> : <Add />}
-            onClick={handleSaveRoutine}
-            disabled={!newRoutine.title || !newRoutine.time}
-            size={isMobile ? "small" : "medium"}
-            sx={{
-              borderRadius: 2,
-              textTransform: "none",
-              whiteSpace: "nowrap",
-              minWidth: 120,
-              px: 2,
-              fontSize: isMobile ? "0.75rem" : "0.875rem",
-              background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
-              boxShadow: theme.shadows[2],
-              "&:hover": {
-                boxShadow: theme.shadows[4],
-                transform: "translateY(-1px)",
-              },
-              transition: "all 0.2s ease",
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              color: "primary.main",
+              fontWeight: "bold",
+              fontFamily: "'Poppins', sans-serif",
             }}
           >
-            {editRoutineId ? "Güncelle" : "Yeni Ekle"}
-          </Button>
-        </Stack>
+            <AccessTime fontSize={isMobile ? "small" : "medium"} /> Günlük Rutin
+          </Typography>
+          <IconButton
+            onClick={toggleAllNotifications}
+            sx={{ color: allNotifications ? "#FFA726" : "text.secondary" }}
+          >
+            {allNotifications ? <NotificationsActive /> : <NotificationsNone />}
+          </IconButton>
+        </Box>
+
+        <Button
+          variant="contained"
+          startIcon={<Add />}
+          onClick={() => setModalOpen(true)}
+          size={isMobile ? "small" : "medium"}
+          fullWidth
+          sx={{
+            mb: 2,
+            borderRadius: 2,
+            textTransform: "none",
+            background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
+            boxShadow: theme.shadows[2],
+            "&:hover": {
+              boxShadow: theme.shadows[4],
+              transform: "translateY(-1px)",
+            },
+            transition: "all 0.2s ease",
+          }}
+        >
+          Yeni Rutin Ekle
+        </Button>
 
         <DragDropContext onDragEnd={onDragEnd}>
           <Droppable droppableId="routines">
@@ -554,6 +571,7 @@ const DailyRoutine = ({
                                 onClick={() => {
                                   setNewRoutine(routine);
                                   setEditRoutineId(routine.id);
+                                  setModalOpen(true);
                                 }}
                                 size="small"
                                 sx={{ color: theme.palette.primary.main }}
@@ -608,6 +626,58 @@ const DailyRoutine = ({
           }}
         />
       </Paper>
+
+      <Dialog open={modalOpen} onClose={() => setModalOpen(false)}>
+        <DialogTitle>
+          {editRoutineId ? "Rutini Düzenle" : "Yeni Rutin Ekle"}
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 2, minWidth: 300 }}>
+            <TextField
+              id="routine-time"
+              name="time"
+              label="Saat"
+              type="time"
+              size="medium"
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <AccessTime />
+                  </InputAdornment>
+                ),
+              }}
+              value={newRoutine.time || ""}
+              onChange={(e) =>
+                setNewRoutine({ ...newRoutine, time: e.target.value })
+              }
+            />
+            <TextField
+              id="routine-title"
+              name="title"
+              label="Rutin Açıklaması"
+              placeholder="Örn: Kahvaltı Yap"
+              size="medium"
+              fullWidth
+              value={newRoutine.title || ""}
+              onChange={(e) =>
+                setNewRoutine({ ...newRoutine, title: e.target.value })
+              }
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setModalOpen(false)}>İptal</Button>
+          <Button
+            onClick={handleSaveRoutine}
+            variant="contained"
+            disabled={!newRoutine.title || !newRoutine.time}
+          >
+            {editRoutineId ? "Güncelle" : "Kaydet"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Stack
         direction={isMobile ? "column" : "row"}

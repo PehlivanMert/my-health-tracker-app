@@ -1,0 +1,26 @@
+{
+  "short_name": "Wellness",
+  "name": "Sağlık Takip Uygulaması",
+  "icons": [
+    {
+      "src": "/logo4.jpeg",
+      "type": "image/jpeg",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo4.jpeg",
+      "type": "image/jpeg",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#1976d2",
+  "background_color": "#ffffff",
+  "scope": "/",
+  "description": "Kişisel Sağlık Takip Uygulaması",
+  "orientation": "portrait-primary",
+  "categories": ["health", "productivity"]
+}

@@ -1,5 +1,8 @@
 import { format } from "date-fns";
 
+// Zamanlanmış bildirimleri takip etmek için nesne
+const scheduledTimeouts = {};
+
 export const requestNotificationPermission = () => {
   if ("Notification" in window) {
     Notification.requestPermission();
@@ -9,11 +12,9 @@ export const requestNotificationPermission = () => {
 export const triggerNotification = (title, time) => {
   if (Notification.permission === "granted") {
     try {
-      // Ses bildirimi
       const audio = new Audio("/notification.mp3");
       audio.play().catch((error) => console.error("Ses çalınamadı:", error));
 
-      // Görsel bildirim
       new Notification(`🔔 Hatırlatıcı: ${title}`, {
         body: `⏰ Başlangıç saati: ${time}`,
         icon: "/logo192.svg",
@@ -21,7 +22,7 @@ export const triggerNotification = (title, time) => {
         requireInteraction: true,
       });
 
-      // Geçici bildirim badge'i
+      // Bildirim badge'i
       const notificationBadge = document.createElement("div");
       notificationBadge.style.cssText = `
         position: fixed;
@@ -37,38 +38,57 @@ export const triggerNotification = (title, time) => {
       notificationBadge.textContent = "Yeni hatırlatıcı aktif!";
       document.body.appendChild(notificationBadge);
 
-      setTimeout(() => {
-        notificationBadge.remove();
-      }, 3000);
+      setTimeout(() => notificationBadge.remove(), 3000);
     } catch (error) {
       console.error("Bildirim hatası:", error);
     }
   }
 };
 
-// Bildirim zamanlamaları
 export const notificationIntervals = {
   "15-minutes": 15 * 60000,
   "1-hour": 60 * 60000,
   "1-day": 24 * 60 * 60000,
-  "on-time": 0, // Vaktinde bildirim için 0 değeri
+  "on-time": 0,
 };
 
-// **Bildirim Zamanlayıcı**
 export const scheduleNotification = (title, startTime, notifyType) => {
-  if (notifyType && notifyType !== "none") {
-    const interval = notificationIntervals[notifyType]; // Kullanıcı tarafından seçilen aralık
-    const notificationTime = new Date(startTime - interval);
+  if (!notifyType || notifyType === "none") return null;
 
-    if (notifyType === "on-time") {
-      setTimeout(() => {
-        triggerNotification(title, format(startTime, "HH:mm"));
-      }, startTime - Date.now());
-    } else if (notificationTime > Date.now()) {
-      const timeoutDuration = notificationTime - Date.now();
-      setTimeout(() => {
-        triggerNotification(title, format(startTime, "HH:mm"));
-      }, timeoutDuration);
-    }
+  const interval = notificationIntervals[notifyType];
+  const notificationTime = new Date(startTime - interval);
+  let timeoutId = null;
+
+  if (notifyType === "on-time") {
+    timeoutId = setTimeout(() => {
+      triggerNotification(title, format(startTime, "HH:mm"));
+    }, startTime - Date.now());
+  } else if (notificationTime > Date.now()) {
+    const timeoutDuration = notificationTime - Date.now();
+    timeoutId = setTimeout(() => {
+      triggerNotification(title, format(startTime, "HH:mm"));
+    }, timeoutDuration);
   }
+
+  if (timeoutId) {
+    scheduledTimeouts[timeoutId] = true;
+    return timeoutId;
+  }
+  return null;
+};
+
+// Bildirim iptal fonksiyonu
+export const cancelScheduledNotifications = (timeoutId) => {
+  if (timeoutId && scheduledTimeouts[timeoutId]) {
+    clearTimeout(timeoutId);
+    delete scheduledTimeouts[timeoutId];
+  }
+};
+
+// Tüm zamanlanmış bildirimleri temizle
+export const clearAllNotifications = () => {
+  Object.keys(scheduledTimeouts).forEach((timeoutId) => {
+    clearTimeout(Number(timeoutId));
+    delete scheduledTimeouts[timeoutId];
+  });
 };

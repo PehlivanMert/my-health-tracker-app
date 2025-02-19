@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Paper,
@@ -14,13 +14,16 @@ import {
   Button,
   Chip,
   useTheme,
+  Collapse,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  TextField,
 } from "@mui/material";
-import { Delete, Edit, FitnessCenter, Add } from "@mui/icons-material";
-import { ExerciseForm } from "../../utils/Forms";
+import { Delete, Edit, FitnessCenter, Add, Close } from "@mui/icons-material";
 import axios from "axios";
 import { toast } from "react-toastify";
 
-// Türkçe çeviri sözlüğü
 const TRANSLATIONS = {
   bodyParts: {
     chest: "Göğüs",
@@ -32,409 +35,472 @@ const TRANSLATIONS = {
     cardio: "Kardiyo",
   },
   equipment: {
-    barbell: "Halter",
-    dumbbell: "Dambıl",
     bodyweight: "Vücut Ağırlığı",
     cable: "Kablo Makinesi",
-    machine: "Ağırlık Makinesi",
+    dumbbell: "Dambıl",
     bands: "Direnç Bandı",
-    "leverage machine": "Kaldıraç Makinesi",
+    barbell: "Halter",
     kettlebell: "Kettlebell",
-    "medicine ball": "Medikal Top",
-    "exercise ball": "Egzersiz Topu",
-    ezBarbell: "EZ Bar",
-    weighted: "Ağırlıklı",
-    roller: "Rulo",
-    "resistance band": "Direnç Bandı",
-    "skierg machine": "Kayak Makinesi",
-    "sled machine": "Kızak Makinesi",
-    "wheel roller": "Tekerlek Rulo",
-  },
-  target: {
-    lats: "Kanat Kasları",
-    chest: "Göğüs Kasları",
-    quads: "Quadriceps",
-    hamstrings: "Hamstring",
-    shoulders: "Omuz Kasları",
-    biceps: "Biceps",
-    triceps: "Triceps",
-    abs: "Karın Kasları",
-    calves: "Baldır Kasları",
-    glutes: "Kalça Kasları",
-    traps: "Trapez Kasları",
-    "upper back": "Üst Sırt",
-    "lower back": "Alt Sırt",
-    adductors: "Addüktör Kaslar",
-    abductors: "Abdüktör Kaslar",
-    forearms: "Önkol Kasları",
-    "serratus anterior": "Serratus Anterior",
-    levatorScapulae: "Levator Skapula",
+    machine: "Ağırlık Makinesi",
   },
 };
 
-const Exercises = ({
-  exercises,
-  setExercises,
-  handleExerciseSubmit,
-  editingExercise,
-  setEditingExercise,
-}) => {
+const capitalizeWords = (str) => {
+  return str
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
+const Exercises = ({ exercises, setExercises }) => {
   const theme = useTheme();
-  const [selectedBodyPart, setSelectedBodyPart] = useState("");
+  const [openModal, setOpenModal] = useState(false);
+  const [modalType, setModalType] = useState("api");
   const [apiExercises, setApiExercises] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [expandedId, setExpandedId] = useState(null);
+  const [filters, setFilters] = useState({
+    bodyPart: "",
+    equipment: "",
+    name: "",
+  });
+  const [customExercise, setCustomExercise] = useState({
+    id: null,
+    title: "",
+    target: "",
+    equipment: "",
+    instructions: "",
+  });
 
-  const BODY_PARTS = [
-    "chest",
-    "back",
-    "legs",
-    "shoulders",
-    "arms",
-    "core",
-    "cardio",
-  ];
+  const BODY_PARTS = Object.keys(TRANSLATIONS.bodyParts);
+  const EQUIPMENTS = Object.keys(TRANSLATIONS.equipment);
 
-  const API_URL = "https://exercisedb.p.rapidapi.com/exercises/bodyPart/";
+  const API_URL = "https://exercisedb.p.rapidapi.com/exercises";
   const API_OPTIONS = {
-    method: "GET",
     headers: {
       "X-RapidAPI-Key": import.meta.env.VITE_XRAPID_API_KEY,
       "X-RapidAPI-Host": "exercisedb.p.rapidapi.com",
     },
+    timeout: 10000,
   };
 
-  const fetchExercises = async (bodyPart) => {
+  const fetchExercises = async () => {
     try {
       setLoading(true);
       setError("");
-      const response = await axios.get(`${API_URL}${bodyPart}`, API_OPTIONS);
-      const results = response.data;
-      const filteredExercises = results
-        .sort(() => 0.5 - Math.random())
-        .slice(0, Math.floor(Math.random() * 4) + 5);
-      setApiExercises(filteredExercises);
+      const params = Object.fromEntries(
+        Object.entries(filters).filter(([_, v]) => v)
+      );
+
+      const response = await axios.get(API_URL, {
+        ...API_OPTIONS,
+        params,
+      });
+
+      const exercises = response.data.slice(0, 12).map((ex) => ({
+        ...ex,
+        name: capitalizeWords(ex.name),
+        target: capitalizeWords(ex.target),
+        equipment: capitalizeWords(ex.equipment),
+      }));
+
+      setApiExercises(exercises);
     } catch (err) {
-      setError("Egzersizler yüklenirken hata oluştu");
-      console.error("API Error:", err);
+      setError(
+        err.response?.data?.message || "Egzersizler yüklenirken hata oluştu"
+      );
+      toast.error("Egzersiz verileri alınamadı");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddExercise = (exercise) => {
-    const translatedExercise = {
-      ...exercise,
-      equipment:
-        TRANSLATIONS.equipment[exercise.equipment] || exercise.equipment,
-      target: TRANSLATIONS.target[exercise.target] || exercise.target,
-    };
+  const handleSubmitCustomExercise = () => {
+    if (!customExercise.title || !customExercise.instructions) {
+      toast.error("Lütfen zorunlu alanları doldurun");
+      return;
+    }
 
     const newExercise = {
-      id: Date.now().toString(),
-      title: translatedExercise.name,
-      content: `Hedef: ${translatedExercise.target}\nEkipman: ${
-        translatedExercise.equipment
-      }\nTalimatlar:\n${translatedExercise.instructions
-        .slice(0, 3)
+      id: customExercise.id || Date.now().toString(),
+      title: capitalizeWords(customExercise.title),
+      content: `Hedef: ${customExercise.target || "Belirtilmemiş"}\nEkipman: ${
+        customExercise.equipment || "Belirtilmemiş"
+      }\nTalimatlar:\n${customExercise.instructions
+        .split("\n")
         .map((step, index) => `${index + 1}. ${step}`)
         .join("\n")}`,
     };
 
-    setExercises((prev) => [...prev, newExercise]);
-    toast.success("Egzersiz listenize eklendi!");
+    setExercises((prev) => {
+      if (customExercise.id) {
+        return prev.map((ex) =>
+          ex.id === customExercise.id ? newExercise : ex
+        );
+      }
+      return [...prev, newExercise];
+    });
+
+    toast.success(
+      customExercise.id ? "Egzersiz güncellendi!" : "Özel egzersiz eklendi!"
+    );
+
+    setCustomExercise({
+      id: null,
+      title: "",
+      target: "",
+      equipment: "",
+      instructions: "",
+    });
+    setModalType("api");
+    setOpenModal(false);
   };
 
-  useEffect(() => {
-    if (selectedBodyPart) {
-      fetchExercises(selectedBodyPart);
-    }
-  }, [selectedBodyPart]);
-
   return (
-    <Paper
-      sx={{
-        p: 3,
-        borderRadius: 4,
-        boxShadow: theme.shadows[3],
-        background: theme.palette.background.paper,
-      }}
-    >
-      <Typography
-        variant="h4"
-        sx={{
-          mb: 4,
-          display: "flex",
-          alignItems: "center",
-          gap: 2,
-          color: theme.palette.primary.main,
-          fontWeight: 700,
-        }}
-      >
-        <FitnessCenter fontSize="large" />
-        Egzersiz Yönetim Paneli
-      </Typography>
-
-      {/* Vücut Bölgesi Seçimi */}
-      <Box sx={{ mb: 4, maxWidth: 400 }}>
-        <FormControl fullWidth>
-          <InputLabel>Vücut Bölgesi Seçin</InputLabel>
-          <Select
-            value={selectedBodyPart}
-            onChange={(e) => setSelectedBodyPart(e.target.value)}
-            label="Vücut Bölgesi Seçin"
-            variant="outlined"
-          >
-            {BODY_PARTS.map((part) => (
-              <MenuItem key={part} value={part}>
-                {TRANSLATIONS.bodyParts[part]}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+    <Paper sx={{ p: 3, borderRadius: 4, boxShadow: theme.shadows[3] }}>
+      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 4 }}>
+        <Typography
+          variant="h4"
+          sx={{ display: "flex", alignItems: "center", gap: 2 }}
+        >
+          <FitnessCenter fontSize="large" />
+          Egzersiz Yönetim Paneli
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<Add />}
+          onClick={() => {
+            setCustomExercise({
+              id: null,
+              title: "",
+              target: "",
+              equipment: "",
+              instructions: "",
+            });
+            setOpenModal(true);
+          }}
+        >
+          Yeni Egzersiz Ekle
+        </Button>
       </Box>
 
-      {/* API'den Gelen Egzersizler */}
-      {selectedBodyPart && (
-        <Box sx={{ mb: 6 }}>
-          <Typography
-            variant="h5"
+      <Dialog
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        fullWidth
+        maxWidth="lg"
+      >
+        <DialogTitle>
+          <Box
             sx={{
-              mb: 3,
-              color: theme.palette.secondary.main,
-              borderBottom: `2px solid ${theme.palette.secondary.main}`,
-              pb: 1,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
             }}
           >
-            {TRANSLATIONS.bodyParts[selectedBodyPart]} Egzersiz Önerileri
-          </Typography>
+            {modalType === "api"
+              ? "Egzersiz Ara ve Ekle"
+              : "Özel Egzersiz Oluştur"}
+            <IconButton onClick={() => setOpenModal(false)}>
+              <Close />
+            </IconButton>
+          </Box>
+        </DialogTitle>
 
-          {loading && (
-            <Box sx={{ textAlign: "center", py: 4 }}>
-              <CircularProgress size={60} thickness={4} />
-            </Box>
-          )}
-
-          {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
-            </Alert>
-          )}
-
-          {!loading && !error && (
-            <Grid container spacing={3}>
-              {apiExercises.map((exercise) => (
-                <Grid item xs={12} md={6} lg={4} key={exercise.id}>
-                  <Paper
-                    sx={{
-                      p: 3,
-                      borderRadius: 3,
-                      height: "100%",
-                      display: "flex",
-                      flexDirection: "column",
-                      transition: "all 0.3s ease",
-                      boxShadow: theme.shadows[2],
-                      "&:hover": {
-                        transform: "translateY(-5px)",
-                        boxShadow: theme.shadows[6],
-                      },
-                    }}
+        <DialogContent>
+          {modalType === "api" ? (
+            <>
+              <Box
+                sx={{
+                  mt: 3,
+                  display: "grid",
+                  gap: 3,
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                }}
+              >
+                <FormControl fullWidth>
+                  <InputLabel>Vücut Bölgesi</InputLabel>
+                  <Select
+                    value={filters.bodyPart}
+                    onChange={(e) =>
+                      setFilters({ ...filters, bodyPart: e.target.value })
+                    }
                   >
-                    <Chip
-                      label={
-                        TRANSLATIONS.equipment[
-                          exercise.equipment.toLowerCase()
-                        ] || exercise.equipment
-                      }
-                      color="secondary"
-                      size="small"
-                      sx={{
-                        position: "absolute",
-                        top: 10,
-                        right: 10,
-                        fontWeight: 600,
-                        textTransform: "uppercase",
-                      }}
-                    />
-                    <Typography
-                      variant="h6"
-                      sx={{
-                        mb: 1.5,
-                        fontWeight: 700,
-                        color: theme.palette.text.primary,
-                      }}
-                    >
-                      {exercise.name}
-                    </Typography>
+                    {BODY_PARTS.map((part) => (
+                      <MenuItem key={part} value={part}>
+                        {TRANSLATIONS.bodyParts[part]}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
 
-                    <Box sx={{ mb: 2 }}>
+                <FormControl fullWidth>
+                  <InputLabel>Ekipman</InputLabel>
+                  <Select
+                    value={filters.equipment}
+                    onChange={(e) =>
+                      setFilters({ ...filters, equipment: e.target.value })
+                    }
+                  >
+                    {EQUIPMENTS.map((eq) => (
+                      <MenuItem key={eq} value={eq}>
+                        {TRANSLATIONS.equipment[eq]}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <TextField
+                  label="Egzersiz Adı Ara"
+                  value={filters.name}
+                  onChange={(e) =>
+                    setFilters({ ...filters, name: e.target.value })
+                  }
+                />
+              </Box>
+
+              <Button
+                variant="contained"
+                onClick={fetchExercises}
+                disabled={loading}
+                fullWidth
+                sx={{ my: 3 }}
+              >
+                Egzersizleri Getir
+              </Button>
+
+              {loading && (
+                <CircularProgress
+                  sx={{ display: "block", margin: "20px auto" }}
+                />
+              )}
+
+              {error && (
+                <Alert severity="error" sx={{ mb: 3 }}>
+                  {error}
+                </Alert>
+              )}
+
+              <Grid container spacing={3}>
+                {apiExercises.map((exercise) => (
+                  <Grid item xs={12} md={6} key={exercise.id}>
+                    <Paper sx={{ p: 2, position: "relative" }}>
                       <Chip
-                        label={`Hedef: ${
-                          TRANSLATIONS.target[exercise.target] ||
-                          exercise.target
-                        }`}
-                        color="primary"
+                        label={exercise.equipment}
+                        color="secondary"
                         size="small"
-                        sx={{ mr: 1 }}
+                        sx={{ position: "absolute", right: 8, top: 8 }}
                       />
-                    </Box>
-
-                    <Box sx={{ flexGrow: 1 }}>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          whiteSpace: "pre-line",
-                          lineHeight: 1.6,
-                          color: theme.palette.text.secondary,
+                      <Typography variant="h6">{exercise.name}</Typography>
+                      <Typography variant="body2">
+                        Hedef: {exercise.target}
+                      </Typography>
+                      <Box sx={{ maxHeight: 100, overflow: "auto", my: 1 }}>
+                        {exercise.instructions?.map((step, i) => (
+                          <Typography key={i} variant="body2">
+                            {i + 1}. {step}
+                          </Typography>
+                        ))}
+                      </Box>
+                      <Button
+                        variant="outlined"
+                        onClick={() => {
+                          setExercises((prev) => [
+                            ...prev,
+                            {
+                              id: Date.now().toString(),
+                              title: exercise.name,
+                              content: `Hedef: ${exercise.target}\nEkipman: ${
+                                exercise.equipment
+                              }\nTalimatlar:\n${exercise.instructions
+                                ?.map((s, i) => `${i + 1}. ${s}`)
+                                .join("\n")}`,
+                            },
+                          ]);
+                          toast.success("Egzersiz eklendi!");
                         }}
                       >
-                        {exercise.instructions
-                          .slice(0, 3)
-                          .map((step, index) => (
-                            <div key={index}>
-                              <strong>{index + 1}.</strong> {step}
-                            </div>
-                          ))}
-                      </Typography>
-                    </Box>
+                        Ekle
+                      </Button>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
 
-                    <Button
-                      startIcon={<Add />}
-                      onClick={() => handleAddExercise(exercise)}
-                      sx={{
-                        mt: 2,
-                        alignSelf: "flex-start",
-                        fontWeight: 600,
-                        textTransform: "uppercase",
-                      }}
-                      variant="contained"
-                      color="primary"
-                    >
-                      Listeye Ekle
-                    </Button>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
+              <Box sx={{ textAlign: "center", mt: 3 }}>
+                <Button variant="text" onClick={() => setModalType("custom")}>
+                  Özel Egzersiz Oluştur
+                </Button>
+              </Box>
+            </>
+          ) : (
+            <Box sx={{ mt: 2 }}>
+              <TextField
+                label="Egzersiz Adı*"
+                fullWidth
+                value={customExercise.title}
+                onChange={(e) =>
+                  setCustomExercise({
+                    ...customExercise,
+                    title: e.target.value,
+                  })
+                }
+                sx={{ mb: 2 }}
+              />
+
+              <TextField
+                label="Hedef Bölge"
+                fullWidth
+                value={customExercise.target}
+                onChange={(e) =>
+                  setCustomExercise({
+                    ...customExercise,
+                    target: e.target.value,
+                  })
+                }
+                sx={{ mb: 2 }}
+              />
+
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Ekipman</InputLabel>
+                <Select
+                  value={customExercise.equipment}
+                  onChange={(e) =>
+                    setCustomExercise({
+                      ...customExercise,
+                      equipment: e.target.value,
+                    })
+                  }
+                >
+                  {EQUIPMENTS.map((eq) => (
+                    <MenuItem key={eq} value={eq}>
+                      {TRANSLATIONS.equipment[eq]}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <TextField
+                label="Talimatlar*"
+                multiline
+                rows={4}
+                fullWidth
+                value={customExercise.instructions}
+                onChange={(e) =>
+                  setCustomExercise({
+                    ...customExercise,
+                    instructions: e.target.value,
+                  })
+                }
+                placeholder="Her bir talimatı yeni satıra yazın"
+              />
+
+              <Box
+                sx={{
+                  mt: 3,
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: 2,
+                }}
+              >
+                <Button variant="outlined" onClick={() => setModalType("api")}>
+                  Geri Dön
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={handleSubmitCustomExercise}
+                >
+                  {customExercise.id ? "Güncelle" : "Kaydet"}
+                </Button>
+              </Box>
+            </Box>
           )}
-        </Box>
-      )}
+        </DialogContent>
+      </Dialog>
 
-      {/* Kullanıcı Egzersiz Formu */}
-      <ExerciseForm
-        onSubmit={handleExerciseSubmit}
-        initialData={editingExercise}
-        setEditingSupplement={setEditingExercise}
-      />
-
-      {/* Kişisel Egzersiz Listesi */}
       {exercises.length === 0 ? (
         <Box
           sx={{
             textAlign: "center",
-            py: 4,
+            p: 4,
             border: `2px dashed ${theme.palette.divider}`,
-            borderRadius: 3,
-            mt: 4,
           }}
         >
-          <img
-            src="/empty-state.svg"
-            alt="Boş liste"
-            style={{ height: 150, opacity: 0.8 }}
-          />
-          <Typography
-            variant="h6"
-            sx={{
-              mt: 2,
-              color: theme.palette.text.secondary,
-            }}
-          >
+          <Typography variant="h6" color="textSecondary">
             Henüz egzersiz eklenmemiş
           </Typography>
         </Box>
       ) : (
-        <Grid container spacing={3} sx={{ mt: 2 }}>
+        <Grid container spacing={3}>
           {exercises.map((exercise) => (
             <Grid item xs={12} md={6} lg={4} key={exercise.id}>
-              <Paper
-                sx={{
-                  p: 3,
-                  borderRadius: 3,
-                  height: "100%",
-                  display: "flex",
-                  flexDirection: "column",
-                  transition: "all 0.3s ease",
-                  boxShadow: theme.shadows[2],
-                  "&:hover": {
-                    transform: "translateY(-3px)",
-                    boxShadow: theme.shadows[4],
-                  },
-                }}
-              >
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    mb: 2,
-                  }}
-                >
+              <Paper sx={{ p: 3, height: "100%", position: "relative" }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
                   <Typography
                     variant="h6"
-                    sx={{
-                      fontWeight: 600,
-                      color: theme.palette.primary.main,
-                    }}
+                    onClick={() =>
+                      setExpandedId(
+                        expandedId === exercise.id ? null : exercise.id
+                      )
+                    }
+                    sx={{ cursor: "pointer", flexGrow: 1 }}
                   >
                     {exercise.title}
                   </Typography>
                   <Box>
                     <IconButton
-                      onClick={() => setEditingExercise(exercise)}
-                      sx={{ color: theme.palette.primary.main }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const instructions = exercise.content
+                          .split("Talimatlar:\n")[1]
+                          ?.split("\n")
+                          .map((line) => line.replace(/^\d+\.\s*/, ""))
+                          .join("\n");
+
+                        setCustomExercise({
+                          id: exercise.id,
+                          title: exercise.title,
+                          target:
+                            exercise.content.match(/Hedef: (.*)/)?.[1] || "",
+                          equipment:
+                            exercise.content.match(/Ekipman: (.*)/)?.[1] || "",
+                          instructions: instructions || "",
+                        });
+                        setModalType("custom");
+                        setOpenModal(true);
+                      }}
                     >
                       <Edit />
                     </IconButton>
                     <IconButton
-                      onClick={() =>
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setExercises(
                           exercises.filter((e) => e.id !== exercise.id)
-                        )
-                      }
-                      sx={{ color: theme.palette.error.main }}
+                        );
+                      }}
                     >
                       <Delete />
                     </IconButton>
                   </Box>
                 </Box>
 
-                <Typography
-                  variant="body2"
-                  sx={{
-                    whiteSpace: "pre-line",
-                    lineHeight: 1.6,
-                    flexGrow: 1,
-                    color: theme.palette.text.secondary,
-                    "& strong": {
-                      color: theme.palette.text.primary,
-                    },
-                  }}
-                >
-                  {exercise.content.split("\n").map((line, index) => (
-                    <div key={index}>
-                      {line.startsWith("Hedef:") ? (
-                        <strong>{line}</strong>
-                      ) : line.startsWith("Ekipman:") ? (
-                        <strong>{line}</strong>
-                      ) : line.startsWith("Talimatlar:") ? (
-                        <strong>{line}</strong>
-                      ) : (
-                        line
-                      )}
-                    </div>
-                  ))}
-                </Typography>
+                <Collapse in={expandedId === exercise.id}>
+                  <Typography sx={{ whiteSpace: "pre-line", mt: 2 }}>
+                    {exercise.content.split("\n").map((line, i) => (
+                      <span key={i} style={{ display: "block" }}>
+                        {line.startsWith("Hedef:") ||
+                        line.startsWith("Ekipman:") ||
+                        line.startsWith("Talimatlar:") ? (
+                          <strong>{line}</strong>
+                        ) : (
+                          line
+                        )}
+                      </span>
+                    ))}
+                  </Typography>
+                </Collapse>
               </Paper>
             </Grid>
           ))}

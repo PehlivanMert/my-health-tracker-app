@@ -80,29 +80,43 @@ const Supplements = ({ supplements, setSupplements }) => {
 
   return (
     <Paper sx={{ p: 3, borderRadius: 4, boxShadow: theme.shadows[3] }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 4 }}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", sm: "row" },
+          justifyContent: "space-between",
+          alignItems: { xs: "flex-end", sm: "center" }, // xs'te sağa dayalı olması için flex-end
+          mb: 4,
+          gap: 2,
+        }}
+      >
         <Typography
           variant="h4"
-          sx={{ display: "flex", alignItems: "center", gap: 2 }}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+          }}
         >
           <LocalPharmacy fontSize="large" />
-          Takviye Yönetim Paneli
+          Egzersiz Yönetim Paneli
         </Typography>
+
         <Button
           variant="contained"
           startIcon={<Add />}
           onClick={() => {
-            setEditingSupplement({
+            setCustomExercise({
               id: null,
               title: "",
-              type: "",
-              dosage: "",
+              target: "",
+              equipment: "",
               instructions: "",
             });
             setOpenModal(true);
           }}
         >
-          Yeni Takviye Ekle
+          Yeni Egzersiz Ekle
         </Button>
       </Box>
 

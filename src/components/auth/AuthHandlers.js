@@ -59,7 +59,8 @@ export const handleRegister = async (
 
     // E-posta doğrulama gönderimi
     await sendEmailVerification(userCredential.user);
-
+    const now = Date.now();
+    localStorage.setItem("lastEmailSent", now);
     setUser(userCredential.user);
     toast.success("Kayıt başarılı! E-posta doğrulama gönderildi.");
     setLoginData({ username: "", password: "" });

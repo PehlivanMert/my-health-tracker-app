@@ -159,14 +159,28 @@ const Exercises = ({ exercises, setExercises }) => {
 
   return (
     <Paper sx={{ p: 3, borderRadius: 4, boxShadow: theme.shadows[3] }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 4 }}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", sm: "row" },
+          justifyContent: "space-between",
+          alignItems: { xs: "flex-end", sm: "center" }, // xs'te sağa dayalı olması için flex-end
+          mb: 4,
+          gap: 2,
+        }}
+      >
         <Typography
           variant="h4"
-          sx={{ display: "flex", alignItems: "center", gap: 2 }}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+          }}
         >
           <FitnessCenter fontSize="large" />
           Egzersiz Yönetim Paneli
         </Typography>
+
         <Button
           variant="contained"
           startIcon={<Add />}

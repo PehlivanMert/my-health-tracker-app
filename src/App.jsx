@@ -315,30 +315,28 @@ function App() {
   // -------------------------
   // Email Doğrulama: Yeniden Gönderme İşlemi
   // -------------------------
-
   useEffect(() => {
-    const savedTime = localStorage.getItem("lastEmailSent");
-    if (savedTime) {
-      const remaining = Math.max(0, 60000 - (Date.now() - parseInt(savedTime)));
-      setRemainingTime(remaining);
-
-      if (remaining > 0) {
-        const timer = setInterval(() => {
-          setRemainingTime((prev) => Math.max(0, prev - 1000));
-        }, 1000);
-        return () => clearInterval(timer);
+    const timer = setInterval(() => {
+      const savedTime = localStorage.getItem("lastEmailSent");
+      if (savedTime) {
+        const timeElapsed = Date.now() - parseInt(savedTime);
+        const newRemaining = Math.max(60000 - timeElapsed, 0); // 60 saniye
+        setRemainingTime(newRemaining);
+      } else {
+        setRemainingTime(0);
       }
-    }
+    }, 1000);
+
+    return () => clearInterval(timer);
   }, []);
 
   const handleResendEmail = async () => {
     try {
       await sendEmailVerification(auth.currentUser);
-      const now = Date.now();
-      localStorage.setItem("lastEmailSent", now);
+      localStorage.setItem("lastEmailSent", Date.now());
       setRemainingTime(60000);
     } catch (error) {
-      toast.error("Gönderme hatası: " + error.message);
+      console.error("Email yeniden gönderme hatası:", error);
     }
   };
 
@@ -373,11 +371,32 @@ function App() {
           <Typography variant="body1" sx={{ mb: 3 }}>
             Lütfen email adresinize gönderilen doğrulama linkine tıklayın.
           </Typography>
+
+          {/* Buton: eğer remainingTime > 0 ise devre dışı */}
           <Button onClick={handleResendEmail} disabled={remainingTime > 0}>
-            {remainingTime > 0
-              ? `${Math.ceil(remainingTime / 1000)} saniye sonra tekrar deneyin`
-              : "Doğrulama Emailini Gönder"}
+            Doğrulama Emailini Gönder
           </Button>
+
+          {/* Sayaç bilgisi: remainingTime > 0 ise geri sayım göster, aksi halde "şu an gönderilebilir" */}
+          {remainingTime > 0 ? (
+            <Typography
+              variant="caption"
+              color="textSecondary"
+              sx={{ mt: 1, display: "block" }}
+            >
+              {Math.ceil(remainingTime / 1000)} saniye sonra yeniden
+              gönderebilirsiniz.
+            </Typography>
+          ) : (
+            <Typography
+              variant="caption"
+              color="textSecondary"
+              sx={{ mt: 1, display: "block" }}
+            >
+              Şu an gönderilebilir.
+            </Typography>
+          )}
+
           <Typography variant="body2" sx={{ mt: 2 }}>
             Email almadıysanız lütfen spam kutunuzu kontrol edin. Email
             gelmediyse, lütfen 1 dakika bekleyin ve tekrar deneyin.

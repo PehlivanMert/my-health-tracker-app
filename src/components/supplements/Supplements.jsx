@@ -99,24 +99,24 @@ const Supplements = ({ supplements, setSupplements }) => {
           }}
         >
           <LocalPharmacy fontSize="large" />
-          Egzersiz Yönetim Paneli
+          Takviye Yönetim Paneli
         </Typography>
 
         <Button
           variant="contained"
           startIcon={<Add />}
           onClick={() => {
-            setCustomExercise({
+            setEditingSupplement({
               id: null,
               title: "",
-              target: "",
-              equipment: "",
+              type: "",
+              dosage: "",
               instructions: "",
             });
             setOpenModal(true);
           }}
         >
-          Yeni Egzersiz Ekle
+          Yeni Takviye Ekle
         </Button>
       </Box>
 

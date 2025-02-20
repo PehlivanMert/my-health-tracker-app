@@ -238,7 +238,18 @@ const Supplements = ({ supplements, setSupplements }) => {
         <Grid container spacing={3}>
           {supplements.map((supplement) => (
             <Grid item xs={12} md={6} lg={4} key={supplement.id}>
-              <Paper sx={{ p: 3, height: "100%", position: "relative" }}>
+              <Paper
+                sx={{
+                  p: 3,
+                  height: "100%",
+                  position: "relative",
+                  transition: "transform 0.3s, box-shadow 0.3s",
+                  "&:hover": {
+                    transform: "translateY(-5px)",
+                    boxShadow: theme.shadows[6],
+                  },
+                }}
+              >
                 <Box sx={{ display: "flex", justifyContent: "space-between" }}>
                   <Typography
                     variant="h6"

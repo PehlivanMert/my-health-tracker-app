@@ -166,6 +166,7 @@ const ProTips = ({ additionalInfo }) => {
                   p: 3,
                   height: "100%",
                   borderRadius: 2,
+
                   background:
                     "linear-gradient(145deg, #ffffff 0%, #f5f5f5 100%)",
                   position: "relative", // Absolute konumlandırılacak bölümler için parent burada konumlandırılmalı

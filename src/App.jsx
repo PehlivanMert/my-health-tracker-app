@@ -20,11 +20,7 @@ import "react-toastify/dist/ReactToastify.css";
 import "tippy.js/dist/tippy.css";
 import "./App.css";
 import UserAuth from "./components/auth/UserAuth";
-import {
-  getInitialTheme,
-  handleThemeChange,
-  themes,
-} from "./utils/weather-theme-notify/ThemeManager";
+
 import WeatherWidget from "./utils/weather-theme-notify/WeatherWidget";
 import { requestNotificationPermission } from "./utils/weather-theme-notify/NotificationManager";
 import {
@@ -64,9 +60,8 @@ function App() {
     requestNotificationPermission();
   }, []);
 
-  // Tema ve Additional Info
   // additionalInfo yalnızca ilk oluşturulurken eklenip, sonrasında kullanıcı müdahalesi kapalı
-  const [theme, setTheme] = useState(getInitialTheme);
+
   const [additionalInfo, setAdditionalInfo] = useState(constantAdditionalInfo);
 
   // -------------------------
@@ -166,19 +161,6 @@ function App() {
   }, []);
 
   // -------------------------
-  // Tema Güncellemesi
-  // -------------------------
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    if (user) {
-      const userDocRef = doc(db, "users", user.uid);
-      updateDoc(userDocRef, { theme }).catch((error) =>
-        console.error("Tema güncelleme hatası:", error)
-      );
-    }
-  }, [theme, user]);
-
-  // -------------------------
   // Firestore’dan Kullanıcı Verilerini Yükleme
   // (Additional Info: Sadece ilk oluşturma sırasında eklenir, sonrasında güncellenmez)
   // -------------------------
@@ -200,7 +182,6 @@ function App() {
           setExercises(data.exercises ?? initialExercises);
           setSupplements(data.supplements ?? initialSupplements);
           setAdditionalInfo(data.additionalInfo ?? constantAdditionalInfo);
-          setTheme(data.theme ?? getInitialTheme());
 
           let updatedData = {};
           if (data.additionalInfo === undefined) {
@@ -215,14 +196,12 @@ function App() {
             exercises: initialExercises,
             supplements: initialSupplements,
             additionalInfo: constantAdditionalInfo,
-            theme: getInitialTheme(),
           };
           await setDoc(userDocRef, initialData);
           setRoutines(initialRoutines);
           setExercises(initialExercises);
           setSupplements(initialSupplements);
           setAdditionalInfo(constantAdditionalInfo);
-          setTheme(getInitialTheme());
         }
 
         isInitialLoad.current = false; // İlk yükleme tamamlandı
@@ -233,7 +212,6 @@ function App() {
 
     loadUserData();
   }, [user]);
-
   // -------------------------
   // Rutinler Güncelleme (Firestore’a yazma)
   // -------------------------
@@ -315,28 +293,30 @@ function App() {
   // -------------------------
   // Email Doğrulama: Yeniden Gönderme İşlemi
   // -------------------------
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const savedTime = localStorage.getItem("lastEmailSent");
-      if (savedTime) {
-        const timeElapsed = Date.now() - parseInt(savedTime);
-        const newRemaining = Math.max(60000 - timeElapsed, 0); // 60 saniye
-        setRemainingTime(newRemaining);
-      } else {
-        setRemainingTime(0);
-      }
-    }, 1000);
 
-    return () => clearInterval(timer);
+  useEffect(() => {
+    const savedTime = localStorage.getItem("lastEmailSent");
+    if (savedTime) {
+      const remaining = Math.max(0, 60000 - (Date.now() - parseInt(savedTime)));
+      setRemainingTime(remaining);
+
+      if (remaining > 0) {
+        const timer = setInterval(() => {
+          setRemainingTime((prev) => Math.max(0, prev - 1000));
+        }, 1000);
+        return () => clearInterval(timer);
+      }
+    }
   }, []);
 
   const handleResendEmail = async () => {
     try {
       await sendEmailVerification(auth.currentUser);
-      localStorage.setItem("lastEmailSent", Date.now());
+      const now = Date.now();
+      localStorage.setItem("lastEmailSent", now);
       setRemainingTime(60000);
     } catch (error) {
-      console.error("Email yeniden gönderme hatası:", error);
+      toast.error("Gönderme hatası: " + error.message);
     }
   };
 
@@ -371,32 +351,11 @@ function App() {
           <Typography variant="body1" sx={{ mb: 3 }}>
             Lütfen email adresinize gönderilen doğrulama linkine tıklayın.
           </Typography>
-
-          {/* Buton: eğer remainingTime > 0 ise devre dışı */}
           <Button onClick={handleResendEmail} disabled={remainingTime > 0}>
-            Doğrulama Emailini Gönder
+            {remainingTime > 0
+              ? `${Math.ceil(remainingTime / 1000)} saniye sonra tekrar deneyin`
+              : "Doğrulama Emailini Gönder"}
           </Button>
-
-          {/* Sayaç bilgisi: remainingTime > 0 ise geri sayım göster, aksi halde "şu an gönderilebilir" */}
-          {remainingTime > 0 ? (
-            <Typography
-              variant="caption"
-              color="textSecondary"
-              sx={{ mt: 1, display: "block" }}
-            >
-              {Math.ceil(remainingTime / 1000)} saniye sonra yeniden
-              gönderebilirsiniz.
-            </Typography>
-          ) : (
-            <Typography
-              variant="caption"
-              color="textSecondary"
-              sx={{ mt: 1, display: "block" }}
-            >
-              Şu an gönderilebilir.
-            </Typography>
-          )}
-
           <Typography variant="body2" sx={{ mt: 2 }}>
             Email almadıysanız lütfen spam kutunuzu kontrol edin. Email
             gelmediyse, lütfen 1 dakika bekleyin ve tekrar deneyin.
@@ -417,18 +376,94 @@ function App() {
     </Container>
   ) : (
     <div className="app-container">
-      <AppBar position="static">
-        <Toolbar className="toolbar-container">
-          <Box className="time-date-box">
-            <Typography variant="h6">
+      <AppBar
+        position="static"
+        sx={{
+          background:
+            "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
+          boxShadow: "0 4px 20px rgba(33, 150, 243, 0.25)",
+          position: "relative",
+          overflow: "hidden",
+          "&::after": {
+            content: '""',
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: "3px",
+            background: "rgba(255, 255, 255, 0.1)",
+          },
+          transition: "all 0.3s ease",
+          "&:hover": {
+            boxShadow: "0 6px 25px rgba(33, 150, 243, 0.35)",
+          },
+        }}
+      >
+        <Toolbar
+          sx={{
+            flexDirection: { xs: "column", sm: "row" },
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: { xs: 2, sm: 0 },
+            py: { xs: 2, sm: 1.5 },
+            px: 4,
+          }}
+        >
+          <Box
+            sx={{
+              transition: "all 0.3s ease",
+              "&:hover": {
+                transform: "translateX(5px)",
+              },
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 600,
+                letterSpacing: "0.5px",
+                color: "rgba(255, 255, 255, 0.95)",
+                textShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+              }}
+            >
               {format(currentTime, "HH:mm - dd MMMM yyyy")}
             </Typography>
           </Box>
-          <Box>
+
+          <Box
+            sx={{
+              background: "rgba(255, 255, 255, 0.1)",
+              backdropFilter: "blur(8px)",
+              borderRadius: 3,
+              padding: "8px 16px",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                background: "rgba(255, 255, 255, 0.15)",
+                transform: "translateY(-2px)",
+              },
+            }}
+          >
             <WeatherWidget />
           </Box>
+
           <Button
-            color="inherit"
+            variant="contained"
+            sx={{
+              borderRadius: 3,
+              textTransform: "none",
+              padding: "8px 24px",
+              fontSize: "0.95rem",
+              fontWeight: 500,
+              background: "rgba(255, 255, 255, 0.15)",
+              backdropFilter: "blur(8px)",
+              boxShadow: "0 3px 12px rgba(0, 0, 0, 0.1)",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                background: "rgba(255, 255, 255, 0.25)",
+                boxShadow: "0 5px 15px rgba(0, 0, 0, 0.2)",
+                transform: "translateY(-2px)",
+              },
+            }}
             onClick={() => {
               auth.signOut();
               setUser(null);
@@ -444,10 +479,84 @@ function App() {
         onChange={(event, newTab) => handleTabChange(newTab)}
         variant="scrollable"
         scrollButtons="auto"
+        textColor="primary"
+        indicatorColor="primary"
         sx={{
           justifyContent: "center",
+          background: "linear-gradient(135deg, #f6f8ff 0%, #ffffff 100%)",
+          position: "relative",
+          boxShadow: "0 4px 20px rgba(33, 150, 243, 0.1)",
+          "&::after": {
+            content: '""',
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: "3px",
+            background:
+              "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
+            opacity: 0.7,
+          },
           "& .MuiTabs-flexContainer": {
             justifyContent: { xs: "flex-start", md: "center" },
+            gap: 1,
+          },
+          "& .MuiTabs-indicator": {
+            background:
+              "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
+            height: 3,
+            borderRadius: "3px 3px 0 0",
+            boxShadow: "0 -2px 8px rgba(33, 150, 243, 0.2)",
+          },
+          "& .MuiTab-root": {
+            textTransform: "none",
+            fontWeight: 600,
+            fontSize: { xs: "0.9rem", md: "1rem" },
+            margin: "0 5px",
+            minWidth: "auto",
+            padding: "12px 24px",
+            borderRadius: "8px 8px 0 0",
+            transition: "all 0.3s ease",
+            color: "rgba(0, 0, 0, 0.6)",
+            "&:hover": {
+              backgroundColor: "rgba(33, 150, 243, 0.08)",
+              transform: "translateY(-2px)",
+              color: "#2196F3",
+            },
+            "&.Mui-selected": {
+              color: "#2196F3",
+              background: "rgba(33, 150, 243, 0.08)",
+              fontWeight: 700,
+            },
+            "&::before": {
+              content: '""',
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: "3px",
+              background: "transparent",
+              transition: "all 0.3s ease",
+            },
+            "&.Mui-selected::before": {
+              background:
+                "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
+              opacity: 0.5,
+            },
+          },
+          "& .MuiTabScrollButton-root": {
+            width: 48,
+            transition: "all 0.3s ease",
+            "&.Mui-disabled": {
+              opacity: 0,
+            },
+            "&:hover": {
+              backgroundColor: "rgba(33, 150, 243, 0.08)",
+            },
+            "& .MuiSvgIcon-root": {
+              fontSize: "1.5rem",
+              color: "#2196F3",
+            },
           },
         }}
       >
@@ -489,29 +598,77 @@ function App() {
           setEditingSupplement={setEditingSupplement}
         />
       )}
-      {activeTab === 3 && <ProTips additionalInfo={additionalInfo} />}
+      {activeTab === 3 && (
+        <ProTips
+          additionalInfo={additionalInfo}
+          setAdditionalInfo={setAdditionalInfo}
+          user={user}
+        />
+      )}
       {activeTab === 4 && <CalendarComponent user={user} />}
 
-      <Box className="footer-container">
-        <Typography variant="body2">© 2025 Sağlık Takip Sistemi</Typography>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <Typography variant="body2">Tema:</Typography>
-          <Select
-            id="theme-select"
-            name="theme"
-            value={theme}
-            onChange={(e) => handleThemeChange(e.target.value, setTheme)}
-            size="small"
-            sx={{ width: 150 }}
-          >
-            {themes.map((t) => (
-              <MenuItem key={t.value} value={t.value}>
-                {t.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </Box>
+      <Box
+        className="footer-container"
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: "center",
+          justifyContent: "space-between",
+          p: 1.5,
+          background: "linear-gradient(135deg, #f6f8ff 0%, #ffffff 100%)",
+          borderTop: "1px solid rgba(33, 150, 243, 0.1)",
+          position: "relative", // relative yerine fixed
+          bottom: 0, // sayfanın altına sabitlemek için
+          left: 0, // sola hizalamak için
+          width: "100%", // genişlik sayfanın tamamını kaplaması için
+          "&::before": {
+            content: '""',
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: "3px",
+            background:
+              "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
+            opacity: 0.5,
+          },
+          boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.05)",
+          gap: { xs: 2, sm: 0 },
+        }}
+      >
+        <Typography
+          variant="body2"
+          sx={{
+            fontWeight: 600,
+            background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            transition: "all 0.3s ease",
+            "&:hover": {
+              transform: "translateX(5px)",
+            },
+          }}
+        >
+          © 2025 Sağlık ve Rutin Takip Sistemi
+        </Typography>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+            background: "rgba(255, 255, 255, 0.8)",
+            backdropFilter: "blur(8px)",
+            padding: "8px 16px",
+            borderRadius: 3,
+            transition: "all 0.3s ease",
+            "&:hover": {
+              transform: "translateY(-2px)",
+              boxShadow: "0 4px 15px rgba(33, 150, 243, 0.1)",
+            },
+          }}
+        ></Box>
       </Box>
+
       {/* İhtiyaca göre ToastContainer'lardan bir tanesini kullanabilirsiniz */}
       <ToastContainer position="bottom-right" autoClose={3000} />
       <ToastContainer
@@ -524,7 +681,6 @@ function App() {
         pauseOnFocusLoss
         draggable
         pauseOnHover
-        theme="light"
       />
     </div>
   );

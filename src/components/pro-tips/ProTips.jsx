@@ -36,8 +36,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { db } from "../auth/firebaseConfig";
 import { doc, updateDoc } from "firebase/firestore";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
   const [openModal, setOpenModal] = useState(false);
   const [openTastyModal, setOpenTastyModal] = useState(false);

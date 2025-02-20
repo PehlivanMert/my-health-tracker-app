@@ -367,6 +367,7 @@ const DailyRoutine = ({
   return (
     <Box
       sx={{
+        background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
         width: "100%",
         maxWidth: 1200,
         mx: "auto",
@@ -408,7 +409,7 @@ const DailyRoutine = ({
           p: isMobile ? 1 : 3,
           borderRadius: 4,
           mb: 2,
-          background: "linear-gradient(145deg, #f5f5f5 0%, #ffffff 100%)",
+          background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
           boxShadow: theme.shadows[3],
         }}
       >
@@ -522,7 +523,7 @@ const DailyRoutine = ({
                                 p: 1,
                                 mb: 1,
                                 background:
-                                  "linear-gradient(145deg, #ffffff 0%, #f8f8f8 100%)",
+                                  "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 100%)",
                                 borderRadius: 2,
                                 transition: "all 0.2s ease-in-out",
                                 opacity: routine.checked ? 0.4 : 1,
@@ -535,6 +536,8 @@ const DailyRoutine = ({
                                 "&:hover": {
                                   transform: "translateX(5px)",
                                   boxShadow: theme.shadows[1],
+                                  background:
+                                    "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 50%, #f0e6d2 100%)",
                                 },
                               }}
                             >

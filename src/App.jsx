@@ -34,6 +34,7 @@ import Exercises from "./components/exercises/exercise";
 import Supplements from "./components/supplements/Supplements";
 import ProTips from "./components/pro-tips/ProTips";
 import CalendarComponent from "./components/calendar/CalendarComponent";
+import WellnessTracker from "./components/wellnesstracker/WellnessTracker";
 import { auth, db } from "./components/auth/firebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
 import { sendEmailVerification } from "firebase/auth";
@@ -62,7 +63,12 @@ function App() {
 
   // additionalInfo yalnızca ilk oluşturulurken eklenip, sonrasında kullanıcı müdahalesi kapalı
 
-  const [additionalInfo, setAdditionalInfo] = useState(constantAdditionalInfo);
+  const [additionalInfo, setAdditionalInfo] = useState({
+    ...constantAdditionalInfo,
+    recipes: Array.isArray(constantAdditionalInfo.recipes)
+      ? constantAdditionalInfo.recipes
+      : Object.values(constantAdditionalInfo.recipes),
+  });
 
   // -------------------------
   // Sekme Yönetimi
@@ -170,19 +176,22 @@ function App() {
   useEffect(() => {
     const loadUserData = async () => {
       if (!user) return;
-
       try {
         const userDocRef = doc(db, "users", user.uid);
         const docSnap = await getDoc(userDocRef, { source: "server" });
-
         if (docSnap.exists()) {
           const data = docSnap.data();
-
+          const loadedAdditionalInfo =
+            data.additionalInfo ?? constantAdditionalInfo;
           setRoutines(data.routines ?? initialRoutines);
           setExercises(data.exercises ?? initialExercises);
           setSupplements(data.supplements ?? initialSupplements);
-          setAdditionalInfo(data.additionalInfo ?? constantAdditionalInfo);
-
+          setAdditionalInfo({
+            ...loadedAdditionalInfo,
+            recipes: Array.isArray(loadedAdditionalInfo.recipes)
+              ? loadedAdditionalInfo.recipes
+              : Object.values(loadedAdditionalInfo.recipes),
+          });
           let updatedData = {};
           if (data.additionalInfo === undefined) {
             updatedData.additionalInfo = constantAdditionalInfo;
@@ -201,15 +210,18 @@ function App() {
           setRoutines(initialRoutines);
           setExercises(initialExercises);
           setSupplements(initialSupplements);
-          setAdditionalInfo(constantAdditionalInfo);
+          setAdditionalInfo({
+            ...constantAdditionalInfo,
+            recipes: Array.isArray(constantAdditionalInfo.recipes)
+              ? constantAdditionalInfo.recipes
+              : Object.values(constantAdditionalInfo.recipes),
+          });
         }
-
-        isInitialLoad.current = false; // İlk yükleme tamamlandı
+        isInitialLoad.current = false;
       } catch (error) {
         console.error("Veri yükleme hatası:", error);
       }
     };
-
     loadUserData();
   }, [user]);
   // -------------------------
@@ -571,7 +583,7 @@ function App() {
           }}
         />
         <Tab
-          label="Egzersizler"
+          label="Fitness Takip Paneli"
           sx={{
             background: "#fff3e0", // Açık turuncu tonu
             borderRadius: "8px",
@@ -591,7 +603,7 @@ function App() {
           }}
         />
         <Tab
-          label="Pro İpuçları"
+          label="Sağlıklı Yaşam Önerileri"
           sx={{
             background: "#e8f5e9", // Açık yeşil tonu
             borderRadius: "8px",
@@ -607,6 +619,16 @@ function App() {
             borderRadius: "8px",
             "&:hover": {
               background: "#fff9c4", // Hover efekti
+            },
+          }}
+        />
+        <Tab
+          label="Yaşam Kalitesi Paneli"
+          sx={{
+            background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
+            borderRadius: "8px",
+            "&:hover": {
+              background: "#b3e5fc",
             },
           }}
         />
@@ -651,6 +673,20 @@ function App() {
         />
       )}
       {activeTab === 4 && <CalendarComponent user={user} />}
+      {activeTab === 5 && (
+        <WellnessTracker
+          routines={routines}
+          setRoutines={setRoutines}
+          newRoutine={newRoutine}
+          setNewRoutine={setNewRoutine}
+          handleSaveRoutine={handleSaveRoutine}
+          editRoutineId={editRoutineId}
+          setEditRoutineId={setEditRoutineId}
+          deleteRoutine={deleteRoutine}
+          completedRoutines={completedRoutines}
+          totalRoutines={totalRoutines}
+        />
+      )}
 
       <Box
         className="footer-container"

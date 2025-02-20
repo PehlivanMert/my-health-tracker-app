@@ -79,7 +79,15 @@ const Supplements = ({ supplements, setSupplements }) => {
   };
 
   return (
-    <Paper sx={{ p: 3, borderRadius: 4, boxShadow: theme.shadows[3] }}>
+    <Paper
+      sx={{
+        background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
+        p: 3,
+        borderRadius: 4,
+        boxShadow: theme.shadows[3],
+        minHeight: "100vh",
+      }}
+    >
       <Box
         sx={{
           display: "flex",
@@ -240,6 +248,8 @@ const Supplements = ({ supplements, setSupplements }) => {
             <Grid item xs={12} md={6} lg={4} key={supplement.id}>
               <Paper
                 sx={{
+                  background:
+                    "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 100%)",
                   p: 3,
                   height: "100%",
                   position: "relative",
@@ -247,6 +257,8 @@ const Supplements = ({ supplements, setSupplements }) => {
                   "&:hover": {
                     transform: "translateY(-5px)",
                     boxShadow: theme.shadows[6],
+                    background:
+                      "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 50%, #f0e6d2 100%)",
                   },
                 }}
               >

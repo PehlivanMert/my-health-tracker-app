@@ -483,7 +483,7 @@ function App() {
         indicatorColor="primary"
         sx={{
           justifyContent: "center",
-          background: "linear-gradient(135deg, #f6f8ff 0%, #ffffff 100%)",
+          background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
           position: "relative",
           boxShadow: "0 4px 20px rgba(33, 150, 243, 0.1)",
           "&::after": {
@@ -560,11 +560,56 @@ function App() {
           },
         }}
       >
-        <Tab label="Günlük Rutin" />
-        <Tab label="Egzersizler" />
-        <Tab label="Takviyeler" />
-        <Tab label="Pro Öneriler" />
-        <Tab label="Takvim" />
+        <Tab
+          label="Günlük Rutin"
+          sx={{
+            background: "#e6f7ff", // Açık mavi tonu
+            borderRadius: "8px", // Kenarları yuvarlatma
+            "&:hover": {
+              background: "#b3e5fc", // Hover efekti
+            },
+          }}
+        />
+        <Tab
+          label="Egzersizler"
+          sx={{
+            background: "#fff3e0", // Açık turuncu tonu
+            borderRadius: "8px",
+            "&:hover": {
+              background: "#ffe0b2", // Hover efekti
+            },
+          }}
+        />
+        <Tab
+          label="Takviyeler"
+          sx={{
+            background: "#f3e5f5", // Açık mor tonu
+            borderRadius: "8px",
+            "&:hover": {
+              background: "#e1bee7", // Hover efekti
+            },
+          }}
+        />
+        <Tab
+          label="Pro İpuçları"
+          sx={{
+            background: "#e8f5e9", // Açık yeşil tonu
+            borderRadius: "8px",
+            "&:hover": {
+              background: "#c8e6c9", // Hover efekti
+            },
+          }}
+        />
+        <Tab
+          label="Takvim"
+          sx={{
+            background: "#fffde7", // Açık sarı tonu
+            borderRadius: "8px",
+            "&:hover": {
+              background: "#fff9c4", // Hover efekti
+            },
+          }}
+        />
       </Tabs>
       {activeTab === 0 && (
         <DailyRoutine
@@ -615,7 +660,7 @@ function App() {
           alignItems: "center",
           justifyContent: "space-between",
           p: 1.5,
-          background: "linear-gradient(135deg, #f6f8ff 0%, #ffffff 100%)",
+          background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
           borderTop: "1px solid rgba(33, 150, 243, 0.1)",
           position: "relative", // relative yerine fixed
           bottom: 0, // sayfanın altına sabitlemek için

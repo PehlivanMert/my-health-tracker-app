@@ -74,3 +74,13 @@
     opacity: 0;
   }
 }
+/* Tüm sayfayı kapsayan genel bir konteyner */
+body {
+  margin: 0 !important;
+  padding: 0 !important;
+  font-family: Arial, sans-serif !important;
+  background: linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%) !important;
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+}

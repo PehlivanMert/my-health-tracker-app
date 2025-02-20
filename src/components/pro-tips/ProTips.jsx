@@ -9,7 +9,14 @@ import StickyNote2Icon from "@mui/icons-material/StickyNote2";
 
 const ProTips = ({ additionalInfo }) => {
   return (
-    <Paper sx={{ p: 3, borderRadius: 2 }}>
+    <Paper
+      sx={{
+        background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
+        p: 3,
+        borderRadius: 2,
+        minHeight: "100vh",
+      }}
+    >
       {/* Ana Başlık */}
       <Typography
         variant="h5"
@@ -48,12 +55,14 @@ const ProTips = ({ additionalInfo }) => {
                   p: 2,
                   height: "100%",
                   background:
-                    "linear-gradient(145deg, #ffffff 0%, #f5f5f5 100%)",
+                    "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 100%)",
                   borderRadius: 2,
                   transition: "transform 0.2s ease-in-out",
                   "&:hover": {
                     transform: "translateY(-3px)",
                     boxShadow: 3,
+                    background:
+                      "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 50%, #f0e6d2 100%)",
                   },
                 }}
               >
@@ -107,12 +116,14 @@ const ProTips = ({ additionalInfo }) => {
                   p: 2,
                   height: "100%",
                   background:
-                    "linear-gradient(145deg, #ffffff 0%, #f5f5f5 100%)",
+                    "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 100%)",
                   borderRadius: 2,
                   transition: "transform 0.2s ease-in-out",
                   "&:hover": {
                     transform: "translateY(-3px)",
                     boxShadow: 3,
+                    background:
+                      "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 50%, #f0e6d2 100%)",
                   },
                 }}
               >
@@ -168,7 +179,7 @@ const ProTips = ({ additionalInfo }) => {
                   borderRadius: 2,
 
                   background:
-                    "linear-gradient(145deg, #ffffff 0%, #f5f5f5 100%)",
+                    "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 100%)",
                   position: "relative", // Absolute konumlandırılacak bölümler için parent burada konumlandırılmalı
                   overflow: "hidden",
                   minHeight: 400, // Her tarifin aynı minimum yüksekliğe sahip olması için
@@ -411,10 +422,12 @@ const ProTips = ({ additionalInfo }) => {
                               justifyContent: "space-between",
                               alignItems: "center",
                               background:
-                                "linear-gradient(145deg, #f5f5f5 0%, #ffffff 100%)",
+                                "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 100%)",
                               transition: "transform 0.2s",
                               "&:hover": {
                                 transform: "translateY(-2px)",
+                                background:
+                                  "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 50%, #f0e6d2 100%)",
                               },
                             }}
                           >
@@ -457,10 +470,12 @@ const ProTips = ({ additionalInfo }) => {
                           justifyContent: "space-between",
                           alignItems: "center",
                           background:
-                            "linear-gradient(145deg, #f5f5f5 0%, #ffffff 100%)",
+                            "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 100%)",
                           transition: "transform 0.2s",
                           "&:hover": {
                             transform: "translateY(-2px)",
+                            background:
+                              "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 50%, #f0e6d2 100%)",
                           },
                         }}
                       >
@@ -505,7 +520,13 @@ const ProTips = ({ additionalInfo }) => {
             {additionalInfo.supplementDetails.newSupplements.items.map(
               (item, index) => (
                 <Grid item xs={12} md={6} key={index}>
-                  <Paper sx={{ p: 2, bgcolor: "background.paper" }}>
+                  <Paper
+                    sx={{
+                      p: 2,
+                      background:
+                        "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 100%)",
+                    }}
+                  >
                     <Typography
                       variant="subtitle1"
                       sx={{ mb: 1, fontWeight: 600 }}
@@ -550,7 +571,12 @@ const ProTips = ({ additionalInfo }) => {
           >
             {additionalInfo.supplementDetails.importantNotes.title}
           </Typography>
-          <Paper sx={{ p: 2, bgcolor: "background.default" }}>
+          <Paper
+            sx={{
+              p: 2,
+              background: "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 100%)",
+            }}
+          >
             <ul style={{ margin: 0, paddingLeft: 24 }}>
               {additionalInfo.supplementDetails.importantNotes.items.map(
                 (note, index) => (
@@ -579,7 +605,7 @@ const ProTips = ({ additionalInfo }) => {
             <Paper
               sx={{
                 p: 2,
-                bgcolor: "background.default",
+                background: "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 100%)",
                 flex: 1,
                 display: "flex",
                 flexDirection: "column",
@@ -609,7 +635,12 @@ const ProTips = ({ additionalInfo }) => {
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 2, bgcolor: "background.default" }}>
+            <Paper
+              sx={{
+                p: 2,
+                background: "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 100%)",
+              }}
+            >
               <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
                 Takviye Kullanımı:
               </Typography>

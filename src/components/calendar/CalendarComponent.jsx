@@ -45,6 +45,8 @@ import "@fullcalendar/core";
 import "@fullcalendar/daygrid";
 import "@fullcalendar/timegrid";
 import "@fullcalendar/multimonth";
+import { lightGreen } from "@mui/material/colors";
+import { color } from "framer-motion";
 
 const CalendarComponent = ({ user }) => {
   const theme = useTheme();
@@ -240,7 +242,7 @@ const CalendarComponent = ({ user }) => {
 
   return (
     <Paper sx={styles.container}>
-      <Box sx={styles.controls}>
+      <Box sx={[styles.controls]}>
         <Button
           variant="contained"
           startIcon={<Add />}
@@ -502,30 +504,39 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     height: "95vh",
+    background: {
+      xs: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)", // Küçük ekranlar
+      md: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)", // Orta ve büyük ekranlar
+      lg: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)", // Büyük ekranlar
+    },
   },
   controls: {
     mb: 2,
+    color: "#2196F3",
   },
   calendarWrapper: {
     flex: 1,
     minHeight: 600,
-    borderRadius: 2,
+    borderRadius: 5,
+    background: "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 100%)",
     overflow: "hidden",
     "& .fc": {
       fontFamily: "inherit",
+      color: "#2196F3",
       height: "100%",
       "& th": {
-        backgroundColor: "action.selected",
+        background:
+          "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 50%, #f0e6d2 100%)",
         padding: "8px 4px",
       },
       "& .fc-day-today": {
-        backgroundColor: "action.hover !important",
+        backgroundColor: "#D1F8EF",
       },
       "& .fc-daygrid-day.fc-day-today": {
-        backgroundColor: "action.hover !important",
+        backgroundColor: "#D1F8EF",
       },
       "& .fc-timegrid-col.fc-day-today": {
-        backgroundColor: "action.hover !important",
+        backgroundColor: "#D1F8EF",
       },
       "& .fc-event": {
         border: "none",
@@ -539,6 +550,27 @@ const styles = {
       "& .fc-now-indicator": {
         borderColor: colors.red[600],
       },
+      "& .fc-button": {
+        backgroundColor: "#3674B5", // Mavi arka plan
+        color: "white", // Yazı rengi beyaz
+        border: "none", // Kenarlık kaldırma
+        borderRadius: "8px", // Yuvarlatılmış kenarlar
+        boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)", // Gölgelendirme
+        transition: "all 0.3s ease", // Geçiş efekti
+      },
+      "& .fc-button:hover": {
+        backgroundColor: "#A1E3F9", // Daha koyu mavi
+        transform: "translateY(-2px)", // Hafif yukarı kaydırma
+      },
+      "& .fc-button-primary.fc-button-active": {
+        backgroundColor: "#FAFFAF", // Sarı arka plan
+        color: "black", // Yazı rengi siyah
+      },
+      "& .fc-toolbar-title": {
+        color: "#333", // Başlık rengi
+        fontSize: "1.5rem", // Yazı boyutu
+        fontWeight: "bold", // Kalın yazı
+      },
     },
   },
   dialogContent: {
@@ -546,6 +578,7 @@ const styles = {
     minWidth: 400,
     "& .MuiTextField-root": { my: 1 },
   },
+
   timeInputs: {
     display: "grid",
     gap: 2,

@@ -27,19 +27,20 @@ self.addEventListener("fetch", (event) => {
     caches
       .match(event.request)
       .then((response) => {
-        // Online ise network'ten getir + cache'e ekle
         return (
           response ||
           fetch(event.request).then((fetchResponse) => {
             return caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request.url, fetchResponse.clone());
+              // Yalnızca "http" veya "https" şemalı istekleri cache'le
+              if (event.request.url.startsWith("http")) {
+                cache.put(event.request, fetchResponse.clone());
+              }
               return fetchResponse;
             });
           })
         );
       })
       .catch(() => {
-        // Offline durumda özel sayfa
         return caches.match("/offline.html");
       })
   );

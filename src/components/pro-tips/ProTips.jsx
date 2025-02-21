@@ -37,6 +37,7 @@ import { toast } from "react-toastify";
 import { db } from "../auth/firebaseConfig";
 import { doc, updateDoc } from "firebase/firestore";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+
 const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
   const [openModal, setOpenModal] = useState(false);
   const [openTastyModal, setOpenTastyModal] = useState(false);
@@ -499,9 +500,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
             justifyContent="space-between"
             alignItems="center"
           >
-            {editData.index !== null ||
-            modalType === "supplementMain" ||
-            modalType === "supplementMainAdd"
+            {editData.index !== null || modalType === "supplementMain"
               ? "Öğeyi Düzenle"
               : "Yeni Öğeyi Ekle"}
             <IconButton onClick={() => setOpenModal(false)}>
@@ -519,15 +518,14 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
               <Button
                 variant="contained"
                 onClick={() => {
-                  if (
-                    modalType === "supplementMain" ||
-                    modalType === "supplementMainAdd"
-                  ) {
+                  if (modalType === "supplementMain") {
                     handleEditItem(
                       "supplementDetails",
-                      editData.data.key || editData.data,
+                      editData.data.key,
                       editData.data
                     );
+                  } else if (modalType === "supplementMainAdd") {
+                    handleAddItem("supplementDetails", editData.data);
                   } else if (editData.index !== null) {
                     handleEditItem(
                       selectedSection,
@@ -544,9 +542,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                   }
                 }}
               >
-                {editData.index !== null ||
-                modalType === "supplementMain" ||
-                modalType === "supplementMainAdd"
+                {editData.index !== null || modalType === "supplementMain"
                   ? "Güncelle"
                   : "Kaydet"}
               </Button>
@@ -778,7 +774,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
       </Accordion>
 
       <Accordion sx={{ mt: 2 }}>
-        <AccordionSummary expandIcon={<ExpandMore />}>
+        <AccordionSummary expandIcon={<ExpandMore />} component="div">
           <Box
             display="flex"
             justifyContent="space-between"
@@ -820,17 +816,17 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                           sx={{ mb: 2 }}
                         >
                           <Accordion>
-                            <AccordionSummary expandIcon={<ExpandMore />}>
+                            <AccordionSummary
+                              expandIcon={<ExpandMore />}
+                              component="div"
+                            >
                               <Box
                                 display="flex"
                                 justifyContent="space-between"
                                 alignItems="center"
                                 width="100%"
                               >
-                                <Typography
-                                  variant="h6"
-                                  sx={{ p: 1, bgcolor: "primary.light" }}
-                                >
+                                <Typography variant="h6" sx={{ p: 1 }}>
                                   {group.title}
                                 </Typography>
                                 <Box>

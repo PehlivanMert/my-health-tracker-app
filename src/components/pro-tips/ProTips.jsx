@@ -826,7 +826,10 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                                 alignItems="center"
                                 width="100%"
                               >
-                                <Typography variant="h6" sx={{ p: 1 }}>
+                                <Typography
+                                  variant="h6"
+                                  sx={{ p: 1, bgcolor: "primary.light" }}
+                                >
                                   {group.title}
                                 </Typography>
                                 <Box>
@@ -863,8 +866,8 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                               </Box>
                             </AccordionSummary>
                             <AccordionDetails>
-                              {(group.groups || []).map(
-                                (subGroup, subIndex) => (
+                              {group.groups && group.groups.length > 0 ? (
+                                group.groups.map((subGroup, subIndex) => (
                                   <Box key={subIndex} mb={3}>
                                     <Typography
                                       variant="subtitle2"
@@ -931,11 +934,42 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                                           </Grid>
                                         )
                                       )}
+                                      <Grid item xs={12} sm={6} md={4}>
+                                        <Card
+                                          sx={{
+                                            ...cardSx,
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            cursor: "pointer",
+                                          }}
+                                          onClick={() => {
+                                            setSelectedSection(
+                                              `supplementDetails.${group.key}`
+                                            );
+                                            setModalType("supplement");
+                                            setEditData({
+                                              index: null,
+                                              groupIndex: subIndex,
+                                              data: {},
+                                            });
+                                            setOpenModal(true);
+                                          }}
+                                        >
+                                          <CardContent>
+                                            <Typography
+                                              variant="h6"
+                                              align="center"
+                                            >
+                                              +
+                                            </Typography>
+                                          </CardContent>
+                                        </Card>
+                                      </Grid>
                                     </Grid>
                                   </Box>
-                                )
-                              )}
-                              {!group.groups && (
+                                ))
+                              ) : (
                                 <Grid container spacing={2}>
                                   {(group.items || []).map((item, idx) => (
                                     <Grid item xs={12} sm={6} md={4} key={idx}>
@@ -985,6 +1019,31 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                                       </Card>
                                     </Grid>
                                   ))}
+                                  <Grid item xs={12} sm={6} md={4}>
+                                    <Card
+                                      sx={{
+                                        ...cardSx,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        cursor: "pointer",
+                                      }}
+                                      onClick={() => {
+                                        setSelectedSection(
+                                          `supplementDetails.${group.key}`
+                                        );
+                                        setModalType("supplement");
+                                        setEditData({ index: null, data: {} });
+                                        setOpenModal(true);
+                                      }}
+                                    >
+                                      <CardContent>
+                                        <Typography variant="h6" align="center">
+                                          +
+                                        </Typography>
+                                      </CardContent>
+                                    </Card>
+                                  </Grid>
                                 </Grid>
                               )}
                             </AccordionDetails>

@@ -39,7 +39,7 @@ import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import OpacityIcon from "@mui/icons-material/Opacity";
-import { motion, AnimatePresence, transform } from "framer-motion";
+import { motion, AnimatePresence, transform, color } from "framer-motion";
 
 // Animated keyframes
 const float = keyframes`
@@ -63,16 +63,16 @@ const ripple = keyframes`
 // Styled Components
 const GlowingCard = styled(Card)(({ theme, glowColor }) => ({
   position: "relative",
-  background: "rgba(255, 255, 255, 0.1)",
+  background: "rgba(33, 150, 243, 0.1)",
   backdropFilter: "blur(10px)",
   borderRadius: "24px",
   overflow: "hidden",
-  border: "1px solid rgba(255, 255, 255, 0.2)",
-  boxShadow: `0 0 20px ${glowColor || "#00ff8822"}`,
+  border: "1px solid rgba(33, 150, 243, 0.2)",
+  boxShadow: `0 0 20px ${glowColor || "#2196F322"}`,
   transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
   "&:hover": {
     transform: "translateY(-10px) scale(1.02)",
-    boxShadow: `0 0 40px ${glowColor || "#00ff8844"}`,
+    boxShadow: `0 0 40px ${glowColor || "#2196F344"}`,
   },
   "&::before": {
     content: '""',
@@ -82,7 +82,7 @@ const GlowingCard = styled(Card)(({ theme, glowColor }) => ({
     right: 0,
     bottom: 0,
     background: `linear-gradient(135deg, ${alpha(
-      glowColor || "#00ff88",
+      glowColor || "#2196F3",
       0.2
     )} 0%, transparent 100%)`,
     opacity: 0,
@@ -94,10 +94,10 @@ const GlowingCard = styled(Card)(({ theme, glowColor }) => ({
 }));
 
 const AnimatedButton = styled(Button)(({ theme }) => ({
-  background: "linear-gradient(45deg, #FE6B8B 30%, #FF8E53 90%)",
+  background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
   border: 0,
   borderRadius: 25,
-  boxShadow: "0 3px 5px 2px rgba(255, 105, 135, .3)",
+  boxShadow: "0 3px 5px 2px rgba(33, 150, 243, .3)",
   color: "white",
   padding: "12px 35px",
   transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -105,7 +105,7 @@ const AnimatedButton = styled(Button)(({ theme }) => ({
   overflow: "hidden",
   "&:hover": {
     transform: "scale(1.05)",
-    boxShadow: "0 5px 15px 3px rgba(255, 105, 135, .4)",
+    boxShadow: "0 5px 15px 3px rgba(33, 150, 243, .4)",
   },
   "&::after": {
     content: '""',
@@ -138,9 +138,9 @@ const FloatingIcon = styled(Box)(({ delay = 0 }) => ({
 
 // Color utils
 const getVitaminColor = (remainingPercentage) => {
-  if (remainingPercentage > 66) return "#4CAF50";
-  if (remainingPercentage > 33) return "#FFC107";
-  return "#FF5252";
+  if (remainingPercentage > 66) return "#2196F3"; // Primary blue
+  if (remainingPercentage > 33) return "#00BCD4"; // Secondary blue
+  return "#3F51B5"; // Dark blue
 };
 
 // Achievement Component
@@ -373,8 +373,13 @@ const WaterTracker = () => {
         >
           <Lottie
             animationData={waterAnimation}
-            loop={false}
-            style={{ width: "100%", height: "auto" }}
+            loop={true}
+            style={{
+              width: "auto",
+              height: "auto",
+              transform: "scaleY(2)",
+              transformOrigin: "top",
+            }}
           />
         </Box>
 
@@ -449,24 +454,26 @@ const WaterTracker = () => {
             label="Glass Size (ml)"
             type="number"
             value={waterData.glassSize}
-            onChange={(e) => setGlassSize(Number(e.target.value))}
+            onChange={(e) =>
+              handleWaterSettingChange("glassSize", e.target.value)
+            }
             variant="outlined"
             fullWidth
             sx={{
               "& .MuiOutlinedInput-root": {
-                backgroundColor: "rgba(255,255,255,0.1)",
+                backgroundColor: "rgba(255, 255, 255, 0.1)",
                 color: "#fff",
                 backdropFilter: "blur(10px)",
                 transition: "all 0.3s ease",
                 "&:hover": {
-                  backgroundColor: "rgba(255,255,255,0.15)",
+                  backgroundColor: "rgba(255, 255, 255, 0.15)",
                 },
               },
               "& .MuiInputLabel-root": {
                 color: "#fff",
               },
               "& .MuiOutlinedInput-notchedOutline": {
-                borderColor: "rgba(255,255,255,0.3)",
+                borderColor: "rgb(255, 255, 255,0.3)",
               },
             }}
           />
@@ -476,7 +483,9 @@ const WaterTracker = () => {
             label="Daily Water Goal (ml)"
             type="number"
             value={waterData.dailyWaterTarget}
-            onChange={(e) => setDailyWaterTarget(Number(e.target.value))}
+            onChange={(e) =>
+              handleWaterSettingChange("dailyWaterTarget", e.target.value)
+            }
             variant="outlined"
             fullWidth
             sx={{
@@ -560,10 +569,8 @@ const WellnessTracker = () => {
   const handleConsume = async (id) => {
     try {
       const supplement = supplements.find((supp) => supp.id === id);
-      const newQuantity = Math.max(
-        0,
-        supplement.quantity - supplement.dailyUsage
-      );
+      const newQuantity = Math.max(0, supplement.quantity - 1);
+
       const supplementRef = doc(db, "supplements", id);
       await updateDoc(supplementRef, { quantity: newQuantity });
       await fetchSupplements();
@@ -587,7 +594,7 @@ const WellnessTracker = () => {
       sx={{
         minHeight: "100vh",
         background:
-          "linear-gradient(135deg, #1a2a6c 0%, #b21f1f 50%, #fdbb2d 100%)",
+          "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
         padding: { xs: 2, md: 4 },
       }}
     >
@@ -637,14 +644,19 @@ const WellnessTracker = () => {
           onClose={() => setOpenDialog(false)}
           PaperProps={{
             sx: {
-              background: "rgba(255, 255, 255, 0.9)",
+              background: "rgba(149, 157, 163, 0.83)",
               backdropFilter: "blur(10px)",
               borderRadius: "24px",
               padding: 2,
+              border: "1px solid rgba(33, 150, 243, 0.2)",
+              color: "rgba(97, 159, 210, 0.1)",
             },
           }}
         >
-          <DialogTitle>Add New Supplement</DialogTitle>
+          <DialogTitle sx={{ color: "rgba(0, 0, 0, 1)", opacity: 0.8 }}>
+            Add New Supplement
+          </DialogTitle>
+
           <DialogContent>
             <TextField
               autoFocus

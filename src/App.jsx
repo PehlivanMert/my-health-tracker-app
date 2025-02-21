@@ -593,16 +593,6 @@ function App() {
           }}
         />
         <Tab
-          label="Takviyeler"
-          sx={{
-            background: "#f3e5f5", // Açık mor tonu
-            borderRadius: "8px",
-            "&:hover": {
-              background: "#e1bee7", // Hover efekti
-            },
-          }}
-        />
-        <Tab
           label="Sağlıklı Yaşam Önerileri"
           sx={{
             background: "#e8f5e9", // Açık yeşil tonu
@@ -612,6 +602,7 @@ function App() {
             },
           }}
         />
+
         <Tab
           label="Takvim"
           sx={{
@@ -657,23 +648,6 @@ function App() {
         />
       )}
       {activeTab === 2 && (
-        <Supplements
-          supplements={supplements}
-          setSupplements={setSupplements}
-          handleSupplementSubmit={handleSupplementSubmit}
-          editingSupplement={editingSupplement}
-          setEditingSupplement={setEditingSupplement}
-        />
-      )}
-      {activeTab === 3 && (
-        <ProTips
-          additionalInfo={additionalInfo}
-          setAdditionalInfo={setAdditionalInfo}
-          user={user}
-        />
-      )}
-      {activeTab === 4 && <CalendarComponent user={user} />}
-      {activeTab === 5 && (
         <WellnessTracker
           routines={routines}
           setRoutines={setRoutines}
@@ -687,6 +661,14 @@ function App() {
           totalRoutines={totalRoutines}
         />
       )}
+      {activeTab === 3 && (
+        <ProTips
+          additionalInfo={additionalInfo}
+          setAdditionalInfo={setAdditionalInfo}
+          user={user}
+        />
+      )}
+      {activeTab === 4 && <CalendarComponent user={user} />}
 
       <Box
         className="footer-container"

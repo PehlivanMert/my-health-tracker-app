@@ -483,6 +483,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
         p: 3,
         borderRadius: 2,
         background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
+        minHeight: "100vh",
       }}
     >
       {openTastyModal && renderTastyModal()}

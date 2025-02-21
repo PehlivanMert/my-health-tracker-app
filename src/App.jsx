@@ -1,6 +1,7 @@
 // App.js
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from "chart.js";
+import { styled, keyframes } from "@mui/material/styles";
 import { format } from "date-fns";
 import { ToastContainer, toast } from "react-toastify";
 import {
@@ -15,6 +16,7 @@ import {
   Select,
   MenuItem,
   Paper,
+  alpha,
 } from "@mui/material";
 import "react-toastify/dist/ReactToastify.css";
 import "tippy.js/dist/tippy.css";
@@ -38,10 +40,80 @@ import { auth, db } from "./components/auth/firebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
 import { sendEmailVerification } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+// Animations
+const float = keyframes`
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+  100% { transform: translateY(0px); }
+`;
 
+const pulse = keyframes`
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+`;
+
+const ripple = keyframes`
+  0% { transform: scale(0.95); opacity: 0.7; }
+  50% { transform: scale(1.05); opacity: 0.4; }
+  100% { transform: scale(0.95); opacity: 0.7; }
+`;
+
+// Styled Components
+const GlowingContainer = styled(Container)(({ theme, glowColor }) => ({
+  position: "relative",
+  background: "rgba(33, 150, 243, 0.1)",
+  backdropFilter: "blur(10px)",
+  borderRadius: "24px",
+  overflow: "hidden",
+  border: "1px solid rgba(33, 150, 243, 0.2)",
+  boxShadow: `0 0 20px ${glowColor || "#2196F322"}`,
+  transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
+  "&:hover": {
+    boxShadow: `0 0 40px ${glowColor || "#2196F344"}`,
+  },
+}));
+
+const AnimatedButton = styled(Button)(({ theme }) => ({
+  background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
+  border: 0,
+  borderRadius: 25,
+  boxShadow: "0 3px 5px 2px rgba(33, 150, 243, .3)",
+  color: "white",
+  padding: "12px 35px",
+  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+  position: "relative",
+  overflow: "hidden",
+  "&:hover": {
+    transform: "scale(1.05)",
+    boxShadow: "0 5px 15px 3px rgba(33, 150, 243, .4)",
+  },
+  "&::after": {
+    content: '""',
+    position: "absolute",
+    top: "-50%",
+    left: "-50%",
+    width: "200%",
+    height: "200%",
+    background:
+      "linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent)",
+    transform: "rotate(45deg)",
+    animation: `${ripple} 2s infinite`,
+  },
+}));
+
+const FloatingElement = styled(Box)(({ delay = 0 }) => ({
+  animation: `${float} 3s ease-in-out infinite`,
+  animationDelay: `${delay}s`,
+}));
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
 function App() {
+  // Add these new states for enhanced UI
+  const [isLoading, setIsLoading] = useState(true);
+  const [transition, setTransition] = useState(false);
+  const [activeGlow, setActiveGlow] = useState("#2196F3");
+
   // -------------------------
   // Kullanıcı, Oturum & Genel State'ler
   // -------------------------
@@ -269,8 +341,15 @@ function App() {
   // -------------------------
 
   return !user ? (
-    <Container maxWidth="sm" sx={{ mt: 4 }}>
-      <Box>
+    <GlowingContainer maxWidth="sm" sx={{ mt: 4 }} glowColor={activeGlow}>
+      <Box
+        sx={{
+          p: 4,
+          backdropFilter: "blur(10px)",
+          borderRadius: "24px",
+          background: "rgba(255, 255, 255, 0.1)",
+        }}
+      >
         <UserAuth
           isRegister={isRegister}
           setIsRegister={setIsRegister}
@@ -282,28 +361,49 @@ function App() {
         />
       </Box>
       <ToastContainer />
-    </Container>
+    </GlowingContainer>
   ) : !user.emailVerified ? (
-    <Container maxWidth="sm" sx={{ mt: 4 }}>
-      <Paper sx={{ p: 4, textAlign: "center" }}>
-        <Box sx={{ mb: 3, p: 2, border: "1px solid #ccc" }}>
-          <Typography variant="h5" gutterBottom>
+    <GlowingContainer maxWidth="sm" sx={{ mt: 4 }} glowColor="#00BCD4">
+      <Paper
+        sx={{
+          p: 4,
+          textAlign: "center",
+          background: "rgba(255, 255, 255, 0.1)",
+          backdropFilter: "blur(10px)",
+          borderRadius: "24px",
+          border: "1px solid rgba(33, 150, 243, 0.2)",
+        }}
+      >
+        <FloatingElement
+          sx={{ mb: 3, p: 2, border: "1px solid rgba(33, 150, 243, 0.3)" }}
+        >
+          <Typography
+            variant="h5"
+            gutterBottom
+            sx={{
+              background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
             Email Doğrulama
           </Typography>
-          <Typography variant="body1" sx={{ mb: 3 }}>
+          <Typography
+            variant="body1"
+            sx={{ mb: 3, color: "rgba(255, 255, 255, 0.9)" }}
+          >
             Lütfen email adresinize gönderilen doğrulama linkine tıklayın.
           </Typography>
-          <Button onClick={handleResendEmail} disabled={remainingTime > 0}>
+          <AnimatedButton
+            onClick={handleResendEmail}
+            disabled={remainingTime > 0}
+          >
             {remainingTime > 0
               ? `${Math.ceil(remainingTime / 1000)} saniye sonra tekrar deneyin`
               : "Doğrulama Emailini Gönder"}
-          </Button>
-          <Typography variant="body2" sx={{ mt: 2 }}>
-            Email almadıysanız lütfen spam kutunuzu kontrol edin. Email
-            gelmediyse, lütfen 1 dakika bekleyin ve tekrar deneyin.
-          </Typography>
-        </Box>
-        <Button
+          </AnimatedButton>
+        </FloatingElement>
+        <AnimatedButton
           variant="outlined"
           onClick={() => {
             auth.signOut();
@@ -312,357 +412,353 @@ function App() {
           fullWidth
         >
           Çıkış Yap
-        </Button>
+        </AnimatedButton>
       </Paper>
       <ToastContainer />
-    </Container>
+    </GlowingContainer>
   ) : (
-    <div className="app-container">
-      <AppBar
-        position="static"
-        sx={{
-          background:
-            "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
-          boxShadow: "0 4px 20px rgba(33, 150, 243, 0.25)",
-          position: "relative",
-          overflow: "hidden",
-          "&::after": {
-            content: '""',
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: "3px",
-            background: "rgba(255, 255, 255, 0.1)",
-          },
-          transition: "all 0.3s ease",
-          "&:hover": {
-            boxShadow: "0 6px 25px rgba(33, 150, 243, 0.35)",
-          },
-        }}
-      >
-        <Toolbar
+    <Box
+      sx={{
+        minHeight: "100vh",
+        background:
+          "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
+        transition: "background 0.5s ease",
+      }}
+    >
+      <div className="app-container">
+        <AppBar
+          position="static"
           sx={{
-            flexDirection: { xs: "column", sm: "row" },
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: { xs: 2, sm: 0 },
-            py: { xs: 2, sm: 1.5 },
-            px: 4,
-          }}
-        >
-          <Box
-            sx={{
-              transition: "all 0.3s ease",
-              "&:hover": {
-                transform: "translateX(5px)",
-              },
-            }}
-          >
-            <Typography
-              variant="h6"
-              sx={{
-                fontWeight: 600,
-                letterSpacing: "0.5px",
-                color: "rgba(255, 255, 255, 0.95)",
-                textShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-              }}
-            >
-              {format(currentTime, "HH:mm - dd MMMM yyyy")}
-            </Typography>
-          </Box>
-
-          <Box
-            sx={{
-              background: "rgba(255, 255, 255, 0.1)",
-              backdropFilter: "blur(8px)",
-              borderRadius: 3,
-              padding: "8px 16px",
-              transition: "all 0.3s ease",
-              "&:hover": {
-                background: "rgba(255, 255, 255, 0.15)",
-                transform: "translateY(-2px)",
-              },
-            }}
-          >
-            <WeatherWidget />
-          </Box>
-
-          <Button
-            variant="contained"
-            sx={{
-              borderRadius: 3,
-              textTransform: "none",
-              padding: "8px 24px",
-              fontSize: "0.95rem",
-              fontWeight: 500,
-              background: "rgba(255, 255, 255, 0.15)",
-              backdropFilter: "blur(8px)",
-              boxShadow: "0 3px 12px rgba(0, 0, 0, 0.1)",
-              transition: "all 0.3s ease",
-              "&:hover": {
-                background: "rgba(255, 255, 255, 0.25)",
-                boxShadow: "0 5px 15px rgba(0, 0, 0, 0.2)",
-                transform: "translateY(-2px)",
-              },
-            }}
-            onClick={() => {
-              auth.signOut();
-              setUser(null);
-              localStorage.removeItem("currentUser");
-            }}
-          >
-            Çıkış Yap
-          </Button>
-        </Toolbar>
-      </AppBar>
-      <Tabs
-        value={activeTab}
-        onChange={(event, newTab) => handleTabChange(newTab)}
-        variant="scrollable"
-        scrollButtons="auto"
-        textColor="primary"
-        indicatorColor="primary"
-        sx={{
-          justifyContent: "center",
-          background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
-          position: "relative",
-          boxShadow: "0 4px 20px rgba(33, 150, 243, 0.1)",
-          "&::after": {
-            content: '""',
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: "3px",
             background:
               "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
-            opacity: 0.7,
-          },
-          "& .MuiTabs-flexContainer": {
-            justifyContent: { xs: "flex-start", md: "center" },
-            gap: 1,
-          },
-          "& .MuiTabs-indicator": {
-            background:
-              "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
-            height: 3,
-            borderRadius: "3px 3px 0 0",
-            boxShadow: "0 -2px 8px rgba(33, 150, 243, 0.2)",
-          },
-          "& .MuiTab-root": {
-            textTransform: "none",
-            fontWeight: 600,
-            fontSize: { xs: "0.9rem", md: "1rem" },
-            margin: "0 5px",
-            minWidth: "auto",
-            padding: "12px 24px",
-            borderRadius: "8px 8px 0 0",
-            transition: "all 0.3s ease",
-            color: "rgba(0, 0, 0, 0.6)",
-            "&:hover": {
-              backgroundColor: "rgba(33, 150, 243, 0.08)",
-              transform: "translateY(-2px)",
-              color: "#2196F3",
-            },
-            "&.Mui-selected": {
-              color: "#2196F3",
-              background: "rgba(33, 150, 243, 0.08)",
-              fontWeight: 700,
-            },
-            "&::before": {
+            boxShadow: "0 4px 20px rgba(33, 150, 243, 0.25)",
+            position: "relative",
+            overflow: "hidden",
+            "&::after": {
               content: '""',
               position: "absolute",
               bottom: 0,
               left: 0,
               right: 0,
               height: "3px",
-              background: "transparent",
-              transition: "all 0.3s ease",
+              background: "rgba(255, 255, 255, 0.1)",
             },
-            "&.Mui-selected::before": {
+            transition: "all 0.3s ease",
+            "&:hover": {
+              boxShadow: "0 6px 25px rgba(33, 150, 243, 0.35)",
+            },
+          }}
+        >
+          <Toolbar
+            sx={{
+              flexDirection: { xs: "column", sm: "row" },
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: { xs: 2, sm: 0 },
+              py: { xs: 2, sm: 1.5 },
+              px: 4,
+            }}
+          >
+            <Box
+              sx={{
+                transition: "all 0.3s ease",
+                "&:hover": {
+                  transform: "translateX(5px)",
+                },
+              }}
+            >
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 600,
+                  letterSpacing: "0.5px",
+                  color: "rgba(255, 255, 255, 0.95)",
+                  textShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                }}
+              >
+                {format(currentTime, "HH:mm - dd MMMM yyyy")}
+              </Typography>
+            </Box>
+
+            <Box
+              sx={{
+                background: "rgba(255, 255, 255, 0.1)",
+                backdropFilter: "blur(8px)",
+                borderRadius: 3,
+                padding: "8px 16px",
+                transition: "all 0.3s ease",
+                "&:hover": {
+                  background: "rgba(255, 255, 255, 0.15)",
+                  transform: "translateY(-2px)",
+                },
+              }}
+            >
+              <WeatherWidget />
+            </Box>
+
+            <Button
+              variant="contained"
+              sx={{
+                borderRadius: 3,
+                textTransform: "none",
+                padding: "8px 24px",
+                fontSize: "0.95rem",
+                fontWeight: 500,
+                background: "rgba(255, 255, 255, 0.15)",
+                backdropFilter: "blur(8px)",
+                boxShadow: "0 3px 12px rgba(0, 0, 0, 0.1)",
+                transition: "all 0.3s ease",
+                "&:hover": {
+                  background: "rgba(255, 255, 255, 0.25)",
+                  boxShadow: "0 5px 15px rgba(0, 0, 0, 0.2)",
+                  transform: "translateY(-2px)",
+                },
+              }}
+              onClick={() => {
+                auth.signOut();
+                setUser(null);
+                localStorage.removeItem("currentUser");
+              }}
+            >
+              Çıkış Yap
+            </Button>
+          </Toolbar>
+        </AppBar>
+        <Tabs
+          value={activeTab}
+          onChange={(event, newTab) => handleTabChange(newTab)}
+          variant="scrollable"
+          scrollButtons="auto"
+          textColor="primary"
+          indicatorColor="primary"
+          sx={{
+            justifyContent: "center",
+            background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
+            position: "relative",
+            boxShadow: "0 4px 20px rgba(33, 150, 243, 0.1)",
+            "&::after": {
+              content: '""',
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: "3px",
+              background:
+                "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
+              opacity: 0.7,
+            },
+            "& .MuiTabs-flexContainer": {
+              justifyContent: { xs: "flex-start", md: "center" },
+              gap: 1,
+            },
+            "& .MuiTabs-indicator": {
+              background:
+                "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
+              height: 3,
+              borderRadius: "3px 3px 0 0",
+              boxShadow: "0 -2px 8px rgba(33, 150, 243, 0.2)",
+            },
+            "& .MuiTab-root": {
+              textTransform: "none",
+              fontWeight: 600,
+              fontSize: { xs: "0.9rem", md: "1rem" },
+              margin: "0 5px",
+              minWidth: "auto",
+              padding: "12px 24px",
+              borderRadius: "8px 8px 0 0",
+              transition: "all 0.3s ease",
+              color: "rgba(0, 0, 0, 0.6)",
+              "&:hover": {
+                backgroundColor: "rgba(33, 150, 243, 0.08)",
+                transform: "translateY(-2px)",
+                color: "#2196F3",
+              },
+              "&.Mui-selected": {
+                color: "#2196F3",
+                background: "rgba(33, 150, 243, 0.08)",
+                fontWeight: 700,
+              },
+              "&::before": {
+                content: '""',
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: "3px",
+                background: "transparent",
+                transition: "all 0.3s ease",
+              },
+              "&.Mui-selected::before": {
+                background:
+                  "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
+                opacity: 0.5,
+              },
+            },
+            "& .MuiTabScrollButton-root": {
+              width: 48,
+              transition: "all 0.3s ease",
+              "&.Mui-disabled": {
+                opacity: 0,
+              },
+              "&:hover": {
+                backgroundColor: "rgba(33, 150, 243, 0.08)",
+              },
+              "& .MuiSvgIcon-root": {
+                fontSize: "1.5rem",
+                color: "#2196F3",
+              },
+            },
+          }}
+        >
+          <Tab
+            label="Günlük Rutin"
+            sx={{
+              background: "#e6f7ff", // Açık mavi tonu
+              borderRadius: "8px", // Kenarları yuvarlatma
+              "&:hover": {
+                background: "#b3e5fc", // Hover efekti
+              },
+            }}
+          />
+          <Tab
+            label="Fitness Takip Paneli"
+            sx={{
+              background: "#fff3e0", // Açık turuncu tonu
+              borderRadius: "8px",
+              "&:hover": {
+                background: "#ffe0b2", // Hover efekti
+              },
+            }}
+          />
+          <Tab
+            label="Yaşam Kalitesi Paneli"
+            sx={{
+              background: "#e8f5e9", // Açık yeşil tonu
+              borderRadius: "8px",
+              "&:hover": {
+                background: "#c8e6c9", // Hover efekti
+              },
+            }}
+          />
+
+          <Tab
+            label="Takvim"
+            sx={{
+              background: "#fffde7", // Açık sarı tonu
+              borderRadius: "8px",
+              "&:hover": {
+                background: "#fff9c4", // Hover efekti
+              },
+            }}
+          />
+          <Tab
+            label="Sağlıklı Yaşam Önerileri"
+            sx={{
+              background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
+              borderRadius: "8px",
+              "&:hover": {
+                background: "#b3e5fc",
+              },
+            }}
+          />
+        </Tabs>
+        {activeTab === 0 && <DailyRoutine user={user} />}
+        {activeTab === 1 && (
+          <Exercises
+            exercises={exercises}
+            setExercises={setExercises}
+            handleExerciseSubmit={handleExerciseSubmit}
+            editingExercise={editingExercise}
+            setEditingExercise={setEditingExercise}
+          />
+        )}
+        {activeTab === 2 && <WellnessTracker user={user} />}
+        {activeTab === 3 && <CalendarComponent user={user} />}
+        {activeTab === 4 && (
+          <ProTips
+            additionalInfo={additionalInfo}
+            setAdditionalInfo={setAdditionalInfo}
+            user={user}
+          />
+        )}
+
+        <Box
+          className="footer-container"
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            alignItems: "center",
+            justifyContent: "space-between",
+            p: 1.5,
+            background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
+            borderTop: "1px solid rgba(33, 150, 243, 0.1)",
+            position: "relative", // relative yerine fixed
+            bottom: 0, // sayfanın altına sabitlemek için
+            left: 0, // sola hizalamak için
+            width: "100%", // genişlik sayfanın tamamını kaplaması için
+            "&::before": {
+              content: '""',
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: "3px",
               background:
                 "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
               opacity: 0.5,
             },
-          },
-          "& .MuiTabScrollButton-root": {
-            width: 48,
-            transition: "all 0.3s ease",
-            "&.Mui-disabled": {
-              opacity: 0,
-            },
-            "&:hover": {
-              backgroundColor: "rgba(33, 150, 243, 0.08)",
-            },
-            "& .MuiSvgIcon-root": {
-              fontSize: "1.5rem",
-              color: "#2196F3",
-            },
-          },
-        }}
-      >
-        <Tab
-          label="Günlük Rutin"
-          sx={{
-            background: "#e6f7ff", // Açık mavi tonu
-            borderRadius: "8px", // Kenarları yuvarlatma
-            "&:hover": {
-              background: "#b3e5fc", // Hover efekti
-            },
-          }}
-        />
-        <Tab
-          label="Fitness Takip Paneli"
-          sx={{
-            background: "#fff3e0", // Açık turuncu tonu
-            borderRadius: "8px",
-            "&:hover": {
-              background: "#ffe0b2", // Hover efekti
-            },
-          }}
-        />
-        <Tab
-          label="Sağlıklı Yaşam Önerileri"
-          sx={{
-            background: "#e8f5e9", // Açık yeşil tonu
-            borderRadius: "8px",
-            "&:hover": {
-              background: "#c8e6c9", // Hover efekti
-            },
-          }}
-        />
-
-        <Tab
-          label="Takvim"
-          sx={{
-            background: "#fffde7", // Açık sarı tonu
-            borderRadius: "8px",
-            "&:hover": {
-              background: "#fff9c4", // Hover efekti
-            },
-          }}
-        />
-        <Tab
-          label="Yaşam Kalitesi Paneli"
-          sx={{
-            background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
-            borderRadius: "8px",
-            "&:hover": {
-              background: "#b3e5fc",
-            },
-          }}
-        />
-      </Tabs>
-      {activeTab === 0 && <DailyRoutine user={user} />}
-      {activeTab === 1 && (
-        <Exercises
-          exercises={exercises}
-          setExercises={setExercises}
-          handleExerciseSubmit={handleExerciseSubmit}
-          editingExercise={editingExercise}
-          setEditingExercise={setEditingExercise}
-        />
-      )}
-      {activeTab === 2 && (
-        <WellnessTracker
-          routines={routines}
-          setRoutines={setRoutines}
-          newRoutine={newRoutine}
-          setNewRoutine={setNewRoutine}
-          handleSaveRoutine={handleSaveRoutine}
-          editRoutineId={editRoutineId}
-          setEditRoutineId={setEditRoutineId}
-          deleteRoutine={deleteRoutine}
-          completedRoutines={completedRoutines}
-          totalRoutines={totalRoutines}
-        />
-      )}
-      {activeTab === 3 && <CalendarComponent user={user} />}
-      {activeTab === 4 && (
-        <ProTips
-          additionalInfo={additionalInfo}
-          setAdditionalInfo={setAdditionalInfo}
-          user={user}
-        />
-      )}
-
-      <Box
-        className="footer-container"
-        sx={{
-          display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
-          alignItems: "center",
-          justifyContent: "space-between",
-          p: 1.5,
-          background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
-          borderTop: "1px solid rgba(33, 150, 243, 0.1)",
-          position: "relative", // relative yerine fixed
-          bottom: 0, // sayfanın altına sabitlemek için
-          left: 0, // sola hizalamak için
-          width: "100%", // genişlik sayfanın tamamını kaplaması için
-          "&::before": {
-            content: '""',
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: "3px",
-            background:
-              "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
-            opacity: 0.5,
-          },
-          boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.05)",
-          gap: { xs: 2, sm: 0 },
-        }}
-      >
-        <Typography
-          variant="body2"
-          sx={{
-            fontWeight: 600,
-            background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            transition: "all 0.3s ease",
-            "&:hover": {
-              transform: "translateX(5px)",
-            },
+            boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.05)",
+            gap: { xs: 2, sm: 0 },
           }}
         >
-          © 2025 Sağlık ve Rutin Takip Sistemi
-        </Typography>
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 2,
-            background: "rgba(255, 255, 255, 0.8)",
-            backdropFilter: "blur(8px)",
-            padding: "8px 16px",
-            borderRadius: 3,
-            transition: "all 0.3s ease",
-            "&:hover": {
-              transform: "translateY(-2px)",
-              boxShadow: "0 4px 15px rgba(33, 150, 243, 0.1)",
-            },
-          }}
-        ></Box>
-      </Box>
+          <Typography
+            variant="body2"
+            sx={{
+              fontWeight: 600,
+              background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                transform: "translateX(5px)",
+              },
+            }}
+          >
+            © 2025 Sağlık ve Rutin Takip Sistemi
+          </Typography>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              background: "rgba(255, 255, 255, 0.8)",
+              backdropFilter: "blur(8px)",
+              padding: "8px 16px",
+              borderRadius: 3,
+              transition: "all 0.3s ease",
+              "&:hover": {
+                transform: "translateY(-2px)",
+                boxShadow: "0 4px 15px rgba(33, 150, 243, 0.1)",
+              },
+            }}
+          ></Box>
+        </Box>
 
-      {/* İhtiyaca göre ToastContainer'lardan bir tanesini kullanabilirsiniz */}
-      <ToastContainer position="bottom-right" autoClose={3000} />
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
-    </div>
+        {/* İhtiyaca göre ToastContainer'lardan bir tanesini kullanabilirsiniz */}
+        <ToastContainer position="bottom-right" autoClose={3000} />
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+        />
+      </div>
+    </Box>
   );
 }
 

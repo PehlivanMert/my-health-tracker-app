@@ -20,7 +20,6 @@ import {
   DialogContent,
   DialogActions,
 } from "@mui/material";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import {
   DeleteForever,
   EventNote,
@@ -46,6 +45,8 @@ import {
   scheduleNotification,
   cancelScheduledNotifications,
 } from "../../utils/weather-theme-notify/NotificationManager";
+import { collection, query, orderBy, getDocs } from "firebase/firestore";
+import { db } from "../auth/firebaseConfig";
 
 const StatCard = ({ title, value, total, icon, color }) => {
   const theme = useTheme();
@@ -119,12 +120,7 @@ const StatCard = ({ title, value, total, icon, color }) => {
   );
 };
 
-const DailyRoutine = ({
-  routines = [],
-  setRoutines,
-  deleteRoutine,
-  onDragEnd,
-}) => {
+const DailyRoutine = ({ routines = [], setRoutines, deleteRoutine }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [newRoutine, setNewRoutine] = useState({ title: "", time: "" });
@@ -135,6 +131,9 @@ const DailyRoutine = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [allNotifications, setAllNotifications] = useState(false);
   const [scheduledNotifications, setScheduledNotifications] = useState({});
+  const sortRoutinesByTime = (routines) => {
+    return routines.sort((a, b) => a.time.localeCompare(b.time));
+  };
 
   const getWeekNumber = (date) => {
     const d = new Date(date);
@@ -213,14 +212,14 @@ const DailyRoutine = ({
   const handleSaveRoutine = () => {
     if (!newRoutine.title || !newRoutine.time) return;
 
+    let updatedRoutines;
+
     if (editRoutineId) {
-      setRoutines(
-        routines.map((r) =>
-          r.id === editRoutineId ? { ...newRoutine, id: r.id } : r
-        )
+      updatedRoutines = routines.map((r) =>
+        r.id === editRoutineId ? { ...newRoutine, id: r.id } : r
       );
     } else {
-      setRoutines([
+      updatedRoutines = [
         ...routines,
         {
           ...newRoutine,
@@ -229,8 +228,13 @@ const DailyRoutine = ({
           completionDate: null,
           checked: false,
         },
-      ]);
+      ];
     }
+
+    // Rutinleri saate göre sırala
+    updatedRoutines = sortRoutinesByTime(updatedRoutines);
+
+    setRoutines(updatedRoutines);
     setModalOpen(false);
     setNewRoutine({ title: "", time: "" });
     setEditRoutineId(null);
@@ -464,159 +468,130 @@ const DailyRoutine = ({
           Yeni Rutin Ekle
         </Button>
 
-        <DragDropContext onDragEnd={onDragEnd}>
-          <Droppable droppableId="routines">
-            {(provided) => (
-              <div
-                {...provided.droppableProps}
-                ref={provided.innerRef}
-                style={{ minHeight: 100 }}
+        <AnimatePresence>
+          {routines.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <Box
+                sx={{
+                  textAlign: "center",
+                  py: 4,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 2,
+                }}
               >
-                <AnimatePresence>
-                  {routines.length === 0 ? (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
+                <img
+                  src="/empty-state.svg"
+                  alt="Boş rutin"
+                  style={{ height: 100, opacity: 0.8 }}
+                />
+                <Typography variant="body1" color="textSecondary">
+                  Henüz rutin eklenmemiş
+                </Typography>
+              </Box>
+            </motion.div>
+          ) : (
+            routines.map((routine) => (
+              <motion.div
+                key={routine.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    p: 1,
+                    mb: 1,
+                    background:
+                      "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 100%)",
+                    borderRadius: 2,
+                    transition: "all 0.2s ease-in-out",
+                    opacity: routine.checked ? 0.4 : 1,
+                    textDecoration: routine.checked ? "line-through" : "none",
+                    border: `1px solid ${
+                      routine.checked ? "#d3d3d3" : "#e0e0e0"
+                    }`,
+                    "&:hover": {
+                      transform: "translateX(5px)",
+                      boxShadow: theme.shadows[1],
+                      background:
+                        "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 50%, #f0e6d2 100%)",
+                    },
+                  }}
+                >
+                  <Checkbox
+                    checked={routine.checked || false}
+                    onChange={() => handleCheckboxChange(routine.id)}
+                    icon={<RadioButtonUnchecked />}
+                    checkedIcon={<CheckCircleOutline />}
+                    size="small"
+                    color="primary"
+                  />
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        textDecoration: routine.checked
+                          ? "line-through"
+                          : "none",
+                        color: routine.checked
+                          ? "text.secondary"
+                          : "text.primary",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        fontFamily: "'Poppins', sans-serif",
+                      }}
                     >
-                      <Box
-                        sx={{
-                          textAlign: "center",
-                          py: 4,
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          gap: 2,
-                        }}
-                      >
-                        <img
-                          src="/empty-state.svg"
-                          alt="Boş rutin"
-                          style={{ height: 100, opacity: 0.8 }}
-                        />
-                        <Typography variant="body1" color="textSecondary">
-                          Henüz rutin eklenmemiş
-                        </Typography>
-                      </Box>
-                    </motion.div>
-                  ) : (
-                    routines.map((routine, index) => (
-                      <Draggable
-                        key={routine.id}
-                        draggableId={routine.id}
-                        index={index}
-                      >
-                        {(provided) => (
-                          <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            transition={{ duration: 0.2 }}
-                          >
-                            <Box
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                p: 1,
-                                mb: 1,
-                                background:
-                                  "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 100%)",
-                                borderRadius: 2,
-                                transition: "all 0.2s ease-in-out",
-                                opacity: routine.checked ? 0.4 : 1,
-                                textDecoration: routine.checked
-                                  ? "line-through"
-                                  : "none",
-                                border: `1px solid ${
-                                  routine.checked ? "#d3d3d3" : "#e0e0e0"
-                                }`,
-                                "&:hover": {
-                                  transform: "translateX(5px)",
-                                  boxShadow: theme.shadows[1],
-                                  background:
-                                    "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 50%, #f0e6d2 100%)",
-                                },
-                              }}
-                            >
-                              <Checkbox
-                                checked={routine.checked || false}
-                                onChange={() =>
-                                  handleCheckboxChange(routine.id)
-                                }
-                                icon={<RadioButtonUnchecked />}
-                                checkedIcon={<CheckCircleOutline />}
-                                size="small"
-                                color="primary"
-                              />
-                              <Box sx={{ flex: 1, minWidth: 0 }}>
-                                <Typography
-                                  variant="body2"
-                                  sx={{
-                                    textDecoration: routine.checked
-                                      ? "line-through"
-                                      : "none",
-                                    color: routine.checked
-                                      ? "text.secondary"
-                                      : "text.primary",
-                                    whiteSpace: "nowrap",
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                    fontFamily: "'Poppins', sans-serif",
-                                  }}
-                                >
-                                  {routine.time} | {routine.title}
-                                </Typography>
-                              </Box>
-                              <IconButton
-                                onClick={() => {
-                                  setNewRoutine(routine);
-                                  setEditRoutineId(routine.id);
-                                  setModalOpen(true);
-                                }}
-                                size="small"
-                                sx={{ color: theme.palette.primary.main }}
-                              >
-                                <EventNote fontSize="small" />
-                              </IconButton>
-                              <IconButton
-                                onClick={() => deleteRoutine(routine.id)}
-                                size="small"
-                                sx={{ color: theme.palette.error.main }}
-                              >
-                                <DeleteForever fontSize="small" />
-                              </IconButton>
-                              <IconButton
-                                onClick={() =>
-                                  handleNotificationChange(routine.id)
-                                }
-                                size="small"
-                                sx={{
-                                  color: notificationsEnabled[routine.id]
-                                    ? theme.palette.warning.main
-                                    : "text.secondary",
-                                }}
-                              >
-                                {notificationsEnabled[routine.id] ? (
-                                  <NotificationImportant fontSize="small" />
-                                ) : (
-                                  <NotificationsOff fontSize="small" />
-                                )}
-                              </IconButton>
-                            </Box>
-                          </motion.div>
-                        )}
-                      </Draggable>
-                    ))
-                  )}
-                </AnimatePresence>
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-        </DragDropContext>
+                      {routine.time} | {routine.title}
+                    </Typography>
+                  </Box>
+                  <IconButton
+                    onClick={() => {
+                      setNewRoutine(routine);
+                      setEditRoutineId(routine.id);
+                      setModalOpen(true);
+                    }}
+                    size="small"
+                    sx={{ color: theme.palette.primary.main }}
+                  >
+                    <EventNote fontSize="small" />
+                  </IconButton>
+                  <IconButton
+                    onClick={() => deleteRoutine(routine.id)}
+                    size="small"
+                    sx={{ color: theme.palette.error.main }}
+                  >
+                    <DeleteForever fontSize="small" />
+                  </IconButton>
+                  <IconButton
+                    onClick={() => handleNotificationChange(routine.id)}
+                    size="small"
+                    sx={{
+                      color: notificationsEnabled[routine.id]
+                        ? theme.palette.warning.main
+                        : "text.secondary",
+                    }}
+                  >
+                    {notificationsEnabled[routine.id] ? (
+                      <NotificationImportant fontSize="small" />
+                    ) : (
+                      <NotificationsOff fontSize="small" />
+                    )}
+                  </IconButton>
+                </Box>
+              </motion.div>
+            ))
+          )}
+        </AnimatePresence>
 
         <ProgressChart
           completedRoutines={dailyStats.completed}

@@ -826,10 +826,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                                 alignItems="center"
                                 width="100%"
                               >
-                                <Typography
-                                  variant="h6"
-                                  sx={{ p: 1, bgcolor: "primary.light" }}
-                                >
+                                <Typography variant="h6" sx={{ p: 1 }}>
                                   {group.title}
                                 </Typography>
                                 <Box>

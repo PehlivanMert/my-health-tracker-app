@@ -7,9 +7,6 @@ export const requestNotificationPermission = async () => {
   try {
     const permission = await Notification.requestPermission();
     if (permission === "granted") {
-      const token = await messaging.getToken();
-      // Bu token'ı Firebase veritabanınızda saklayın
-      console.log("Token:", token);
     }
   } catch (error) {
     console.error("Bildirim izni alınamadı:", error);

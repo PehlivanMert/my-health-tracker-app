@@ -31,7 +31,6 @@ import {
 } from "./utils/constant/ConstantData";
 import DailyRoutine from "./components/daily-routine/DailyRoutine";
 import Exercises from "./components/exercises/exercise";
-import Supplements from "./components/supplements/Supplements";
 import ProTips from "./components/pro-tips/ProTips";
 import CalendarComponent from "./components/calendar/CalendarComponent";
 import WellnessTracker from "./components/wellnesstracker/WellnessTracker";
@@ -126,12 +125,10 @@ function App() {
   };
 
   // -------------------------
-  // Egzersiz ve Takviyeler
+  // Egzersiz
   // -------------------------
   const [exercises, setExercises] = useState(initialExercises);
-  const [supplements, setSupplements] = useState(initialSupplements);
   const [editingExercise, setEditingExercise] = useState(null);
-  const [editingSupplement, setEditingSupplement] = useState(null);
 
   const handleExerciseSubmit = useCallback((exercise) => {
     setExercises((prev) =>
@@ -140,15 +137,6 @@ function App() {
         : [...prev, { ...exercise, id: Date.now().toString() }]
     );
     setEditingExercise(null);
-  }, []);
-
-  const handleSupplementSubmit = useCallback((supplement) => {
-    setSupplements((prev) =>
-      supplement.id
-        ? prev.map((s) => (s.id === supplement.id ? supplement : s))
-        : [...prev, { ...supplement, id: Date.now().toString() }]
-    );
-    setEditingSupplement(null);
   }, []);
 
   const totalRoutines = routines.length;
@@ -165,7 +153,6 @@ function App() {
         .catch((err) => console.log("SW registration failed", err));
     }
   }, []);
-
   // -------------------------
   // Firestore’dan Kullanıcı Verilerini Yükleme
   // (Additional Info: Sadece ilk oluşturma sırasında eklenir, sonrasında güncellenmez)
@@ -185,7 +172,6 @@ function App() {
             data.additionalInfo ?? constantAdditionalInfo;
           setRoutines(data.routines ?? initialRoutines);
           setExercises(data.exercises ?? initialExercises);
-          setSupplements(data.supplements ?? initialSupplements);
           setAdditionalInfo({
             ...loadedAdditionalInfo,
             recipes: Array.isArray(loadedAdditionalInfo.recipes)
@@ -203,13 +189,11 @@ function App() {
           const initialData = {
             routines: initialRoutines,
             exercises: initialExercises,
-            supplements: initialSupplements,
             additionalInfo: constantAdditionalInfo,
           };
           await setDoc(userDocRef, initialData);
           setRoutines(initialRoutines);
           setExercises(initialExercises);
-          setSupplements(initialSupplements);
           setAdditionalInfo({
             ...constantAdditionalInfo,
             recipes: Array.isArray(constantAdditionalInfo.recipes)
@@ -251,14 +235,14 @@ function App() {
     const updateExercisesSupplementsInFirestore = async () => {
       try {
         const userDocRef = doc(db, "users", user.uid);
-        await updateDoc(userDocRef, { exercises, supplements });
+        await updateDoc(userDocRef, { exercises });
       } catch (error) {
         console.error("Veri kaydetme hatası:", error);
       }
     };
 
     updateExercisesSupplementsInFirestore();
-  }, [exercises, supplements, user]);
+  }, [exercises, user]);
 
   // -------------------------
   // Firebase Auth: Kullanıcı Oturumunu İzleme
@@ -661,14 +645,14 @@ function App() {
           totalRoutines={totalRoutines}
         />
       )}
-      {activeTab === 3 && (
+      {activeTab === 3 && <CalendarComponent user={user} />}
+      {activeTab === 4 && (
         <ProTips
           additionalInfo={additionalInfo}
           setAdditionalInfo={setAdditionalInfo}
           user={user}
         />
       )}
-      {activeTab === 4 && <CalendarComponent user={user} />}
 
       <Box
         className="footer-container"

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import {
   Box,
@@ -45,8 +45,9 @@ import {
   scheduleNotification,
   cancelScheduledNotifications,
 } from "../../utils/weather-theme-notify/NotificationManager";
-import { collection, query, orderBy, getDocs } from "firebase/firestore";
-import { db } from "../auth/firebaseConfig";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore"; // Firestore fonksiyonları
+import { db } from "../auth/firebaseConfig"; // Firestore bağlantısı
+import { initialRoutines } from "../../utils/constant/ConstantData";
 
 const StatCard = ({ title, value, total, icon, color }) => {
   const theme = useTheme();
@@ -120,7 +121,7 @@ const StatCard = ({ title, value, total, icon, color }) => {
   );
 };
 
-const DailyRoutine = ({ routines = [], setRoutines, deleteRoutine }) => {
+const DailyRoutine = ({ user }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [newRoutine, setNewRoutine] = useState({ title: "", time: "" });
@@ -131,10 +132,15 @@ const DailyRoutine = ({ routines = [], setRoutines, deleteRoutine }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [allNotifications, setAllNotifications] = useState(false);
   const [scheduledNotifications, setScheduledNotifications] = useState({});
+  const [routines, setRoutines] = useState([]);
+  const isInitialLoad = useRef(true); // İlk yükleme kontrolü
+
+  // Rutinleri saate göre sırala
   const sortRoutinesByTime = (routines) => {
     return routines.sort((a, b) => a.time.localeCompare(b.time));
   };
 
+  // Hafta numarasını hesapla
   const getWeekNumber = (date) => {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
@@ -143,6 +149,7 @@ const DailyRoutine = ({ routines = [], setRoutines, deleteRoutine }) => {
     return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
   };
 
+  // Aynı ay kontrolü
   const isSameMonth = (date1, date2) => {
     return (
       date1.getFullYear() === date2.getFullYear() &&
@@ -150,10 +157,12 @@ const DailyRoutine = ({ routines = [], setRoutines, deleteRoutine }) => {
     );
   };
 
+  // Bildirim izni iste
   useEffect(() => {
     requestNotificationPermission();
   }, []);
 
+  // Haftalık ve aylık istatistikleri güncelle
   useEffect(() => {
     const now = new Date();
     const currentWeek = getWeekNumber(now);
@@ -182,6 +191,7 @@ const DailyRoutine = ({ routines = [], setRoutines, deleteRoutine }) => {
     });
   }, [routines]);
 
+  // Haftalık ve aylık istatistikleri sıfırla
   useEffect(() => {
     const checkReset = () => {
       const now = new Date();
@@ -209,6 +219,7 @@ const DailyRoutine = ({ routines = [], setRoutines, deleteRoutine }) => {
     return () => clearInterval(timer);
   }, []);
 
+  // Rutin kaydetme işlemi
   const handleSaveRoutine = () => {
     if (!newRoutine.title || !newRoutine.time) return;
 
@@ -240,6 +251,12 @@ const DailyRoutine = ({ routines = [], setRoutines, deleteRoutine }) => {
     setEditRoutineId(null);
   };
 
+  // Rutin silme işlemi
+  const deleteRoutine = (id) => {
+    setRoutines(routines.filter((routine) => routine.id !== id));
+  };
+
+  // Rutin işaretleme işlemi
   const handleCheckboxChange = (routineId) => {
     setRoutines(
       routines.map((r) =>
@@ -254,6 +271,7 @@ const DailyRoutine = ({ routines = [], setRoutines, deleteRoutine }) => {
     );
   };
 
+  // Tüm rutinleri işaretle
   const handleSelectAll = () => {
     setRoutines(
       routines.map((r) => ({
@@ -264,6 +282,7 @@ const DailyRoutine = ({ routines = [], setRoutines, deleteRoutine }) => {
     );
   };
 
+  // Tüm rutinlerin işaretini kaldır
   const handleUnselectAll = () => {
     setRoutines(
       routines.map((r) => ({
@@ -274,6 +293,7 @@ const DailyRoutine = ({ routines = [], setRoutines, deleteRoutine }) => {
     );
   };
 
+  // Tüm rutinleri sil
   const handleDeleteAll = () => {
     setRoutines([]);
     // Tüm zamanlanmış bildirimleri iptal et
@@ -283,6 +303,7 @@ const DailyRoutine = ({ routines = [], setRoutines, deleteRoutine }) => {
     setScheduledNotifications({});
   };
 
+  // Yeni bildirim zamanla
   const scheduleNewNotification = (routine) => {
     const [hours, minutes] = routine.time.split(":");
     const targetTime = new Date();
@@ -311,6 +332,7 @@ const DailyRoutine = ({ routines = [], setRoutines, deleteRoutine }) => {
     }));
   };
 
+  // Bildirim aç/kapa
   const handleNotificationChange = (routineId) => {
     const routine = routines.find((r) => r.id === routineId);
     if (!routine) return;
@@ -338,6 +360,7 @@ const DailyRoutine = ({ routines = [], setRoutines, deleteRoutine }) => {
     }));
   };
 
+  // Tüm bildirimleri aç/kapa
   const toggleAllNotifications = () => {
     const newState = !allNotifications;
     setAllNotifications(newState);
@@ -363,10 +386,55 @@ const DailyRoutine = ({ routines = [], setRoutines, deleteRoutine }) => {
     setNotificationsEnabled(updatedNotifications);
   };
 
+  // Günlük istatistikler
   const dailyStats = {
     completed: routines.filter((r) => r.checked).length,
     total: routines.length,
   };
+
+  // Firestore'dan rutinleri yükle
+
+  useEffect(() => {
+    const loadRoutines = async () => {
+      if (!user) return;
+      try {
+        const userDocRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(userDocRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          // Eğer routines alanı tanımlı değilse, default rutinleri kullan
+          setRoutines(data.routines || initialRoutines);
+        } else {
+          // Kullanıcıya ait belge yoksa, default rutinlerle yeni belge oluştur
+          const initialData = {
+            routines: initialRoutines,
+            // Diğer default alanlar eklenebilir
+          };
+          await setDoc(userDocRef, initialData);
+          setRoutines(initialRoutines);
+        }
+        isInitialLoad.current = false; // İlk yükleme tamamlandı
+      } catch (error) {
+        console.error("Rutin yükleme hatası:", error);
+      }
+    };
+    loadRoutines();
+  }, [user]);
+
+  // Firestore'a rutinleri kaydet
+  useEffect(() => {
+    if (!user || isInitialLoad.current) return;
+    const updateRoutinesInFirestore = async () => {
+      try {
+        const userDocRef = doc(db, "users", user.uid);
+        await updateDoc(userDocRef, { routines });
+      } catch (error) {
+        console.error("Rutin kaydetme hatası:", error);
+      }
+    };
+    updateRoutinesInFirestore();
+  }, [routines, user]);
 
   return (
     <Box

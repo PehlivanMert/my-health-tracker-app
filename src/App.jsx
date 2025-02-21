@@ -94,37 +94,6 @@ function App() {
   }, []);
 
   // -------------------------
-  // Rutinler (Daily Routine)
-  // -------------------------
-  const [routines, setRoutines] = useState([]);
-  const [newRoutine, setNewRoutine] = useState({ time: "08:00", title: "" });
-  const [editRoutineId, setEditRoutineId] = useState(null);
-
-  const handleSaveRoutine = useCallback(() => {
-    let updatedRoutines;
-    if (editRoutineId) {
-      updatedRoutines = routines.map((routine) =>
-        routine.id === editRoutineId
-          ? { ...newRoutine, id: editRoutineId, checked: routine.checked }
-          : routine
-      );
-    } else {
-      updatedRoutines = [
-        ...routines,
-        { ...newRoutine, id: Date.now().toString(), checked: false },
-      ];
-    }
-    updatedRoutines.sort((a, b) => a.time.localeCompare(b.time));
-    setRoutines(updatedRoutines);
-    setEditRoutineId(null);
-    setNewRoutine({ time: "08:00", title: "" });
-  }, [routines, editRoutineId, newRoutine]);
-
-  const deleteRoutine = (id) => {
-    setRoutines(routines.filter((routine) => routine.id !== id));
-  };
-
-  // -------------------------
   // Egzersiz
   // -------------------------
   const [exercises, setExercises] = useState(initialExercises);
@@ -138,9 +107,6 @@ function App() {
     );
     setEditingExercise(null);
   }, []);
-
-  const totalRoutines = routines.length;
-  const completedRoutines = routines.filter((r) => r.checked).length;
 
   // -------------------------
   // Service Worker Kaydı
@@ -170,7 +136,6 @@ function App() {
           const data = docSnap.data();
           const loadedAdditionalInfo =
             data.additionalInfo ?? constantAdditionalInfo;
-          setRoutines(data.routines ?? initialRoutines);
           setExercises(data.exercises ?? initialExercises);
           setAdditionalInfo({
             ...loadedAdditionalInfo,
@@ -187,12 +152,10 @@ function App() {
           }
         } else {
           const initialData = {
-            routines: initialRoutines,
             exercises: initialExercises,
             additionalInfo: constantAdditionalInfo,
           };
           await setDoc(userDocRef, initialData);
-          setRoutines(initialRoutines);
           setExercises(initialExercises);
           setAdditionalInfo({
             ...constantAdditionalInfo,
@@ -208,23 +171,6 @@ function App() {
     };
     loadUserData();
   }, [user]);
-  // -------------------------
-  // Rutinler Güncelleme (Firestore’a yazma)
-  // -------------------------
-  useEffect(() => {
-    if (!user || isInitialLoad.current) return; // İlk yüklemede çalışmasın
-
-    const updateRoutinesInFirestore = async () => {
-      try {
-        const userDocRef = doc(db, "users", user.uid);
-        await updateDoc(userDocRef, { routines });
-      } catch (error) {
-        console.error("Rutin kaydetme hatası:", error);
-      }
-    };
-
-    updateRoutinesInFirestore();
-  }, [routines, user]);
 
   // -------------------------
   // Egzersiz ve Takviyeler Güncelleme (Firestore’a yazma)
@@ -608,20 +554,7 @@ function App() {
           }}
         />
       </Tabs>
-      {activeTab === 0 && (
-        <DailyRoutine
-          routines={routines}
-          setRoutines={setRoutines}
-          newRoutine={newRoutine}
-          setNewRoutine={setNewRoutine}
-          handleSaveRoutine={handleSaveRoutine}
-          editRoutineId={editRoutineId}
-          setEditRoutineId={setEditRoutineId}
-          deleteRoutine={deleteRoutine}
-          completedRoutines={completedRoutines}
-          totalRoutines={totalRoutines}
-        />
-      )}
+      {activeTab === 0 && <DailyRoutine user={user} />}
       {activeTab === 1 && (
         <Exercises
           exercises={exercises}

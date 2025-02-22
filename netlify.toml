@@ -1,6 +1,7 @@
 [build]
+  command = "npm run build"  
   functions = "netlify/functions"
-  publish = "build" # veya "dist" (kullandığınız build klasörü)
+  publish = "dist"  # build yerine dist kullanın
 
 [[redirects]]
   from = "/api/*"

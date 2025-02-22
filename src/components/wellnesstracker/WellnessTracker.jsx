@@ -39,7 +39,7 @@ import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import OpacityIcon from "@mui/icons-material/Opacity";
-import { motion, AnimatePresence, transform, color } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Animated keyframes
 const float = keyframes`
@@ -259,7 +259,7 @@ const VitaminCard = ({ supplement, onConsume, onDelete }) => {
 };
 
 // Water Tracking Component
-const WaterTracker = () => {
+const WaterTracker = ({ user }) => {
   const [waterData, setWaterData] = useState({
     waterIntake: 0,
     dailyWaterTarget: 2000,
@@ -268,11 +268,17 @@ const WaterTracker = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [achievement, setAchievement] = useState(null);
   const theme = useTheme();
-  const waterDocRef = doc(db, "water", "current");
+
+  // Add this function to get water document reference
+  const getWaterDocRef = () => {
+    if (!user) return null;
+    return doc(db, "users", user.uid, "water", "current");
+  };
 
   const fetchWaterData = async () => {
+    if (!user) return;
     try {
-      const docSnap = await getDoc(waterDocRef);
+      const docSnap = await getDoc(getWaterDocRef());
       if (docSnap.exists()) {
         setWaterData(docSnap.data());
       }
@@ -282,10 +288,11 @@ const WaterTracker = () => {
   };
 
   useEffect(() => {
-    fetchWaterData();
-  }, []);
+    if (user) fetchWaterData();
+  }, [user]);
 
   const handleAddWater = async () => {
+    if (!user) return;
     const newIntake = waterData.waterIntake + waterData.glassSize;
     const isGoalAchieved =
       newIntake >= waterData.dailyWaterTarget &&
@@ -293,7 +300,7 @@ const WaterTracker = () => {
 
     try {
       await setDoc(
-        waterDocRef,
+        getWaterDocRef(),
         {
           waterIntake: newIntake,
           dailyWaterTarget: waterData.dailyWaterTarget,
@@ -319,7 +326,11 @@ const WaterTracker = () => {
   const handleRemoveWater = async () => {
     const newIntake = Math.max(0, waterData.waterIntake - waterData.glassSize);
     try {
-      await setDoc(waterDocRef, { waterIntake: newIntake }, { merge: true });
+      await setDoc(
+        getWaterDocRef(),
+        { waterIntake: newIntake },
+        { merge: true }
+      );
       await fetchWaterData();
     } catch (error) {
       console.error("Error updating water intake:", error);
@@ -328,7 +339,11 @@ const WaterTracker = () => {
 
   const handleWaterSettingChange = async (field, value) => {
     try {
-      await setDoc(waterDocRef, { [field]: Number(value) }, { merge: true });
+      await setDoc(
+        getWaterDocRef(),
+        { [field]: Number(value) },
+        { merge: true }
+      );
       await fetchWaterData();
     } catch (error) {
       console.error("Error updating water settings:", error);
@@ -523,7 +538,7 @@ const WaterTracker = () => {
 };
 
 // Main App Component
-const WellnessTracker = () => {
+const WellnessTracker = ({ user }) => {
   const [supplements, setSupplements] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [newSupplement, setNewSupplement] = useState({
@@ -531,11 +546,16 @@ const WellnessTracker = () => {
     quantity: 0,
     dailyUsage: 1,
   });
-  const supplementsRef = collection(db, "supplements");
+
+  const getSupplementsRef = () => {
+    if (!user) return null;
+    return collection(db, "users", user.uid, "supplements");
+  };
 
   const fetchSupplements = async () => {
+    if (!user) return;
     try {
-      const querySnapshot = await getDocs(supplementsRef);
+      const querySnapshot = await getDocs(getSupplementsRef());
       const supplementsData = querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -547,12 +567,13 @@ const WellnessTracker = () => {
   };
 
   useEffect(() => {
-    fetchSupplements();
-  }, []);
+    if (user) fetchSupplements();
+  }, [user]);
 
   const handleAddSupplement = async () => {
+    if (!user) return;
     try {
-      await addDoc(supplementsRef, {
+      await addDoc(getSupplementsRef(), {
         ...newSupplement,
         quantity: Number(newSupplement.quantity),
         initialQuantity: Number(newSupplement.quantity),
@@ -567,11 +588,12 @@ const WellnessTracker = () => {
   };
 
   const handleConsume = async (id) => {
+    if (!user) return;
     try {
       const supplement = supplements.find((supp) => supp.id === id);
       const newQuantity = Math.max(0, supplement.quantity - 1);
 
-      const supplementRef = doc(db, "supplements", id);
+      const supplementRef = doc(getSupplementsRef(), id);
       await updateDoc(supplementRef, { quantity: newQuantity });
       await fetchSupplements();
     } catch (error) {
@@ -580,8 +602,9 @@ const WellnessTracker = () => {
   };
 
   const handleDelete = async (id) => {
+    if (!user) return;
     try {
-      const supplementRef = doc(db, "supplements", id);
+      const supplementRef = doc(getSupplementsRef(), id);
       await deleteDoc(supplementRef);
       await fetchSupplements();
     } catch (error) {
@@ -613,7 +636,7 @@ const WellnessTracker = () => {
           Health Tracker
         </Typography>
 
-        <WaterTracker />
+        <WaterTracker user={user} />
 
         <Box sx={{ mb: 4, display: "flex", justifyContent: "flex-end" }}>
           <AnimatedButton

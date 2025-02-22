@@ -1,4 +1,3 @@
-// src/components/Calendar/FullCalendarComponent.jsx
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -45,8 +44,6 @@ import "@fullcalendar/core";
 import "@fullcalendar/daygrid";
 import "@fullcalendar/timegrid";
 import "@fullcalendar/multimonth";
-import { lightGreen } from "@mui/material/colors";
-import { color } from "framer-motion";
 
 const CalendarComponent = ({ user }) => {
   const theme = useTheme();
@@ -74,12 +71,10 @@ const CalendarComponent = ({ user }) => {
 
   const fetchEvents = useCallback(async () => {
     if (!user) return;
-
     try {
       const eventsRef = collection(db, "users", user.uid, "calendarEvents");
       const q = query(eventsRef);
       const snapshot = await getDocs(q);
-
       const eventsData = snapshot.docs.map((doc) => {
         const data = doc.data();
         return {
@@ -94,7 +89,6 @@ const CalendarComponent = ({ user }) => {
           },
         };
       });
-
       setEvents(eventsData);
     } catch (error) {
       toast.error(`Etkinlikler yüklenemedi: ${error.message}`);
@@ -110,11 +104,9 @@ const CalendarComponent = ({ user }) => {
       toast.error("Etkinlik başlığı gereklidir");
       return;
     }
-
     try {
       const batch = writeBatch(db);
       const eventsRef = collection(db, "users", user.uid, "calendarEvents");
-
       const eventData = {
         title: newEvent.title,
         start: Timestamp.fromDate(newEvent.start.toJSDate()),
@@ -122,11 +114,9 @@ const CalendarComponent = ({ user }) => {
         allDay: newEvent.allDay,
         color: newEvent.color,
       };
-
       const docRef = doc(eventsRef);
       batch.set(docRef, eventData);
       await batch.commit();
-
       await fetchEvents();
       setOpenDialog(false);
       setNewEvent({
@@ -162,7 +152,7 @@ const CalendarComponent = ({ user }) => {
           start: Timestamp.fromDate(editEvent.start.toJSDate()),
           end: Timestamp.fromDate(editEvent.end.toJSDate()),
           allDay: editEvent.allDay,
-          color: editEvent.color || calendarColors.primary, // Eklendi
+          color: editEvent.color || calendarColors.primary,
         }
       );
       await fetchEvents();
@@ -192,7 +182,6 @@ const CalendarComponent = ({ user }) => {
         end: DateTime.fromJSDate(dropInfo.event.end),
         allDay: dropInfo.event.allDay,
       };
-
       await updateDoc(doc(db, "users", user.uid, "calendarEvents", event.id), {
         start: Timestamp.fromDate(event.start.toJSDate()),
         end: Timestamp.fromDate(event.end.toJSDate()),
@@ -212,7 +201,6 @@ const CalendarComponent = ({ user }) => {
         end: DateTime.fromJSDate(resizeInfo.event.end),
         allDay: resizeInfo.event.allDay,
       };
-
       await updateDoc(doc(db, "users", user.uid, "calendarEvents", event.id), {
         start: Timestamp.fromDate(event.start.toJSDate()),
         end: Timestamp.fromDate(event.end.toJSDate()),
@@ -226,7 +214,6 @@ const CalendarComponent = ({ user }) => {
   const handleDateTimeChange = (value, isStart, event, setEvent) => {
     const dt = DateTime.fromISO(value);
     if (!dt.isValid) return;
-
     setEvent((prev) => {
       const newValue = { ...prev };
       if (isStart) {
@@ -242,7 +229,7 @@ const CalendarComponent = ({ user }) => {
 
   return (
     <Paper sx={styles.container}>
-      <Box sx={[styles.controls]}>
+      <Box sx={styles.controls}>
         <Button
           variant="contained"
           startIcon={<Add />}
@@ -282,7 +269,7 @@ const CalendarComponent = ({ user }) => {
               start: DateTime.fromJSDate(clickInfo.event.start),
               end: DateTime.fromJSDate(clickInfo.event.end),
               color:
-                clickInfo.event.extendedProps.color || calendarColors.primary, // Eklendi
+                clickInfo.event.extendedProps.color || calendarColors.primary,
               allDay: clickInfo.event.allDay,
             };
             setSelectedEvent(event);
@@ -293,7 +280,6 @@ const CalendarComponent = ({ user }) => {
           dayCellClassNames="fc-day-cell"
         />
       </Box>
-
       <EventDialog
         open={openDialog}
         onClose={() => setOpenDialog(false)}
@@ -320,20 +306,28 @@ const CalendarComponent = ({ user }) => {
         open={!!selectedEvent}
         onClose={() => setSelectedEvent(null)}
         disableEnforceFocus
+        PaperProps={{
+          sx: {
+            background: "rgba(33, 150, 243, 0.1)",
+            backdropFilter: "blur(10px)",
+            borderRadius: "24px",
+            border: "1px solid rgba(33, 150, 243, 0.2)",
+            color: "#fff",
+            p: 2,
+          },
+        }}
       >
         <DialogTitle>Etkinlik Detayları</DialogTitle>
         <DialogContent sx={styles.dialogContent}>
           <Typography variant="h6" gutterBottom>
             {selectedEvent?.title}
           </Typography>
-
           <Typography variant="body2" color="text.secondary">
             Başlangıç: {selectedEvent?.start?.toFormat("dd.MM.yyyy HH:mm")}
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Bitiş: {selectedEvent?.end?.toFormat("dd.MM.yyyy HH:mm")}
           </Typography>
-
           <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
             <Button
               variant="contained"
@@ -379,7 +373,20 @@ const EventDialog = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      PaperProps={{
+        sx: {
+          background: "rgba(33, 150, 243, 0.1)",
+          backdropFilter: "blur(10px)",
+          borderRadius: "24px",
+          border: "1px solid rgba(33, 150, 243, 0.2)",
+          color: "#fff",
+          p: 2,
+        },
+      }}
+    >
       <DialogTitle>{title}</DialogTitle>
       <DialogContent sx={styles.dialogContent}>
         <TextField
@@ -388,19 +395,19 @@ const EventDialog = ({
           margin="normal"
           value={event?.title || ""}
           onChange={(e) => setEvent({ ...event, title: e.target.value })}
+          sx={{ input: { color: "#fff" }, label: { color: "#fff" } }}
         />
-
         <FormControlLabel
           control={
             <Checkbox
               checked={event?.allDay ?? true}
               onChange={handleAllDayChange}
+              sx={{ color: "#fff" }}
             />
           }
           label="Tüm Gün"
-          sx={{ mt: 1 }}
+          sx={{ mt: 1, color: "#fff" }}
         />
-
         <Box sx={styles.timeInputs}>
           <TextField
             label="Başlangıç"
@@ -417,6 +424,7 @@ const EventDialog = ({
               handleDateTimeChange(e.target.value, true, event, setEvent)
             }
             fullWidth
+            sx={{ input: { color: "#fff" }, label: { color: "#fff" } }}
           />
           <TextField
             label="Bitiş"
@@ -433,14 +441,18 @@ const EventDialog = ({
               handleDateTimeChange(e.target.value, false, event, setEvent)
             }
             fullWidth
+            sx={{ input: { color: "#fff" }, label: { color: "#fff" } }}
           />
         </Box>
-
         <FormControl fullWidth margin="normal">
-          <InputLabel>Renk</InputLabel>
+          <InputLabel sx={{ color: "#fff" }}>Renk</InputLabel>
           <Select
             value={event?.color || colors.primary}
             onChange={(e) => setEvent({ ...event, color: e.target.value })}
+            sx={{
+              color: "#fff",
+              ".MuiOutlinedInput-notchedOutline": { borderColor: "#fff" },
+            }}
           >
             {Object.entries(colors).map(([name, color]) => (
               <MenuItem key={name} value={color}>
@@ -460,7 +472,9 @@ const EventDialog = ({
         </FormControl>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>İptal</Button>
+        <Button onClick={onClose} sx={{ color: "#fff" }}>
+          İptal
+        </Button>
         <Button
           variant="contained"
           onClick={onSubmit}
@@ -498,78 +512,76 @@ const styles = {
   container: {
     p: 3,
     borderRadius: 4,
-    bgcolor: "background.paper",
     boxShadow: (theme) => theme.shadows[3],
     overflow: "hidden",
     display: "flex",
     flexDirection: "column",
     height: "95vh",
-    background: {
-      xs: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)", // Küçük ekranlar
-      md: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)", // Orta ve büyük ekranlar
-      lg: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)", // Büyük ekranlar
-    },
+    background:
+      "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
+    color: "#fff",
   },
   controls: {
     mb: 2,
-    color: "#2196F3",
+    color: "#fff",
   },
   calendarWrapper: {
     flex: 1,
     minHeight: 600,
     borderRadius: 5,
-    background: "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 100%)",
+    background: "rgba(255,255,255,0.1)",
+    backdropFilter: "blur(10px)",
     overflow: "hidden",
     "& .fc": {
       fontFamily: "inherit",
-      color: "#2196F3",
+      color: "rgba(0, 0, 0, 0.9)",
       height: "100%",
       "& th": {
         background:
-          "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 50%, #f0e6d2 100%)",
+          "linear-gradient(135deg, #1a2a6c, #2196F3 50%, #3F51B5 100%)",
         padding: "8px 4px",
       },
       "& .fc-day-today": {
-        backgroundColor: "#D1F8EF",
+        backgroundColor: "#FAFFAF",
       },
       "& .fc-daygrid-day.fc-day-today": {
-        backgroundColor: "#D1F8EF",
+        backgroundColor: "#FAFFAF",
       },
       "& .fc-timegrid-col.fc-day-today": {
-        backgroundColor: "#D1F8EF",
+        backgroundColor: "#FAFFAF",
       },
       "& .fc-event": {
         border: "none",
-        boxShadow: 1,
+        boxShadow: "0px 2px 4px rgba(0,0,0,0.3)",
         cursor: "move",
         transition: "all 0.2s",
         "&:hover": {
-          boxShadow: 3,
+          boxShadow: "0px 4px 8px rgba(0,0,0,0.5)",
         },
       },
       "& .fc-now-indicator": {
         borderColor: colors.red[600],
       },
       "& .fc-button": {
-        backgroundColor: "#3674B5", // Mavi arka plan
-        color: "white", // Yazı rengi beyaz
-        border: "none", // Kenarlık kaldırma
-        borderRadius: "8px", // Yuvarlatılmış kenarlar
-        boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)", // Gölgelendirme
-        transition: "all 0.3s ease", // Geçiş efekti
+        backgroundColor: "#3674B5",
+        color: "white",
+        border: "none",
+        borderRadius: "8px",
+        boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+        transition: "all 0.3s ease",
       },
       "& .fc-button:hover": {
-        backgroundColor: "#A1E3F9", // Daha koyu mavi
-        transform: "translateY(-2px)", // Hafif yukarı kaydırma
+        backgroundColor: "#A1E3F9",
+        transform: "translateY(-2px)",
       },
       "& .fc-button-primary.fc-button-active": {
-        backgroundColor: "#FAFFAF", // Sarı arka plan
-        color: "black", // Yazı rengi siyah
+        backgroundColor: "#FAFFAF",
+        color: "black",
       },
       "& .fc-toolbar-title": {
-        color: "#333", // Başlık rengi
-        fontSize: "1.5rem", // Yazı boyutu
-        fontWeight: "bold", // Kalın yazı
+        color: "#fff",
+        fontSize: "1.5rem",
+        fontWeight: "bold",
       },
     },
   },
@@ -578,7 +590,6 @@ const styles = {
     minWidth: 400,
     "& .MuiTextField-root": { my: 1 },
   },
-
   timeInputs: {
     display: "grid",
     gap: 2,
@@ -586,7 +597,7 @@ const styles = {
     my: 2,
   },
   eventContent: {
-    color: "common.white",
+    color: "#fff",
   },
 };
 

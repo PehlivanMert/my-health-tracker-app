@@ -47,7 +47,6 @@ import {
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
 import { initialRoutines } from "../../utils/constant/ConstantData";
-import ProgressChart from "../../utils/ProgressChart";
 
 // Animasyonlar
 const float = keyframes`

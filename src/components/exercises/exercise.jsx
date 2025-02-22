@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   Box,
-  Paper,
   Typography,
   IconButton,
   Grid,
@@ -11,14 +10,18 @@ import {
   InputLabel,
   CircularProgress,
   Alert,
-  Button,
-  Chip,
   useTheme,
   Collapse,
   Dialog,
   DialogTitle,
   DialogContent,
   TextField,
+  Slide,
+  Container,
+  alpha,
+  styled,
+  keyframes,
+  Button,
 } from "@mui/material";
 import { Delete, Edit, FitnessCenter, Add, Close } from "@mui/icons-material";
 import axios from "axios";
@@ -45,12 +48,48 @@ const TRANSLATIONS = {
   },
 };
 
-const capitalizeWords = (str) => {
-  return str
-    .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-};
+// Animasyonlar
+const float = keyframes`
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+  100% { transform: translateY(0px); }
+`;
+
+const pulse = keyframes`
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+`;
+
+// Stilize Bileşenler
+const GlowingCard = styled(Box)(({ theme, glowColor }) => ({
+  position: "relative",
+  background: "rgba(255, 255, 255, 0.1)",
+  backdropFilter: "blur(10px)",
+  borderRadius: "24px",
+  overflow: "hidden",
+  border: "1px solid rgba(33, 150, 243, 0.2)",
+  boxShadow: `0 0 20px ${glowColor || "#2196F322"}`,
+  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+  "&:hover": {
+    transform: "translateY(-5px)",
+    boxShadow: `0 0 40px ${glowColor || "#2196F344"}`,
+  },
+}));
+
+const AnimatedButton = styled(Button)(({ theme }) => ({
+  background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
+  border: 0,
+  borderRadius: 25,
+  boxShadow: "0 3px 5px 2px rgba(33, 150, 243, .3)",
+  color: "white",
+  padding: "12px 30px",
+  transition: "all 0.3s ease",
+  "&:hover": {
+    transform: "scale(1.05)",
+    boxShadow: "0 5px 15px 3px rgba(33, 150, 243, .4)",
+  },
+}));
 
 const Exercises = ({ exercises, setExercises }) => {
   const theme = useTheme();
@@ -83,6 +122,13 @@ const Exercises = ({ exercises, setExercises }) => {
       "X-RapidAPI-Host": "exercisedb.p.rapidapi.com",
     },
     timeout: 10000,
+  };
+
+  const capitalizeWords = (str) => {
+    return str
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
   };
 
   const fetchExercises = async () => {
@@ -158,393 +204,448 @@ const Exercises = ({ exercises, setExercises }) => {
   };
 
   return (
-    <Paper
+    <Box
       sx={{
-        p: 3,
-        borderRadius: 4,
-        boxShadow: theme.shadows[3],
-        background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
         minHeight: "100vh",
+        background:
+          "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
+        padding: { xs: 2, md: 4 },
       }}
     >
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
-          justifyContent: "space-between",
-          alignItems: { xs: "flex-end", sm: "center" }, // xs'te sağa dayalı olması için flex-end
-          mb: 4,
-          gap: 2,
-        }}
-      >
+      <Container maxWidth="lg">
         <Typography
-          variant="h4"
+          variant="h2"
           sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 2,
+            textAlign: "center",
+            color: "#fff",
+            fontWeight: 800,
+            mb: 6,
+            textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
+            animation: `${float} 3s ease-in-out infinite`,
           }}
         >
-          <FitnessCenter fontSize="large" />
-          Egzersiz Yönetim Paneli
+          <FitnessCenter
+            sx={{ fontSize: 50, verticalAlign: "middle", mr: 2 }}
+          />
+          Egzersiz Yönetimi
         </Typography>
 
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => {
-            setCustomExercise({
-              id: null,
-              title: "",
-              target: "",
-              equipment: "",
-              instructions: "",
-            });
-            setOpenModal(true);
-          }}
-        >
-          Yeni Egzersiz Ekle
-        </Button>
-      </Box>
-
-      <Dialog
-        open={openModal}
-        onClose={() => setOpenModal(false)}
-        fullWidth
-        maxWidth="lg"
-      >
-        <DialogTitle>
+        <GlowingCard glowColor="#2196F3" sx={{ p: 4, mb: 4 }}>
           <Box
             sx={{
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              mb: 4,
             }}
           >
-            {modalType === "api"
-              ? "Egzersiz Ara ve Ekle"
-              : "Özel Egzersiz Oluştur"}
-            <IconButton onClick={() => setOpenModal(false)}>
-              <Close />
-            </IconButton>
+            <Typography variant="h5" sx={{ color: "#fff", fontWeight: 700 }}>
+              Egzersiz Kütüphanesi
+            </Typography>
+            <AnimatedButton
+              startIcon={<Add />}
+              onClick={() => {
+                setCustomExercise({
+                  id: null,
+                  title: "",
+                  target: "",
+                  equipment: "",
+                  instructions: "",
+                });
+                setOpenModal(true);
+              }}
+            >
+              Yeni Egzersiz Ekle
+            </AnimatedButton>
           </Box>
-        </DialogTitle>
 
-        <DialogContent>
-          {modalType === "api" ? (
-            <>
+          <Dialog
+            open={openModal}
+            onClose={() => setOpenModal(false)}
+            fullWidth
+            maxWidth="lg"
+            PaperProps={{
+              sx: {
+                background: "rgba(255,255,255,0.9)",
+                backdropFilter: "blur(10px)",
+                borderRadius: "24px",
+                border: "1px solid rgba(33, 150, 243, 0.2)",
+              },
+            }}
+          >
+            <DialogTitle sx={{ fontWeight: 700 }}>
               <Box
                 sx={{
-                  mt: 3,
-                  display: "grid",
-                  gap: 3,
-                  gridTemplateColumns: "repeat(3, 1fr)",
-                }}
-              >
-                <FormControl fullWidth>
-                  <InputLabel>Vücut Bölgesi</InputLabel>
-                  <Select
-                    value={filters.bodyPart}
-                    onChange={(e) =>
-                      setFilters({ ...filters, bodyPart: e.target.value })
-                    }
-                  >
-                    {BODY_PARTS.map((part) => (
-                      <MenuItem key={part} value={part}>
-                        {TRANSLATIONS.bodyParts[part]}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                <FormControl fullWidth>
-                  <InputLabel>Ekipman</InputLabel>
-                  <Select
-                    value={filters.equipment}
-                    onChange={(e) =>
-                      setFilters({ ...filters, equipment: e.target.value })
-                    }
-                  >
-                    {EQUIPMENTS.map((eq) => (
-                      <MenuItem key={eq} value={eq}>
-                        {TRANSLATIONS.equipment[eq]}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                <TextField
-                  label="Egzersiz Adı Ara"
-                  value={filters.name}
-                  onChange={(e) =>
-                    setFilters({ ...filters, name: e.target.value })
-                  }
-                />
-              </Box>
-
-              <Button
-                variant="contained"
-                onClick={fetchExercises}
-                disabled={loading}
-                fullWidth
-                sx={{ my: 3 }}
-              >
-                Egzersizleri Getir
-              </Button>
-
-              {loading && (
-                <CircularProgress
-                  sx={{ display: "block", margin: "20px auto" }}
-                />
-              )}
-
-              {error && (
-                <Alert severity="error" sx={{ mb: 3 }}>
-                  {error}
-                </Alert>
-              )}
-
-              <Grid container spacing={3}>
-                {apiExercises.map((exercise) => (
-                  <Grid item xs={12} md={6} key={exercise.id}>
-                    <Paper sx={{ p: 2, position: "relative" }}>
-                      <Chip
-                        label={exercise.equipment}
-                        color="secondary"
-                        size="small"
-                        sx={{ position: "absolute", right: 8, top: 8 }}
-                      />
-                      <Typography variant="h6">{exercise.name}</Typography>
-                      <Typography variant="body2">
-                        Hedef: {exercise.target}
-                      </Typography>
-                      <Box sx={{ maxHeight: 100, overflow: "auto", my: 1 }}>
-                        {exercise.instructions?.map((step, i) => (
-                          <Typography key={i} variant="body2">
-                            {i + 1}. {step}
-                          </Typography>
-                        ))}
-                      </Box>
-                      <Button
-                        variant="outlined"
-                        onClick={() => {
-                          setExercises((prev) => [
-                            ...prev,
-                            {
-                              id: Date.now().toString(),
-                              title: exercise.name,
-                              content: `Hedef: ${exercise.target}\nEkipman: ${
-                                exercise.equipment
-                              }\nTalimatlar:\n${exercise.instructions
-                                ?.map((s, i) => `${i + 1}. ${s}`)
-                                .join("\n")}`,
-                            },
-                          ]);
-                          toast.success("Egzersiz eklendi!");
-                        }}
-                      >
-                        Ekle
-                      </Button>
-                    </Paper>
-                  </Grid>
-                ))}
-              </Grid>
-
-              <Box sx={{ textAlign: "center", mt: 3 }}>
-                <Button variant="text" onClick={() => setModalType("custom")}>
-                  Özel Egzersiz Oluştur
-                </Button>
-              </Box>
-            </>
-          ) : (
-            <Box sx={{ mt: 2 }}>
-              <TextField
-                label="Egzersiz Adı*"
-                fullWidth
-                value={customExercise.title}
-                onChange={(e) =>
-                  setCustomExercise({
-                    ...customExercise,
-                    title: e.target.value,
-                  })
-                }
-                sx={{ mb: 2 }}
-              />
-
-              <TextField
-                label="Hedef Bölge"
-                fullWidth
-                value={customExercise.target}
-                onChange={(e) =>
-                  setCustomExercise({
-                    ...customExercise,
-                    target: e.target.value,
-                  })
-                }
-                sx={{ mb: 2 }}
-              />
-
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <InputLabel>Ekipman</InputLabel>
-                <Select
-                  value={customExercise.equipment}
-                  onChange={(e) =>
-                    setCustomExercise({
-                      ...customExercise,
-                      equipment: e.target.value,
-                    })
-                  }
-                >
-                  {EQUIPMENTS.map((eq) => (
-                    <MenuItem key={eq} value={eq}>
-                      {TRANSLATIONS.equipment[eq]}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <TextField
-                label="Talimatlar*"
-                multiline
-                rows={4}
-                fullWidth
-                value={customExercise.instructions}
-                onChange={(e) =>
-                  setCustomExercise({
-                    ...customExercise,
-                    instructions: e.target.value,
-                  })
-                }
-                placeholder="Her bir talimatı yeni satıra yazın"
-              />
-
-              <Box
-                sx={{
-                  mt: 3,
                   display: "flex",
-                  justifyContent: "flex-end",
-                  gap: 2,
+                  justifyContent: "space-between",
+                  alignItems: "center",
                 }}
               >
-                <Button variant="outlined" onClick={() => setModalType("api")}>
-                  Geri Dön
-                </Button>
-                <Button
-                  variant="contained"
-                  onClick={handleSubmitCustomExercise}
-                >
-                  {customExercise.id ? "Güncelle" : "Kaydet"}
-                </Button>
+                {modalType === "api"
+                  ? "Egzersiz Ara ve Ekle"
+                  : "Özel Egzersiz Oluştur"}
+                <IconButton onClick={() => setOpenModal(false)}>
+                  <Close sx={{ color: "#2196F3" }} />
+                </IconButton>
               </Box>
-            </Box>
-          )}
-        </DialogContent>
-      </Dialog>
+            </DialogTitle>
 
-      {exercises.length === 0 ? (
-        <Box
-          sx={{
-            textAlign: "center",
-            p: 4,
-            border: `2px dashed ${theme.palette.divider}`,
-          }}
-        >
-          <Typography variant="h6" color="textSecondary">
-            Henüz egzersiz eklenmemiş
-          </Typography>
-        </Box>
-      ) : (
-        <Grid container spacing={3}>
-          {exercises.map((exercise) => (
-            <Grid item xs={12} md={6} lg={4} key={exercise.id}>
-              <Paper
-                sx={{
-                  background:
-                    "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 100%)",
-                  p: 3,
-                  height: "100%",
-                  position: "relative",
-                  cursor: "pointer",
-                  transition: "transform 0.3s, box-shadow 0.3s",
-                  "&:hover": {
-                    transform: "translateY(-5px)",
-                    boxShadow: theme.shadows[6],
-                    background:
-                      "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 50%, #f0e6d2 100%)",
-                  },
-                }}
-              >
-                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                  <Typography
-                    variant="h6"
-                    onClick={() =>
-                      setExpandedId(
-                        expandedId === exercise.id ? null : exercise.id
-                      )
-                    }
-                    sx={{ cursor: "pointer", flexGrow: 1 }}
+            <DialogContent>
+              {modalType === "api" ? (
+                <>
+                  <Grid container spacing={3} sx={{ mt: 2 }}>
+                    <Grid item xs={12} md={4}>
+                      <FormControl fullWidth>
+                        <InputLabel>Vücut Bölgesi</InputLabel>
+                        <Select
+                          value={filters.bodyPart}
+                          onChange={(e) =>
+                            setFilters({ ...filters, bodyPart: e.target.value })
+                          }
+                          sx={{ background: "rgba(255,255,255,0.8)" }}
+                        >
+                          {BODY_PARTS.map((part) => (
+                            <MenuItem key={part} value={part}>
+                              {TRANSLATIONS.bodyParts[part]}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+
+                    <Grid item xs={12} md={4}>
+                      <FormControl fullWidth>
+                        <InputLabel>Ekipman</InputLabel>
+                        <Select
+                          value={filters.equipment}
+                          onChange={(e) =>
+                            setFilters({
+                              ...filters,
+                              equipment: e.target.value,
+                            })
+                          }
+                          sx={{ background: "rgba(255,255,255,0.8)" }}
+                        >
+                          {EQUIPMENTS.map((eq) => (
+                            <MenuItem key={eq} value={eq}>
+                              {TRANSLATIONS.equipment[eq]}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+
+                    <Grid item xs={12} md={4}>
+                      <TextField
+                        label="Egzersiz Adı Ara"
+                        value={filters.name}
+                        onChange={(e) =>
+                          setFilters({ ...filters, name: e.target.value })
+                        }
+                        fullWidth
+                        sx={{ background: "rgba(255,255,255,0.8)" }}
+                      />
+                    </Grid>
+                  </Grid>
+
+                  <AnimatedButton
+                    fullWidth
+                    onClick={fetchExercises}
+                    disabled={loading}
+                    sx={{ my: 3 }}
                   >
-                    {exercise.title}
-                  </Typography>
-                  <Box>
-                    <IconButton
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const instructions = exercise.content
-                          .split("Talimatlar:\n")[1]
-                          ?.split("\n")
-                          .map((line) => line.replace(/^\d+\.\s*/, ""))
-                          .join("\n");
+                    Egzersizleri Getir
+                  </AnimatedButton>
 
+                  {loading && (
+                    <CircularProgress
+                      sx={{
+                        display: "block",
+                        margin: "20px auto",
+                        color: "#2196F3",
+                      }}
+                    />
+                  )}
+
+                  {error && (
+                    <Alert severity="error" sx={{ mb: 3 }}>
+                      {error}
+                    </Alert>
+                  )}
+
+                  <Grid container spacing={3}>
+                    {apiExercises.map((exercise) => (
+                      <Grid item xs={12} md={6} key={exercise.id}>
+                        <GlowingCard glowColor="#4CAF50" sx={{ p: 3 }}>
+                          <Typography
+                            variant="h6"
+                            sx={{ color: "#fff", mb: 1 }}
+                          >
+                            {exercise.name}
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{ color: "#fff", opacity: 0.9 }}
+                          >
+                            Hedef: {exercise.target}
+                          </Typography>
+                          <Box sx={{ maxHeight: 100, overflow: "auto", my: 2 }}>
+                            {exercise.instructions?.map((step, i) => (
+                              <Typography
+                                key={i}
+                                variant="body2"
+                                sx={{ color: "#fff" }}
+                              >
+                                {i + 1}. {step}
+                              </Typography>
+                            ))}
+                          </Box>
+                          <AnimatedButton
+                            fullWidth
+                            onClick={() => {
+                              setExercises((prev) => [
+                                ...prev,
+                                {
+                                  id: Date.now().toString(),
+                                  title: exercise.name,
+                                  content: `Hedef: ${
+                                    exercise.target
+                                  }\nEkipman: ${
+                                    exercise.equipment
+                                  }\nTalimatlar:\n${exercise.instructions
+                                    ?.map((s, i) => `${i + 1}. ${s}`)
+                                    .join("\n")}`,
+                                },
+                              ]);
+                              toast.success("Egzersiz eklendi!");
+                            }}
+                          >
+                            Programıma Ekle
+                          </AnimatedButton>
+                        </GlowingCard>
+                      </Grid>
+                    ))}
+                  </Grid>
+
+                  <Box sx={{ textAlign: "center", mt: 3 }}>
+                    <AnimatedButton
+                      variant="text"
+                      onClick={() => setModalType("custom")}
+                      sx={{ color: "#2196F3" }}
+                    >
+                      Özel Egzersiz Oluştur
+                    </AnimatedButton>
+                  </Box>
+                </>
+              ) : (
+                <Box sx={{ mt: 2 }}>
+                  <TextField
+                    label="Egzersiz Adı*"
+                    fullWidth
+                    value={customExercise.title}
+                    onChange={(e) =>
+                      setCustomExercise({
+                        ...customExercise,
+                        title: e.target.value,
+                      })
+                    }
+                    sx={{ mb: 2, background: "rgba(255,255,255,0.8)" }}
+                  />
+
+                  <TextField
+                    label="Hedef Bölge"
+                    fullWidth
+                    value={customExercise.target}
+                    onChange={(e) =>
+                      setCustomExercise({
+                        ...customExercise,
+                        target: e.target.value,
+                      })
+                    }
+                    sx={{ mb: 2, background: "rgba(255,255,255,0.8)" }}
+                  />
+
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                    <InputLabel>Ekipman</InputLabel>
+                    <Select
+                      value={customExercise.equipment}
+                      onChange={(e) =>
                         setCustomExercise({
-                          id: exercise.id,
-                          title: exercise.title,
-                          target:
-                            exercise.content.match(/Hedef: (.*)/)?.[1] || "",
-                          equipment:
-                            exercise.content.match(/Ekipman: (.*)/)?.[1] || "",
-                          instructions: instructions || "",
-                        });
-                        setModalType("custom");
-                        setOpenModal(true);
-                      }}
+                          ...customExercise,
+                          equipment: e.target.value,
+                        })
+                      }
+                      sx={{ background: "rgba(255,255,255,0.8)" }}
                     >
-                      <Edit />
-                    </IconButton>
-                    <IconButton
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExercises(
-                          exercises.filter((e) => e.id !== exercise.id)
-                        );
-                      }}
+                      {EQUIPMENTS.map((eq) => (
+                        <MenuItem key={eq} value={eq}>
+                          {TRANSLATIONS.equipment[eq]}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  <TextField
+                    label="Talimatlar*"
+                    multiline
+                    rows={4}
+                    fullWidth
+                    value={customExercise.instructions}
+                    onChange={(e) =>
+                      setCustomExercise({
+                        ...customExercise,
+                        instructions: e.target.value,
+                      })
+                    }
+                    placeholder="Her bir talimatı yeni satıra yazın"
+                    sx={{ background: "rgba(255,255,255,0.8)" }}
+                  />
+
+                  <Box
+                    sx={{
+                      mt: 3,
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      gap: 2,
+                    }}
+                  >
+                    <AnimatedButton
+                      variant="outlined"
+                      onClick={() => setModalType("api")}
+                      sx={{ borderColor: "#2196F3", color: "#2196F3" }}
                     >
-                      <Delete />
-                    </IconButton>
+                      Geri Dön
+                    </AnimatedButton>
+                    <AnimatedButton onClick={handleSubmitCustomExercise}>
+                      {customExercise.id ? "Güncelle" : "Kaydet"}
+                    </AnimatedButton>
                   </Box>
                 </Box>
+              )}
+            </DialogContent>
+          </Dialog>
 
-                <Collapse in={expandedId === exercise.id}>
-                  <Typography sx={{ whiteSpace: "pre-line", mt: 2 }}>
-                    {exercise.content.split("\n").map((line, i) => (
-                      <span key={i} style={{ display: "block" }}>
-                        {line.startsWith("Hedef:") ||
-                        line.startsWith("Ekipman:") ||
-                        line.startsWith("Talimatlar:") ? (
-                          <strong>{line}</strong>
-                        ) : (
-                          line
-                        )}
-                      </span>
-                    ))}
-                  </Typography>
-                </Collapse>
-              </Paper>
+          {exercises.length === 0 ? (
+            <Box
+              sx={{
+                textAlign: "center",
+                p: 4,
+                border: `2px dashed rgba(255,255,255,0.3)`,
+                borderRadius: 3,
+              }}
+            >
+              <Typography variant="h6" sx={{ color: "#fff", opacity: 0.8 }}>
+                Henüz egzersiz eklenmemiş
+              </Typography>
+            </Box>
+          ) : (
+            <Grid container spacing={3}>
+              {exercises.map((exercise) => (
+                <Grid item xs={12} md={6} lg={4} key={exercise.id}>
+                  <GlowingCard
+                    glowColor="#4CAF50"
+                    sx={{
+                      flex: 1,
+                      display: "flex",
+                      flexDirection: "column",
+                      p: 3,
+                      transition: "transform 0.3s, box-shadow 0.3s",
+                      "&:hover": {
+                        transform: "translateY(-5px)",
+                      },
+                    }}
+                  >
+                    <Box
+                      sx={{ display: "flex", justifyContent: "space-between" }}
+                    >
+                      <Typography
+                        variant="h6"
+                        onClick={() =>
+                          setExpandedId(
+                            expandedId === exercise.id ? null : exercise.id
+                          )
+                        }
+                        sx={{
+                          color: "#fff",
+                          cursor: "pointer",
+                          flexGrow: 1,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {exercise.title}
+                      </Typography>
+                      <Box>
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const instructions = exercise.content
+                              .split("Talimatlar:\n")[1]
+                              ?.split("\n")
+                              .map((line) => line.replace(/^\d+\.\s*/, ""))
+                              .join("\n");
+
+                            setCustomExercise({
+                              id: exercise.id,
+                              title: exercise.title,
+                              target:
+                                exercise.content.match(/Hedef: (.*)/)?.[1] ||
+                                "",
+                              equipment:
+                                exercise.content.match(/Ekipman: (.*)/)?.[1] ||
+                                "",
+                              instructions: instructions || "",
+                            });
+                            setModalType("custom");
+                            setOpenModal(true);
+                          }}
+                          sx={{ color: "#fff" }}
+                        >
+                          <Edit />
+                        </IconButton>
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExercises(
+                              exercises.filter((e) => e.id !== exercise.id)
+                            );
+                          }}
+                          sx={{ color: "#FF5252" }}
+                        >
+                          <Delete />
+                        </IconButton>
+                      </Box>
+                    </Box>
+
+                    <Collapse in={expandedId === exercise.id}>
+                      <Typography
+                        sx={{
+                          whiteSpace: "pre-line",
+                          mt: 2,
+                          color: "#fff",
+                          opacity: 0.9,
+                        }}
+                      >
+                        {exercise.content.split("\n").map((line, i) => (
+                          <span key={i} style={{ display: "block" }}>
+                            {line.startsWith("Hedef:") ||
+                            line.startsWith("Ekipman:") ||
+                            line.startsWith("Talimatlar:") ? (
+                              <strong>{line}</strong>
+                            ) : (
+                              line
+                            )}
+                          </span>
+                        ))}
+                      </Typography>
+                    </Collapse>
+                  </GlowingCard>
+                </Grid>
+              ))}
             </Grid>
-          ))}
-        </Grid>
-      )}
-    </Paper>
+          )}
+        </GlowingCard>
+      </Container>
+    </Box>
   );
 };
 

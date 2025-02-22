@@ -1,56 +1,103 @@
 import React, { useState } from "react";
-import { Paper, Typography, TextField, Button } from "@mui/material";
+import {
+  Paper,
+  Typography,
+  TextField,
+  Button,
+  Box,
+  useTheme,
+  styled,
+  keyframes,
+} from "@mui/material";
 import {
   handleLogin,
   handleRegister,
   handlePasswordReset,
 } from "./AuthHandlers";
 
+// Animasyonlar
+const float = keyframes`
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+  100% { transform: translateY(0px); }
+`;
+
+const pulse = keyframes`
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+`;
+
+// Stilize Bileşenler
+const AuthCard = styled(Paper)(({ theme }) => ({
+  position: "relative",
+  padding: theme.spacing(5),
+  maxWidth: 450,
+  margin: "auto",
+  borderRadius: "24px",
+  background: "rgba(255, 255, 255, 0.1)",
+  backdropFilter: "blur(12px)",
+  border: "1px solid rgba(33, 150, 243, 0.2)",
+  boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+  overflow: "hidden",
+  transition: "all 0.3s ease-in-out",
+  animation: `${float} 4s ease-in-out infinite`,
+  "&:hover": {
+    transform: "translateY(-5px)",
+    boxShadow: "0 12px 40px rgba(33, 150, 243, 0.2)",
+  },
+  "&::before": {
+    content: '""',
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: "6px",
+    background: "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
+  },
+}));
+
+const AnimatedButton = styled(Button)(({ theme }) => ({
+  background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
+  border: 0,
+  borderRadius: "20px",
+  boxShadow: "0 3px 15px rgba(33, 150, 243, 0.3)",
+  color: "white",
+  padding: "12px 30px",
+  fontSize: "1.1rem",
+  fontWeight: 600,
+  transition: "all 0.3s ease",
+  textTransform: "none",
+  "&:hover": {
+    background: "linear-gradient(45deg, #1976D2 30%, #303F9F 90%)",
+    boxShadow: "0 5px 20px rgba(33, 150, 243, 0.5)",
+    transform: "translateY(-2px)",
+  },
+  "&:disabled": {
+    background: "rgba(255, 255, 255, 0.1)",
+    color: "rgba(255, 255, 255, 0.5)",
+  },
+}));
+
 const UserAuth = ({ setUser }) => {
-  // Bileşen içi state’ler
+  const theme = useTheme();
   const [isRegister, setIsRegister] = useState(false);
   const [loginData, setLoginData] = useState({ username: "", password: "" });
   const [errors, setErrors] = useState({ username: false, password: false });
 
   return (
-    <Paper
-      elevation={8}
-      sx={{
-        p: 5,
-        maxWidth: 450,
-        margin: "auto",
-        mt: 8,
-        borderRadius: 4,
-        background: "linear-gradient(135deg, #f6f8ff 0%, #ffffff 100%)",
-        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
-        position: "relative",
-        overflow: "hidden",
-        "&::before": {
-          content: '""',
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: "6px",
-          background:
-            "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
-        },
-        transition: "transform 0.3s ease-in-out",
-        "&:hover": {
-          transform: "translateY(-5px)",
-        },
-      }}
-    >
+    <AuthCard>
       <Typography
-        variant="h4"
+        variant="h3"
         align="center"
         sx={{
-          fontWeight: 700,
+          fontWeight: 800,
           background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
           WebkitBackgroundClip: "text",
           WebkitTextFillColor: "transparent",
           mb: 4,
-          letterSpacing: "0.5px",
+          textShadow: "2px 2px 4px rgba(0,0,0,0.2)",
+          animation: `${pulse} 2s ease-in-out infinite`,
         }}
       >
         {isRegister ? "Kayıt Ol" : "Giriş Yap"}
@@ -65,7 +112,6 @@ const UserAuth = ({ setUser }) => {
       >
         <TextField
           name="loginUsername"
-          id="loginUserName"
           label="Email"
           type="email"
           fullWidth
@@ -80,25 +126,28 @@ const UserAuth = ({ setUser }) => {
           helperText={errors.username ? "Geçerli bir email adresi giriniz" : ""}
           sx={{
             "& .MuiOutlinedInput-root": {
-              borderRadius: 3,
-              background: "rgba(255, 255, 255, 0.8)",
-              backdropFilter: "blur(8px)",
-              transition: "all 0.3s ease",
-              "&:hover": {
-                background: "rgba(255, 255, 255, 0.95)",
-                transform: "translateX(5px)",
+              borderRadius: "12px",
+              background: "rgb(255, 255, 255)",
+              color: "#2196F3",
+              "& fieldset": {
+                borderColor: "rgba(255, 255, 255, 0.3)",
               },
-              "&.Mui-focused": {
-                transform: "translateX(5px)",
+              "&:hover fieldset": {
+                borderColor: "#2196F3",
+              },
+              "&.Mui-focused fieldset": {
+                borderColor: "#3F51B5",
               },
             },
-            mb: 2,
+            mb: 3,
+          }}
+          InputLabelProps={{
+            style: { color: "#2196F3" },
           }}
         />
 
         <TextField
           name="loginPassword"
-          id="loginPassword"
           label="Şifre"
           type="password"
           fullWidth
@@ -113,95 +162,72 @@ const UserAuth = ({ setUser }) => {
           helperText={isRegister ? "En az 8 karakter olmalıdır" : ""}
           sx={{
             "& .MuiOutlinedInput-root": {
-              borderRadius: 3,
-              background: "rgba(255, 255, 255, 0.8)",
-              backdropFilter: "blur(8px)",
-              transition: "all 0.3s ease",
-              "&:hover": {
-                background: "rgba(255, 255, 255, 0.95)",
-                transform: "translateX(5px)",
+              borderRadius: "12px",
+              background: "rgb(255, 255, 255)",
+              color: "#2196F3",
+              "& fieldset": {
+                borderColor: "rgba(255, 255, 255, 0.3)",
               },
-              "&.Mui-focused": {
-                transform: "translateX(5px)",
+              "&:hover fieldset": {
+                borderColor: "#2196F3",
+              },
+              "&.Mui-focused fieldset": {
+                borderColor: "#3F51B5",
               },
             },
             mb: 3,
           }}
+          InputLabelProps={{
+            style: { color: "#2196F3" },
+          }}
         />
 
-        <Button
+        <AnimatedButton
           type="submit"
-          variant="contained"
           fullWidth
-          sx={{
-            mt: 2,
-            py: 1.8,
-            borderRadius: 3,
-            textTransform: "none",
-            fontSize: "1.1rem",
-            fontWeight: 600,
-            background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
-            boxShadow: "0 3px 15px rgba(33, 150, 243, 0.3)",
-            transition: "all 0.3s ease",
-            "&:hover": {
-              background: "linear-gradient(45deg, #1976D2 30%, #303F9F 90%)",
-              boxShadow: "0 5px 20px rgba(33, 150, 243, 0.5)",
-              transform: "translateY(-2px)",
-            },
-          }}
           disabled={!loginData.username || !loginData.password}
         >
           {isRegister ? "Kayıt Ol" : "Giriş Yap"}
-        </Button>
+        </AnimatedButton>
       </form>
 
-      {!isRegister && (
+      <Box sx={{ mt: 3, display: "flex", justifyContent: "space-between" }}>
+        {!isRegister && (
+          <Button
+            onClick={() => handlePasswordReset(loginData.username)}
+            variant="text"
+            sx={{
+              color: "#2196F3",
+              textTransform: "none",
+              "&:hover": {
+                color: "#3F51B5",
+                background: "rgba(33, 150, 243, 0.1)",
+              },
+            }}
+          >
+            Şifremi Unuttum
+          </Button>
+        )}
+
         <Button
-          onClick={() => handlePasswordReset(loginData.username)}
-          fullWidth
+          onClick={() => {
+            setIsRegister(!isRegister);
+            setLoginData({ username: "", password: "" });
+          }}
           variant="text"
           sx={{
-            mt: 2.5,
-            color: "#3F51B5",
+            color: "#2196F3",
             textTransform: "none",
-            fontSize: "0.95rem",
-            transition: "all 0.3s ease",
             "&:hover": {
-              background: "rgba(63, 81, 181, 0.08)",
-              transform: "translateX(5px)",
+              color: "#3F51B5",
+              background: "rgba(33, 150, 243, 0.1)",
             },
           }}
         >
-          Şifremi Unuttum
+          {isRegister ? "Hesabın var mı? Giriş Yap" : "Hesap Oluştur"}
         </Button>
-      )}
-
-      <Button
-        onClick={() => {
-          setIsRegister(!isRegister);
-          setLoginData({ username: "", password: "" });
-        }}
-        fullWidth
-        variant="outlined"
-        sx={{
-          mt: 2.5,
-          borderRadius: 3,
-          textTransform: "none",
-          fontSize: "0.95rem",
-          borderWidth: 2,
-          borderColor: "#3F51B5",
-          color: "#3F51B5",
-          transition: "all 0.3s ease",
-          "&:hover": {
-            borderWidth: 2,
-            background: "rgba(63, 81, 181, 0.08)",
-            transform: "translateX(5px)",
-          },
-        }}
-      >
-        {isRegister ? "Giriş Yap" : "Hesap Oluştur"}
-      </Button>
-    </Paper>
+      </Box>
+    </AuthCard>
   );
 };
 

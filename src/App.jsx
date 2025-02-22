@@ -1,7 +1,6 @@
-// App.js
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from "chart.js";
-import { styled, keyframes } from "@mui/material/styles";
+import { styled, keyframes, alpha } from "@mui/material/styles";
 import { format } from "date-fns";
 import { ToastContainer, toast } from "react-toastify";
 import {
@@ -16,13 +15,18 @@ import {
   Select,
   MenuItem,
   Paper,
-  alpha,
+  Avatar,
+  Menu,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from "@mui/material";
 import "react-toastify/dist/ReactToastify.css";
 import "tippy.js/dist/tippy.css";
 import "./App.css";
 import UserAuth from "./components/auth/UserAuth";
-
 import WeatherWidget from "./utils/weather-theme-notify/WeatherWidget";
 import { requestNotificationPermission } from "./utils/weather-theme-notify/NotificationManager";
 import {
@@ -37,10 +41,13 @@ import ProTips from "./components/pro-tips/ProTips";
 import CalendarComponent from "./components/calendar/CalendarComponent";
 import WellnessTracker from "./components/wellnesstracker/WellnessTracker";
 import { auth, db } from "./components/auth/firebaseConfig";
-import { onAuthStateChanged } from "firebase/auth";
-import { sendEmailVerification } from "firebase/auth";
+import { onAuthStateChanged, sendEmailVerification } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
-// Animations
+import { handlePasswordReset } from "./components/auth/AuthHandlers";
+import Lottie from "lottie-react";
+import welcomeAnimation from "./assets/welcomeAnimation.json";
+
+// Animasyonlar
 const float = keyframes`
   0% { transform: translateY(0px); }
   50% { transform: translateY(-20px); }
@@ -59,7 +66,7 @@ const ripple = keyframes`
   100% { transform: scale(0.95); opacity: 0.7; }
 `;
 
-// Styled Components
+// Styled Components (tasarım diline uygun)
 const GlowingContainer = styled(Container)(({ theme, glowColor }) => ({
   position: "relative",
   background: "rgba(33, 150, 243, 0.1)",
@@ -106,17 +113,16 @@ const FloatingElement = styled(Box)(({ delay = 0 }) => ({
   animation: `${float} 3s ease-in-out infinite`,
   animationDelay: `${delay}s`,
 }));
+
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
 function App() {
-  // Add these new states for enhanced UI
+  // Yüklenme, geçiş ve tema durumları
   const [isLoading, setIsLoading] = useState(true);
   const [transition, setTransition] = useState(false);
   const [activeGlow, setActiveGlow] = useState("#2196F3");
 
-  // -------------------------
-  // Kullanıcı, Oturum & Genel State'ler
-  // -------------------------
+  // Kullanıcı, oturum ve genel state’ler
   const [user, setUser] = useState(null);
   const [lastEmailSent, setLastEmailSent] = useState(
     localStorage.getItem("lastEmailSent") || 0
@@ -132,8 +138,7 @@ function App() {
     requestNotificationPermission();
   }, []);
 
-  // additionalInfo yalnızca ilk oluşturulurken eklenip, sonrasında kullanıcı müdahalesi kapalı
-
+  // additionalInfo (ilk oluşturulurken ekleniyor)
   const [additionalInfo, setAdditionalInfo] = useState({
     ...constantAdditionalInfo,
     recipes: Array.isArray(constantAdditionalInfo.recipes)
@@ -141,36 +146,25 @@ function App() {
       : Object.values(constantAdditionalInfo.recipes),
   });
 
-  // -------------------------
   // Sekme Yönetimi
-  // -------------------------
-
-  // Sekme state'ini localStorage'dan oku
-  const [activeTab, setActiveTab] = useState(() => {
-    return parseInt(localStorage.getItem("activeTab")) || 0;
-  });
-
-  // handleTabChange fonksiyonunu değiştir
+  const [activeTab, setActiveTab] = useState(
+    () => parseInt(localStorage.getItem("activeTab")) || 0
+  );
   const handleTabChange = (newTab) => {
     setActiveTab(newTab);
     localStorage.setItem("activeTab", newTab);
   };
 
-  // -------------------------
   // Zaman & Hava Durumu
-  // -------------------------
   const [currentTime, setCurrentTime] = useState(new Date());
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // -------------------------
   // Egzersiz
-  // -------------------------
   const [exercises, setExercises] = useState(initialExercises);
   const [editingExercise, setEditingExercise] = useState(null);
-
   const handleExerciseSubmit = useCallback((exercise) => {
     setExercises((prev) =>
       exercise.id
@@ -180,24 +174,18 @@ function App() {
     setEditingExercise(null);
   }, []);
 
-  // -------------------------
   // Service Worker Kaydı
-  // -------------------------
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
         .register("/sw.js")
-        .then((registration) => console.log("SW registered"))
+        .then(() => console.log("SW registered"))
         .catch((err) => console.log("SW registration failed", err));
     }
   }, []);
-  // -------------------------
+
   // Firestore’dan Kullanıcı Verilerini Yükleme
-  // (Additional Info: Sadece ilk oluşturma sırasında eklenir, sonrasında güncellenmez)
-  // -------------------------
-
-  const isInitialLoad = useRef(true); // İlk yükleme kontrolü
-
+  const isInitialLoad = useRef(true);
   useEffect(() => {
     const loadUserData = async () => {
       if (!user) return;
@@ -244,13 +232,10 @@ function App() {
     loadUserData();
   }, [user]);
 
-  // -------------------------
   // Egzersiz ve Takviyeler Güncelleme (Firestore’a yazma)
-  // -------------------------
   useEffect(() => {
-    if (!user || isInitialLoad.current) return; // İlk yüklemede çalışmasın
-
-    const updateExercisesSupplementsInFirestore = async () => {
+    if (!user || isInitialLoad.current) return;
+    const updateExercisesInFirestore = async () => {
       try {
         const userDocRef = doc(db, "users", user.uid);
         await updateDoc(userDocRef, { exercises });
@@ -258,14 +243,10 @@ function App() {
         console.error("Veri kaydetme hatası:", error);
       }
     };
-
-    updateExercisesSupplementsInFirestore();
+    updateExercisesInFirestore();
   }, [exercises, user]);
 
-  // -------------------------
   // Firebase Auth: Kullanıcı Oturumunu İzleme
-  // -------------------------
-
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -279,14 +260,12 @@ function App() {
       } else {
         setUser(null);
       }
-      setAuthChecked(true); // Sadece bu satır kalsın
+      setAuthChecked(true);
     });
     return () => unsubscribe();
   }, []);
 
-  // -------------------------
   // Email Doğrulama Kontrolü
-  // -------------------------
   useEffect(() => {
     if (user && !user.emailVerified) {
       const interval = setInterval(async () => {
@@ -304,16 +283,11 @@ function App() {
     }
   }, [user]);
 
-  // -------------------------
-  // Email Doğrulama: Yeniden Gönderme İşlemi
-  // -------------------------
-
   useEffect(() => {
     const savedTime = localStorage.getItem("lastEmailSent");
     if (savedTime) {
       const remaining = Math.max(0, 60000 - (Date.now() - parseInt(savedTime)));
       setRemainingTime(remaining);
-
       if (remaining > 0) {
         const timer = setInterval(() => {
           setRemainingTime((prev) => Math.max(0, prev - 1000));
@@ -334,12 +308,96 @@ function App() {
     }
   };
 
+  // --- Yeni: Avatar Menüsü & Profil Modal ---
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [openProfileModal, setOpenProfileModal] = useState(false);
+  const [profileData, setProfileData] = useState({
+    username: "",
+    firstName: "",
+    lastName: "",
+    profileImage: "",
+    height: "",
+    weight: "",
+    birthDate: "",
+  });
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      const fetchProfile = async () => {
+        const userDocRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(userDocRef);
+        if (docSnap.exists() && docSnap.data().profile) {
+          setProfileData(docSnap.data().profile);
+        } else {
+          setProfileData({
+            username: user.email, // default olarak email yerine kullanıcı adını set edebilirsiniz
+            firstName: "",
+            lastName: "",
+            profileImage: "",
+            height: "",
+            weight: "",
+            birthDate: "",
+          });
+        }
+      };
+      fetchProfile();
+      // Hoşgeldin animasyonu: sadece localStorage'de "welcomeShown" bayrağı yoksa göster
+      if (!localStorage.getItem("welcomeShown")) {
+        setShowWelcome(true);
+        localStorage.setItem("welcomeShown", "true");
+        setTimeout(() => setShowWelcome(false), 3000);
+      }
+    }
+  }, [user]);
+
+  const handleAvatarClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+  const handleProfileOpen = () => {
+    setOpenProfileModal(true);
+    setAnchorEl(null);
+  };
+  const handleProfileClose = () => {
+    setOpenProfileModal(false);
+  };
+  const handleProfileChange = (e) => {
+    const { name, value } = e.target;
+    setProfileData((prev) => ({ ...prev, [name]: value }));
+  };
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileData((prev) => ({ ...prev, profileImage: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  const handleProfileSave = async () => {
+    try {
+      const userDocRef = doc(db, "users", user.uid);
+      const cleanProfile = JSON.parse(JSON.stringify(profileData));
+      await updateDoc(userDocRef, { profile: cleanProfile });
+      toast.success("Profil güncellendi");
+      setOpenProfileModal(false);
+    } catch (error) {
+      toast.error("Profil güncellenemedi: " + error.message);
+    }
+  };
+  const handleSignOut = () => {
+    auth.signOut();
+    setUser(null);
+    localStorage.removeItem("currentUser");
+    localStorage.removeItem("welcomeShown"); // Çıkış yapınca bayrağı sil
+    setAnchorEl(null);
+  };
+
   if (!authChecked) return <div style={{ display: "none" }}></div>;
-
-  // -------------------------
-  // Render: Kullanıcı oturumu, email doğrulama, ana ekran
-  // -------------------------
-
   return !user ? (
     <GlowingContainer maxWidth="sm" sx={{ mt: 4 }} glowColor={activeGlow}>
       <Box
@@ -462,9 +520,7 @@ function App() {
             <Box
               sx={{
                 transition: "all 0.3s ease",
-                "&:hover": {
-                  transform: "translateX(5px)",
-                },
+                "&:hover": { transform: "translateX(5px)" },
               }}
             >
               <Typography
@@ -496,34 +552,129 @@ function App() {
               <WeatherWidget />
             </Box>
 
-            <Button
-              variant="contained"
-              sx={{
-                borderRadius: 3,
-                textTransform: "none",
-                padding: "8px 24px",
-                fontSize: "0.95rem",
-                fontWeight: 500,
-                background: "rgba(255, 255, 255, 0.15)",
-                backdropFilter: "blur(8px)",
-                boxShadow: "0 3px 12px rgba(0, 0, 0, 0.1)",
-                transition: "all 0.3s ease",
-                "&:hover": {
-                  background: "rgba(255, 255, 255, 0.25)",
-                  boxShadow: "0 5px 15px rgba(0, 0, 0, 0.2)",
-                  transform: "translateY(-2px)",
-                },
-              }}
-              onClick={() => {
-                auth.signOut();
-                setUser(null);
-                localStorage.removeItem("currentUser");
-              }}
+            <Avatar
+              src={profileData.profileImage || ""}
+              onClick={handleAvatarClick}
+              sx={{ cursor: "pointer", width: 40, height: 40 }}
+            />
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleMenuClose}
             >
-              Çıkış Yap
-            </Button>
+              <MenuItem onClick={handleProfileOpen}>Profil</MenuItem>
+              <MenuItem onClick={handleSignOut}>Çıkış Yap</MenuItem>
+            </Menu>
           </Toolbar>
         </AppBar>
+
+        {showWelcome && (
+          <Box
+            sx={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0,0,0,0.5)",
+              zIndex: 1300,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "column",
+            }}
+          >
+            <Lottie
+              animationData={welcomeAnimation}
+              style={{ width: 300, height: 300 }}
+            />
+            <Typography variant="h4" sx={{ color: "#fff", mt: 2 }}>
+              Hoşgeldin, {profileData.username}!
+            </Typography>
+          </Box>
+        )}
+
+        <Dialog
+          open={openProfileModal}
+          onClose={handleProfileClose}
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogTitle>Profil Düzenle</DialogTitle>
+          <DialogContent>
+            <TextField
+              margin="dense"
+              label="Kullanıcı Adı"
+              name="username"
+              fullWidth
+              value={profileData.username}
+              onChange={handleProfileChange}
+            />
+            <TextField
+              margin="dense"
+              label="İsim"
+              name="firstName"
+              fullWidth
+              value={profileData.firstName}
+              onChange={handleProfileChange}
+            />
+            <TextField
+              margin="dense"
+              label="Soyisim"
+              name="lastName"
+              fullWidth
+              value={profileData.lastName}
+              onChange={handleProfileChange}
+            />
+            <TextField
+              margin="dense"
+              label="Boy"
+              name="height"
+              fullWidth
+              value={profileData.height}
+              onChange={handleProfileChange}
+            />
+            <TextField
+              margin="dense"
+              label="Kilo"
+              name="weight"
+              fullWidth
+              value={profileData.weight}
+              onChange={handleProfileChange}
+            />
+            <TextField
+              margin="dense"
+              label="Doğum Tarihi"
+              name="birthDate"
+              type="date"
+              fullWidth
+              value={profileData.birthDate}
+              onChange={handleProfileChange}
+              InputLabelProps={{ shrink: true }}
+            />
+            <Button variant="outlined" component="label" sx={{ mt: 2 }}>
+              Profil Resmi Yükle
+              <input
+                type="file"
+                hidden
+                accept="image/*"
+                onChange={handleImageChange}
+              />
+            </Button>
+            <Button
+              variant="text"
+              onClick={() => handlePasswordReset(user.email)}
+              sx={{ mt: 2 }}
+            >
+              Şifre Değiştir
+            </Button>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleProfileClose}>İptal</Button>
+            <Button onClick={handleProfileSave}>Kaydet</Button>
+          </DialogActions>
+        </Dialog>
+
         <Tabs
           value={activeTab}
           onChange={(event, newTab) => handleTabChange(newTab)}
@@ -597,58 +748,42 @@ function App() {
             "& .MuiTabScrollButton-root": {
               width: 48,
               transition: "all 0.3s ease",
-              "&.Mui-disabled": {
-                opacity: 0,
-              },
-              "&:hover": {
-                backgroundColor: "rgba(33, 150, 243, 0.08)",
-              },
-              "& .MuiSvgIcon-root": {
-                fontSize: "1.5rem",
-                color: "#2196F3",
-              },
+              "&.Mui-disabled": { opacity: 0 },
+              "&:hover": { backgroundColor: "rgba(33, 150, 243, 0.08)" },
+              "& .MuiSvgIcon-root": { fontSize: "1.5rem", color: "#2196F3" },
             },
           }}
         >
           <Tab
             label="Günlük Rutin"
             sx={{
-              background: "#e6f7ff", // Açık mavi tonu
-              borderRadius: "8px", // Kenarları yuvarlatma
-              "&:hover": {
-                background: "#b3e5fc", // Hover efekti
-              },
+              background: "#e6f7ff",
+              borderRadius: "8px",
+              "&:hover": { background: "#b3e5fc" },
             }}
           />
           <Tab
             label="Fitness Takip Paneli"
             sx={{
-              background: "#fff3e0", // Açık turuncu tonu
+              background: "#fff3e0",
               borderRadius: "8px",
-              "&:hover": {
-                background: "#ffe0b2", // Hover efekti
-              },
+              "&:hover": { background: "#ffe0b2" },
             }}
           />
           <Tab
             label="Yaşam Kalitesi Paneli"
             sx={{
-              background: "#e8f5e9", // Açık yeşil tonu
+              background: "#e8f5e9",
               borderRadius: "8px",
-              "&:hover": {
-                background: "#c8e6c9", // Hover efekti
-              },
+              "&:hover": { background: "#c8e6c9" },
             }}
           />
-
           <Tab
             label="Takvim"
             sx={{
-              background: "#fffde7", // Açık sarı tonu
+              background: "#fffde7",
               borderRadius: "8px",
-              "&:hover": {
-                background: "#fff9c4", // Hover efekti
-              },
+              "&:hover": { background: "#fff9c4" },
             }}
           />
           <Tab
@@ -656,9 +791,7 @@ function App() {
             sx={{
               background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
               borderRadius: "8px",
-              "&:hover": {
-                background: "#b3e5fc",
-              },
+              "&:hover": { background: "#b3e5fc" },
             }}
           />
         </Tabs>
@@ -692,10 +825,10 @@ function App() {
             p: 1.5,
             background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
             borderTop: "1px solid rgba(33, 150, 243, 0.1)",
-            position: "relative", // relative yerine fixed
-            bottom: 0, // sayfanın altına sabitlemek için
-            left: 0, // sola hizalamak için
-            width: "100%", // genişlik sayfanın tamamını kaplaması için
+            position: "relative",
+            bottom: 0,
+            left: 0,
+            width: "100%",
             "&::before": {
               content: '""',
               position: "absolute",
@@ -719,9 +852,7 @@ function App() {
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               transition: "all 0.3s ease",
-              "&:hover": {
-                transform: "translateX(5px)",
-              },
+              "&:hover": { transform: "translateX(5px)" },
             }}
           >
             © 2025 Sağlık ve Rutin Takip Sistemi
@@ -744,7 +875,6 @@ function App() {
           ></Box>
         </Box>
 
-        {/* İhtiyaca göre ToastContainer'lardan bir tanesini kullanabilirsiniz */}
         <ToastContainer position="bottom-right" autoClose={3000} />
         <ToastContainer
           position="top-right"

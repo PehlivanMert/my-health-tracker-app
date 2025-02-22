@@ -19,7 +19,12 @@ import {
   Card,
   CardContent,
   CardActions,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
+import { styled, keyframes, alpha } from "@mui/material/styles";
 import {
   LocalPharmacy,
   LocalDrink,
@@ -31,12 +36,94 @@ import {
   Edit,
   Delete,
   Close,
+  Search,
 } from "@mui/icons-material";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { db } from "../auth/firebaseConfig";
 import { doc, updateDoc } from "firebase/firestore";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+
+// Animasyonlar
+const float = keyframes`
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+  100% { transform: translateY(0px); }
+`;
+
+// Yeni tasarım stilleri (WellnessTracker dilinde)
+
+const cardSx = {
+  p: 2,
+  position: "relative",
+  background: "rgba(33, 150, 243, 0.1)",
+  backdropFilter: "blur(10px)",
+  borderRadius: "24px",
+  overflow: "hidden",
+  border: "1px solid rgba(33, 150, 243, 0.2)",
+  boxShadow: "0 0 20px rgba(33, 150, 243, 0.2)",
+  transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
+  "&:hover": {
+    transform: "translateY(-10px) scale(1.02)",
+    boxShadow: "0 0 40px rgba(33, 150, 243, 0.4)",
+  },
+};
+
+const headerTextShadow = "2px 2px 4px rgba(0,0,0,0.3)";
+
+const inputSx = {
+  "& .MuiOutlinedInput-root": {
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    color: "#fff",
+    backdropFilter: "blur(10px)",
+    transition: "all 0.3s ease",
+    "&:hover": {
+      backgroundColor: "rgba(255,255,255,0.15)",
+    },
+    // Multiline için height ve min-height ekleyelim
+    "&.MuiInputBase-multiline": {
+      height: "auto",
+    },
+  },
+  "& .MuiInputLabel-root": { color: "#fff" },
+  "& .MuiOutlinedInput-notchedOutline": {
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  // Text alanı için stil
+  "& .MuiInputBase-inputMultiline": {
+    height: "auto !important",
+    overflow: "auto !important",
+  },
+};
+
+const accordionSx = {
+  background: "rgba(33, 150, 243, 0.1)",
+  color: "#fff",
+  backdropFilter: "blur(10px)",
+  borderRadius: "12px",
+  border: "1px solid rgba(33, 150, 243, 0.2)",
+  mb: 2,
+};
+
+const dialogPaperSx = {
+  background: "rgba(33, 150, 243, 0.1)",
+  backdropFilter: "blur(10px)",
+  borderRadius: "24px",
+  border: "1px solid rgba(33, 150, 243, 0.2)",
+  color: "#fff",
+  p: 2,
+};
+
+const TASTY_API_URL = "https://tasty.p.rapidapi.com/recipes/list";
+
+const API_OPTIONS = {
+  headers: {
+    "X-RapidAPI-Key": import.meta.env.VITE_XRAPID_API_KEY,
+    "X-RapidAPI-Host": "tasty.p.rapidapi.com",
+  },
+  params: { from: "0", size: "6", q: " " },
+  timeout: 10000,
+};
 
 const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
   const [openModal, setOpenModal] = useState(false);
@@ -46,35 +133,30 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [tastyRecipes, setTastyRecipes] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("vegatables");
+  const [searchQuery, setSearchQuery] = useState("Tarif Ara");
   const [editData, setEditData] = useState({
     index: null,
     groupIndex: null,
     data: {},
   });
-
-  const cardSx = {
-    p: 2,
-    position: "relative",
-    background: "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 100%)",
-    transition: "transform 0.2s, box-shadow 0.2s, background 0.2s",
-    "&:hover": {
-      transform: "scale(1.02)",
-      boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2)",
-      background:
-        "linear-gradient(135deg, #f5f5f5 0%, #fff8e7 50%, #f0e6d2 100%)",
-    },
-  };
-
-  const TASTY_API_URL = "https://tasty.p.rapidapi.com/recipes/list";
-  const API_OPTIONS = {
-    headers: {
-      "X-RapidAPI-Key": import.meta.env.VITE_XRAPID_API_KEY,
-      "X-RapidAPI-Host": "tasty.p.rapidapi.com",
-    },
-    params: { from: "0", size: "6", q: searchQuery },
-    timeout: 10000,
-  };
+  const [selectedTag, setSelectedTag] = useState(""); // Yeni: kategori/etiket seçimi
+  const TAG_OPTIONS = [
+    { value: "", label: "Tümü" },
+    { value: "vegan", label: "Vegan" },
+    { value: "vegetarian", label: "Vejetaryen" },
+    { value: "dessert", label: "Tatlı" },
+    { value: "breakfast", label: "Kahvaltı" },
+    { value: "dinner", label: "Akşam Yemeği" },
+    { value: "gluten-free", label: "Glutensiz" },
+    { value: "low-carb", label: "Düşük Karbonhidrat" },
+    { value: "low-fat", label: "Düşük Yağ" },
+    { value: "low-sugar", label: "Düşük Şeker" },
+    { value: "high-protein", label: "Yüksek Protein" },
+    { value: "quick", label: "Hızlı" },
+    { value: "easy", label: "Kolay" },
+    { value: "healthy", label: "Sağlıklı" },
+    { value: "comfort-food", label: "Rahat Yemek" },
+  ];
 
   const fetchTastyRecipes = async () => {
     if (!searchQuery.trim()) {
@@ -84,7 +166,25 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
     try {
       setLoading(true);
       setError("");
-      const response = await axios.get(TASTY_API_URL, API_OPTIONS);
+      // Rastgele offset oluşturuyoruz (örneğin 0 ile 100 arasında)
+      const randomOffset = Math.floor(Math.random() * 100);
+      const params = {
+        from: randomOffset,
+        size: 6,
+        q: searchQuery,
+      };
+      // Eğer kullanıcı bir kategori/etiket seçtiyse bunu ekle
+      if (selectedTag.trim()) {
+        params.tags = selectedTag;
+      }
+      const response = await axios.get(TASTY_API_URL, {
+        headers: {
+          "X-RapidAPI-Key": import.meta.env.VITE_XRAPID_API_KEY,
+          "X-RapidAPI-Host": "tasty.p.rapidapi.com",
+        },
+        params,
+        timeout: 10000,
+      });
       setTastyRecipes(response.data.results || []);
     } catch (err) {
       setError(err.message || "Tarifler yüklenirken hata oluştu");
@@ -185,7 +285,6 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
     const supplementGroups = Object.entries(additionalInfo.supplementDetails)
       .filter(([key]) => key !== "importantNotes")
       .map(([key, value]) => ({ key, ...value }));
-
     const items = Array.from(supplementGroups);
     const [removed] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, removed);
@@ -214,6 +313,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
       onClose={() => setOpenTastyModal(false)}
       fullWidth
       maxWidth="md"
+      PaperProps={{ sx: dialogPaperSx }}
     >
       <DialogTitle>
         <Box
@@ -224,33 +324,91 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
         >
           Tarif Ara (Tasty)
           <IconButton onClick={() => setOpenTastyModal(false)}>
-            <Close />
+            <Close sx={{ color: "#fff" }} />
           </IconButton>
         </Box>
       </DialogTitle>
       <DialogContent>
-        <Box mb={2}>
-          <TextField
-            fullWidth
-            variant="outlined"
-            label="Tarif Ara"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <Box mt={1} textAlign="right">
-            <Button variant="contained" onClick={fetchTastyRecipes}>
+        {/* Arama ve Kategori Bölümü */}
+        <Box sx={{ mb: 4 }}>
+          {/* Arama Alanı */}
+          <Box
+            sx={{
+              mb: 2,
+              marginTop: 2,
+            }}
+          >
+            <TextField
+              fullWidth
+              variant="outlined"
+              label="Tarif Ara"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              sx={inputSx}
+            />
+          </Box>
+
+          {/* Kategori Seçimi */}
+          <Box sx={{ mb: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel sx={{ color: "#fff" }}>Kategori</InputLabel>
+              <Select
+                value={selectedTag}
+                onChange={(e) => setSelectedTag(e.target.value)}
+                sx={{
+                  ...inputSx,
+                  backgroundColor: "rgba(255,255,255,0.1)",
+                  color: "#fff",
+                  "& .MuiSelect-icon": {
+                    color: "#fff",
+                  },
+                }}
+              >
+                {TAG_OPTIONS.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+
+          {/* Arama Butonu */}
+          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+            <Button
+              variant="contained"
+              onClick={fetchTastyRecipes}
+              sx={{
+                minWidth: "120px",
+                height: "40px",
+              }}
+            >
               Ara
             </Button>
           </Box>
         </Box>
-        {loading && <CircularProgress sx={{ my: 2 }} />}
-        {error && <Alert severity="error">{error}</Alert>}
+
+        {/* Yükleniyor ve Hata Durumları */}
+        {loading && (
+          <Box sx={{ display: "flex", justifyContent: "center", my: 3 }}>
+            <CircularProgress sx={{ color: "#fff" }} />
+          </Box>
+        )}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+
+        {/* Tarif Sonuçları */}
         <Grid container spacing={3}>
           {tastyRecipes.slice(0, 6).map((recipe) => (
             <Grid item xs={12} md={6} key={recipe.id}>
               <Card sx={cardSx}>
                 <CardContent>
-                  <Typography variant="h6">{recipe.name}</Typography>
+                  <Typography variant="h6" sx={{ color: "#fff" }}>
+                    {recipe.name}
+                  </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {recipe.description}
                   </Typography>
@@ -300,7 +458,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                   data: { ...editData.data, name: e.target.value },
                 })
               }
-              sx={{ mb: 2 }}
+              sx={{ mb: 2, ...inputSx }}
             />
             <TextField
               label="Değer"
@@ -312,6 +470,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                   data: { ...editData.data, value: e.target.value },
                 })
               }
+              sx={inputSx}
             />
           </>
         );
@@ -328,7 +487,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                   data: { ...editData.data, title: e.target.value },
                 })
               }
-              sx={{ mb: 2 }}
+              sx={{ mb: 2, ...inputSx }}
             />
             <TextField
               label="Malzemeler (her satıra bir malzeme)"
@@ -347,7 +506,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                   },
                 })
               }
-              sx={{ mb: 2 }}
+              sx={{ mb: 2, ...inputSx }}
             />
             <TextField
               label="Hazırlanış (her satıra bir adım)"
@@ -366,6 +525,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                   },
                 })
               }
+              sx={inputSx}
             />
           </>
         );
@@ -382,7 +542,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                   data: { ...editData.data, name: e.target.value },
                 })
               }
-              sx={{ mb: 2 }}
+              sx={{ mb: 2, ...inputSx }}
             />
             <TextField
               label="Miktar"
@@ -394,7 +554,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                   data: { ...editData.data, amount: e.target.value },
                 })
               }
-              sx={{ mb: 2 }}
+              sx={{ mb: 2, ...inputSx }}
             />
             <TextField
               label="Günlük Değer"
@@ -406,6 +566,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                   data: { ...editData.data, dailyValue: e.target.value },
                 })
               }
+              sx={inputSx}
             />
           </>
         );
@@ -422,6 +583,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                   data: { ...editData.data, title: e.target.value },
                 })
               }
+              sx={inputSx}
             />
           </>
         );
@@ -438,7 +600,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                   data: { ...editData.data, key: e.target.value },
                 })
               }
-              sx={{ mb: 2 }}
+              sx={{ mb: 2, ...inputSx }}
             />
             <TextField
               label="Takviye Başlığı"
@@ -450,6 +612,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                   data: { ...editData.data, title: e.target.value },
                 })
               }
+              sx={inputSx}
             />
           </>
         );
@@ -463,6 +626,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
               onChange={(e) =>
                 setEditData({ ...editData, data: e.target.value })
               }
+              sx={inputSx}
             />
           </>
         );
@@ -482,17 +646,19 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
       sx={{
         p: 3,
         borderRadius: 2,
-        background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
+        background:
+          "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
         minHeight: "100vh",
+        color: "#fff",
       }}
     >
       {openTastyModal && renderTastyModal()}
-
       <Dialog
         open={openModal}
         onClose={() => setOpenModal(false)}
         fullWidth
         maxWidth="md"
+        PaperProps={{ sx: dialogPaperSx }}
         onClick={(e) => e.stopPropagation()}
       >
         <DialogTitle>
@@ -505,7 +671,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
               ? "Öğeyi Düzenle"
               : "Yeni Öğeyi Ekle"}
             <IconButton onClick={() => setOpenModal(false)}>
-              <Close />
+              <Close sx={{ color: "#fff" }} />
             </IconButton>
           </Box>
         </DialogTitle>
@@ -551,19 +717,28 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
           </Box>
         </DialogContent>
       </Dialog>
-
       <Box
         display="flex"
         justifyContent="space-between"
         alignItems="center"
         mb={3}
       >
-        <Typography variant="h5" display="flex" alignItems="center" gap={1}>
-          <LocalDrink /> Pro Öneriler
+        <Typography
+          variant="h2"
+          sx={{
+            textAlign: "center",
+            color: "#fff",
+            fontWeight: 800,
+            mb: 6,
+            textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
+            animation: `${float} 3s ease-in-out infinite`,
+          }}
+        >
+          <LocalDrink sx={{ fontSize: 50, verticalAlign: "middle", mr: 2 }} />
+          Pro Öneriler
         </Typography>
       </Box>
-
-      <Accordion>
+      <Accordion sx={accordionSx}>
         <AccordionSummary expandIcon={<ExpandMore />}>
           <Box
             display="flex"
@@ -571,8 +746,8 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
             alignItems="center"
             width="100%"
           >
-            <Typography variant="h6">
-              <WaterDrop color="primary" /> Sıvı Tüketim Hedefleri
+            <Typography variant="h6" sx={{ color: "#fff" }}>
+              <WaterDrop sx={{ color: "#fff" }} /> Sıvı Tüketim Hedefleri
             </Typography>
             <IconButton
               onClick={(e) => {
@@ -583,7 +758,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                 setOpenModal(true);
               }}
             >
-              <Add color="primary" />
+              <Add sx={{ color: "#fff" }} />
             </IconButton>
           </Box>
         </AccordionSummary>
@@ -594,7 +769,9 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                 <Grid item xs={12} sm={6} md={4} key={index}>
                   <Paper sx={cardSx}>
                     <Box display="flex" justifyContent="space-between">
-                      <Typography variant="subtitle1">{item.name}</Typography>
+                      <Typography variant="subtitle1" sx={{ color: "#fff" }}>
+                        {item.name}
+                      </Typography>
                       <Box>
                         <IconButton
                           onClick={() => {
@@ -605,7 +782,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                           }}
                           size="small"
                         >
-                          <Edit fontSize="small" />
+                          <Edit sx={{ color: "#fff" }} fontSize="small" />
                         </IconButton>
                         <IconButton
                           onClick={() =>
@@ -613,7 +790,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                           }
                           size="small"
                         >
-                          <Delete fontSize="small" />
+                          <Delete sx={{ color: "#fff" }} fontSize="small" />
                         </IconButton>
                       </Box>
                     </Box>
@@ -625,8 +802,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
           </Grid>
         </AccordionDetails>
       </Accordion>
-
-      <Accordion sx={{ mt: 2 }}>
+      <Accordion sx={accordionSx}>
         <AccordionSummary expandIcon={<ExpandMore />}>
           <Box
             display="flex"
@@ -634,8 +810,8 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
             alignItems="center"
             width="100%"
           >
-            <Typography variant="h6">
-              <FitnessCenter color="primary" /> Günlük Aktivite Hedefleri
+            <Typography variant="h6" sx={{ color: "#fff" }}>
+              <FitnessCenter sx={{ color: "#fff" }} /> Günlük Aktivite Hedefleri
             </Typography>
             <IconButton
               onClick={(e) => {
@@ -646,7 +822,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                 setOpenModal(true);
               }}
             >
-              <Add color="primary" />
+              <Add sx={{ color: "#fff" }} />
             </IconButton>
           </Box>
         </AccordionSummary>
@@ -657,7 +833,9 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                 <Grid item xs={12} sm={6} md={4} key={index}>
                   <Paper sx={cardSx}>
                     <Box display="flex" justifyContent="space-between">
-                      <Typography variant="subtitle1">{item.name}</Typography>
+                      <Typography variant="subtitle1" sx={{ color: "#fff" }}>
+                        {item.name}
+                      </Typography>
                       <Box>
                         <IconButton
                           onClick={() => {
@@ -668,7 +846,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                           }}
                           size="small"
                         >
-                          <Edit fontSize="small" />
+                          <Edit sx={{ color: "#fff" }} fontSize="small" />
                         </IconButton>
                         <IconButton
                           onClick={() =>
@@ -676,7 +854,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                           }
                           size="small"
                         >
-                          <Delete fontSize="small" />
+                          <Delete sx={{ color: "#fff" }} fontSize="small" />
                         </IconButton>
                       </Box>
                     </Box>
@@ -688,8 +866,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
           </Grid>
         </AccordionDetails>
       </Accordion>
-
-      <Accordion sx={{ mt: 2 }}>
+      <Accordion sx={accordionSx}>
         <AccordionSummary expandIcon={<ExpandMore />}>
           <Box
             display="flex"
@@ -697,84 +874,171 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
             alignItems="center"
             width="100%"
           >
-            <Typography variant="h6">
-              <Restaurant color="primary" /> Tarifler
+            <Typography variant="h6" sx={{ color: "#fff" }}>
+              <Restaurant sx={{ color: "#fff" }} /> Tarifler
             </Typography>
-            <IconButton
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedSection("recipes");
-                setModalType("recipe");
-                setEditData({ index: null, data: {} });
-                setOpenModal(true);
-              }}
-            >
-              <Add color="primary" />
-            </IconButton>
+            <Box>
+              <IconButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedSection("recipes");
+                  setModalType("recipe");
+                  setEditData({ index: null, data: {} });
+                  setOpenModal(true);
+                }}
+              >
+                <Add sx={{ color: "#fff" }} />
+              </IconButton>
+              <IconButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenTastyModal(true);
+                }}
+              >
+                <Search sx={{ color: "#fff" }} />
+              </IconButton>
+            </Box>
           </Box>
         </AccordionSummary>
         <AccordionDetails>
-          <Grid container spacing={3}>
+          <Box sx={{ mt: 2 }}>
             {(additionalInfo.recipes || []).map((recipe, index) => (
-              <Grid item xs={12} md={6} key={recipe.id || index}>
-                <Card sx={cardSx}>
-                  <CardContent>
-                    <Typography variant="h6">{recipe.title}</Typography>
-                    <Box mt={1}>
-                      <Typography variant="subtitle2">Malzemeler:</Typography>
-                      <ul style={{ paddingLeft: 20, margin: 0 }}>
-                        {recipe.ingredients?.map((ing, i) => (
-                          <li key={i}>
-                            <Typography variant="body2">{ing}</Typography>
-                          </li>
-                        ))}
-                      </ul>
+              <Accordion
+                key={recipe.id || index}
+                sx={{
+                  ...accordionSx,
+                  mb: 2,
+                  "&:last-child": { mb: 0 },
+                  backgroundColor: "rgba(33, 150, 243, 0.05)",
+                }}
+              >
+                <AccordionSummary
+                  expandIcon={<ExpandMore sx={{ color: "#fff" }} />}
+                  sx={{
+                    "&:hover": {
+                      backgroundColor: "rgba(33, 150, 243, 0.1)",
+                    },
+                  }}
+                >
+                  <Box
+                    display="flex"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    width="100%"
+                    pr={2}
+                  >
+                    <Typography variant="h6" sx={{ color: "#fff" }}>
+                      {recipe.title}
+                    </Typography>
+                    <Box>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedSection("recipes");
+                          setModalType("recipe");
+                          setEditData({ index, data: recipe });
+                          setOpenModal(true);
+                        }}
+                        size="small"
+                      >
+                        <Edit sx={{ color: "#fff" }} fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteItem("recipes", index);
+                        }}
+                        size="small"
+                      >
+                        <Delete sx={{ color: "#fff" }} fontSize="small" />
+                      </IconButton>
                     </Box>
-                    {recipe.preparation && (
-                      <Box mt={1}>
-                        <Typography variant="subtitle2">Hazırlanış:</Typography>
-                        <ol style={{ paddingLeft: 20, margin: 0 }}>
-                          {recipe.preparation?.map((step, i) => (
-                            <li key={i}>
-                              <Typography variant="body2">{step}</Typography>
-                            </li>
-                          ))}
-                        </ol>
-                      </Box>
-                    )}
-                  </CardContent>
-                  <CardActions>
-                    <IconButton
-                      onClick={() => {
-                        setSelectedSection("recipes");
-                        setModalType("recipe");
-                        setEditData({ index, data: recipe });
-                        setOpenModal(true);
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Box sx={{ p: 2 }}>
+                    {/* Malzemeler Bölümü */}
+                    <Typography
+                      variant="subtitle1"
+                      sx={{
+                        color: "#fff",
+                        fontWeight: "bold",
+                        mb: 2,
                       }}
-                      size="small"
                     >
-                      <Edit fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      onClick={() => handleDeleteItem("recipes", index)}
-                      size="small"
-                    >
-                      <Delete fontSize="small" />
-                    </IconButton>
-                  </CardActions>
-                </Card>
-              </Grid>
+                      Malzemeler:
+                    </Typography>
+                    <Box sx={{ mb: 3 }}>
+                      {recipe.ingredients?.map((ing, i) => (
+                        <Typography
+                          key={i}
+                          variant="body1"
+                          sx={{
+                            color: "#fff",
+                            mb: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            "&:before": {
+                              content: '"•"',
+                              mr: 2,
+                              color: "#2196F3",
+                            },
+                          }}
+                        >
+                          {ing}
+                        </Typography>
+                      ))}
+                    </Box>
+
+                    {/* Hazırlanış Bölümü */}
+                    {recipe.preparation && recipe.preparation.length > 0 && (
+                      <>
+                        <Typography
+                          variant="subtitle1"
+                          sx={{
+                            color: "#fff",
+                            fontWeight: "bold",
+                            mb: 2,
+                          }}
+                        >
+                          Hazırlanış:
+                        </Typography>
+                        <Box>
+                          {recipe.preparation?.map((step, i) => (
+                            <Box
+                              key={i}
+                              sx={{
+                                display: "flex",
+                                mb: 2,
+                                "&:last-child": { mb: 0 },
+                              }}
+                            >
+                              <Typography
+                                sx={{
+                                  color: "#2196F3",
+                                  mr: 2,
+                                  fontWeight: "bold",
+                                  minWidth: "24px",
+                                }}
+                              >
+                                {i + 1}.
+                              </Typography>
+                              <Typography sx={{ color: "#fff" }}>
+                                {step}
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Box>
+                      </>
+                    )}
+                  </Box>
+                </AccordionDetails>
+              </Accordion>
             ))}
-          </Grid>
-          <Box mt={2} textAlign="center">
-            <Button variant="contained" onClick={() => setOpenTastyModal(true)}>
-              Tasty Tarif Ara
-            </Button>
           </Box>
         </AccordionDetails>
       </Accordion>
-
-      <Accordion sx={{ mt: 2 }}>
+      <Accordion sx={accordionSx}>
         <AccordionSummary expandIcon={<ExpandMore />} component="div">
           <Box
             display="flex"
@@ -782,7 +1046,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
             alignItems="center"
             width="100%"
           >
-            <Typography variant="h6">
+            <Typography variant="h6" sx={{ color: "#fff" }}>
               <LocalPharmacy color="primary" /> Takviye Grupları
             </Typography>
             <IconButton
@@ -794,7 +1058,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                 setOpenModal(true);
               }}
             >
-              <Add color="primary" />
+              <Add sx={{ color: "#fff" }} />
             </IconButton>
           </Box>
         </AccordionSummary>
@@ -816,7 +1080,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                           {...provided.dragHandleProps}
                           sx={{ mb: 2 }}
                         >
-                          <Accordion>
+                          <Accordion sx={accordionSx}>
                             <AccordionSummary
                               expandIcon={<ExpandMore />}
                               component="div"
@@ -827,7 +1091,10 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                                 alignItems="center"
                                 width="100%"
                               >
-                                <Typography variant="h6" sx={{ p: 1 }}>
+                                <Typography
+                                  variant="h6"
+                                  sx={{ p: 1, color: "#fff" }}
+                                >
                                   {group.title}
                                 </Typography>
                                 <Box>
@@ -847,7 +1114,10 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                                     }}
                                     size="small"
                                   >
-                                    <Edit fontSize="small" />
+                                    <Edit
+                                      sx={{ color: "#fff" }}
+                                      fontSize="small"
+                                    />
                                   </IconButton>
                                   <IconButton
                                     onClick={() =>
@@ -858,7 +1128,10 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                                     }
                                     size="small"
                                   >
-                                    <Delete fontSize="small" />
+                                    <Delete
+                                      sx={{ color: "#fff" }}
+                                      fontSize="small"
+                                    />
                                   </IconButton>
                                 </Box>
                               </Box>
@@ -870,6 +1143,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                                     <Typography
                                       variant="subtitle2"
                                       fontWeight="bold"
+                                      sx={{ color: "#fff" }}
                                     >
                                       {subGroup.heading}
                                     </Typography>
@@ -885,7 +1159,10 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                                           >
                                             <Card sx={cardSx}>
                                               <CardContent>
-                                                <Typography variant="body1">
+                                                <Typography
+                                                  variant="body1"
+                                                  sx={{ color: "#fff" }}
+                                                >
                                                   {item.name}
                                                 </Typography>
                                                 <Typography
@@ -913,7 +1190,10 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                                                   }}
                                                   size="small"
                                                 >
-                                                  <Edit fontSize="small" />
+                                                  <Edit
+                                                    sx={{ color: "#fff" }}
+                                                    fontSize="small"
+                                                  />
                                                 </IconButton>
                                                 <IconButton
                                                   onClick={() =>
@@ -925,7 +1205,10 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                                                   }
                                                   size="small"
                                                 >
-                                                  <Delete fontSize="small" />
+                                                  <Delete
+                                                    sx={{ color: "#fff" }}
+                                                    fontSize="small"
+                                                  />
                                                 </IconButton>
                                               </CardActions>
                                             </Card>
@@ -973,7 +1256,10 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                                     <Grid item xs={12} sm={6} md={4} key={idx}>
                                       <Card sx={cardSx}>
                                         <CardContent>
-                                          <Typography variant="body1">
+                                          <Typography
+                                            variant="body1"
+                                            sx={{ color: "#fff" }}
+                                          >
                                             {item.name}
                                           </Typography>
                                           <Typography
@@ -1000,7 +1286,10 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                                             }}
                                             size="small"
                                           >
-                                            <Edit fontSize="small" />
+                                            <Edit
+                                              sx={{ color: "#fff" }}
+                                              fontSize="small"
+                                            />
                                           </IconButton>
                                           <IconButton
                                             onClick={() =>
@@ -1011,7 +1300,10 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                                             }
                                             size="small"
                                           >
-                                            <Delete fontSize="small" />
+                                            <Delete
+                                              sx={{ color: "#fff" }}
+                                              fontSize="small"
+                                            />
                                           </IconButton>
                                         </CardActions>
                                       </Card>
@@ -1057,9 +1349,8 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
           </DragDropContext>
         </AccordionDetails>
       </Accordion>
-
       {additionalInfo.supplementDetails?.importantNotes && (
-        <Accordion sx={{ mt: 2 }}>
+        <Accordion sx={accordionSx}>
           <AccordionSummary expandIcon={<ExpandMore />}>
             <Box
               display="flex"
@@ -1067,7 +1358,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
               alignItems="center"
               width="100%"
             >
-              <Typography variant="h6">
+              <Typography variant="h6" sx={{ color: "#fff" }}>
                 <LocalPharmacy color="primary" /> Önemli Notlar
               </Typography>
               <IconButton
@@ -1079,7 +1370,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                   setOpenModal(true);
                 }}
               >
-                <Add color="primary" />
+                <Add sx={{ color: "#fff" }} />
               </IconButton>
             </Box>
           </AccordionSummary>
@@ -1091,7 +1382,9 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                 <Grid item xs={12} sm={6} md={4} key={index}>
                   <Card sx={cardSx}>
                     <CardContent>
-                      <Typography variant="body1">{note}</Typography>
+                      <Typography variant="body1" sx={{ color: "#fff" }}>
+                        {note}
+                      </Typography>
                     </CardContent>
                     <CardActions>
                       <IconButton
@@ -1105,7 +1398,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                         }}
                         size="small"
                       >
-                        <Edit fontSize="small" />
+                        <Edit sx={{ color: "#fff" }} fontSize="small" />
                       </IconButton>
                       <IconButton
                         onClick={() =>
@@ -1116,7 +1409,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                         }
                         size="small"
                       >
-                        <Delete fontSize="small" />
+                        <Delete sx={{ color: "#fff" }} fontSize="small" />
                       </IconButton>
                     </CardActions>
                   </Card>

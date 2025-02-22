@@ -54,17 +54,3 @@
     opacity: 0;
   }
 }
-
-@media (max-width: 600px) {
-  body {
-    background-color: #f5f5f5;
-  }
-
-  .MuiTextField-root {
-    background-color: #fff;
-  }
-
-  .MuiDialog-paper {
-    margin: 16px !important;
-  }
-}

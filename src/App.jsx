@@ -46,6 +46,7 @@ import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { handlePasswordReset } from "./components/auth/AuthHandlers";
 import Lottie from "lottie-react";
 import welcomeAnimation from "./assets/welcomeAnimation.json";
+import HealthDashboard from "./components/health-dashboard/HealthDashboard";
 
 // Animasyonlar
 const float = keyframes`
@@ -935,6 +936,14 @@ function App() {
               "&:hover": { background: "#b3e5fc" },
             }}
           />
+          <Tab
+            label="Sağlık Panosu"
+            sx={{
+              background: "linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)",
+              borderRadius: "8px",
+              "&:hover": { background: "#a5d6a7" },
+            }}
+          />
         </Tabs>
         {activeTab === 0 && <DailyRoutine user={user} />}
         {activeTab === 1 && (
@@ -955,6 +964,7 @@ function App() {
             user={user}
           />
         )}
+        {activeTab === 5 && <HealthDashboard user={user} />}
 
         <Box
           className="footer-container"

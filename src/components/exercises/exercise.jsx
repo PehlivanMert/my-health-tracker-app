@@ -68,7 +68,7 @@ const GlowingCard = styled(Box)(({ theme, glowColor }) => ({
   backdropFilter: "blur(10px)",
   borderRadius: "24px",
   overflow: "hidden",
-  border: "1px solid rgba(33, 150, 243, 0.2)",
+  border: "1px solid rgba(33, 150, 243, 0.3)",
   boxShadow: `0 0 20px ${glowColor || "#2196F322"}`,
   transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
   "&:hover": {
@@ -543,11 +543,12 @@ const Exercises = ({ exercises, setExercises }) => {
               {exercises.map((exercise) => (
                 <Grid item xs={12} md={6} lg={4} key={exercise.id}>
                   <GlowingCard
-                    glowColor="#4CAF50"
+                    glowColor="#A6F6FF"
                     sx={{
                       flex: 1,
                       display: "flex",
                       flexDirection: "column",
+                      color: "aliceblue",
                       p: 3,
                       transition: "transform 0.3s, box-shadow 0.3s",
                       "&:hover": {

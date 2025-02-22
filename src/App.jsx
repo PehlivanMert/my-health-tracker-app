@@ -66,7 +66,7 @@ const ripple = keyframes`
   100% { transform: scale(0.95); opacity: 0.7; }
 `;
 
-// Styled Components (tasarım diline uygun)
+// Styled Components
 const GlowingContainer = styled(Container)(({ theme, glowColor }) => ({
   position: "relative",
   background: "rgba(33, 150, 243, 0.1)",
@@ -114,10 +114,24 @@ const FloatingElement = styled(Box)(({ delay = 0 }) => ({
   animationDelay: `${delay}s`,
 }));
 
+// Avatar API'den dönen avatar URL'lerini simüle eden sabit dizi
+const availableAvatars = [
+  "https://api.dicebear.com/6.x/adventurer/svg?seed=avatar1",
+  "https://api.dicebear.com/6.x/adventurer/svg?seed=avatar2",
+  "https://api.dicebear.com/6.x/adventurer/svg?seed=avatar3",
+  "https://api.dicebear.com/6.x/adventurer/svg?seed=avatar4",
+  "https://api.dicebear.com/6.x/adventurer/svg?seed=avatar5",
+  "https://api.dicebear.com/6.x/adventurer/svg?seed=avatar6",
+  "https://api.dicebear.com/6.x/adventurer/svg?seed=avatar7",
+  "https://api.dicebear.com/6.x/adventurer/svg?seed=avatar8",
+  "https://api.dicebear.com/6.x/adventurer/svg?seed=avatar9",
+  "https://api.dicebear.com/6.x/adventurer/svg?seed=avatar10",
+];
+
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
 function App() {
-  // Yüklenme, geçiş ve tema durumları
+  // Temel state'ler
   const [isLoading, setIsLoading] = useState(true);
   const [transition, setTransition] = useState(false);
   const [activeGlow, setActiveGlow] = useState("#2196F3");
@@ -138,7 +152,7 @@ function App() {
     requestNotificationPermission();
   }, []);
 
-  // additionalInfo (ilk oluşturulurken ekleniyor)
+  // additionalInfo
   const [additionalInfo, setAdditionalInfo] = useState({
     ...constantAdditionalInfo,
     recipes: Array.isArray(constantAdditionalInfo.recipes)
@@ -203,13 +217,18 @@ function App() {
               ? loadedAdditionalInfo.recipes
               : Object.values(loadedAdditionalInfo.recipes),
           });
-          let updatedData = {};
-          if (data.additionalInfo === undefined) {
-            updatedData.additionalInfo = constantAdditionalInfo;
+          // Eğer doğum tarihi Firestore Timestamp ise, input formatına çevir
+          if (
+            data.profile &&
+            data.profile.birthDate &&
+            data.profile.birthDate.toDate
+          ) {
+            data.profile.birthDate = format(
+              data.profile.birthDate.toDate(),
+              "yyyy-MM-dd"
+            );
           }
-          if (Object.keys(updatedData).length > 0) {
-            await updateDoc(userDocRef, updatedData);
-          }
+          isInitialLoad.current = false;
         } else {
           const initialData = {
             exercises: initialExercises,
@@ -224,7 +243,6 @@ function App() {
               : Object.values(constantAdditionalInfo.recipes),
           });
         }
-        isInitialLoad.current = false;
       } catch (error) {
         console.error("Veri yükleme hatası:", error);
       }
@@ -232,7 +250,7 @@ function App() {
     loadUserData();
   }, [user]);
 
-  // Egzersiz ve Takviyeler Güncelleme (Firestore’a yazma)
+  // Egzersiz Güncelleme
   useEffect(() => {
     if (!user || isInitialLoad.current) return;
     const updateExercisesInFirestore = async () => {
@@ -308,7 +326,7 @@ function App() {
     }
   };
 
-  // --- Yeni: Avatar Menüsü & Profil Modal ---
+  // --- Avatar Menüsü & Profil Modal ---
   const [anchorEl, setAnchorEl] = useState(null);
   const [openProfileModal, setOpenProfileModal] = useState(false);
   const [profileData, setProfileData] = useState({
@@ -328,10 +346,18 @@ function App() {
         const userDocRef = doc(db, "users", user.uid);
         const docSnap = await getDoc(userDocRef);
         if (docSnap.exists() && docSnap.data().profile) {
-          setProfileData(docSnap.data().profile);
+          let prof = docSnap.data().profile;
+          if (prof.birthDate?.toDate) {
+            // Firestore Timestamp kontrolü
+            prof.birthDate = format(prof.birthDate.toDate(), "yyyy-MM-dd");
+          } else if (prof.birthDate?.includes("T")) {
+            // ISO string kontrolü
+            prof.birthDate = format(new Date(prof.birthDate), "yyyy-MM-dd");
+          }
+          setProfileData(prof);
         } else {
           setProfileData({
-            username: user.email, // default olarak email yerine kullanıcı adını set edebilirsiniz
+            username: user.email,
             firstName: "",
             lastName: "",
             profileImage: "",
@@ -342,7 +368,7 @@ function App() {
         }
       };
       fetchProfile();
-      // Hoşgeldin animasyonu: sadece localStorage'de "welcomeShown" bayrağı yoksa göster
+      // Hoşgeldin animasyonu: sadece ilk oturum açmada göster (localStorage kontrolü)
       if (!localStorage.getItem("welcomeShown")) {
         setShowWelcome(true);
         localStorage.setItem("welcomeShown", "true");
@@ -368,32 +394,38 @@ function App() {
     const { name, value } = e.target;
     setProfileData((prev) => ({ ...prev, [name]: value }));
   };
+  // Dosya yükleme yerine avatar seçimi için buton ekliyoruz:
+  const handleAvatarSelect = (url) => {
+    setProfileData((prev) => ({ ...prev, profileImage: url }));
+  };
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileData((prev) => ({ ...prev, profileImage: reader.result }));
-      };
-      reader.readAsDataURL(file);
-    }
+    // Kullanıcının fotoğraf yüklemesine izin vermiyoruz.
   };
   const handleProfileSave = async () => {
     try {
       const userDocRef = doc(db, "users", user.uid);
-      const cleanProfile = JSON.parse(JSON.stringify(profileData));
-      await updateDoc(userDocRef, { profile: cleanProfile });
-      toast.success("Profil güncellendi");
+      const profileToSave = { ...profileData };
+
+      // Doğum tarihini doğru formatta kaydet
+      if (profileToSave.birthDate) {
+        const [year, month, day] = profileToSave.birthDate.split("-");
+        profileToSave.birthDate = new Date(year, month - 1, day);
+      }
+
+      await updateDoc(userDocRef, {
+        profile: profileToSave,
+      });
+      toast.success("Profil başarıyla güncellendi");
       setOpenProfileModal(false);
     } catch (error) {
-      toast.error("Profil güncellenemedi: " + error.message);
+      toast.error("Güncelleme hatası: " + error.message);
     }
   };
   const handleSignOut = () => {
     auth.signOut();
     setUser(null);
     localStorage.removeItem("currentUser");
-    localStorage.removeItem("welcomeShown"); // Çıkış yapınca bayrağı sil
+    localStorage.removeItem("welcomeShown"); // Çıkışta bayrağı temizle
     setAnchorEl(null);
   };
 
@@ -598,80 +630,189 @@ function App() {
           open={openProfileModal}
           onClose={handleProfileClose}
           fullWidth
-          maxWidth="sm"
+          maxWidth="md"
+          sx={{
+            "& .MuiPaper-root": {
+              background: "linear-gradient(145deg, #f0f8ff 0%, #e6f7ff 100%)",
+              borderRadius: "20px",
+              boxShadow: "0 8px 32px rgba(33, 150, 243, 0.2)",
+            },
+          }}
         >
-          <DialogTitle>Profil Düzenle</DialogTitle>
-          <DialogContent>
-            <TextField
-              margin="dense"
-              label="Kullanıcı Adı"
-              name="username"
-              fullWidth
-              value={profileData.username}
-              onChange={handleProfileChange}
-            />
-            <TextField
-              margin="dense"
-              label="İsim"
-              name="firstName"
-              fullWidth
-              value={profileData.firstName}
-              onChange={handleProfileChange}
-            />
-            <TextField
-              margin="dense"
-              label="Soyisim"
-              name="lastName"
-              fullWidth
-              value={profileData.lastName}
-              onChange={handleProfileChange}
-            />
-            <TextField
-              margin="dense"
-              label="Boy"
-              name="height"
-              fullWidth
-              value={profileData.height}
-              onChange={handleProfileChange}
-            />
-            <TextField
-              margin="dense"
-              label="Kilo"
-              name="weight"
-              fullWidth
-              value={profileData.weight}
-              onChange={handleProfileChange}
-            />
-            <TextField
-              margin="dense"
-              label="Doğum Tarihi"
-              name="birthDate"
-              type="date"
-              fullWidth
-              value={profileData.birthDate}
-              onChange={handleProfileChange}
-              InputLabelProps={{ shrink: true }}
-            />
-            <Button variant="outlined" component="label" sx={{ mt: 2 }}>
-              Profil Resmi Yükle
-              <input
-                type="file"
-                hidden
-                accept="image/*"
-                onChange={handleImageChange}
-              />
-            </Button>
-            <Button
-              variant="text"
-              onClick={() => handlePasswordReset(user.email)}
-              sx={{ mt: 2 }}
+          <DialogTitle
+            sx={{
+              background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
+              color: "white",
+              fontWeight: "bold",
+              borderRadius: "20px 20px 0 0",
+              py: 3,
+              textAlign: "center",
+            }}
+          >
+            Profil Düzenleme
+          </DialogTitle>
+
+          <DialogContent sx={{ pt: 3 }}>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                gap: 3,
+                my: 2,
+              }}
             >
-              Şifre Değiştir
+              <TextField
+                label="Kullanıcı Adı"
+                name="username"
+                fullWidth
+                value={profileData.username || ""}
+                onChange={handleProfileChange}
+                variant="outlined"
+                sx={{ background: "rgba(255,255,255,0.9)" }}
+              />
+              <TextField
+                label="İsim"
+                name="firstName"
+                fullWidth
+                value={profileData.firstName || ""}
+                onChange={handleProfileChange}
+                variant="outlined"
+                sx={{ background: "rgba(255,255,255,0.9)" }}
+              />
+              <TextField
+                label="Soyisim"
+                name="lastName"
+                fullWidth
+                value={profileData.lastName || ""}
+                onChange={handleProfileChange}
+                variant="outlined"
+                sx={{ background: "rgba(255,255,255,0.9)" }}
+              />
+              <TextField
+                label="Doğum Tarihi"
+                name="birthDate"
+                type="date"
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+                value={profileData.birthDate || ""}
+                onChange={handleProfileChange}
+                variant="outlined"
+                sx={{ background: "rgba(255,255,255,0.9)" }}
+              />
+              <TextField
+                label="Boy (cm)"
+                name="height"
+                type="number"
+                fullWidth
+                value={profileData.height || ""}
+                onChange={handleProfileChange}
+                variant="outlined"
+                sx={{ background: "rgba(255,255,255,0.9)" }}
+                inputProps={{ min: 0, max: 300 }}
+              />
+              <TextField
+                label="Kilo (kg)"
+                name="weight"
+                type="number"
+                fullWidth
+                value={profileData.weight || ""}
+                onChange={handleProfileChange}
+                variant="outlined"
+                sx={{ background: "rgba(255,255,255,0.9)" }}
+                inputProps={{ min: 0, max: 500 }}
+              />
+            </Box>
+
+            <Typography variant="h6" sx={{ mt: 2, mb: 1, color: "#2196F3" }}>
+              Avatar Seçimi
+            </Typography>
+
+            <Box
+              sx={{
+                display: "flex",
+                gap: 2,
+                overflowX: "auto",
+                pb: 2,
+                "&::-webkit-scrollbar": {
+                  height: "6px",
+                },
+                "&::-webkit-scrollbar-thumb": {
+                  background: "#2196F3",
+                  borderRadius: "4px",
+                },
+              }}
+            >
+              {availableAvatars?.map((url) => (
+                <Avatar
+                  key={url}
+                  src={url}
+                  alt="Profil avatarı"
+                  sx={{
+                    cursor: "pointer",
+                    width: 80,
+                    height: 80,
+                    border:
+                      profileData.profileImage === url
+                        ? "3px solid #2196F3"
+                        : "2px solid #e0e0e0",
+                    transition: "all 0.3s ease",
+                    "&:hover": {
+                      transform: "scale(1.1)",
+                      boxShadow: "0 4px 15px rgba(33, 150, 243, 0.3)",
+                    },
+                  }}
+                  onClick={() => handleAvatarSelect(url)}
+                />
+              ))}
+            </Box>
+
+            <Button
+              onClick={() => handlePasswordReset(user?.email)}
+              sx={{
+                mt: 2,
+                background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
+                color: "white",
+                "&:hover": {
+                  transform: "scale(1.02)",
+                  boxShadow: "0 3px 10px rgba(33, 150, 243, 0.5)",
+                },
+              }}
+            >
+              Şifre Sıfırlama Maili Gönder
             </Button>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={handleProfileClose}>İptal</Button>
-            <Button onClick={handleProfileSave}>Kaydet</Button>
+
+          <DialogActions
+            sx={{
+              px: 3,
+              py: 2,
+              background: "rgba(255,255,255,0.9)",
+              borderRadius: "0 0 20px 20px",
+            }}
+          >
+            <Button
+              onClick={handleProfileClose}
+              sx={{
+                color: "#2196F3",
+                border: "2px solid #2196F3",
+                "&:hover": { background: "#2196F322" },
+              }}
+            >
+              İptal
+            </Button>
+            <Button
+              onClick={handleProfileSave}
+              sx={{
+                background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
+                color: "white",
+                ml: 1,
+                "&:hover": {
+                  boxShadow: "0 3px 10px rgba(33, 150, 243, 0.5)",
+                },
+              }}
+            >
+              Değişiklikleri Kaydet
+            </Button>
           </DialogActions>
         </Dialog>
 

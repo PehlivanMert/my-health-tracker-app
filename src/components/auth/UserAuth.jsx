@@ -31,17 +31,24 @@ const pulse = keyframes`
 // Stilize Bileşenler
 const AuthCard = styled(Paper)(({ theme }) => ({
   position: "relative",
-  padding: theme.spacing(5),
+  padding: theme.spacing(3),
+  width: "90%",
   maxWidth: 450,
   margin: "auto",
   borderRadius: "24px",
-  background: "rgba(255, 255, 255, 0.1)",
+  background: "rgba(33, 149, 243, 0.5)",
   backdropFilter: "blur(12px)",
   border: "1px solid rgba(33, 150, 243, 0.2)",
   boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
   overflow: "hidden",
   transition: "all 0.3s ease-in-out",
   animation: `${float} 4s ease-in-out infinite`,
+  [theme.breakpoints.down("sm")]: {
+    padding: theme.spacing(2),
+    width: "95%",
+    margin: "10px auto",
+  },
+
   "&:hover": {
     transform: "translateY(-5px)",
     boxShadow: "0 12px 40px rgba(33, 150, 243, 0.2)",
@@ -127,7 +134,7 @@ const UserAuth = ({ setUser }) => {
           sx={{
             "& .MuiOutlinedInput-root": {
               borderRadius: "12px",
-              background: "rgb(255, 255, 255)",
+              background: "rgba(255, 255, 255, 0.75)",
               color: "#2196F3",
               "& fieldset": {
                 borderColor: "rgba(255, 255, 255, 0.3)",
@@ -163,7 +170,7 @@ const UserAuth = ({ setUser }) => {
           sx={{
             "& .MuiOutlinedInput-root": {
               borderRadius: "12px",
-              background: "rgb(255, 255, 255)",
+              background: "rgb(255, 255, 255, 0.75)",
               color: "#2196F3",
               "& fieldset": {
                 borderColor: "rgba(255, 255, 255, 0.3)",

@@ -34,26 +34,6 @@
   }
 }
 
-@media (max-width: 768px) {
-  .exercise-grid {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
-    overflow-x: hidden !important;
-  }
-
-  .fc-header-toolbar .fc-toolbar-chunk {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-}
-
-@media (max-width: 768px) {
-  .fc-toolbar {
-    flex-direction: column;
-  }
-}
-
 /* 4. Bildirim Stilleri */
 .notification-badge {
   position: fixed;
@@ -74,13 +54,17 @@
     opacity: 0;
   }
 }
-/* Tüm sayfayı kapsayan genel bir konteyner */
-body {
-  margin: 0 !important;
-  padding: 0 !important;
-  font-family: Arial, sans-serif !important;
-  background: linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%) !important;
-  min-height: 100vh !important;
-  display: flex !important;
-  flex-direction: column !important;
+
+@media (max-width: 600px) {
+  body {
+    background-color: #f5f5f5;
+  }
+
+  .MuiTextField-root {
+    background-color: #fff;
+  }
+
+  .MuiDialog-paper {
+    margin: 16px !important;
+  }
 }

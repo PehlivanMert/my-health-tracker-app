@@ -369,7 +369,7 @@ const WaterTracker = ({ user }) => {
         <FloatingIcon component="span" sx={{ display: "inline-block", mr: 2 }}>
           <OpacityIcon sx={{ fontSize: 40 }} />
         </FloatingIcon>
-        Water Tracking
+        Su Takibi
       </Typography>
 
       <WaterContainer>
@@ -632,7 +632,7 @@ const WellnessTracker = ({ user }) => {
             animation: `${float} 3s ease-in-out infinite`,
           }}
         >
-          Health Tracker
+          Takviye Takibi
         </Typography>
 
         <WaterTracker user={user} />

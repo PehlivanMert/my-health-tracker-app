@@ -1,4 +1,3 @@
-/* // server.js
 const express = require("express");
 const axios = require("axios");
 require("dotenv").config();
@@ -36,4 +35,3 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Proxy server çalışıyor: http://localhost:${PORT}`);
 });
- */

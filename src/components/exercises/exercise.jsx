@@ -65,6 +65,7 @@ const pulse = keyframes`
 const GlowingCard = styled(Box)(({ theme, glowColor }) => ({
   position: "relative",
   background: "rgba(255, 255, 255, 0.1)",
+  WebkitBackdropFilter: "blur(10px)",
   backdropFilter: "blur(10px)",
   borderRadius: "24px",
   overflow: "hidden",

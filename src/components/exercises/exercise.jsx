@@ -61,22 +61,28 @@ const pulse = keyframes`
   100% { transform: scale(1); }
 `;
 
+const isIOS = () =>
+  typeof navigator !== "undefined" &&
+  /iPad|iPhone|iPod/.test(navigator.userAgent);
+
 // Stilize Bileşenler
-const GlowingCard = styled(Box)(({ theme, glowColor }) => ({
-  position: "relative",
-  background: "rgba(255, 255, 255, 0.1)",
-  WebkitBackdropFilter: "blur(10px)",
-  backdropFilter: "blur(10px)",
-  borderRadius: "24px",
-  overflow: "hidden",
-  border: "1px solid rgba(33, 150, 243, 0.3)",
-  boxShadow: `0 0 20px ${glowColor || "#2196F322"}`,
-  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-  "&:hover": {
-    transform: "translateY(-5px)",
-    boxShadow: `0 0 40px ${glowColor || "#2196F344"}`,
-  },
-}));
+const GlowingCard = styled(Box)(({ theme, glowColor }) => {
+  const ios = isIOS();
+  return {
+    background: ios ? "rgba(0, 0, 0, 0.5)" : "rgba(255, 255, 255, 0.1)",
+    color: "#fff", // metin rengini beyaz tutuyoruz
+    borderRadius: "24px",
+    // iOS için backdrop-filter devre dışı bırakılıyor
+    WebkitBackdropFilter: ios ? "none" : "blur(10px)",
+    backdropFilter: ios ? "none" : "blur(10px)",
+    boxShadow: `0 0 20px ${glowColor || "#2196F322"}`,
+    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+    "&:hover": {
+      transform: "translateY(-5px)",
+      boxShadow: `0 0 40px ${glowColor || "#2196F344"}`,
+    },
+  };
+});
 
 const AnimatedButton = styled(Button)(({ theme }) => ({
   background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",

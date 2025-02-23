@@ -82,7 +82,6 @@ const HealthDashboard = ({ user }) => {
   const [loading, setLoading] = useState(false);
   const [apiCooldown, setApiCooldown] = useState(false);
 
-  // Firestore'dan tüm verileri çek
   const fetchAllData = async () => {
     try {
       const userRef = doc(db, "users", user.uid);
@@ -111,24 +110,13 @@ const HealthDashboard = ({ user }) => {
     }
   };
 
-  // Yaş hesaplama (güncellenmiş)
   const calculateAge = () => {
     if (!profileData.birthDate) return null;
     const today = new Date();
     const birthDate = new Date(profileData.birthDate);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-
-    if (
-      monthDiff < 0 ||
-      (monthDiff === 0 && today.getDate() < birthDate.getDate())
-    ) {
-      age--;
-    }
-    return age;
+    return today.getFullYear() - birthDate.getFullYear();
   };
 
-  // VKİ hesaplama ve durum belirleme
   const calculateBMI = () => {
     if (!profileData.height || !profileData.weight) return null;
     const heightInMeters = profileData.height / 100;
@@ -143,7 +131,6 @@ const HealthDashboard = ({ user }) => {
     return { value: bmi.toFixed(2), status };
   };
 
-  // Öneri oluşturma
   const generateRecommendations = async () => {
     if (apiCooldown) return;
 
@@ -151,21 +138,24 @@ const HealthDashboard = ({ user }) => {
     try {
       const age = calculateAge();
       const bmi = calculateBMI();
+      const supplementsList = healthData.supplements
+        .map((s) => `${s.name} (${s.dailyUsage}/gün)`)
+        .join(", ");
 
       const prompt = `Kullanıcı bilgileri:
 İsim: ${profileData.firstName || "Belirtilmemiş"},
 Yaş: ${age || "Belirtilmemiş"}, 
 Boy: ${profileData.height || "Belirtilmemiş"} cm, 
 Kilo: ${profileData.weight || "Belirtilmemiş"} kg
+Mevcut Takviyeler: ${supplementsList || "Yok"}
 ${bmi ? `VKİ: ${bmi.value} (${bmi.status})` : ""}
 
 Detaylı sağlık önerileri oluştur:
-1. VKİ analizi ve yorumu
-2. Günlük aktivite planı
-3. Beslenme önerileri
-4. Supplement tavsiyeleri
-5. Sağlıklı bir tarif
-Madde madde ve sade metin formatında.`;
+- VKİ analizi ve yorumu
+- Günlük aktivite planı
+- Beslenme önerileri
+- Supplement tavsiyeleri
+- Sağlıklı bir tarif`;
 
       const response = await fetch(API_URL, {
         method: "POST",
@@ -181,7 +171,13 @@ Madde madde ve sade metin formatında.`;
       const data = await response.json();
 
       if (data.choices?.[0]?.message?.content) {
-        const recommendationText = data.choices[0].message.content;
+        const recommendationText = data.choices[0].message.content
+          .replace(/-/g, "")
+          .replace(/#/g, "")
+          .replace(/###/g, "")
+          .replace(/---/g, "")
+          .replace(/\*\*/g, "");
+
         await updateDoc(doc(db, "users", user.uid), {
           "healthData.recommendations": recommendationText,
           "healthData.lastUpdated": new Date().toISOString(),
@@ -200,27 +196,17 @@ Madde madde ve sade metin formatında.`;
     if (user) fetchAllData();
   }, [user]);
 
-  // Önerileri formatlama
   const parseRecommendations = () => {
     if (!recommendations) return [];
-
-    return recommendations
-      .split("\n")
-      .filter((line) => line.trim() && !line.startsWith("---"))
-      .map((line) => line.replace(/^\d+\.|\*|-/, "").trim());
+    return recommendations.split("\n").filter((line) => line.trim());
   };
 
-  // Supplement kartı
   const SupplementCard = ({ supplement }) => (
     <Card sx={cardSx}>
       <CardContent sx={{ flexGrow: 1 }}>
         <Box display="flex" alignItems="center" gap={2} mb={2}>
           <Avatar
-            sx={{
-              bgcolor: "rgba(33, 150, 243, 0.2)",
-              width: 40,
-              height: 40,
-            }}
+            sx={{ bgcolor: "rgba(33, 150, 243, 0.2)", width: 40, height: 40 }}
           >
             <LocalHospitalIcon fontSize="small" color="primary" />
           </Avatar>
@@ -266,14 +252,7 @@ Madde madde ve sade metin formatında.`;
 
   return (
     <Box sx={gradientBackground}>
-      <Box
-        sx={{
-          maxWidth: 1280,
-          margin: "0 auto",
-          p: { xs: 2, md: 3 },
-        }}
-      >
-        {/* Başlık ve Yenile Butonu */}
+      <Box sx={{ maxWidth: 1280, margin: "0 auto", p: { xs: 2, md: 3 } }}>
         <Box
           sx={{
             display: "flex",
@@ -281,121 +260,80 @@ Madde madde ve sade metin formatında.`;
             alignItems: "center",
             mb: 4,
             gap: 2,
-            flexWrap: "wrap",
           }}
         >
           <Typography
-            variant="h2"
+            variant="h4"
             sx={{
-              textAlign: "center",
               color: "#fff",
-              fontWeight: 800,
-              mb: 6,
-              textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
-              animation: `${float} 3s ease-in-out infinite`,
+              fontWeight: 700,
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
             }}
           >
-            <FitnessCenterIcon sx={{ fontSize: "inherit" }} />
+            <FitnessCenterIcon sx={{ fontSize: "2rem" }} />
             Sağlık Panosu
           </Typography>
-
           <IconButton
             onClick={generateRecommendations}
-            sx={{
-              color: "#fff",
-              p: 1.5,
-              "&:hover": { bgcolor: "rgba(255,255,255,0.1)" },
-              "&.Mui-disabled": { opacity: 0.5 },
-            }}
             disabled={loading || apiCooldown}
           >
-            <RefreshIcon sx={{ fontSize: 32 }} />
+            <RefreshIcon sx={{ fontSize: 32, color: "#fff" }} />
           </IconButton>
         </Box>
 
         {loading ? (
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              mt: 4,
-              height: "60vh",
-              alignItems: "center",
-            }}
-          >
+          <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
             <CircularProgress sx={{ color: "#fff" }} size={80} />
           </Box>
         ) : (
           <Grid container spacing={3}>
-            {/* Sol Kolon - Kişisel Bilgiler */}
             <Grid item xs={12} md={4}>
               <Card sx={cardSx}>
                 <CardContent>
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      color: "#2196F3",
-                      mb: 3,
-                      fontWeight: 600,
-                    }}
-                  >
-                    Kişisel Bilgiler
+                  <Typography variant="h6" sx={{ color: "#2196F3", mb: 3 }}>
+                    Profil Bilgileri
                   </Typography>
-
-                  <Grid container spacing={2}>
-                    <DetailItem
-                      icon={<CakeIcon />}
-                      label="Yaş"
-                      value={calculateAge() || "Belirtilmemiş"}
-                      xs={6}
-                    />
-                    <DetailItem
-                      icon={<HeightIcon />}
-                      label="Boy"
-                      value={
-                        profileData.height
-                          ? `${profileData.height} cm`
-                          : "Belirtilmemiş"
-                      }
-                      xs={6}
-                    />
-                    <DetailItem
-                      icon={<ScaleIcon />}
-                      label="Kilo"
-                      value={
-                        profileData.weight
-                          ? `${profileData.weight} kg`
-                          : "Belirtilmemiş"
-                      }
-                      xs={6}
-                    />
-                    <DetailItem
-                      icon={<LocalHospitalIcon />}
-                      label="VKİ Durum"
-                      value={calculateBMI()?.status || "Hesaplanamadı"}
-                      xs={6}
-                    />
-                  </Grid>
+                  <DetailItem
+                    icon={<CakeIcon />}
+                    label="Yaş"
+                    value={calculateAge() || "Belirtilmemiş"}
+                  />
+                  <DetailItem
+                    icon={<HeightIcon />}
+                    label="Boy"
+                    value={
+                      profileData.height
+                        ? `${profileData.height} cm`
+                        : "Belirtilmemiş"
+                    }
+                  />
+                  <DetailItem
+                    icon={<ScaleIcon />}
+                    label="Kilo"
+                    value={
+                      profileData.weight
+                        ? `${profileData.weight} kg`
+                        : "Belirtilmemiş"
+                    }
+                  />
+                  <DetailItem
+                    icon={<LocalHospitalIcon />}
+                    label="VKİ Durumu"
+                    value={calculateBMI()?.status || "Hesaplanamadı"}
+                  />
                 </CardContent>
               </Card>
             </Grid>
 
-            {/* Orta Kolon - Takviyeler */}
             {healthData.supplements?.length > 0 && (
               <Grid item xs={12} md={4}>
-                <Card sx={{ ...cardSx, height: "100%" }}>
+                <Card sx={cardSx}>
                   <CardContent>
-                    <Typography
-                      variant="h6"
-                      sx={{
-                        color: "#2196F3",
-                        mb: 3,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Takviyelerim
+                    <Typography variant="h6" sx={{ color: "#2196F3", mb: 3 }}>
+                      Takviyeler
                     </Typography>
-
                     <Grid container spacing={2}>
                       {healthData.supplements.map((supplement) => (
                         <Grid item xs={12} key={supplement.id}>
@@ -408,104 +346,51 @@ Madde madde ve sade metin formatında.`;
               </Grid>
             )}
 
-            {/* Sağ Kolon - Öneriler */}
             <Grid item xs={12} md={4}>
-              <Card sx={{ ...cardSx, height: "100%" }}>
+              <Card sx={{ ...cardSx, height: "600px" }}>
                 <CardContent
                   sx={{
+                    height: "100%",
                     display: "flex",
                     flexDirection: "column",
-                    height: "100%",
                   }}
                 >
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      color: "#2196F3",
-                      mb: 3,
-                      fontWeight: 600,
-                    }}
-                  >
-                    Öneriler
+                  <Typography variant="h6" sx={{ color: "#2196F3", mb: 3 }}>
+                    Kişiselleştirilmiş Öneriler
                   </Typography>
-
-                  <Box
-                    sx={{
-                      flexGrow: 1,
-                      overflow: "auto",
-                      pr: 1,
-                      "&::-webkit-scrollbar": {
-                        width: "6px",
-                      },
-                      "&::-webkit-scrollbar-track": {
-                        background: "rgba(255,255,255,0.1)",
-                        borderRadius: "4px",
-                      },
-                      "&::-webkit-scrollbar-thumb": {
-                        background: "#2196F3",
-                        borderRadius: "4px",
-                      },
-                    }}
-                  >
+                  <Box sx={{ flex: 1, overflow: "auto", pr: 2 }}>
                     {recommendations ? (
                       parseRecommendations().map((line, index) => (
                         <Box
                           key={index}
                           sx={{
+                            mb: 2,
                             display: "flex",
                             alignItems: "flex-start",
-                            mb: 2,
-                            p: 1.5,
-                            borderRadius: 2,
-                            background: "rgba(255,255,255,0.05)",
-                            transition: "all 0.3s ease",
-                            "&:hover": {
-                              background: "rgba(255,255,255,0.1)",
-                            },
                           }}
                         >
                           <Chip
                             label="•"
                             sx={{
-                              height: 24,
-                              minWidth: 24,
-                              mr: 2,
+                              mr: 1,
                               bgcolor: "rgba(33, 150, 243, 0.3)",
                               color: "#fff",
                             }}
                           />
-                          <Typography
-                            sx={{
-                              color: "#fff",
-                              lineHeight: 1.6,
-                              fontSize: "0.95rem",
-                            }}
-                          >
+                          <Typography variant="body1" sx={{ color: "#fff" }}>
                             {line}
                           </Typography>
                         </Box>
                       ))
                     ) : (
-                      <Box
+                      <Typography
                         sx={{
-                          height: "100%",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
+                          color: "rgba(255,255,255,0.7)",
                           textAlign: "center",
                         }}
                       >
-                        <Typography
-                          sx={{
-                            color: "rgba(255,255,255,0.7)",
-                            fontSize: "1.1rem",
-                          }}
-                        >
-                          Öneri oluşturmak için
-                          <br />
-                          yenile butonuna tıklayın
-                        </Typography>
-                      </Box>
+                        Öneri oluşturmak için yenile butonuna tıklayın
+                      </Typography>
                     )}
                   </Box>
                 </CardContent>
@@ -516,12 +401,7 @@ Madde madde ve sade metin formatında.`;
 
         {apiCooldown && (
           <Typography
-            sx={{
-              color: "rgba(255,255,255,0.7)",
-              textAlign: "center",
-              mt: 3,
-              fontSize: "0.9rem",
-            }}
+            sx={{ color: "rgba(255,255,255,0.7)", textAlign: "center", mt: 3 }}
           >
             Yeni öneri oluşturmak için lütfen 1 dakika bekleyin
           </Typography>
@@ -531,26 +411,18 @@ Madde madde ve sade metin formatında.`;
   );
 };
 
-// Yardımcı bileşen
-const DetailItem = ({ icon, label, value, xs }) => (
-  <Grid item xs={xs} sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+const DetailItem = ({ icon, label, value }) => (
+  <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
     <Box sx={{ color: "#2196F3" }}>{icon}</Box>
     <Box>
       <Typography variant="body2" sx={{ color: "#BBDEFB" }}>
         {label}
       </Typography>
-      <Typography
-        variant="body1"
-        sx={{
-          color: "#fff",
-          fontWeight: 500,
-          whiteSpace: "nowrap",
-        }}
-      >
+      <Typography variant="body1" sx={{ color: "#fff" }}>
         {value}
       </Typography>
     </Box>
-  </Grid>
+  </Box>
 );
 
 export default HealthDashboard;

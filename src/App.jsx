@@ -297,7 +297,7 @@ function App() {
         } catch (error) {
           console.error("Yenileme hatası:", error);
         }
-      }, 3000);
+      }, 2000);
       return () => clearInterval(interval);
     }
   }, [user]);
@@ -373,7 +373,7 @@ function App() {
       if (!localStorage.getItem("welcomeShown")) {
         setShowWelcome(true);
         localStorage.setItem("welcomeShown", "true");
-        setTimeout(() => setShowWelcome(false), 3000);
+        setTimeout(() => setShowWelcome(false), 1500);
       }
     }
   }, [user]);
@@ -431,6 +431,28 @@ function App() {
   };
 
   if (!authChecked) return <div style={{ display: "none" }}></div>;
+  if (showWelcome) {
+    return (
+      <Box
+        sx={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
+          background: "linear-gradient(135deg, #1a2a6c, #2196F3, #3F51B5)",
+        }}
+      >
+        <Lottie
+          animationData={welcomeAnimation}
+          style={{ width: 300, height: 300 }}
+        />
+        <Typography variant="h4" sx={{ color: "#fff", mt: 2 }}>
+          Hoşgeldin, {profileData.firstName || profileData.username}!
+        </Typography>
+      </Box>
+    );
+  }
   return !user ? (
     <GlowingContainer maxWidth="sm" sx={{ mt: 4 }} glowColor={activeGlow}>
       <Box
@@ -600,32 +622,6 @@ function App() {
             </Menu>
           </Toolbar>
         </AppBar>
-
-        {showWelcome && (
-          <Box
-            sx={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0,0,0,0.5)",
-              zIndex: 1300,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexDirection: "column",
-            }}
-          >
-            <Lottie
-              animationData={welcomeAnimation}
-              style={{ width: 300, height: 300 }}
-            />
-            <Typography variant="h4" sx={{ color: "#fff", mt: 2 }}>
-              Hoşgeldin, {profileData.username}!
-            </Typography>
-          </Box>
-        )}
 
         <Dialog
           open={openProfileModal}

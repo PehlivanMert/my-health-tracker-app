@@ -925,7 +925,7 @@ function App() {
             }}
           />
           <Tab
-            label="Sağlıklı Yaşam Önerileri"
+            label="Tarifler - Değerler - Hedefler"
             sx={{
               background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
               borderRadius: "8px",

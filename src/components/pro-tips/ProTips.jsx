@@ -735,7 +735,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
           }}
         >
           <LocalDrink sx={{ fontSize: 50, verticalAlign: "middle", mr: 2 }} />
-          Pro Öneriler
+          Tarifler - Değerler - Hedefler
         </Typography>
       </Box>
       <Accordion sx={accordionSx}>

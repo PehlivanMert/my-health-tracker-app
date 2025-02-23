@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box,
   Card,
@@ -39,6 +39,18 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import OpacityIcon from "@mui/icons-material/Opacity";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend,
+  BarChart,
+  Bar,
+} from "recharts";
 
 // Animated keyframes
 const float = keyframes`
@@ -135,11 +147,11 @@ const FloatingIcon = styled(Box)(({ delay = 0 }) => ({
   animationDelay: `${delay}s`,
 }));
 
-// Color utils
+// Color util
 const getVitaminColor = (remainingPercentage) => {
-  if (remainingPercentage > 66) return "#2196F3"; // Primary blue
-  if (remainingPercentage > 33) return "#00BCD4"; // Secondary blue
-  return "#3F51B5"; // Dark blue
+  if (remainingPercentage > 66) return "#2196F3";
+  if (remainingPercentage > 33) return "#00BCD4";
+  return "#3F51B5";
 };
 
 // Achievement Component
@@ -160,13 +172,13 @@ const Achievement = ({ message }) => (
       }}
     >
       <Typography variant="h5" sx={{ color: "white", textAlign: "center" }}>
-        🎉 {message} 🎉
+        🎉 Tebrikler! 🎉
       </Typography>
     </Box>
   </Slide>
 );
 
-// Vitamin Card Component
+// VitaminCard Component
 const VitaminCard = ({ supplement, onConsume, onDelete }) => {
   const remainingPercentage =
     (supplement.quantity / supplement.initialQuantity) * 100;
@@ -257,18 +269,49 @@ const VitaminCard = ({ supplement, onConsume, onDelete }) => {
   );
 };
 
-// Water Tracking Component
-const WaterTracker = ({ user }) => {
+// YesterdayWaterCard Component
+const YesterdayWaterCard = ({ amount }) => (
+  <motion.div
+    initial={{ opacity: 0, scale: 0.9 }}
+    animate={{ opacity: 1, scale: 1 }}
+    transition={{ duration: 0.5, ease: "easeOut" }}
+  >
+    <Card
+      sx={{
+        borderRadius: "16px",
+        padding: 1,
+        maxWidth: "250px",
+        margin: "0 auto",
+        background: "rgba(0,0,0,0.3)",
+        border: "1px solid rgba(255,255,255,0.3)",
+      }}
+    >
+      <CardContent sx={{ padding: "8px" }}>
+        <Typography
+          variant="subtitle1"
+          sx={{ color: "#fff", textAlign: "center", fontWeight: "bold" }}
+        >
+          Dün {amount} ml su içtin! Harika!
+        </Typography>
+      </CardContent>
+    </Card>
+  </motion.div>
+);
+
+// WaterTracker Component
+const WaterTracker = ({ user, onWaterDataChange }) => {
   const [waterData, setWaterData] = useState({
     waterIntake: 0,
     dailyWaterTarget: 2000,
     glassSize: 250,
+    history: [],
+    yesterdayWaterIntake: 0,
   });
   const [showConfetti, setShowConfetti] = useState(false);
   const [achievement, setAchievement] = useState(null);
   const theme = useTheme();
+  const timerRef = useRef(null);
 
-  // Add this function to get water document reference
   const getWaterDocRef = () => {
     if (!user) return null;
     return doc(db, "users", user.uid, "water", "current");
@@ -279,7 +322,15 @@ const WaterTracker = ({ user }) => {
     try {
       const docSnap = await getDoc(getWaterDocRef());
       if (docSnap.exists()) {
-        setWaterData(docSnap.data());
+        const data = docSnap.data();
+        const newWaterData = {
+          waterIntake: data.waterIntake || 0,
+          dailyWaterTarget: data.dailyWaterTarget || 2000,
+          glassSize: data.glassSize || 250,
+          history: data.history || [],
+          yesterdayWaterIntake: data.yesterdayWaterIntake || 0,
+        };
+        setWaterData(newWaterData);
       }
     } catch (error) {
       console.error("Error fetching water data:", error);
@@ -289,6 +340,47 @@ const WaterTracker = ({ user }) => {
   useEffect(() => {
     if (user) fetchWaterData();
   }, [user]);
+
+  useEffect(() => {
+    if (onWaterDataChange) onWaterDataChange(waterData);
+  }, [waterData, onWaterDataChange]);
+
+  useEffect(() => {
+    const scheduleMidnightReset = () => {
+      const now = new Date();
+      const nextMidnight = new Date();
+      nextMidnight.setHours(24, 0, 0, 0);
+      const msUntilMidnight = nextMidnight.getTime() - now.getTime();
+      timerRef.current = setTimeout(() => {
+        resetDailyWaterIntake();
+      }, msUntilMidnight);
+    };
+    scheduleMidnightReset();
+    return () => clearTimeout(timerRef.current);
+  }, [waterData.waterIntake, user]);
+
+  const resetDailyWaterIntake = async () => {
+    if (!user) return;
+    try {
+      const todayStr = new Date().toLocaleDateString();
+      const newHistory = [
+        ...waterData.history,
+        { date: todayStr, intake: waterData.waterIntake },
+      ];
+      await setDoc(
+        getWaterDocRef(),
+        {
+          yesterdayWaterIntake: waterData.waterIntake,
+          waterIntake: 0,
+          history: newHistory,
+        },
+        { merge: true }
+      );
+      fetchWaterData();
+    } catch (error) {
+      console.error("Error resetting water intake:", error);
+    }
+  };
 
   const handleAddWater = async () => {
     if (!user) return;
@@ -314,7 +406,7 @@ const WaterTracker = ({ user }) => {
 
     if (isGoalAchieved) {
       setShowConfetti(true);
-      setAchievement("Hydration Goal Achieved! 💧");
+      setAchievement("Tebrikler!");
       setTimeout(() => {
         setShowConfetti(false);
         setAchievement(null);
@@ -355,20 +447,19 @@ const WaterTracker = ({ user }) => {
   );
 
   return (
-    <Box sx={{ position: "relative", mb: 6 }}>
+    <Box sx={{ textAlign: "center", mb: 6 }}>
+      {showConfetti && <Confetti recycle={false} numberOfPieces={400} />}
+      {achievement && <Achievement message={achievement} />}
+
       <Typography
         variant="h4"
         sx={{
           fontWeight: 700,
           color: "#fff",
-          mb: 4,
-          textAlign: "center",
-          textShadow: "2px 2px 4px rgba(0,0,0,0.2)",
+          mb: 2,
+          textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
         }}
       >
-        <FloatingIcon component="span" sx={{ display: "inline-block", mr: 2 }}>
-          <OpacityIcon sx={{ fontSize: 40 }} />
-        </FloatingIcon>
         Su Takibi
       </Typography>
 
@@ -388,11 +479,16 @@ const WaterTracker = ({ user }) => {
           <Lottie
             animationData={waterAnimation}
             loop={true}
-            style={{
+            sx={{
               width: "auto",
               height: "auto",
+              // Tüm ekran boyutlarında geçerli stil
               transform: "scaleY(2)",
               transformOrigin: "top",
+              // Mobil için ek ayarlar (isteğe bağlı)
+              "@media (max-width: 600px)": {
+                transform: "scaleY(2) translateY(-10%)", // Ekstra ayar örneği
+              },
             }}
           />
         </Box>
@@ -421,8 +517,9 @@ const WaterTracker = ({ user }) => {
           >
             {waterData.waterIntake} / {waterData.dailyWaterTarget} ml
           </Typography>
-
-          <Box sx={{ display: "flex", justifyContent: "center", gap: 3 }}>
+          <Box
+            sx={{ display: "flex", justifyContent: "center", gap: 3, mt: 2 }}
+          >
             <Tooltip title="Remove Water" placement="left">
               <IconButton
                 onClick={handleRemoveWater}
@@ -440,7 +537,6 @@ const WaterTracker = ({ user }) => {
                 <RemoveIcon sx={{ fontSize: 35, color: "#fff" }} />
               </IconButton>
             </Tooltip>
-
             <Tooltip title="Add Water" placement="right">
               <IconButton
                 onClick={handleAddWater}
@@ -462,81 +558,189 @@ const WaterTracker = ({ user }) => {
         </Box>
       </WaterContainer>
 
-      <Grid container spacing={3} sx={{ mt: 3 }}>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            label="Glass Size (ml)"
-            type="number"
-            value={waterData.glassSize}
-            onChange={(e) =>
-              handleWaterSettingChange("glassSize", e.target.value)
-            }
-            variant="outlined"
-            fullWidth
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                backgroundColor: "rgba(255, 255, 255, 0.1)",
-                color: "#fff",
-                backdropFilter: "blur(10px)",
-                transition: "all 0.3s ease",
-                "&:hover": {
-                  backgroundColor: "rgba(255, 255, 255, 0.15)",
+      <Box sx={{ mt: 2, maxWidth: 400, mx: "auto" }}>
+        <Grid container spacing={2}>
+          <Grid item xs={6}>
+            <TextField
+              label="Glass Size (ml)"
+              type="number"
+              value={waterData.glassSize}
+              onChange={(e) =>
+                handleWaterSettingChange("glassSize", e.target.value)
+              }
+              variant="outlined"
+              fullWidth
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  backgroundColor: "rgba(255,255,255,0.1)",
+                  color: "#fff",
+                  backdropFilter: "blur(10px)",
+                  borderRadius: 2,
+                  transition: "all 0.3s ease",
+                  "&:hover": { backgroundColor: "rgba(255,255,255,0.15)" },
                 },
-              },
-              "& .MuiInputLabel-root": {
-                color: "#fff",
-              },
-              "& .MuiOutlinedInput-notchedOutline": {
-                borderColor: "rgb(255, 255, 255,0.3)",
-              },
-            }}
-          />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            label="Daily Water Goal (ml)"
-            type="number"
-            value={waterData.dailyWaterTarget}
-            onChange={(e) =>
-              handleWaterSettingChange("dailyWaterTarget", e.target.value)
-            }
-            variant="outlined"
-            fullWidth
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                backgroundColor: "rgba(255,255,255,0.1)",
-                color: "#fff",
-                backdropFilter: "blur(10px)",
-                transition: "all 0.3s ease",
-                "&:hover": {
-                  backgroundColor: "rgba(255,255,255,0.15)",
+                "& .MuiInputLabel-root": { color: "#fff" },
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "rgba(255,255,255,0.3)",
                 },
-              },
-              "& .MuiInputLabel-root": { color: "#fff" },
-              "& .MuiOutlinedInput-notchedOutline": {
-                borderColor: "rgba(255,255,255,0.3)",
-              },
-            }}
-          />
+              }}
+            />
+          </Grid>
+          <Grid item xs={6}>
+            <TextField
+              label="Daily Water Goal (ml)"
+              type="number"
+              value={waterData.dailyWaterTarget}
+              onChange={(e) =>
+                handleWaterSettingChange("dailyWaterTarget", e.target.value)
+              }
+              variant="outlined"
+              fullWidth
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  backgroundColor: "rgba(255,255,255,0.1)",
+                  color: "#fff",
+                  backdropFilter: "blur(10px)",
+                  borderRadius: 2,
+                  transition: "all 0.3s ease",
+                  "&:hover": { backgroundColor: "rgba(255,255,255,0.15)" },
+                },
+                "& .MuiInputLabel-root": { color: "#fff" },
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "rgba(255,255,255,0.3)",
+                },
+              }}
+            />
+          </Grid>
         </Grid>
-      </Grid>
+      </Box>
 
-      {showConfetti && (
-        <Confetti
-          width={window.innerWidth}
-          height={window.innerHeight}
-          recycle={false}
-          numberOfPieces={200}
-          gravity={0.3}
-        />
-      )}
-
-      {achievement && <Achievement message={achievement} />}
+      <Box sx={{ mt: 2 }}>
+        <YesterdayWaterCard amount={waterData.yesterdayWaterIntake} />
+      </Box>
     </Box>
   );
 };
 
-// Main App Component
+// WaterConsumptionChart Component
+const WaterConsumptionChart = ({ waterHistory }) => (
+  <Box sx={{ background: "#fff", borderRadius: 2, p: 2 }}>
+    <Typography variant="h6" textAlign="center" mb={2}>
+      Son 7 Gün Su Tüketimi
+    </Typography>
+    <ResponsiveContainer width="100%" height={250}>
+      <LineChart data={waterHistory.slice(-7)}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="date" />
+        <YAxis />
+        <RechartsTooltip />
+        <Legend />
+        <Line
+          type="monotone"
+          dataKey="intake"
+          stroke="#8884d8"
+          activeDot={{ r: 8 }}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  </Box>
+);
+
+// SupplementConsumptionChart Component
+const SupplementConsumptionChart = ({ user }) => {
+  const [consumptionData, setConsumptionData] = useState([]);
+  const theme = useTheme();
+
+  const getConsumptionDocRef = () => {
+    if (!user) return null;
+    return doc(db, "users", user.uid, "stats", "supplementConsumption");
+  };
+
+  const fetchConsumptionData = async () => {
+    if (!user) return;
+    try {
+      const docSnap = await getDoc(getConsumptionDocRef());
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const allSuppNames = new Set();
+        Object.values(data).forEach((dayStats) => {
+          Object.keys(dayStats).forEach((suppName) => {
+            if (suppName !== "total") allSuppNames.add(suppName);
+          });
+        });
+
+        const chartData = Object.keys(data).map((date) => {
+          const dayStats = data[date];
+          let total = 0;
+          const dayData = { date };
+
+          allSuppNames.forEach((suppName) => {
+            const count = dayStats[suppName] || 0;
+            dayData[suppName] = count;
+            total += count;
+          });
+
+          dayData.total = total;
+          return dayData;
+        });
+
+        setConsumptionData(chartData);
+      }
+    } catch (error) {
+      console.error("Error fetching supplement consumption data:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (user) fetchConsumptionData();
+  }, [user]);
+
+  const colors = [
+    "#4caf50",
+    "#ff9800",
+    "#f44336",
+    "#2196f3",
+    "#9c27b0",
+    "#00bcd4",
+  ];
+
+  return (
+    <Box sx={{ background: "#fff", borderRadius: 2, p: 2 }}>
+      <Typography variant="h6" textAlign="center" mb={2}>
+        Takviye Kullanım İstatistikleri
+      </Typography>
+      <ResponsiveContainer width="100%" height={250}>
+        <BarChart data={consumptionData.slice(-7)}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="date" />
+          <YAxis />
+          <RechartsTooltip />
+          <Legend />
+          {consumptionData.length > 0 &&
+            Array.from(
+              new Set(
+                consumptionData.flatMap((day) =>
+                  Object.keys(day).filter(
+                    (key) => key !== "date" && key !== "total"
+                  )
+                )
+              )
+            ).map((key, index) => (
+              <Bar
+                key={key}
+                dataKey={key}
+                fill={colors[index % colors.length]}
+                name={key}
+              />
+            ))}
+          <Bar dataKey="total" fill="#607d8b" name="Toplam" />
+        </BarChart>
+      </ResponsiveContainer>
+    </Box>
+  );
+};
+
+// Ana WellnessTracker bileşeni
 const WellnessTracker = ({ user }) => {
   const [supplements, setSupplements] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
@@ -545,6 +749,7 @@ const WellnessTracker = ({ user }) => {
     quantity: 0,
     dailyUsage: 1,
   });
+  const [waterData, setWaterData] = useState({ history: [] });
 
   const getSupplementsRef = () => {
     if (!user) return null;
@@ -591,10 +796,27 @@ const WellnessTracker = ({ user }) => {
     try {
       const supplement = supplements.find((supp) => supp.id === id);
       const newQuantity = Math.max(0, supplement.quantity - 1);
-
       const supplementRef = doc(getSupplementsRef(), id);
       await updateDoc(supplementRef, { quantity: newQuantity });
       await fetchSupplements();
+
+      const suppName = supplement.name;
+      const today = new Date().toLocaleDateString();
+      const docRef = doc(
+        db,
+        "users",
+        user.uid,
+        "stats",
+        "supplementConsumption"
+      );
+      const docSnap = await getDoc(docRef);
+
+      let updatedStats = docSnap.exists() ? docSnap.data() : {};
+      if (!updatedStats[today]) updatedStats[today] = {};
+      updatedStats[today][suppName] = (updatedStats[today][suppName] || 0) + 1;
+      updatedStats[today].total = (updatedStats[today].total || 0) + 1;
+
+      await setDoc(docRef, updatedStats);
     } catch (error) {
       console.error("Error consuming supplement:", error);
     }
@@ -635,9 +857,9 @@ const WellnessTracker = ({ user }) => {
           Takviye Takibi
         </Typography>
 
-        <WaterTracker user={user} />
+        <WaterTracker user={user} onWaterDataChange={setWaterData} />
 
-        <Box sx={{ mb: 4, display: "flex", justifyContent: "flex-end" }}>
+        <Box sx={{ mt: 4, textAlign: "center" }}>
           <AnimatedButton
             onClick={() => setOpenDialog(true)}
             startIcon={<AddIcon />}
@@ -646,8 +868,7 @@ const WellnessTracker = ({ user }) => {
             Add Supplement
           </AnimatedButton>
         </Box>
-
-        <Grid container spacing={4}>
+        <Grid container spacing={4} sx={{ mt: 2 }}>
           <AnimatePresence>
             {supplements.map((supplement) => (
               <Grid item xs={12} sm={6} md={4} key={supplement.id}>
@@ -661,6 +882,15 @@ const WellnessTracker = ({ user }) => {
           </AnimatePresence>
         </Grid>
 
+        <Grid container spacing={4} sx={{ mt: 4 }}>
+          <Grid item xs={12} md={6}>
+            <WaterConsumptionChart waterHistory={waterData.history} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <SupplementConsumptionChart user={user} />
+          </Grid>
+        </Grid>
+
         <Dialog
           open={openDialog}
           onClose={() => setOpenDialog(false)}
@@ -671,14 +901,10 @@ const WellnessTracker = ({ user }) => {
               borderRadius: "24px",
               padding: 2,
               border: "1px solid rgba(33, 150, 243, 0.2)",
-              color: "rgba(97, 159, 210, 0.1)",
             },
           }}
         >
-          <DialogTitle sx={{ color: "rgba(0, 0, 0, 1)", opacity: 0.8 }}>
-            Add New Supplement
-          </DialogTitle>
-
+          <DialogTitle>Add New Supplement</DialogTitle>
           <DialogContent>
             <TextField
               autoFocus
@@ -720,12 +946,8 @@ const WellnessTracker = ({ user }) => {
             />
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setOpenDialog(false)} color="primary">
-              Cancel
-            </Button>
-            <Button onClick={handleAddSupplement} color="primary">
-              Add
-            </Button>
+            <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+            <Button onClick={handleAddSupplement}>Add</Button>
           </DialogActions>
         </Dialog>
       </Container>

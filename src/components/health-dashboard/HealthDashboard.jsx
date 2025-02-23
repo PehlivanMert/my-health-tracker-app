@@ -32,7 +32,6 @@ import {
 } from "@mui/icons-material";
 import { keyframes } from "@emotion/react";
 
-// Animasyon keyframeleri
 const float = keyframes`
   0% { transform: translateY(0px); }
   50% { transform: translateY(-20px); }
@@ -50,8 +49,10 @@ const HealthDashboard = ({ user }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [healthData, setHealthData] = useState({
-    supplements: [],
     recommendations: "",
+    bmi: null,
+    yesterdayWaterIntake: null, // yeni alan
+    supplementConsumptionStats: null, // yeni alan
   });
   const [profileData, setProfileData] = useState({
     firstName: "",
@@ -63,28 +64,57 @@ const HealthDashboard = ({ user }) => {
   const [loading, setLoading] = useState(false);
   const [apiCooldown, setApiCooldown] = useState(false);
 
-  // Firebase'den kullanıcı verilerini getDoc ile çekiyoruz
+  // Firebase'den kullanıcı verilerini çekiyoruz.
+  // HealthDashboard bileşeni içinde fetchAllData fonksiyonunu güncelleyelim
   const fetchAllData = async () => {
     try {
       const userRef = doc(db, "users", user.uid);
-      const [userSnap, supplementsSnap] = await Promise.all([
-        getDoc(userRef),
-        getDocs(collection(db, "users", user.uid, "supplements")),
-      ]);
 
+      // Tüm verileri tek seferde çekmek için Promise.all kullanalım
+      const [userSnap, waterSnap, supplementsSnap, supplementStatsSnap] =
+        await Promise.all([
+          getDoc(userRef),
+          getDoc(doc(db, "users", user.uid, "water", "current")),
+          getDocs(collection(db, "users", user.uid, "supplements")),
+          getDoc(doc(db, "users", user.uid, "stats", "supplementConsumption")),
+        ]);
+
+      // Su verilerini işleme
+      const waterData = waterSnap.exists() ? waterSnap.data() : {};
+
+      // Supplement istatistiklerini işleme
+      const supplementStats = supplementStatsSnap.exists()
+        ? supplementStatsSnap.data()
+        : {};
+
+      // Supplement listesini işleme
+      const supplements = supplementsSnap.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      // Tüm verileri state'e kaydetme
       if (userSnap.exists()) {
         const data = userSnap.data();
         setProfileData({
           ...data.profile,
           birthDate: data.profile?.birthDate?.toDate() || null,
         });
-        setHealthData({
+
+        setHealthData((prev) => ({
+          ...prev,
           ...data.healthData,
-          supplements: supplementsSnap.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          })),
-        });
+          // Yeni eklenen veriler
+          supplements,
+          waterData: {
+            currentIntake: waterData.waterIntake || 0,
+            target: waterData.dailyWaterTarget || 2000,
+            history: waterData.history || [],
+            yesterday: waterData.yesterdayWaterIntake || 0,
+          },
+          supplementStats,
+        }));
+
         setRecommendations(data.healthData?.recommendations || null);
       }
     } catch (error) {
@@ -92,7 +122,6 @@ const HealthDashboard = ({ user }) => {
     }
   };
 
-  // Hesaplanan metrikleri (yaş, VKİ) hesaplıyoruz
   const calculateAge = () => {
     if (!profileData.birthDate) return null;
     const today = new Date();
@@ -114,7 +143,7 @@ const HealthDashboard = ({ user }) => {
     return { value: bmi.toFixed(2), status };
   };
 
-  // Hesaplanan metrikleri Firebase'ye ekleyen fonksiyon
+  // Hesaplanan metrikleri Firebase'ye güncelliyoruz.
   const updateMetrics = async () => {
     const age = calculateAge();
     const bmi = calculateBMI();
@@ -128,33 +157,42 @@ const HealthDashboard = ({ user }) => {
     }
   };
 
-  // Öneriler oluşturulurken hesaplanan verileri Firebase'ye ekliyoruz
+  // Öneri oluştururken, profil bilgileriyle birlikte yeni istatistikleri de API'ye gönderiyoruz.
   const generateRecommendations = async () => {
     if (apiCooldown) return;
     setLoading(true);
     try {
       const age = calculateAge();
       const bmi = calculateBMI();
-      const supplementsInfo =
-        healthData.supplements && healthData.supplements.length
-          ? `Supplementler: ${healthData.supplements
-              .map((s) => `${s.name} (${s.quantity} adet)`)
-              .join(", ")}`
-          : "";
       const prompt = `Kullanıcı bilgileri:
 İsim: ${profileData.firstName || "Belirtilmemiş"},
 Yaş: ${age || "Belirtilmemiş"},
 Boy: ${profileData.height || "Belirtilmemiş"} cm,
 Kilo: ${profileData.weight || "Belirtilmemiş"} kg,
 ${bmi ? `VKİ: ${bmi.value} (${bmi.status})` : ""}
-${supplementsInfo}
 
-Detaylı sağlık önerileri oluştur:
-1. VKİ analizi ve yorumu
-2. Günlük aktivite planı
-3. Beslenme önerileri
-4. Supplement tavsiyeleri
-5. Sağlıklı bir tarif
+Su Tüketimi:
+- Dün içilen: ${healthData.waterData?.yesterday || 0} ml
+- Hedef: ${healthData.waterData?.target || 2000} ml
+- Bugünkü içilen: ${healthData.waterData?.currentIntake || 0} ml
+
+Takviyeler:
+${
+  healthData.supplements
+    ?.map((s) => `- ${s.name} (${s.quantity}/${s.initialQuantity})`)
+    .join("\n") || "Kayıtlı takviye yok"
+}
+
+Son 7 Gün Takviye Kullanımı:
+${JSON.stringify(healthData.supplementStats, null, 2) || "Veri yok"}
+
+Günlük Detaylı sağlık önerileri oluştur:
+1. Su tüketim analizi ve öneriler
+2. Takviye kullanım değerlendirmesi
+3. VKİ analizi ve yorumu
+4. Günlük aktivite planı
+5. Beslenme önerileri
+6. Sağlıklı bir tarif
 Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve eğlenceli bir dil kullan.`;
 
       const response = await fetch(API_URL, {
@@ -187,12 +225,11 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
   useEffect(() => {
     if (user) {
       fetchAllData();
-      // Veriler çekildikten sonra hesaplanan metrikleri Firebase'ye ekliyoruz
       updateMetrics();
     }
   }, [user]);
 
-  // Öneri metnini bölümlere ayıran fonksiyon
+  // Öneri metnini bölümlere ayırıyoruz.
   const parseRecommendations = () => {
     if (!recommendations) return [];
     const sections = recommendations
@@ -267,141 +304,9 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
     </Card>
   );
 
-  const SupplementCard = ({ supplement }) => (
-    <Card
-      sx={{
-        mb: 2,
-        transition: "all 0.3s ease",
-        "&:hover": { transform: "translateY(-2px)" },
-      }}
-    >
-      <CardContent sx={{ p: 2 }}>
-        <Box display="flex" alignItems="center" gap={2}>
-          <Avatar
-            sx={{
-              bgcolor: "primary.light",
-              color: "primary.main",
-              width: 40,
-              height: 40,
-            }}
-          >
-            <LocalHospital fontSize="small" />
-          </Avatar>
-          <Box flexGrow={1}>
-            <Typography fontWeight={600}>{supplement.name}</Typography>
-            <Typography variant="body2" color="textSecondary">
-              {supplement.dailyUsage}/gün • {supplement.quantity} adet kaldı
-            </Typography>
-          </Box>
-        </Box>
-        <LinearProgress
-          variant="determinate"
-          value={(supplement.quantity / supplement.initialQuantity) * 100}
-          sx={{
-            height: 8,
-            mt: 2,
-            borderRadius: 4,
-            "& .MuiLinearProgress-bar": {
-              background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
-            },
-          }}
-        />
-      </CardContent>
-    </Card>
-  );
-
-  // RecommendationCard: Her öneri bölümünü estetik card şeklinde gösterir
-  const RecommendationCard = ({ section }) => {
-    let icon = null;
-    let color = theme.palette.primary.main;
-    const headingLower = section.heading.toLowerCase();
-
-    if (headingLower.includes("yaş")) {
-      icon = <Cake />;
-      color = theme.palette.secondary.main;
-    } else if (headingLower.includes("boy")) {
-      icon = <Height />;
-      color = theme.palette.info.main;
-    } else if (headingLower.includes("kilo")) {
-      icon = <Scale />;
-      color = theme.palette.warning.main;
-    } else if (
-      headingLower.includes("vki") ||
-      headingLower.includes("vücut kitle")
-    ) {
-      icon = <FitnessCenter />;
-      color = theme.palette.success.main;
-    } else if (headingLower.includes("aktivite")) {
-      icon = <FitnessCenter />;
-      color = theme.palette.success.main;
-    } else if (headingLower.includes("beslenme")) {
-      icon = <LocalHospital />;
-      color = theme.palette.primary.main;
-    } else if (headingLower.includes("tarif")) {
-      icon = <LocalHospital />;
-      color = theme.palette.primary.main;
-    } else {
-      icon = <LocalHospital />;
-      color = theme.palette.primary.main;
-    }
-
-    return (
-      <Card
-        sx={{
-          borderRadius: 4,
-          mb: 3,
-          border: `1px solid ${color}30`,
-          transition: "transform 0.3s ease, box-shadow 0.3s ease",
-          "&:hover": { transform: "translateY(-4px)", boxShadow: 3 },
-        }}
-      >
-        <CardContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <Avatar
-            sx={{
-              bgcolor: color,
-              width: 50,
-              height: 50,
-            }}
-          >
-            {icon}
-          </Avatar>
-          <Box>
-            <Typography
-              variant="h6"
-              fontWeight={700}
-              sx={{
-                fontFamily: '"Montserrat", sans-serif',
-                letterSpacing: "0.5px",
-                color: color,
-              }}
-            >
-              {section.number
-                ? `${section.number}. ${section.heading}`
-                : section.heading}
-            </Typography>
-            <Typography
-              variant="body1"
-              color="text.secondary"
-              sx={{
-                fontFamily: '"Roboto", sans-serif',
-                letterSpacing: "0.25px",
-                lineHeight: 1.6,
-                mt: 1,
-                whiteSpace: "pre-line",
-              }}
-            >
-              {section.content}
-            </Typography>
-          </Box>
-        </CardContent>
-      </Card>
-    );
-  };
-
   return (
     <Box
       sx={{
-        // Genel arka plan için hafif, uyumlu bir gradient
         background: "linear-gradient(135deg, #dbe9ff 0%, #f0f5ff 100%)",
         minHeight: "100vh",
         p: isMobile ? 2 : 4,
@@ -479,7 +384,7 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
                 "&:hover": { background: "rgba(255,255,255,0.3)" },
               }}
             >
-              Öneri Oluştur
+              Günlük Kişisel Önerini Oluştur
             </Button>
           </Box>
         </Box>
@@ -521,61 +426,114 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
           ))}
         </Grid>
 
-        {/* İçerik (Alt alta dizilmiş Takviyeler ve Kişiselleştirilmiş Öneriler) */}
+        {/* Kişiselleştirilmiş Öneriler */}
         <Grid container spacing={4}>
-          {/* Takviyeler */}
           <Grid item xs={12}>
-            <Card sx={{ borderRadius: 4, height: "100%" }}>
-              <CardContent>
-                <Typography variant="h6" fontWeight={700} mb={3}>
-                  Aktif Takviyeler
-                </Typography>
-                {healthData.supplements?.map((supplement) => (
-                  <SupplementCard key={supplement.id} supplement={supplement} />
-                ))}
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Kişiselleştirilmiş Öneriler */}
-          <Grid item xs={12}>
-            <Card sx={{ borderRadius: 4, height: "100%" }}>
-              <CardContent
-                sx={{
-                  height: "100%",
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <Typography
-                  variant="h6"
-                  fontWeight={700}
-                  mb={3}
-                  sx={{
-                    fontFamily: '"Montserrat", sans-serif',
-                    letterSpacing: "0.5px",
-                  }}
-                >
-                  Kişiselleştirilmiş Öneriler
-                </Typography>
-                <Box
-                  sx={{
-                    flex: 1,
-                    overflow: "auto",
-                    pr: 2,
-                    "&::-webkit-scrollbar": { width: 6 },
-                    "&::-webkit-scrollbar-thumb": {
-                      background: theme.palette.primary.main,
-                      borderRadius: 3,
-                    },
-                  }}
-                >
-                  {parseRecommendations().map((section, index) => (
-                    <RecommendationCard key={index} section={section} />
-                  ))}
-                </Box>
-              </CardContent>
-            </Card>
+            <Typography
+              variant="h4"
+              fontWeight={700}
+              mb={3}
+              sx={{
+                fontFamily: '"Montserrat", sans-serif',
+                letterSpacing: "0.5px",
+                color: "#1a2a6c",
+              }}
+            >
+              Kişiselleştirilmiş Öneriler
+            </Typography>
+            <Grid container spacing={3}>
+              {parseRecommendations().map((section, index) => (
+                <Grid item xs={12} md={6} lg={4} key={index}>
+                  <Card
+                    sx={{
+                      height: "100%",
+                      background:
+                        "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
+                      borderRadius: "16px",
+                      transition:
+                        "transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out",
+                      "&:hover": {
+                        transform: "translateY(-5px)",
+                        boxShadow: theme.shadows[10],
+                      },
+                    }}
+                  >
+                    <CardContent
+                      sx={{
+                        height: "100%",
+                        p: 3, // Padding artırıldı
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          height: "100%",
+                          gap: 2.5, // Gap artırıldı
+                        }}
+                      >
+                        <Typography
+                          variant="h6"
+                          sx={{
+                            color: "#fff",
+                            borderBottom: "2px solid rgba(255,255,255,0.2)",
+                            pb: 2,
+                            mb: 2,
+                            fontWeight: 700,
+                            fontSize: "1.25rem",
+                            letterSpacing: "0.5px",
+                            textShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                            fontFamily: '"Montserrat", sans-serif',
+                          }}
+                        >
+                          {section.number
+                            ? `${section.number}. ${section.heading}`
+                            : section.heading}
+                        </Typography>
+                        <Typography
+                          component="div" // div kullanarak içerik için daha fazla kontrol
+                          sx={{
+                            color: "rgba(255,255,255,0.95)",
+                            flex: 1,
+                            fontSize: "0.95rem",
+                            lineHeight: 1.8,
+                            letterSpacing: "0.3px",
+                            fontWeight: 400,
+                            "& p": {
+                              // paragraflar için
+                              mb: 2,
+                              "&:last-child": {
+                                mb: 0,
+                              },
+                            },
+                            "& ul, & ol": {
+                              // listeler için
+                              pl: 2,
+                              mb: 2,
+                              "& li": {
+                                mb: 1,
+                              },
+                            },
+                            "& strong": {
+                              // vurgular için
+                              color: "#fff",
+                              fontWeight: 600,
+                            },
+                            textShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                            fontFamily:
+                              '"Roboto", "Helvetica", "Arial", sans-serif',
+                          }}
+                        >
+                          {section.content.split("\n").map((paragraph, idx) => (
+                            <p key={idx}>{paragraph}</p>
+                          ))}
+                        </Typography>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
           </Grid>
         </Grid>
 

@@ -69,7 +69,7 @@ const isIOS = () =>
 const GlowingCard = styled(Box)(({ theme, glowColor }) => {
   const ios = isIOS();
   return {
-    background: ios ? "rgba(0, 0, 0, 0.5)" : "rgba(255, 255, 255, 0.1)",
+    background: ios ? "rgba(255,255,255,0.1)" : "rgba(255, 255, 255, 0.1)",
     color: "#fff", // metin rengini beyaz tutuyoruz
     borderRadius: "24px",
     // iOS için backdrop-filter devre dışı bırakılıyor

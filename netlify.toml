@@ -1,15 +1,8 @@
-# netlify.toml
+# Proje kök dizininde oluşturun
 [build]
   command = "npm run build"
   functions = "netlify/functions"
   publish = "dist"
-
-[functions]
-  node_bundler = "esbuild"
-  external_node_modules = ["axios"]
-
-[functions.qwen-proxy]
-  timeout = 20
 
 [[redirects]]
   from = "/api/*"

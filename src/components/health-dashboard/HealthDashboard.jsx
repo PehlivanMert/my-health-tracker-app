@@ -43,7 +43,7 @@ const fadeIn = keyframes`
   to { opacity: 1; transform: translateY(0); }
 `;
 
-const API_URL = "http://localhost:3001/api/qwen-proxy";
+const API_URL = "/api/qwen-proxy"; //"http://localhost:3001/api/qwen-proxy";
 
 const HealthDashboard = ({ user }) => {
   const theme = useTheme();

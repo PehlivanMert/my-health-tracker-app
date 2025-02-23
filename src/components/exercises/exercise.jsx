@@ -261,6 +261,10 @@ const Exercises = ({ exercises, setExercises }) => {
                 });
                 setOpenModal(true);
               }}
+              sx={{
+                padding: { xs: "6px 14px", md: "12px 30px" },
+                fontSize: { xs: "0.6rem", md: "inherit" },
+              }}
             >
               Yeni Egzersiz Ekle
             </AnimatedButton>

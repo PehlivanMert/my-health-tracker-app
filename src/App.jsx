@@ -373,7 +373,7 @@ function App() {
       if (!localStorage.getItem("welcomeShown")) {
         setShowWelcome(true);
         localStorage.setItem("welcomeShown", "true");
-        setTimeout(() => setShowWelcome(false), 1500);
+        setTimeout(() => setShowWelcome(false), 2500);
       }
     }
   }, [user]);

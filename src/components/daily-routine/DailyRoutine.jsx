@@ -483,32 +483,52 @@ const DailyRoutine = ({ user }) => {
           Günlük Rutinler
         </Typography>
 
-        <Grid container spacing={4} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={4}>
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid item xs={4} sm={4} md={4}>
             <StatCard
               title="Günlük Başarı"
               value={routines.filter((r) => r.checked).length}
               total={routines.length}
-              icon={<DoneAll />}
+              icon={<DoneAll sx={{ fontSize: { xs: "1.0rem", sm: "2rem" } }} />}
               color="#4CAF50"
+              sx={{
+                fontSize: { xs: "0.4rem", sm: "1rem" },
+                p: { xs: 0.3, sm: 2 },
+              }}
             />
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={4} sm={4} md={4}>
             <StatCard
               title="Haftalık Başarı"
               value={weeklyStats.completed}
               total={weeklyStats.total}
-              icon={<CheckCircleOutline />}
+              icon={
+                <CheckCircleOutline
+                  sx={{ fontSize: { xs: "1.0rem", sm: "2rem" } }}
+                />
+              }
               color="#2196F3"
+              sx={{
+                fontSize: { xs: "0.4rem", sm: "1rem" },
+                p: { xs: 0.3, sm: 2 },
+              }}
             />
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={4} sm={4} md={4}>
             <StatCard
               title="Aylık Başarı"
               value={monthlyStats.completed}
               total={monthlyStats.total}
-              icon={<NotificationsActive />}
+              icon={
+                <NotificationsActive
+                  sx={{ fontSize: { xs: "1.0rem", sm: "2rem" } }}
+                />
+              }
               color="#9C27B0"
+              sx={{
+                fontSize: { xs: "0.4rem", sm: "1rem" },
+                p: { xs: 0.3, sm: 2 },
+              }}
             />
           </Grid>
         </Grid>

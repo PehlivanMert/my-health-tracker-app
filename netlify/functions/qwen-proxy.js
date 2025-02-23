@@ -2,7 +2,6 @@
 const axios = require("axios");
 
 exports.handler = async (event) => {
-  context.callbackWaitsForEmptyEventLoop = false;
   try {
     const data = JSON.parse(event.body);
 

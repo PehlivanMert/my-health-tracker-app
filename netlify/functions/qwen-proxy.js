@@ -1,74 +1,65 @@
-// /netlify/functions/qwen-proxy.js
+// netlify/functions/qwen-proxy.js
 const axios = require("axios");
 require("dotenv").config();
 
+const headers = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Content-Type": "application/json",
+};
+
 exports.handler = async function (event, context) {
-  // POST isteği kontrolü
+  // OPTIONS isteğini CORS için yönet
+  if (event.httpMethod === "OPTIONS") {
+    return { statusCode: 200, headers, body: "" };
+  }
+
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
+      headers,
       body: JSON.stringify({ error: "Method Not Allowed" }),
     };
   }
 
   try {
-    // Request body'i parse et
+    if (!process.env.QWEN_API_KEY) {
+      throw new Error("API anahtarı yapılandırılmamış");
+    }
+
     const requestBody = JSON.parse(event.body);
-    console.log("Gönderilen İstek Verisi:", requestBody);
 
-    // Qwen API'ye istek
-    const response = await axios.post(
-      "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions",
-      requestBody,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.QWEN_API_KEY}`,
-        },
-      }
-    );
-
-    console.log("API Yanıtı:", response.data);
-
-    // Başarılı yanıt
-    return {
-      statusCode: 200,
+    const response = await axios({
+      method: "post",
+      url: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions",
+      data: requestBody,
       headers: {
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*", // CORS için
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        Authorization: `Bearer ${process.env.QWEN_API_KEY}`,
       },
+      timeout: 20000, // 20 saniye
+    });
+
+    return {
+      statusCode: 200,
+      headers,
       body: JSON.stringify(response.data),
     };
   } catch (error) {
-    console.error("API Hatası:", error.message);
-    console.error("Hata Detayları:", error.response?.data);
+    console.error("Hata detayları:", {
+      message: error.message,
+      response: error.response?.data,
+      stack: error.stack,
+    });
 
-    // Hata yanıtı
     return {
       statusCode: error.response?.status || 500,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
+      headers,
       body: JSON.stringify({
         error: error.message,
-        details: error.response?.data,
+        details: error.response?.data || "Sunucu hatası",
       }),
     };
   }
-};
-
-// CORS için OPTIONS request handler
-exports.handler.options = async () => {
-  return {
-    statusCode: 200,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-    },
-    body: "",
-  };
 };

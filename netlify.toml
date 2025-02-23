@@ -1,7 +1,15 @@
+# netlify.toml
 [build]
-  command = "npm run build"  
+  command = "npm run build"
   functions = "netlify/functions"
-  publish = "dist"  # build yerine dist kullanın
+  publish = "dist"
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["axios"]
+
+[functions.qwen-proxy]
+  timeout = 20
 
 [[redirects]]
   from = "/api/*"

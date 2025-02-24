@@ -5,6 +5,7 @@ import {
   updateDoc,
   collection,
   getDocs,
+  setDoc,
 } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
 import { toast } from "react-toastify";
@@ -43,7 +44,7 @@ const fadeIn = keyframes`
   to { opacity: 1; transform: translateY(0); }
 `;
 
-const API_URL = "/api/qwen-proxy"; //"http://localhost:3001/api/qwen-proxy";
+const API_URL = /*"/api/qwen-proxy";*/ "http://localhost:3001/api/qwen-proxy";
 
 const HealthDashboard = ({ user }) => {
   const theme = useTheme();
@@ -63,6 +64,50 @@ const HealthDashboard = ({ user }) => {
   const [recommendations, setRecommendations] = useState(null);
   const [loading, setLoading] = useState(false);
   const [apiCooldown, setApiCooldown] = useState(false);
+
+  const [qwenUsage, setQwenUsage] = useState(null);
+
+  useEffect(() => {
+    const fetchQwenUsage = async () => {
+      const usageDocRef = doc(db, "users", user.uid, "apiUsage", "qwen");
+      const docSnap = await getDoc(usageDocRef);
+      if (docSnap.exists()) {
+        setQwenUsage(docSnap.data());
+      } else {
+        // Eğer doküman yoksa oluştur
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const initialUsage = { date: todayStr, count: 0 };
+        await setDoc(usageDocRef, initialUsage);
+        setQwenUsage(initialUsage);
+      }
+    };
+
+    if (user) {
+      fetchQwenUsage();
+    }
+  }, [user]);
+
+  // Qwen kullanım sınırını kontrol eden fonksiyon: Eğer kullanım sayısı 2'ye ulaşmışsa false döner.
+  const canUseQwen = () => {
+    if (!qwenUsage) return false; // Veriler henüz yüklenmediyse false döndür
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (qwenUsage.date !== todayStr) return true; // Yeni gün, sayaç sıfırlanır
+    return qwenUsage.count < 2;
+  };
+
+  // Qwen API kullanımı sonrası sayacı bir artıran fonksiyon
+  const incrementQwenUsage = async () => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const usageDocRef = doc(db, "users", user.uid, "apiUsage", "qwen");
+    let updatedUsage = { ...qwenUsage };
+    if (qwenUsage.date !== todayStr) {
+      updatedUsage = { date: todayStr, count: 1 };
+    } else {
+      updatedUsage.count += 1;
+    }
+    await updateDoc(usageDocRef, updatedUsage);
+    setQwenUsage(updatedUsage);
+  };
 
   // Firebase'den kullanıcı verilerini çekiyoruz.
   // HealthDashboard bileşeni içinde fetchAllData fonksiyonunu güncelleyelim
@@ -160,10 +205,24 @@ const HealthDashboard = ({ user }) => {
   // Öneri oluştururken, profil bilgileriyle birlikte yeni istatistikleri de API'ye gönderiyoruz.
   const generateRecommendations = async () => {
     if (apiCooldown) return;
+
+    // Qwen kullanım sınırını kontrol et (günde 2 kez)
+    if (!canUseQwen()) {
+      toast.error("Qwen günde sadece iki kez kullanılabilir.");
+      return;
+    }
+
     setLoading(true);
     try {
       const age = calculateAge();
       const bmi = calculateBMI();
+
+      // Güncel tarih ve saat bilgisini 'Tarih ve Saat' satırı olarak ekle
+      const currentDateTime = new Date().toLocaleString("tr-TR", {
+        dateStyle: "full",
+        timeStyle: "short",
+      });
+
       const prompt = `Kullanıcı bilgileri:
 İsim: ${profileData.firstName || "Belirtilmemiş"},
 Yaş: ${age || "Belirtilmemiş"},
@@ -186,6 +245,8 @@ ${
 Son 7 Gün Takviye Kullanımı:
 ${JSON.stringify(healthData.supplementStats, null, 2) || "Veri yok"}
 
+Tarih ve Saat: ${currentDateTime}
+
 Günlük Detaylı sağlık önerileri oluştur:
 1. Su tüketim analizi ve öneriler
 2. Takviye kullanım değerlendirmesi
@@ -205,6 +266,7 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
           temperature: 0.6,
         }),
       });
+
       const data = await response.json();
       if (data.choices?.[0]?.message?.content) {
         const recommendationText = data.choices[0].message.content;
@@ -213,6 +275,10 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
           "healthData.lastUpdated": new Date().toISOString(),
         });
         setRecommendations(recommendationText);
+
+        // İşlem başarılıysa Qwen kullanım sayacını artır
+        incrementQwenUsage();
+
         setApiCooldown(true);
         setTimeout(() => setApiCooldown(false), 60000);
       }
@@ -372,7 +438,7 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
               variant="contained"
               startIcon={<Refresh />}
               onClick={generateRecommendations}
-              disabled={loading || apiCooldown}
+              disabled={loading || apiCooldown || !canUseQwen()}
               sx={{
                 borderRadius: "12px",
                 py: 1.5,

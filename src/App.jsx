@@ -116,18 +116,13 @@ const FloatingElement = styled(Box)(({ delay = 0 }) => ({
 }));
 
 // Avatar API'den dönen avatar URL'lerini simüle eden sabit dizi
-const availableAvatars = [
-  "https://api.dicebear.com/6.x/adventurer/svg?seed=avatar1",
-  "https://api.dicebear.com/6.x/adventurer/svg?seed=avatar2",
-  "https://api.dicebear.com/6.x/adventurer/svg?seed=avatar3",
-  "https://api.dicebear.com/6.x/adventurer/svg?seed=avatar4",
-  "https://api.dicebear.com/6.x/adventurer/svg?seed=avatar5",
-  "https://api.dicebear.com/6.x/adventurer/svg?seed=avatar6",
-  "https://api.dicebear.com/6.x/adventurer/svg?seed=avatar7",
-  "https://api.dicebear.com/6.x/adventurer/svg?seed=avatar8",
-  "https://api.dicebear.com/6.x/adventurer/svg?seed=avatar9",
-  "https://api.dicebear.com/6.x/adventurer/svg?seed=avatar10",
-];
+const generateAvatars = (count) =>
+  Array.from(
+    { length: count },
+    (_, i) => `https://api.dicebear.com/6.x/adventurer/svg?seed=avatar${i + 1}`
+  );
+
+const availableAvatars = generateAvatars(100);
 
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
@@ -901,14 +896,6 @@ function App() {
             }}
           />
           <Tab
-            label="Fitness Takip Paneli"
-            sx={{
-              background: "#fff3e0",
-              borderRadius: "8px",
-              "&:hover": { background: "#ffe0b2" },
-            }}
-          />
-          <Tab
             label="Yaşam Kalitesi Paneli"
             sx={{
               background: "#e8f5e9",
@@ -917,11 +904,11 @@ function App() {
             }}
           />
           <Tab
-            label="Takvim"
+            label="Sağlık Panosu"
             sx={{
-              background: "#fffde7",
+              background: "linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)",
               borderRadius: "8px",
-              "&:hover": { background: "#fff9c4" },
+              "&:hover": { background: "#a5d6a7" },
             }}
           />
           <Tab
@@ -933,16 +920,33 @@ function App() {
             }}
           />
           <Tab
-            label="Sağlık Panosu"
+            label="Fitness Takip Paneli"
             sx={{
-              background: "linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)",
+              background: "#fff3e0",
               borderRadius: "8px",
-              "&:hover": { background: "#a5d6a7" },
+              "&:hover": { background: "#ffe0b2" },
+            }}
+          />
+          <Tab
+            label="Takvim"
+            sx={{
+              background: "#fffde7",
+              borderRadius: "8px",
+              "&:hover": { background: "#fff9c4" },
             }}
           />
         </Tabs>
         {activeTab === 0 && <DailyRoutine user={user} />}
-        {activeTab === 1 && (
+        {activeTab === 1 && <WellnessTracker user={user} />}
+        {activeTab === 2 && <HealthDashboard user={user} />}
+        {activeTab === 3 && (
+          <ProTips
+            additionalInfo={additionalInfo}
+            setAdditionalInfo={setAdditionalInfo}
+            user={user}
+          />
+        )}
+        {activeTab === 4 && (
           <Exercises
             exercises={exercises}
             setExercises={setExercises}
@@ -951,16 +955,8 @@ function App() {
             setEditingExercise={setEditingExercise}
           />
         )}
-        {activeTab === 2 && <WellnessTracker user={user} />}
-        {activeTab === 3 && <CalendarComponent user={user} />}
-        {activeTab === 4 && (
-          <ProTips
-            additionalInfo={additionalInfo}
-            setAdditionalInfo={setAdditionalInfo}
-            user={user}
-          />
-        )}
-        {activeTab === 5 && <HealthDashboard user={user} />}
+
+        {activeTab === 5 && <CalendarComponent user={user} />}
 
         <Box
           className="footer-container"

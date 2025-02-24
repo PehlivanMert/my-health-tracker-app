@@ -1,0 +1,17 @@
+.lottieContainer {
+  position: absolute;
+  bottom: -10;
+  left: 50%;
+  transform: translateX(-50%) scaleY(1);
+  transform-origin: bottom;
+  width: 200%;
+  height: auto;
+}
+
+@media (max-width: 600px) {
+  .lottieContainer {
+    transform: translateX(-50%) scaleY(1.5);
+    width: 400%;
+    height: 200%;
+  }
+}

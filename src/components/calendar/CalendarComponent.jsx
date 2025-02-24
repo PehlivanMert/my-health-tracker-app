@@ -62,13 +62,27 @@ const CalendarComponent = ({ user }) => {
   const [openEditDialog, setOpenEditDialog] = useState(false);
 
   const calendarColors = {
-    primary: theme.palette.primary.main,
-    secondary: theme.palette.secondary.main,
-    error: colors.red[600],
-    warning: colors.orange[600],
-    success: colors.green[600],
+    limon: "#00ff87", // Neon yeşil
+    sakız: "#ff00ff", // Neon pembe
+    kızılÖte: "#ff0055", // Neon kırmızı
+    mandalina: "#ff9100", // Neon turuncu
+    buz: "#00ffcc", // Neon turkuaz
+    üzüm: "#bf00ff", // Neon mor
+    okyanus: "#00ffff", // Neon mavi
+    güneş: "#ffff00", // Neon sarı
+    lavanta: "#E066FF", // Neon açık mor
+    zümrüt: "#00FF7F", // Neon açık yeşil
+    şeker: "#FF1493", // Neon koyu pembe
+    gökyüzü: "#87CEFA", // Parlak mavi
+    ateş: "#FF4500", // Parlak turuncu-kırmızı
+    neonGece: "#4D4DFF", // Elektrik mavisi
+    fosfor: "#39FF14", // Fosforlu yeşil
+    şafak: "#FF69B4", // Sıcak pembe
+    yıldız: "#FFD700", // Parlak altın
+    galaksi: "#8A2BE2", // Parlak menekşe
+    aurora: "#00FF00", // Saf yeşil
+    neonRüya: "#FF1177", // Sıcak pembe
   };
-
   const fetchEvents = useCallback(async () => {
     if (!user) return;
     try {
@@ -227,6 +241,39 @@ const CalendarComponent = ({ user }) => {
     });
   };
 
+  // FullScreen
+  const handleToggleFullScreen = () => {
+    const container = calendarContainerRef.current;
+    if (!container) return;
+
+    if (!document.fullscreenElement) {
+      if (container.requestFullscreen) {
+        container.requestFullscreen();
+      } else if (container.mozRequestFullScreen) {
+        // Firefox
+        container.mozRequestFullScreen();
+      } else if (container.webkitRequestFullscreen) {
+        // Chrome, Safari & Opera
+        container.webkitRequestFullscreen();
+      } else if (container.msRequestFullscreen) {
+        // IE/Edge
+        container.msRequestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.mozCancelFullScreen) {
+        document.mozCancelFullScreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
+    }
+  };
+
+  const calendarContainerRef = useRef(null);
+
   return (
     <Paper sx={styles.container}>
       <Box sx={styles.controls}>
@@ -239,7 +286,23 @@ const CalendarComponent = ({ user }) => {
         </Button>
       </Box>
 
-      <Box sx={styles.calendarWrapper}>
+      <Box
+        ref={calendarContainerRef}
+        sx={{
+          ...styles.calendarWrapper,
+          backgroundColor: "rgb(33, 150, 243)", // Ana mavi renk
+          "&:fullscreen, &:full-screen, &:-webkit-full-screen, &:-ms-fullscreen":
+            {
+              backgroundColor: "rgb(33, 150, 243) !important", // Tam ekranda aynı mavi renk
+            },
+          "&:fullscreen::backdrop, &:-webkit-full-screen::backdrop, &:-ms-fullscreen::backdrop":
+            {
+              backgroundColor: "rgb(33, 150, 243) !important", // Backdrop için de aynı mavi renk
+            },
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
         <FullCalendar
           ref={calendarRef}
           plugins={[
@@ -252,7 +315,14 @@ const CalendarComponent = ({ user }) => {
           headerToolbar={{
             left: "prev,next today",
             center: "title",
-            right: "dayGridMonth,timeGridWeek,timeGridDay,multiMonthYear",
+            right:
+              "dayGridMonth,timeGridWeek,timeGridDay,multiMonthYear,fullscreenButton",
+          }}
+          customButtons={{
+            fullscreenButton: {
+              text: "⛶", // Unicode tam ekran simgesi
+              click: handleToggleFullScreen,
+            },
           }}
           events={events}
           editable={true}
@@ -378,7 +448,7 @@ const EventDialog = ({
       onClose={onClose}
       PaperProps={{
         sx: {
-          background: "rgba(33, 150, 243, 0.1)",
+          background: "rgba(83, 134, 176, 0.33)",
           backdropFilter: "blur(10px)",
           borderRadius: "24px",
           border: "1px solid rgba(33, 150, 243, 0.2)",
@@ -542,13 +612,13 @@ const styles = {
         padding: "8px 4px",
       },
       "& .fc-day-today": {
-        backgroundColor: "#FAFFAF",
+        backgroundColor: "#98E4FF",
       },
       "& .fc-daygrid-day.fc-day-today": {
-        backgroundColor: "#FAFFAF",
+        backgroundColor: "#98E4FF",
       },
       "& .fc-timegrid-col.fc-day-today": {
-        backgroundColor: "#FAFFAF",
+        backgroundColor: "#98E4FF",
       },
       "& .fc-event": {
         border: "none",
@@ -575,7 +645,7 @@ const styles = {
         transform: "translateY(-2px)",
       },
       "& .fc-button-primary.fc-button-active": {
-        backgroundColor: "#FAFFAF",
+        backgroundColor: "#98E4FF",
         color: "black",
       },
       "& .fc-toolbar-title": {

@@ -21,7 +21,7 @@ import {
 import { styled, keyframes } from "@mui/material/styles";
 import Confetti from "react-confetti";
 import Lottie from "lottie-react";
-import waterAnimation from "../../waterAnimation.json";
+import waterAnimation from "../../assets/waterAnimation.json";
 import { db } from "../auth/firebaseConfig";
 import {
   collection,
@@ -37,7 +37,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
-import OpacityIcon from "@mui/icons-material/Opacity";
+import WaterDropIcon from "@mui/icons-material/WaterDrop";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ResponsiveContainer,
@@ -51,6 +51,7 @@ import {
   BarChart,
   Bar,
 } from "recharts";
+import styles from "./WaterAnimation.module.css";
 
 // Animated keyframes
 const float = keyframes`
@@ -323,11 +324,14 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
       const docSnap = await getDoc(getWaterDocRef());
       if (docSnap.exists()) {
         const data = docSnap.data();
+        const sortedHistory = (data.history || []).sort(
+          (a, b) => new Date(a.date) - new Date(b.date)
+        );
         const newWaterData = {
           waterIntake: data.waterIntake || 0,
           dailyWaterTarget: data.dailyWaterTarget || 2000,
           glassSize: data.glassSize || 250,
-          history: data.history || [],
+          history: sortedHistory,
           yesterdayWaterIntake: data.yesterdayWaterIntake || 0,
         };
         setWaterData(newWaterData);
@@ -348,25 +352,29 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   useEffect(() => {
     const scheduleMidnightReset = () => {
       const now = new Date();
-      const nextMidnight = new Date();
+      const nextMidnight = new Date(now);
       nextMidnight.setHours(24, 0, 0, 0);
-      const msUntilMidnight = nextMidnight.getTime() - now.getTime();
+      const msUntilMidnight = nextMidnight - now;
+
       timerRef.current = setTimeout(() => {
         resetDailyWaterIntake();
+        scheduleMidnightReset();
       }, msUntilMidnight);
     };
+
     scheduleMidnightReset();
     return () => clearTimeout(timerRef.current);
-  }, [waterData.waterIntake, user]);
+  }, [user]);
 
   const resetDailyWaterIntake = async () => {
     if (!user) return;
     try {
-      const todayStr = new Date().toLocaleDateString();
+      const todayStr = new Date().toISOString().split("T")[0];
       const newHistory = [
-        ...waterData.history,
+        ...waterData.history.filter((entry) => entry.date !== todayStr),
         { date: todayStr, intake: waterData.waterIntake },
       ];
+
       await setDoc(
         getWaterDocRef(),
         {
@@ -474,22 +482,13 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
             transition: "transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
             transform: `scaleY(${fillPercentage / 100})`,
             transformOrigin: "bottom",
+            overflow: "hidden", // Ekledik
           }}
         >
           <Lottie
             animationData={waterAnimation}
             loop={true}
-            sx={{
-              width: "auto",
-              height: "auto",
-              // Tüm ekran boyutlarında geçerli stil
-              transform: "scaleY(2)",
-              transformOrigin: "top",
-              // Mobil için ek ayarlar (isteğe bağlı)
-              "@media (max-width: 600px)": {
-                transform: "scaleY(2) translateY(-10%)", // Ekstra ayar örneği
-              },
-            }}
+            className={styles.lottieContainer}
           />
         </Box>
 
@@ -623,28 +622,35 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
 };
 
 // WaterConsumptionChart Component
-const WaterConsumptionChart = ({ waterHistory }) => (
-  <Box sx={{ background: "#fff", borderRadius: 2, p: 2 }}>
-    <Typography variant="h6" textAlign="center" mb={2}>
-      Son 7 Gün Su Tüketimi
-    </Typography>
-    <ResponsiveContainer width="100%" height={250}>
-      <LineChart data={waterHistory.slice(-7)}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="date" />
-        <YAxis />
-        <RechartsTooltip />
-        <Legend />
-        <Line
-          type="monotone"
-          dataKey="intake"
-          stroke="#8884d8"
-          activeDot={{ r: 8 }}
-        />
-      </LineChart>
-    </ResponsiveContainer>
-  </Box>
-);
+const WaterConsumptionChart = ({ waterHistory }) => {
+  const formattedData = waterHistory.slice(-7).map((entry) => ({
+    ...entry,
+    date: new Date(entry.date).toLocaleDateString("tr-TR"),
+  }));
+
+  return (
+    <Box sx={{ background: "#fff", borderRadius: 2, p: 2 }}>
+      <Typography variant="h6" textAlign="center" mb={2}>
+        Son 7 Gün Su Tüketimi
+      </Typography>
+      <ResponsiveContainer width="100%" height={250}>
+        <LineChart data={formattedData}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="date" />
+          <YAxis />
+          <RechartsTooltip />
+          <Legend />
+          <Line
+            type="monotone"
+            dataKey="intake"
+            stroke="#8884d8"
+            activeDot={{ r: 8 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </Box>
+  );
+};
 
 // SupplementConsumptionChart Component
 const SupplementConsumptionChart = ({ user }) => {
@@ -662,17 +668,23 @@ const SupplementConsumptionChart = ({ user }) => {
       const docSnap = await getDoc(getConsumptionDocRef());
       if (docSnap.exists()) {
         const data = docSnap.data();
+        const sortedDates = Object.keys(data).sort(
+          (a, b) => new Date(a + "T00:00:00") - new Date(b + "T00:00:00")
+        );
+
         const allSuppNames = new Set();
-        Object.values(data).forEach((dayStats) => {
-          Object.keys(dayStats).forEach((suppName) => {
+        sortedDates.forEach((date) => {
+          Object.keys(data[date]).forEach((suppName) => {
             if (suppName !== "total") allSuppNames.add(suppName);
           });
         });
 
-        const chartData = Object.keys(data).map((date) => {
+        const chartData = sortedDates.map((date) => {
           const dayStats = data[date];
           let total = 0;
-          const dayData = { date };
+          const dayData = {
+            date: new Date(date + "T00:00:00").toLocaleDateString("tr-TR"),
+          };
 
           allSuppNames.forEach((suppName) => {
             const count = dayStats[suppName] || 0;
@@ -684,7 +696,7 @@ const SupplementConsumptionChart = ({ user }) => {
           return dayData;
         });
 
-        setConsumptionData(chartData);
+        setConsumptionData(chartData.slice(-7));
       }
     } catch (error) {
       console.error("Error fetching supplement consumption data:", error);
@@ -710,7 +722,7 @@ const SupplementConsumptionChart = ({ user }) => {
         Takviye Kullanım İstatistikleri
       </Typography>
       <ResponsiveContainer width="100%" height={250}>
-        <BarChart data={consumptionData.slice(-7)}>
+        <BarChart data={consumptionData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="date" />
           <YAxis />
@@ -801,7 +813,7 @@ const WellnessTracker = ({ user }) => {
       await fetchSupplements();
 
       const suppName = supplement.name;
-      const today = new Date().toLocaleDateString();
+      const today = new Date().toISOString().split("T")[0];
       const docRef = doc(
         db,
         "users",
@@ -850,10 +862,14 @@ const WellnessTracker = ({ user }) => {
             color: "#fff",
             fontWeight: 800,
             mb: 6,
+            ml: 9,
             textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
             animation: `${float} 3s ease-in-out infinite`,
           }}
         >
+          <WaterDropIcon
+            sx={{ fontSize: 50, color: "lightblue", mr: -15, mb: -13 }}
+          />
           Takviye Takibi
         </Typography>
 

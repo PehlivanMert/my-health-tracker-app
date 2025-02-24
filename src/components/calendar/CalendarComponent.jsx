@@ -50,6 +50,8 @@ const CalendarComponent = ({ user }) => {
   const calendarRef = useRef(null);
   // paperRef, tüm bileşenleri kapsayan fullscreen konteyneri olacak
   const paperRef = useRef(null);
+
+  // Neon renkler
   const calendarColors = {
     limon: "#00ff87", // Neon yeşil
     sakız: "#ff00ff", // Neon pembe
@@ -86,6 +88,7 @@ const CalendarComponent = ({ user }) => {
   const [openDialog, setOpenDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
 
+  // Etkinlikleri Firestore'dan çek
   const fetchEvents = useCallback(async () => {
     if (!user) return;
     try {
@@ -94,13 +97,17 @@ const CalendarComponent = ({ user }) => {
       const snapshot = await getDocs(q);
       const eventsData = snapshot.docs.map((doc) => {
         const data = doc.data();
+        const colorValue = data.color || calendarColors.limon;
         return {
           id: doc.id,
           title: data.title,
           start: data.start.toDate(),
           end: data.end.toDate(),
           allDay: data.allDay,
-          color: data.color || calendarColors.limon,
+          // FullCalendar'da renk sorunlarını önlemek için
+          backgroundColor: colorValue,
+          borderColor: colorValue,
+          textColor: "#fff",
           extendedProps: {
             calendarId: data.calendarId,
           },
@@ -116,6 +123,7 @@ const CalendarComponent = ({ user }) => {
     fetchEvents();
   }, [fetchEvents]);
 
+  // Yeni etkinlik oluştur
   const handleCreateEvent = async () => {
     if (!newEvent.title.trim()) {
       toast.error("Etkinlik başlığı gereklidir");
@@ -124,12 +132,13 @@ const CalendarComponent = ({ user }) => {
     try {
       const batch = writeBatch(db);
       const eventsRef = collection(db, "users", user.uid, "calendarEvents");
+
       const eventData = {
         title: newEvent.title,
         start: Timestamp.fromDate(newEvent.start.toJSDate()),
         end: Timestamp.fromDate(newEvent.end.toJSDate()),
         allDay: newEvent.allDay,
-        color: newEvent.color,
+        color: newEvent.color, // Firestore'da asıl rengi saklıyoruz
       };
       const docRef = doc(eventsRef);
       batch.set(docRef, eventData);
@@ -149,6 +158,7 @@ const CalendarComponent = ({ user }) => {
     }
   };
 
+  // Etkinlik sil
   const handleDeleteEvent = async (eventId) => {
     try {
       await deleteDoc(doc(db, "users", user.uid, "calendarEvents", eventId));
@@ -160,6 +170,7 @@ const CalendarComponent = ({ user }) => {
     }
   };
 
+  // Etkinlik güncelle
   const handleUpdateEvent = async () => {
     try {
       await updateDoc(
@@ -180,6 +191,7 @@ const CalendarComponent = ({ user }) => {
     }
   };
 
+  // Tarih seçildiğinde yeni etkinlik diyalogunu aç
   const handleDateSelect = (selectInfo) => {
     setNewEvent({
       title: "",
@@ -191,6 +203,7 @@ const CalendarComponent = ({ user }) => {
     setOpenDialog(true);
   };
 
+  // Sürükle-bırak sonrası güncelle
   const handleEventDrop = async (dropInfo) => {
     try {
       const event = {
@@ -210,6 +223,7 @@ const CalendarComponent = ({ user }) => {
     }
   };
 
+  // Resize sonrası güncelle
   const handleEventResize = async (resizeInfo) => {
     try {
       const event = {
@@ -228,6 +242,7 @@ const CalendarComponent = ({ user }) => {
     }
   };
 
+  // Tarih/saat seçimi
   const handleDateTimeChange = (value, isStart, event, setEvent) => {
     const dt = DateTime.fromISO(value);
     if (!dt.isValid) return;
@@ -244,7 +259,7 @@ const CalendarComponent = ({ user }) => {
     });
   };
 
-  // FullScreen: artık Paper konteynerimizi kullanıyoruz
+  // Tam ekran
   const handleToggleFullScreen = () => {
     const container = paperRef.current;
     if (!container) return;
@@ -287,14 +302,14 @@ const CalendarComponent = ({ user }) => {
       <Box
         sx={{
           ...styles.calendarWrapper,
-          backgroundColor: "rgb(33, 150, 243)", // Ana mavi renk
+          backgroundColor: "rgb(33, 150, 243)",
           "&:fullscreen, &:full-screen, &:-webkit-full-screen, &:-ms-fullscreen":
             {
-              backgroundColor: "rgb(33, 150, 243) !important", // Tam ekranda aynı mavi renk
+              backgroundColor: "rgb(33, 150, 243) !important",
             },
           "&:fullscreen::backdrop, &:-webkit-full-screen::backdrop, &:-ms-fullscreen::backdrop":
             {
-              backgroundColor: "rgb(33, 150, 243) !important", // Backdrop için de aynı mavi renk
+              backgroundColor: "rgb(33, 150, 243) !important",
             },
           position: "relative",
           zIndex: 1,
@@ -309,6 +324,7 @@ const CalendarComponent = ({ user }) => {
             multiMonthPlugin,
           ]}
           initialView="dayGridMonth"
+          firstDay={1} // Haftanın Pazartesi'den başlaması
           headerToolbar={{
             left: "prev,next today",
             center: "title",
@@ -317,15 +333,21 @@ const CalendarComponent = ({ user }) => {
           }}
           customButtons={{
             fullscreenButton: {
-              text: "⛶", // Unicode tam ekran simgesi
+              text: "⛶",
               click: handleToggleFullScreen,
             },
+          }}
+          // Saat formatı (dayGrid’de tam aralığı göstersin)
+          eventTimeFormat={{
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
           }}
           events={events}
           editable={true}
           selectable={true}
           locale="tr"
-          eventContent={renderEventContent}
+          eventContent={renderEventContent} // Özel render
           select={handleDateSelect}
           eventDrop={handleEventDrop}
           eventResize={handleEventResize}
@@ -335,8 +357,7 @@ const CalendarComponent = ({ user }) => {
               title: clickInfo.event.title,
               start: DateTime.fromJSDate(clickInfo.event.start),
               end: DateTime.fromJSDate(clickInfo.event.end),
-              color:
-                clickInfo.event.extendedProps.color || calendarColors.lavanta,
+              color: clickInfo.event.backgroundColor,
               allDay: clickInfo.event.allDay,
             };
             setSelectedEvent(event);
@@ -348,7 +369,7 @@ const CalendarComponent = ({ user }) => {
         />
       </Box>
 
-      {/* EventDialog'lara container olarak paperRef.current veriyoruz */}
+      {/* Yeni Etkinlik Diyaloğu */}
       <EventDialog
         container={paperRef.current}
         open={openDialog}
@@ -359,8 +380,10 @@ const CalendarComponent = ({ user }) => {
         onSubmit={handleCreateEvent}
         colors={calendarColors}
         handleDateTimeChange={handleDateTimeChange}
+        disableEnforceFocus
       />
 
+      {/* Etkinlik Düzenleme Diyaloğu */}
       <EventDialog
         container={paperRef.current}
         open={openEditDialog}
@@ -371,8 +394,10 @@ const CalendarComponent = ({ user }) => {
         onSubmit={handleUpdateEvent}
         colors={calendarColors}
         handleDateTimeChange={handleDateTimeChange}
+        disableEnforceFocus
       />
 
+      {/* Etkinlik Detay Diyaloğu */}
       <Dialog
         container={paperRef.current}
         open={!!selectedEvent}
@@ -395,10 +420,11 @@ const CalendarComponent = ({ user }) => {
             {selectedEvent?.title}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Başlangıç: {selectedEvent?.start?.toFormat("dd.MM.yyyy HH:mm")}
+            Başlangıç:{" "}
+            {selectedEvent?.start?.toFormat("dd.MM.yyyy HH:mm") || "-"}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Bitiş: {selectedEvent?.end?.toFormat("dd.MM.yyyy HH:mm")}
+            Bitiş: {selectedEvent?.end?.toFormat("dd.MM.yyyy HH:mm") || "-"}
           </Typography>
           <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
             <Button
@@ -425,6 +451,40 @@ const CalendarComponent = ({ user }) => {
   );
 };
 
+// Özel eventContent fonksiyonu
+const renderEventContent = (eventInfo) => {
+  // Saat aralığını kendimiz gösteriyoruz
+  const startStr = DateTime.fromJSDate(eventInfo.event.start).toFormat("HH:mm");
+  const endStr = DateTime.fromJSDate(eventInfo.event.end).toFormat("HH:mm");
+  const isAllDay = eventInfo.event.allDay;
+
+  return (
+    <Box
+      sx={{
+        ...styles.eventContent,
+        // Arka plan rengini FullCalendar'daki event objesinden alıyoruz
+        backgroundColor: eventInfo.event.backgroundColor,
+        border: `1px solid ${eventInfo.event.borderColor}`,
+        padding: "2px 8px",
+        borderRadius: "4px",
+        lineHeight: 1.2,
+        width: "100%",
+      }}
+    >
+      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.8rem" }}>
+        {eventInfo.event.title}
+      </Typography>
+      {/* AllDay değilse saat aralığı göster */}
+      {!isAllDay && (
+        <Typography variant="caption" sx={{ fontSize: "0.7rem" }}>
+          {startStr} - {endStr}
+        </Typography>
+      )}
+    </Box>
+  );
+};
+
+// Etkinlik oluşturma ve düzenleme diyaloğu
 const EventDialog = ({
   container,
   open,
@@ -435,6 +495,7 @@ const EventDialog = ({
   onSubmit,
   colors,
   handleDateTimeChange,
+  disableEnforceFocus,
 }) => {
   const handleAllDayChange = (e) => {
     setEvent((prev) => ({
@@ -450,6 +511,7 @@ const EventDialog = ({
       container={container}
       open={open}
       onClose={onClose}
+      disableEnforceFocus={disableEnforceFocus}
       PaperProps={{
         sx: {
           background: "rgba(83, 134, 176, 0.33)",
@@ -521,8 +583,27 @@ const EventDialog = ({
         <FormControl fullWidth margin="normal">
           <InputLabel sx={{ color: "#fff" }}>Renk</InputLabel>
           <Select
-            value={event?.color || colors.primary}
+            value={event?.color || colors.lavanta}
             onChange={(e) => setEvent({ ...event, color: e.target.value })}
+            // Menü ayarları: fullscreen’de açılabilsin diye
+            MenuProps={{
+              disablePortal: true,
+              style: { zIndex: 999999 },
+              PaperProps: {
+                style: {
+                  maxHeight: 50, // Menü yüksekliği
+                  overflowY: "auto", // Kaydırma etkin
+                },
+              },
+              anchorOrigin: {
+                vertical: "bottom",
+                horizontal: "left",
+              },
+              transformOrigin: {
+                vertical: "top",
+                horizontal: "left",
+              },
+            }}
             sx={{
               color: "#fff",
               ".MuiOutlinedInput-notchedOutline": { borderColor: "#fff" },
@@ -560,27 +641,6 @@ const EventDialog = ({
     </Dialog>
   );
 };
-
-const renderEventContent = (eventInfo) => (
-  <Box
-    sx={{
-      ...styles.eventContent,
-      backgroundColor: eventInfo.event.extendedProps.color,
-      padding: "2px 8px",
-      borderRadius: "4px",
-      lineHeight: 1.2,
-    }}
-  >
-    <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.8rem" }}>
-      {eventInfo.event.title}
-    </Typography>
-    {!eventInfo.event.allDay && (
-      <Typography variant="caption" sx={{ fontSize: "0.7rem" }}>
-        {eventInfo.timeText}
-      </Typography>
-    )}
-  </Box>
-);
 
 const styles = {
   container: {
@@ -625,6 +685,8 @@ const styles = {
         backgroundColor: "#98E4FF",
       },
       "& .fc-event": {
+        // Etkinlik genişliğini tam kaplasın
+        width: "100%",
         border: "none",
         boxShadow: "0px 2px 4px rgba(0,0,0,0.3)",
         cursor: "move",

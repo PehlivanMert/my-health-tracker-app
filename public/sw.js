@@ -1,4 +1,4 @@
-const CACHE_NAME = "wellness-tracker-v3"; // Versiyonu artırın
+const CACHE_NAME = "wellness-tracker-v4"; // Versiyon güncellendi
 const ASSETS = [
   "/",
   "/index.html",
@@ -13,8 +13,11 @@ const ASSETS = [
 // Install event: Cache kaynaklarını yükle
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS).catch((err) => {
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(ASSETS))
+      .then(() => self.skipWaiting())
+      .catch((err) => {
         console.error("Cache hatası:", err);
         console.error("Aşağıdaki kaynaklar yüklenemedi:");
         ASSETS.forEach((asset) => {
@@ -22,29 +25,41 @@ self.addEventListener("install", (event) => {
             .then(() => console.log(`${asset} başarıyla yüklendi`))
             .catch(() => console.error(`${asset} yüklenemedi`));
         });
-      });
-    })
+      })
+  );
+});
+
+// Activate event: Eski cache'leri temizle ve kontrolü ele al
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((cacheNames) => {
+        return Promise.all(
+          cacheNames
+            .filter((cacheName) => cacheName !== CACHE_NAME)
+            .map((cacheName) => caches.delete(cacheName))
+        );
+      })
+      .then(() => self.clients.claim())
   );
 });
 
 // Fetch event: İstekleri yönet ve cache'i kullan
 self.addEventListener("fetch", (event) => {
   const request = event.request;
-
   // Yalnızca GET isteklerini ve http/https şemalarını işle
   if (request.method !== "GET" || !request.url.startsWith("http")) {
     return;
   }
-
   event.respondWith(
     caches.match(request).then((response) => {
       if (response) {
-        return response; // Eğer cache'de varsa, onu döndür
+        return response; // Cache'de varsa döndür
       }
-
       return fetch(request)
         .then((fetchResponse) => {
-          // Eğer yanıt kısmi içerik içeriyorsa (206), önbelleğe alma işlemini atla
+          // Eğer yanıt kısmi içerik (206) içeriyorsa, önbelleğe alma işlemini atla
           if (fetchResponse.status === 206) {
             return fetchResponse;
           }
@@ -54,27 +69,32 @@ self.addEventListener("fetch", (event) => {
           });
           return fetchResponse;
         })
-        .catch(() => {
-          return caches.match("/offline.html");
-        });
+        .catch(() => caches.match("/offline.html"));
     })
   );
 });
 
 // Push Notification Handling
 self.addEventListener("push", (event) => {
-  const data = event.data.json();
+  let data = {};
+  try {
+    data = event.data.json();
+  } catch (error) {
+    console.error("Push verisi okunamadı:", error);
+  }
   const options = {
-    body: data.body,
-    icon: "/logo4.jpeg",
-    badge: "/logo4.jpeg",
+    body: data.body || "Bildirim içeriği mevcut değil.",
+    icon: "/public/logo4.jpeg",
+    badge: "/public/logo4.jpeg",
     vibrate: [200, 100, 200],
-    data: { url: data.url },
+    data: { url: data.url || "/" },
   };
-  event.waitUntil(self.registration.showNotification(data.title, options));
+  event.waitUntil(
+    self.registration.showNotification(data.title || "Bildirim", options)
+  );
 });
 
-// Notification click event: Bildirim tıklandığında bir URL aç
+// Notification click event: Bildirim tıklandığında belirlenen URL'yi aç
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   event.waitUntil(clients.openWindow(event.notification.data.url));

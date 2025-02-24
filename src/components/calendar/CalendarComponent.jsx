@@ -48,19 +48,8 @@ import "@fullcalendar/multimonth";
 const CalendarComponent = ({ user }) => {
   const theme = useTheme();
   const calendarRef = useRef(null);
-  const [events, setEvents] = useState([]);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [editEvent, setEditEvent] = useState(null);
-  const [newEvent, setNewEvent] = useState({
-    title: "",
-    start: DateTime.local().startOf("day"),
-    end: DateTime.local().endOf("day"),
-    allDay: true,
-    color: theme.palette.primary.main,
-  });
-  const [openDialog, setOpenDialog] = useState(false);
-  const [openEditDialog, setOpenEditDialog] = useState(false);
-
+  // paperRef, tüm bileşenleri kapsayan fullscreen konteyneri olacak
+  const paperRef = useRef(null);
   const calendarColors = {
     limon: "#00ff87", // Neon yeşil
     sakız: "#ff00ff", // Neon pembe
@@ -83,6 +72,20 @@ const CalendarComponent = ({ user }) => {
     aurora: "#00FF00", // Saf yeşil
     neonRüya: "#FF1177", // Sıcak pembe
   };
+
+  const [events, setEvents] = useState([]);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [editEvent, setEditEvent] = useState(null);
+  const [newEvent, setNewEvent] = useState({
+    title: "",
+    start: DateTime.local().startOf("day"),
+    end: DateTime.local().endOf("day"),
+    allDay: false,
+    color: calendarColors.fosfor,
+  });
+  const [openDialog, setOpenDialog] = useState(false);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+
   const fetchEvents = useCallback(async () => {
     if (!user) return;
     try {
@@ -97,7 +100,7 @@ const CalendarComponent = ({ user }) => {
           start: data.start.toDate(),
           end: data.end.toDate(),
           allDay: data.allDay,
-          color: data.color || calendarColors.primary,
+          color: data.color || calendarColors.limon,
           extendedProps: {
             calendarId: data.calendarId,
           },
@@ -107,7 +110,7 @@ const CalendarComponent = ({ user }) => {
     } catch (error) {
       toast.error(`Etkinlikler yüklenemedi: ${error.message}`);
     }
-  }, [user, calendarColors.primary]);
+  }, [user, calendarColors.limon]);
 
   useEffect(() => {
     fetchEvents();
@@ -166,7 +169,7 @@ const CalendarComponent = ({ user }) => {
           start: Timestamp.fromDate(editEvent.start.toJSDate()),
           end: Timestamp.fromDate(editEvent.end.toJSDate()),
           allDay: editEvent.allDay,
-          color: editEvent.color || calendarColors.primary,
+          color: editEvent.color || calendarColors.lavanta,
         }
       );
       await fetchEvents();
@@ -183,7 +186,7 @@ const CalendarComponent = ({ user }) => {
       start: DateTime.fromJSDate(selectInfo.start),
       end: DateTime.fromJSDate(selectInfo.end),
       allDay: selectInfo.allDay,
-      color: calendarColors.primary,
+      color: calendarColors.lavanta,
     });
     setOpenDialog(true);
   };
@@ -241,22 +244,19 @@ const CalendarComponent = ({ user }) => {
     });
   };
 
-  // FullScreen
+  // FullScreen: artık Paper konteynerimizi kullanıyoruz
   const handleToggleFullScreen = () => {
-    const container = calendarContainerRef.current;
+    const container = paperRef.current;
     if (!container) return;
 
     if (!document.fullscreenElement) {
       if (container.requestFullscreen) {
         container.requestFullscreen();
       } else if (container.mozRequestFullScreen) {
-        // Firefox
         container.mozRequestFullScreen();
       } else if (container.webkitRequestFullscreen) {
-        // Chrome, Safari & Opera
         container.webkitRequestFullscreen();
       } else if (container.msRequestFullscreen) {
-        // IE/Edge
         container.msRequestFullscreen();
       }
     } else {
@@ -272,10 +272,8 @@ const CalendarComponent = ({ user }) => {
     }
   };
 
-  const calendarContainerRef = useRef(null);
-
   return (
-    <Paper sx={styles.container}>
+    <Paper ref={paperRef} sx={styles.container}>
       <Box sx={styles.controls}>
         <Button
           variant="contained"
@@ -287,7 +285,6 @@ const CalendarComponent = ({ user }) => {
       </Box>
 
       <Box
-        ref={calendarContainerRef}
         sx={{
           ...styles.calendarWrapper,
           backgroundColor: "rgb(33, 150, 243)", // Ana mavi renk
@@ -339,7 +336,7 @@ const CalendarComponent = ({ user }) => {
               start: DateTime.fromJSDate(clickInfo.event.start),
               end: DateTime.fromJSDate(clickInfo.event.end),
               color:
-                clickInfo.event.extendedProps.color || calendarColors.primary,
+                clickInfo.event.extendedProps.color || calendarColors.lavanta,
               allDay: clickInfo.event.allDay,
             };
             setSelectedEvent(event);
@@ -350,7 +347,10 @@ const CalendarComponent = ({ user }) => {
           dayCellClassNames="fc-day-cell"
         />
       </Box>
+
+      {/* EventDialog'lara container olarak paperRef.current veriyoruz */}
       <EventDialog
+        container={paperRef.current}
         open={openDialog}
         onClose={() => setOpenDialog(false)}
         title="Yeni Etkinlik Oluştur"
@@ -362,6 +362,7 @@ const CalendarComponent = ({ user }) => {
       />
 
       <EventDialog
+        container={paperRef.current}
         open={openEditDialog}
         onClose={() => setOpenEditDialog(false)}
         title="Etkinliği Düzenle"
@@ -373,6 +374,7 @@ const CalendarComponent = ({ user }) => {
       />
 
       <Dialog
+        container={paperRef.current}
         open={!!selectedEvent}
         onClose={() => setSelectedEvent(null)}
         disableEnforceFocus
@@ -424,6 +426,7 @@ const CalendarComponent = ({ user }) => {
 };
 
 const EventDialog = ({
+  container,
   open,
   onClose,
   title,
@@ -444,6 +447,7 @@ const EventDialog = ({
 
   return (
     <Dialog
+      container={container}
       open={open}
       onClose={onClose}
       PaperProps={{

@@ -51,7 +51,7 @@ import {
   BarChart,
   Bar,
 } from "recharts";
-import styles from "./WaterAnimation.module.css";
+import styles from "./waterAnimation.module.css";
 
 // Animated keyframes
 const float = keyframes`
@@ -861,14 +861,23 @@ const WellnessTracker = ({ user }) => {
             textAlign: "center",
             color: "#fff",
             fontWeight: 800,
-            mb: 6,
-            ml: 9,
+            mb: { xs: 2, md: 6 },
+            ml: { xs: 2, md: 7 },
+            mt: { xs: 4, md: 6 },
             textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
             animation: `${float} 3s ease-in-out infinite`,
+            // Mobilde daha küçük, büyük ekranlarda normal boyut
+            fontSize: { xs: "2rem", md: "3rem" },
           }}
         >
           <WaterDropIcon
-            sx={{ fontSize: 50, color: "lightblue", mr: -15, mb: -13 }}
+            sx={{
+              // Mobilde ikon 30px, büyük ekranlarda 50px
+              fontSize: { xs: 30, md: 50 },
+              color: "lightblue",
+              mr: { xs: -5, md: -15 },
+              mb: { xs: -7, md: -13 },
+            }}
           />
           Takviye Takibi
         </Typography>

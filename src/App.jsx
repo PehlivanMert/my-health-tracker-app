@@ -559,12 +559,13 @@ function App() {
         >
           <Toolbar
             sx={{
-              flexDirection: { xs: "column", sm: "row" },
+              // Mobilde dikey yer kaplamaması için hep "row" yönünde düzenlendi
+              flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
-              gap: { xs: 2, sm: 0 },
-              py: { xs: 2, sm: 1.5 },
-              px: 4,
+              gap: { xs: 1, sm: 0 },
+              py: { xs: 1, sm: 1.5 },
+              px: { xs: 2, sm: 4 },
             }}
           >
             <Box
@@ -580,9 +581,10 @@ function App() {
                   letterSpacing: "0.5px",
                   color: "rgba(255, 255, 255, 0.95)",
                   textShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                  fontSize: { xs: "0.8rem", sm: "1rem" },
                 }}
               >
-                {format(currentTime, "HH:mm - dd MMMM yyyy")}
+                {format(currentTime, "dd MMMM yyyy")}
               </Typography>
             </Box>
 
@@ -591,7 +593,8 @@ function App() {
                 background: "rgba(255, 255, 255, 0.1)",
                 backdropFilter: "blur(8px)",
                 borderRadius: 3,
-                padding: "8px 16px",
+                padding: { xs: "4px 8px", sm: "8px 16px" },
+                mr: { xs: "65px" },
                 transition: "all 0.3s ease",
                 "&:hover": {
                   background: "rgba(255, 255, 255, 0.15)",
@@ -605,7 +608,11 @@ function App() {
             <Avatar
               src={profileData.profileImage || ""}
               onClick={handleAvatarClick}
-              sx={{ cursor: "pointer", width: 40, height: 40 }}
+              sx={{
+                cursor: "pointer",
+                width: { xs: 30, sm: 40 },
+                height: { xs: 30, sm: 40 },
+              }}
             />
             <Menu
               anchorEl={anchorEl}

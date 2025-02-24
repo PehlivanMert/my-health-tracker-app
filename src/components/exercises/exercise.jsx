@@ -229,10 +229,15 @@ const Exercises = ({ exercises, setExercises }) => {
             mb: 6,
             textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
             animation: `${float} 3s ease-in-out infinite`,
+            fontSize: { xs: "2rem", md: "3rem" },
           }}
         >
           <FitnessCenter
-            sx={{ fontSize: 50, verticalAlign: "middle", mr: 2 }}
+            sx={{
+              fontSize: { xs: 40, md: 50 }, // Mobilde 40px, masaüstünde 50px
+              verticalAlign: "middle",
+              mr: 2,
+            }}
           />
           Egzersiz Yönetimi
         </Typography>

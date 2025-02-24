@@ -738,6 +738,10 @@ const styles = {
         borderRadius: "8px",
         boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
         transition: "all 0.3s ease",
+        "@media (max-width:600px)": {
+          fontSize: "0.8rem",
+          padding: "4px 8px",
+        },
       },
       "& .fc-button:hover": {
         backgroundColor: "#A1E3F9",
@@ -751,6 +755,9 @@ const styles = {
         color: "#fff",
         fontSize: "1.5rem",
         fontWeight: "bold",
+        "@media (max-width:600px)": {
+          fontSize: "1.2rem",
+        },
       },
     },
   },

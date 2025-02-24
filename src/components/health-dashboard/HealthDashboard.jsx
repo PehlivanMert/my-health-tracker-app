@@ -425,9 +425,10 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
                   color: "#fff",
                   fontWeight: 800,
                   mb: { xs: 3, sm: 6 },
+                  mr: { xs: 7, sm: 0 },
                   textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
                   animation: `${fadeIn} 1s ease, ${float} 6s ease-in-out infinite`,
-                  fontSize: { xs: "2rem", sm: "3rem", md: "4rem" },
+                  fontSize: { xs: "1rem", sm: "3rem", md: "4rem" },
                 }}
               >
                 <LocalHospital
@@ -528,6 +529,7 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
               fontFamily: '"Montserrat", sans-serif',
               letterSpacing: "0.5px",
               color: "#1a2a6c",
+              fontSize: { xs: "1.5rem" },
             }}
           >
             Kişiselleştirilmiş Öneriler
@@ -553,6 +555,8 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
                   fontFamily: '"Montserrat", sans-serif',
                   letterSpacing: "0.5px",
                   color: "#1a2a6c",
+                  fontSize: { xs: "1rem", md: "3rem" },
+                  ml: { xs: 5 },
                 }}
               >
                 Geçmiş Öneriler

@@ -477,6 +477,7 @@ const DailyRoutine = ({ user }) => {
             mb: 6,
             textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
             animation: `${float} 3s ease-in-out infinite`,
+            fontSize: { xs: "1.5rem" },
           }}
         >
           <AccessTime sx={{ fontSize: 50, verticalAlign: "middle", mr: 2 }} />

@@ -875,7 +875,7 @@ const WellnessTracker = ({ user }) => {
               // Mobilde ikon 30px, büyük ekranlarda 50px
               fontSize: { xs: 30, md: 50 },
               color: "lightblue",
-              mr: { xs: -5, md: -15 },
+              mr: { xs: -3, md: -15 },
               mb: { xs: -7, md: -13 },
             }}
           />

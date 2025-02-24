@@ -43,6 +43,7 @@ import {
   requestNotificationPermission,
   scheduleNotification,
   cancelScheduledNotifications,
+  showToast,
 } from "../../utils/weather-theme-notify/NotificationManager";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
@@ -361,6 +362,12 @@ const DailyRoutine = ({ user }) => {
 
     const isEnabled = !notificationsEnabled[routineId];
 
+    // Toast bildirim ekle
+    showToast(
+      isEnabled ? "Bildirimler açıldı 🔔" : "Bildirimler kapatıldı 🔕",
+      isEnabled ? "success" : "error"
+    );
+
     if (isEnabled) {
       scheduleNewNotification(routine);
     } else {
@@ -385,6 +392,10 @@ const DailyRoutine = ({ user }) => {
   // Tüm bildirimleri aç/kapa
   const toggleAllNotifications = () => {
     const newState = !allNotifications;
+    showToast(
+      newState ? "Tüm bildirimler açıldı 🔔" : "Tüm bildirimler kapatıldı 🔕",
+      newState ? "success" : "error"
+    );
     setAllNotifications(newState);
     const updatedNotifications = {};
 

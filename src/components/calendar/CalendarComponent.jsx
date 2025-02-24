@@ -44,6 +44,7 @@ import "@fullcalendar/multimonth";
 // ----------------------------------------------------------------
 // Renk seçimi için ayrı bir Dialog
 const ColorPickerDialog = ({
+  container,
   open,
   onClose,
   onColorSelect,
@@ -52,10 +53,13 @@ const ColorPickerDialog = ({
 }) => {
   return (
     <Dialog
+      container={container}
       open={open}
       onClose={onClose}
+      disableEnforceFocus
       PaperProps={{
         sx: {
+          zIndex: 99999,
           background: "rgba(83, 134, 176, 0.33)",
           backdropFilter: "blur(10px)",
           borderRadius: "24px",
@@ -73,7 +77,7 @@ const ColorPickerDialog = ({
           gap: 2,
           maxWidth: 400,
           maxHeight: 300,
-          overflowY: "auto", // Çok renk varsa dikey kaydırma
+          overflowY: "auto",
         }}
       >
         {Object.entries(colors).map(([name, color]) => (
@@ -184,7 +188,6 @@ const CalendarComponent = ({ user }) => {
     try {
       const batch = writeBatch(db);
       const eventsRef = collection(db, "users", user.uid, "calendarEvents");
-
       const eventData = {
         title: newEvent.title,
         start: Timestamp.fromDate(newEvent.start.toJSDate()),
@@ -201,7 +204,7 @@ const CalendarComponent = ({ user }) => {
         title: "",
         start: DateTime.local().startOf("day"),
         end: DateTime.local().endOf("day"),
-        allDay: false,
+        allDay: true,
         color: theme.palette.primary.main,
       });
       toast.success("Etkinlik başarıyla eklendi");
@@ -315,7 +318,6 @@ const CalendarComponent = ({ user }) => {
   const handleToggleFullScreen = () => {
     const container = paperRef.current;
     if (!container) return;
-
     if (!document.fullscreenElement) {
       if (container.requestFullscreen) {
         container.requestFullscreen();
@@ -350,7 +352,6 @@ const CalendarComponent = ({ user }) => {
           Yeni Etkinlik
         </Button>
       </Box>
-
       <Box
         sx={{
           ...styles.calendarWrapper,
@@ -376,7 +377,7 @@ const CalendarComponent = ({ user }) => {
             multiMonthPlugin,
           ]}
           initialView="dayGridMonth"
-          firstDay={1} // Haftanın Pazartesi'den başlaması
+          firstDay={1}
           headerToolbar={{
             left: "prev,next today",
             center: "title",
@@ -389,7 +390,6 @@ const CalendarComponent = ({ user }) => {
               click: handleToggleFullScreen,
             },
           }}
-          // Saat formatı (dayGrid’de tam aralığı göstersin)
           eventTimeFormat={{
             hour: "2-digit",
             minute: "2-digit",
@@ -399,7 +399,7 @@ const CalendarComponent = ({ user }) => {
           editable={true}
           selectable={true}
           locale="tr"
-          eventContent={renderEventContent} // Özel render
+          eventContent={renderEventContent}
           select={handleDateSelect}
           eventDrop={handleEventDrop}
           eventResize={handleEventResize}
@@ -507,7 +507,6 @@ const renderEventContent = (eventInfo) => {
   const startStr = DateTime.fromJSDate(eventInfo.event.start).toFormat("HH:mm");
   const endStr = DateTime.fromJSDate(eventInfo.event.end).toFormat("HH:mm");
   const isAllDay = eventInfo.event.allDay;
-
   return (
     <Box
       sx={{
@@ -547,7 +546,6 @@ const EventDialog = ({
 }) => {
   // Renk seçimi için ayrı diyaloğu kontrol edecek state
   const [openColorPicker, setOpenColorPicker] = useState(false);
-
   const handleAllDayChange = (e) => {
     setEvent((prev) => ({
       ...prev,
@@ -556,7 +554,6 @@ const EventDialog = ({
       end: e.target.checked ? prev.end.endOf("day") : prev.end,
     }));
   };
-
   return (
     <>
       <Dialog
@@ -632,8 +629,7 @@ const EventDialog = ({
               sx={{ input: { color: "#fff" }, label: { color: "#fff" } }}
             />
           </Box>
-
-          {/* Mevcut rengi gösteren küçük bir Chip */}
+          {/* Mevcut rengi gösteren küçük bir Chip ve Renk Seç butonu */}
           <Box sx={{ mt: 2, display: "flex", alignItems: "center", gap: 2 }}>
             <Chip
               label="Seçili Renk"
@@ -665,14 +661,12 @@ const EventDialog = ({
           </Button>
         </DialogActions>
       </Dialog>
-
       {/* Renk Seçim Diyaloğu (ayrı pencere) */}
       <ColorPickerDialog
+        container={container}
         open={openColorPicker}
         onClose={() => setOpenColorPicker(false)}
-        onColorSelect={(color) => {
-          setEvent((prev) => ({ ...prev, color }));
-        }}
+        onColorSelect={(color) => setEvent((prev) => ({ ...prev, color }))}
         colors={colors}
         selectedColor={event?.color}
       />

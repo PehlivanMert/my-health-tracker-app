@@ -14,15 +14,11 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  FormControl,
-  InputLabel,
-  Chip,
-  MenuItem,
-  Select,
-  Checkbox,
   FormControlLabel,
+  Checkbox,
   useTheme,
   Typography,
+  Chip,
   colors,
 } from "@mui/material";
 import { Delete, Add, Edit } from "@mui/icons-material";
@@ -45,10 +41,67 @@ import "@fullcalendar/daygrid";
 import "@fullcalendar/timegrid";
 import "@fullcalendar/multimonth";
 
+// ----------------------------------------------------------------
+// Renk seçimi için ayrı bir Dialog
+const ColorPickerDialog = ({
+  open,
+  onClose,
+  onColorSelect,
+  colors,
+  selectedColor,
+}) => {
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      PaperProps={{
+        sx: {
+          background: "rgba(83, 134, 176, 0.33)",
+          backdropFilter: "blur(10px)",
+          borderRadius: "24px",
+          border: "1px solid rgba(33, 150, 243, 0.2)",
+          color: "#fff",
+          p: 2,
+        },
+      }}
+    >
+      <DialogTitle>Renk Seç</DialogTitle>
+      <DialogContent
+        sx={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 2,
+          maxWidth: 400,
+          maxHeight: 300,
+          overflowY: "auto", // Çok renk varsa dikey kaydırma
+        }}
+      >
+        {Object.entries(colors).map(([name, color]) => (
+          <Chip
+            key={name}
+            label={name}
+            sx={{
+              bgcolor: color,
+              color: "#fff",
+              cursor: "pointer",
+              fontWeight: "bold",
+            }}
+            onClick={() => {
+              onColorSelect(color);
+              onClose();
+            }}
+          />
+        ))}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// ----------------------------------------------------------------
+// Ana takvim bileşeni
 const CalendarComponent = ({ user }) => {
   const theme = useTheme();
   const calendarRef = useRef(null);
-  // paperRef, tüm bileşenleri kapsayan fullscreen konteyneri olacak
   const paperRef = useRef(null);
 
   // Neon renkler
@@ -104,7 +157,6 @@ const CalendarComponent = ({ user }) => {
           start: data.start.toDate(),
           end: data.end.toDate(),
           allDay: data.allDay,
-          // FullCalendar'da renk sorunlarını önlemek için
           backgroundColor: colorValue,
           borderColor: colorValue,
           textColor: "#fff",
@@ -138,7 +190,7 @@ const CalendarComponent = ({ user }) => {
         start: Timestamp.fromDate(newEvent.start.toJSDate()),
         end: Timestamp.fromDate(newEvent.end.toJSDate()),
         allDay: newEvent.allDay,
-        color: newEvent.color, // Firestore'da asıl rengi saklıyoruz
+        color: newEvent.color,
       };
       const docRef = doc(eventsRef);
       batch.set(docRef, eventData);
@@ -149,7 +201,7 @@ const CalendarComponent = ({ user }) => {
         title: "",
         start: DateTime.local().startOf("day"),
         end: DateTime.local().endOf("day"),
-        allDay: true,
+        allDay: false,
         color: theme.palette.primary.main,
       });
       toast.success("Etkinlik başarıyla eklendi");
@@ -180,7 +232,7 @@ const CalendarComponent = ({ user }) => {
           start: Timestamp.fromDate(editEvent.start.toJSDate()),
           end: Timestamp.fromDate(editEvent.end.toJSDate()),
           allDay: editEvent.allDay,
-          color: editEvent.color || calendarColors.lavanta,
+          color: editEvent.color,
         }
       );
       await fetchEvents();
@@ -380,7 +432,6 @@ const CalendarComponent = ({ user }) => {
         onSubmit={handleCreateEvent}
         colors={calendarColors}
         handleDateTimeChange={handleDateTimeChange}
-        disableEnforceFocus
       />
 
       {/* Etkinlik Düzenleme Diyaloğu */}
@@ -394,7 +445,6 @@ const CalendarComponent = ({ user }) => {
         onSubmit={handleUpdateEvent}
         colors={calendarColors}
         handleDateTimeChange={handleDateTimeChange}
-        disableEnforceFocus
       />
 
       {/* Etkinlik Detay Diyaloğu */}
@@ -451,9 +501,9 @@ const CalendarComponent = ({ user }) => {
   );
 };
 
-// Özel eventContent fonksiyonu
+// ----------------------------------------------------------------
+// EventContent: Etkinliğin nasıl görüneceğini özelleştirir
 const renderEventContent = (eventInfo) => {
-  // Saat aralığını kendimiz gösteriyoruz
   const startStr = DateTime.fromJSDate(eventInfo.event.start).toFormat("HH:mm");
   const endStr = DateTime.fromJSDate(eventInfo.event.end).toFormat("HH:mm");
   const isAllDay = eventInfo.event.allDay;
@@ -462,7 +512,6 @@ const renderEventContent = (eventInfo) => {
     <Box
       sx={{
         ...styles.eventContent,
-        // Arka plan rengini FullCalendar'daki event objesinden alıyoruz
         backgroundColor: eventInfo.event.backgroundColor,
         border: `1px solid ${eventInfo.event.borderColor}`,
         padding: "2px 8px",
@@ -474,7 +523,6 @@ const renderEventContent = (eventInfo) => {
       <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.8rem" }}>
         {eventInfo.event.title}
       </Typography>
-      {/* AllDay değilse saat aralığı göster */}
       {!isAllDay && (
         <Typography variant="caption" sx={{ fontSize: "0.7rem" }}>
           {startStr} - {endStr}
@@ -484,7 +532,8 @@ const renderEventContent = (eventInfo) => {
   );
 };
 
-// Etkinlik oluşturma ve düzenleme diyaloğu
+// ----------------------------------------------------------------
+// EventDialog: Etkinlik oluşturma/düzenleme diyaloğu
 const EventDialog = ({
   container,
   open,
@@ -495,8 +544,10 @@ const EventDialog = ({
   onSubmit,
   colors,
   handleDateTimeChange,
-  disableEnforceFocus,
 }) => {
+  // Renk seçimi için ayrı diyaloğu kontrol edecek state
+  const [openColorPicker, setOpenColorPicker] = useState(false);
+
   const handleAllDayChange = (e) => {
     setEvent((prev) => ({
       ...prev,
@@ -507,141 +558,130 @@ const EventDialog = ({
   };
 
   return (
-    <Dialog
-      container={container}
-      open={open}
-      onClose={onClose}
-      disableEnforceFocus={disableEnforceFocus}
-      PaperProps={{
-        sx: {
-          background: "rgba(83, 134, 176, 0.33)",
-          backdropFilter: "blur(10px)",
-          borderRadius: "24px",
-          border: "1px solid rgba(33, 150, 243, 0.2)",
-          color: "#fff",
-          p: 2,
-        },
-      }}
-    >
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent sx={styles.dialogContent}>
-        <TextField
-          label="Etkinlik Başlığı"
-          fullWidth
-          margin="normal"
-          value={event?.title || ""}
-          onChange={(e) => setEvent({ ...event, title: e.target.value })}
-          sx={{ input: { color: "#fff" }, label: { color: "#fff" } }}
-        />
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={event?.allDay ?? true}
-              onChange={handleAllDayChange}
-              sx={{ color: "#fff" }}
+    <>
+      <Dialog
+        container={container}
+        open={open}
+        onClose={onClose}
+        disableEnforceFocus
+        PaperProps={{
+          sx: {
+            background: "rgba(83, 134, 176, 0.33)",
+            backdropFilter: "blur(10px)",
+            borderRadius: "24px",
+            border: "1px solid rgba(33, 150, 243, 0.2)",
+            color: "#fff",
+            p: 2,
+          },
+        }}
+      >
+        <DialogTitle>{title}</DialogTitle>
+        <DialogContent sx={styles.dialogContent}>
+          <TextField
+            label="Etkinlik Başlığı"
+            fullWidth
+            margin="normal"
+            value={event?.title || ""}
+            onChange={(e) => setEvent({ ...event, title: e.target.value })}
+            sx={{ input: { color: "#fff" }, label: { color: "#fff" } }}
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={event?.allDay ?? true}
+                onChange={handleAllDayChange}
+                sx={{ color: "#fff" }}
+              />
+            }
+            label="Tüm Gün"
+            sx={{ mt: 1, color: "#fff" }}
+          />
+          <Box sx={styles.timeInputs}>
+            <TextField
+              label="Başlangıç"
+              type={event?.allDay ? "date" : "datetime-local"}
+              InputLabelProps={{ shrink: true }}
+              value={
+                event?.start?.isValid
+                  ? event.start.toFormat(
+                      event.allDay ? "yyyy-MM-dd" : "yyyy-MM-dd'T'HH:mm"
+                    )
+                  : ""
+              }
+              onChange={(e) =>
+                handleDateTimeChange(e.target.value, true, event, setEvent)
+              }
+              fullWidth
+              sx={{ input: { color: "#fff" }, label: { color: "#fff" } }}
             />
-          }
-          label="Tüm Gün"
-          sx={{ mt: 1, color: "#fff" }}
-        />
-        <Box sx={styles.timeInputs}>
-          <TextField
-            label="Başlangıç"
-            type={event?.allDay ? "date" : "datetime-local"}
-            InputLabelProps={{ shrink: true }}
-            value={
-              event?.start?.isValid
-                ? event.start.toFormat(
-                    event.allDay ? "yyyy-MM-dd" : "yyyy-MM-dd'T'HH:mm"
-                  )
-                : ""
-            }
-            onChange={(e) =>
-              handleDateTimeChange(e.target.value, true, event, setEvent)
-            }
-            fullWidth
-            sx={{ input: { color: "#fff" }, label: { color: "#fff" } }}
-          />
-          <TextField
-            label="Bitiş"
-            type={event?.allDay ? "date" : "datetime-local"}
-            InputLabelProps={{ shrink: true }}
-            value={
-              event?.end?.isValid
-                ? event.end.toFormat(
-                    event.allDay ? "yyyy-MM-dd" : "yyyy-MM-dd'T'HH:mm"
-                  )
-                : ""
-            }
-            onChange={(e) =>
-              handleDateTimeChange(e.target.value, false, event, setEvent)
-            }
-            fullWidth
-            sx={{ input: { color: "#fff" }, label: { color: "#fff" } }}
-          />
-        </Box>
-        <FormControl fullWidth margin="normal">
-          <InputLabel sx={{ color: "#fff" }}>Renk</InputLabel>
-          <Select
-            value={event?.color || colors.lavanta}
-            onChange={(e) => setEvent({ ...event, color: e.target.value })}
-            // Menü ayarları: fullscreen’de açılabilsin diye
-            MenuProps={{
-              disablePortal: true,
-              style: { zIndex: 999999 },
-              PaperProps: {
-                style: {
-                  maxHeight: 50, // Menü yüksekliği
-                  overflowY: "auto", // Kaydırma etkin
-                },
-              },
-              anchorOrigin: {
-                vertical: "bottom",
-                horizontal: "left",
-              },
-              transformOrigin: {
-                vertical: "top",
-                horizontal: "left",
-              },
-            }}
-            sx={{
-              color: "#fff",
-              ".MuiOutlinedInput-notchedOutline": { borderColor: "#fff" },
-            }}
+            <TextField
+              label="Bitiş"
+              type={event?.allDay ? "date" : "datetime-local"}
+              InputLabelProps={{ shrink: true }}
+              value={
+                event?.end?.isValid
+                  ? event.end.toFormat(
+                      event.allDay ? "yyyy-MM-dd" : "yyyy-MM-dd'T'HH:mm"
+                    )
+                  : ""
+              }
+              onChange={(e) =>
+                handleDateTimeChange(e.target.value, false, event, setEvent)
+              }
+              fullWidth
+              sx={{ input: { color: "#fff" }, label: { color: "#fff" } }}
+            />
+          </Box>
+
+          {/* Mevcut rengi gösteren küçük bir Chip */}
+          <Box sx={{ mt: 2, display: "flex", alignItems: "center", gap: 2 }}>
+            <Chip
+              label="Seçili Renk"
+              sx={{
+                bgcolor: event?.color || colors.lavanta,
+                color: "#fff",
+                width: 100,
+                justifyContent: "center",
+              }}
+            />
+            <Button
+              variant="contained"
+              onClick={() => setOpenColorPicker(true)}
+            >
+              Renk Seç
+            </Button>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose} sx={{ color: "#fff" }}>
+            İptal
+          </Button>
+          <Button
+            variant="contained"
+            onClick={onSubmit}
+            disabled={!event?.start?.isValid || !event?.end?.isValid}
           >
-            {Object.entries(colors).map(([name, color]) => (
-              <MenuItem key={name} value={color}>
-                <Chip
-                  sx={{
-                    bgcolor: color,
-                    width: 24,
-                    height: 24,
-                    mr: 1,
-                    borderRadius: "4px",
-                  }}
-                />
-                {name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} sx={{ color: "#fff" }}>
-          İptal
-        </Button>
-        <Button
-          variant="contained"
-          onClick={onSubmit}
-          disabled={!event?.start?.isValid || !event?.end?.isValid}
-        >
-          Kaydet
-        </Button>
-      </DialogActions>
-    </Dialog>
+            Kaydet
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Renk Seçim Diyaloğu (ayrı pencere) */}
+      <ColorPickerDialog
+        open={openColorPicker}
+        onClose={() => setOpenColorPicker(false)}
+        onColorSelect={(color) => {
+          setEvent((prev) => ({ ...prev, color }));
+        }}
+        colors={colors}
+        selectedColor={event?.color}
+      />
+    </>
   );
 };
 
+// ----------------------------------------------------------------
+// Stil tanımları
 const styles = {
   container: {
     p: 3,
@@ -685,7 +725,6 @@ const styles = {
         backgroundColor: "#98E4FF",
       },
       "& .fc-event": {
-        // Etkinlik genişliğini tam kaplasın
         width: "100%",
         border: "none",
         boxShadow: "0px 2px 4px rgba(0,0,0,0.3)",

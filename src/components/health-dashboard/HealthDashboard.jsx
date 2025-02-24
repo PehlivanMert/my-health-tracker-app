@@ -17,11 +17,12 @@ import {
   Card,
   CardContent,
   Avatar,
-  LinearProgress,
   useTheme,
   Button,
-  Divider,
   useMediaQuery,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import {
   FitnessCenter,
@@ -30,6 +31,7 @@ import {
   Cake,
   Height,
   Scale,
+  ExpandMore as ExpandMoreIcon,
 } from "@mui/icons-material";
 import { keyframes } from "@emotion/react";
 
@@ -54,6 +56,7 @@ const HealthDashboard = ({ user }) => {
     bmi: null,
     yesterdayWaterIntake: null, // yeni alan
     supplementConsumptionStats: null, // yeni alan
+    recommendationsHistory: [],
   });
   const [profileData, setProfileData] = useState({
     firstName: "",
@@ -64,8 +67,12 @@ const HealthDashboard = ({ user }) => {
   const [recommendations, setRecommendations] = useState(null);
   const [loading, setLoading] = useState(false);
   const [apiCooldown, setApiCooldown] = useState(false);
-
   const [qwenUsage, setQwenUsage] = useState(null);
+
+  // Geçmişte kaydedilen öneriden seçim yapıldığında ana içerikte göster
+  const handleSelectRecommendation = (rec) => {
+    setRecommendations(rec.content);
+  };
 
   useEffect(() => {
     const fetchQwenUsage = async () => {
@@ -110,7 +117,6 @@ const HealthDashboard = ({ user }) => {
   };
 
   // Firebase'den kullanıcı verilerini çekiyoruz.
-  // HealthDashboard bileşeni içinde fetchAllData fonksiyonunu güncelleyelim
   const fetchAllData = async () => {
     try {
       const userRef = doc(db, "users", user.uid);
@@ -149,7 +155,6 @@ const HealthDashboard = ({ user }) => {
         setHealthData((prev) => ({
           ...prev,
           ...data.healthData,
-          // Yeni eklenen veriler
           supplements,
           waterData: {
             currentIntake: waterData.waterIntake || 0,
@@ -158,6 +163,7 @@ const HealthDashboard = ({ user }) => {
             yesterday: waterData.yesterdayWaterIntake || 0,
           },
           supplementStats,
+          recommendationsHistory: data.healthData?.recommendationsHistory || [],
         }));
 
         setRecommendations(data.healthData?.recommendations || null);
@@ -217,7 +223,7 @@ const HealthDashboard = ({ user }) => {
       const age = calculateAge();
       const bmi = calculateBMI();
 
-      // Güncel tarih ve saat bilgisini 'Tarih ve Saat' satırı olarak ekle
+      // Güncel tarih ve saat bilgisini 'Tarih ve Saat' olarak alıyoruz
       const currentDateTime = new Date().toLocaleString("tr-TR", {
         dateStyle: "full",
         timeStyle: "short",
@@ -270,11 +276,27 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
       const data = await response.json();
       if (data.choices?.[0]?.message?.content) {
         const recommendationText = data.choices[0].message.content;
+        const newRecommendation = {
+          date: currentDateTime,
+          content: recommendationText,
+        };
+
+        // Güncellenmiş öneri geçmişini oluştur
+        const updatedHistory = [
+          ...(healthData.recommendationsHistory || []),
+          newRecommendation,
+        ];
+
         await updateDoc(doc(db, "users", user.uid), {
           "healthData.recommendations": recommendationText,
           "healthData.lastUpdated": new Date().toISOString(),
+          "healthData.recommendationsHistory": updatedHistory,
         });
         setRecommendations(recommendationText);
+        setHealthData((prev) => ({
+          ...prev,
+          recommendationsHistory: updatedHistory,
+        }));
 
         // İşlem başarılıysa Qwen kullanım sayacını artır
         incrementQwenUsage();
@@ -492,21 +514,80 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
           ))}
         </Grid>
 
-        {/* Kişiselleştirilmiş Öneriler */}
+        {/* Kişiselleştirilmiş Öneriler Header with Accordion for History */}
+        <Box
+          display="flex"
+          justifyContent="space-between"
+          alignItems="center"
+          mb={3}
+        >
+          <Typography
+            variant="h4"
+            fontWeight={700}
+            sx={{
+              fontFamily: '"Montserrat", sans-serif',
+              letterSpacing: "0.5px",
+              color: "#1a2a6c",
+            }}
+          >
+            Kişiselleştirilmiş Öneriler
+          </Typography>
+          <Accordion
+            sx={{
+              width: "auto",
+              boxShadow: "none",
+              background: "transparent",
+              "&::before": { display: "none" },
+            }}
+          >
+            <AccordionSummary
+              expandIcon={<ExpandMoreIcon />}
+              aria-controls="panel-content"
+              id="panel-header"
+              sx={{ padding: 0, margin: 0, minWidth: "150px" }}
+            >
+              <Typography
+                variant="h5"
+                fontWeight={200}
+                sx={{
+                  fontFamily: '"Montserrat", sans-serif',
+                  letterSpacing: "0.5px",
+                  color: "#1a2a6c",
+                }}
+              >
+                Geçmiş Öneriler
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ padding: 0 }}>
+              {healthData.recommendationsHistory &&
+              healthData.recommendationsHistory.length > 0 ? (
+                healthData.recommendationsHistory.map((rec, index) => (
+                  <Box
+                    key={index}
+                    sx={{
+                      cursor: "pointer",
+                      padding: "8px",
+                      borderBottom: "1px solid #ccc",
+                    }}
+                    onClick={() => handleSelectRecommendation(rec)}
+                  >
+                    <Typography variant="caption" color="textSecondary">
+                      {rec.date}
+                    </Typography>
+                  </Box>
+                ))
+              ) : (
+                <Typography variant="body2" color="textSecondary">
+                  Önceki öneri bulunamadı.
+                </Typography>
+              )}
+            </AccordionDetails>
+          </Accordion>
+        </Box>
+
+        {/* Kişiselleştirilmiş Öneriler Content */}
         <Grid container spacing={4}>
           <Grid item xs={12}>
-            <Typography
-              variant="h4"
-              fontWeight={700}
-              mb={3}
-              sx={{
-                fontFamily: '"Montserrat", sans-serif',
-                letterSpacing: "0.5px",
-                color: "#1a2a6c",
-              }}
-            >
-              Kişiselleştirilmiş Öneriler
-            </Typography>
             <Grid container spacing={3}>
               {parseRecommendations().map((section, index) => (
                 <Grid item xs={12} md={6} lg={4} key={index}>
@@ -527,7 +608,7 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
                     <CardContent
                       sx={{
                         height: "100%",
-                        p: 3, // Padding artırıldı
+                        p: 3,
                       }}
                     >
                       <Box
@@ -535,7 +616,7 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
                           display: "flex",
                           flexDirection: "column",
                           height: "100%",
-                          gap: 2.5, // Gap artırıldı
+                          gap: 2.5,
                         }}
                       >
                         <Typography
@@ -557,7 +638,7 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
                             : section.heading}
                         </Typography>
                         <Typography
-                          component="div" // div kullanarak içerik için daha fazla kontrol
+                          component="div"
                           sx={{
                             color: "rgba(255,255,255,0.95)",
                             flex: 1,
@@ -566,14 +647,12 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
                             letterSpacing: "0.3px",
                             fontWeight: 400,
                             "& p": {
-                              // paragraflar için
                               mb: 2,
                               "&:last-child": {
                                 mb: 0,
                               },
                             },
                             "& ul, & ol": {
-                              // listeler için
                               pl: 2,
                               mb: 2,
                               "& li": {
@@ -581,7 +660,6 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
                               },
                             },
                             "& strong": {
-                              // vurgular için
                               color: "#fff",
                               fontWeight: 600,
                             },

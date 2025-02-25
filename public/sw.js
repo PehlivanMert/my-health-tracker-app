@@ -1,118 +1,155 @@
-const CACHE_NAME = "wellness-tracker-v4"; // Versiyon güncellendi
+// import ifadesini kaldırın ve vanilya IndexedDB kullanın
+const CACHE_NAME = "wellness-tracker-v4";
+const NOTIFICATION_DB = "scheduled-notifications";
 const ASSETS = [
   "/",
   "/index.html",
   "/public/manifest.json",
   "/public/logo4.jpeg",
   "/offline.html",
-  "/src/App.jsx", // JSX dosya yolu
-  "/src/app.css", // CSS dosya yolu
-  "/src/main.jsx", // Ana entry point
+  "/src/App.jsx",
+  "/src/app.css",
+  "/src/main.jsx",
 ];
 
-// Install event: Cache kaynaklarını yükle
+// Install event
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) => cache.addAll(ASSETS))
-      .then(() => self.skipWaiting())
-      .catch((err) => {
-        console.error("Cache hatası:", err);
-        console.error("Aşağıdaki kaynaklar yüklenemedi:");
-        ASSETS.forEach((asset) => {
-          fetch(asset)
-            .then(() => console.log(`${asset} başarıyla yüklendi`))
-            .catch(() => console.error(`${asset} yüklenemedi`));
-        });
-      })
+    (async () => {
+      // IndexedDB veritabanını açın
+      const request = indexedDB.open(NOTIFICATION_DB, 1);
+
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains("notifications")) {
+          db.createObjectStore("notifications", { keyPath: "id" });
+        }
+      };
+
+      // Varlıkları önbelleğe alma işlemleri burada
+      const cache = await caches.open(CACHE_NAME);
+      await cache.addAll(ASSETS);
+    })()
   );
 });
 
-// Activate event: Eski cache'leri temizle ve kontrolü ele al
+// Veritabanı açmak için yardımcı fonksiyon
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(NOTIFICATION_DB, 1);
+
+    request.onsuccess = (event) => {
+      resolve(event.target.result);
+    };
+
+    request.onerror = (event) => {
+      reject(event.target.error);
+    };
+  });
+}
+
+// Zamanlanmış bildirimleri yönet
+async function scheduleNotificationInSW(notification) {
+  const db = await openDB();
+  const transaction = db.transaction("notifications", "readwrite");
+  const store = transaction.objectStore("notifications");
+
+  store.put(notification);
+
+  const now = Date.now();
+  const timeout = notification.time - now;
+
+  if (timeout > 0) {
+    const timeoutId = setTimeout(() => {
+      triggerNotification(notification.title, notification.time);
+
+      // Bildirimi veritabanından sil
+      const deleteTransaction = db.transaction("notifications", "readwrite");
+      const deleteStore = deleteTransaction.objectStore("notifications");
+      deleteStore.delete(notification.id);
+    }, timeout);
+
+    // Timeout ID'yi sakla
+    notification.timeoutId = timeoutId;
+    store.put(notification);
+  }
+}
+
+// Uygulama açıldığında eski bildirimleri kontrol et
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((cacheNames) => {
-        return Promise.all(
-          cacheNames
-            .filter((cacheName) => cacheName !== CACHE_NAME)
-            .map((cacheName) => caches.delete(cacheName))
-        );
-      })
-      .then(() => self.clients.claim())
+    (async () => {
+      const db = await openDB();
+      const transaction = db.transaction("notifications", "readonly");
+      const store = transaction.objectStore("notifications");
+      const notifications = await store.getAll();
+
+      notifications.forEach(async (notification) => {
+        const timeout = notification.time - Date.now();
+
+        if (timeout > 0) {
+          const timeoutId = setTimeout(() => {
+            triggerNotification(notification.title, notification.time);
+
+            // Bildirimi veritabanından sil
+            const deleteTransaction = db.transaction(
+              "notifications",
+              "readwrite"
+            );
+            const deleteStore = deleteTransaction.objectStore("notifications");
+            deleteStore.delete(notification.id);
+          }, timeout);
+
+          // Timeout ID'yi güncelle
+          notification.timeoutId = timeoutId;
+          const updateTransaction = db.transaction(
+            "notifications",
+            "readwrite"
+          );
+          const updateStore = updateTransaction.objectStore("notifications");
+          updateStore.put(notification);
+        } else {
+          // Zamanı geçmiş bildirimleri sil
+          const deleteTransaction = db.transaction(
+            "notifications",
+            "readwrite"
+          );
+          const deleteStore = deleteTransaction.objectStore("notifications");
+          deleteStore.delete(notification.id);
+        }
+      });
+    })()
   );
 });
 
-// Fetch event: İstekleri yönet ve cache'i kullan
-self.addEventListener("fetch", (event) => {
-  const request = event.request;
-  // Yalnızca GET isteklerini ve http/https şemalarını işle
-  if (request.method !== "GET" || !request.url.startsWith("http")) {
-    return;
+// Mesaj alıcısı
+self.addEventListener("message", (event) => {
+  if (event.data.type === "SCHEDULE_NOTIFICATION") {
+    scheduleNotificationInSW(event.data.notification);
   }
 
-  event.respondWith(
-    caches.match(request).then((response) => {
-      if (response) {
-        return response; // Cache'de varsa döndür
-      }
+  if (event.data.type === "CANCEL_NOTIFICATION") {
+    openDB().then((db) => {
+      const transaction = db.transaction("notifications", "readonly");
+      const store = transaction.objectStore("notifications");
 
-      return fetch(request)
-        .then((fetchResponse) => {
-          // Eğer geçerli bir yanıt değilse, yanıtı önbelleğe almadan döndür
-          if (
-            !fetchResponse ||
-            fetchResponse.status !== 200 ||
-            fetchResponse.type !== "basic"
-          ) {
-            return fetchResponse;
-          }
+      store.get(event.data.id).then((notification) => {
+        if (notification?.timeoutId) {
+          clearTimeout(notification.timeoutId);
+        }
 
-          // Kopyasını cache'e kaydet
-          const responseToCache = fetchResponse.clone();
-          caches
-            .open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(request, responseToCache);
-            })
-            .catch((error) => {
-              console.error("Cache put hatası:", error);
-            });
-
-          return fetchResponse;
-        })
-        .catch(() => {
-          // Çevrimdışı sayfayı göster
-          return caches.match("/offline.html");
-        });
-    })
-  );
+        const deleteTransaction = db.transaction("notifications", "readwrite");
+        const deleteStore = deleteTransaction.objectStore("notifications");
+        deleteStore.delete(event.data.id);
+      });
+    });
+  }
 });
 
-// Push Notification Handling
-self.addEventListener("push", (event) => {
-  let data = {};
-  try {
-    data = event.data.json();
-  } catch (error) {
-    console.error("Push verisi okunamadı:", error);
-  }
-  const options = {
-    body: data.body || "Bildirim içeriği mevcut değil.",
+// Eksik triggerNotification fonksiyonu
+function triggerNotification(title, time) {
+  self.registration.showNotification(title, {
+    body: `Hatırlatma zamanı: ${new Date(time).toLocaleTimeString()}`,
     icon: "/public/logo4.jpeg",
-    badge: "/public/logo4.jpeg",
-    vibrate: [200, 100, 200],
-    data: { url: data.url || "/" },
-  };
-  event.waitUntil(
-    self.registration.showNotification(data.title || "Bildirim", options)
-  );
-});
-
-// Notification click event: Bildirim tıklandığında belirlenen URL'yi aç
-self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
-  event.waitUntil(clients.openWindow(event.notification.data.url));
-});
+  });
+}

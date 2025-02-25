@@ -13,39 +13,18 @@ export const requestNotificationPermission = async () => {
   }
 };
 
-export const triggerNotification = (title, time) => {
+const triggerNotification = (title, time) => {
   if (Notification.permission === "granted") {
-    try {
-      const audio = new Audio("/notification.mp3");
-      audio.play().catch((error) => console.error("Ses çalınamadı:", error));
-
-      new Notification(`🔔 Hatırlatıcı: ${title}`, {
-        body: `⏰ Başlangıç saati: ${time}`,
-        icon: "/logo192.svg",
-        vibrate: [200, 100, 200],
-        requireInteraction: true,
-      });
-
-      // Bildirim badge'i
-      const notificationBadge = document.createElement("div");
-      notificationBadge.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background: var(--primary-accent);
-        color: var(--body-color);
-        padding: 12px 18px;
-        border-radius: 8px;
-        box-shadow: var(--box-shadow);
-        animation: slideIn 0.3s ease-out;
-      `;
-      notificationBadge.textContent = "Yeni hatırlatıcı aktif!";
-      document.body.appendChild(notificationBadge);
-
-      setTimeout(() => notificationBadge.remove(), 3000);
-    } catch (error) {
-      console.error("Bildirim hatası:", error);
-    }
+    self.registration.showNotification(`🔔 Hatırlatıcı: ${title}`, {
+      body: `⏰ Başlangıç saati: ${format(new Date(time), "HH:mm")}`,
+      icon: "/logo192.svg",
+      vibrate: [200, 100, 200],
+      requireInteraction: true,
+      actions: [
+        { action: "snooze", title: "10 Dakika Ertele" },
+        { action: "dismiss", title: "Kapat" },
+      ],
+    });
   }
 };
 
@@ -56,29 +35,29 @@ export const notificationIntervals = {
   "on-time": 0,
 };
 
-export const scheduleNotification = (title, startTime, notifyType) => {
+export const scheduleNotification = async (title, startTime, notifyType) => {
   if (!notifyType || notifyType === "none") return null;
 
   const interval = notificationIntervals[notifyType];
   const notificationTime = new Date(startTime - interval);
-  let timeoutId = null;
+  const notificationId = `notif-${Date.now()}-${Math.random()
+    .toString(36)
+    .substr(2, 9)}`;
 
-  if (notifyType === "on-time") {
-    timeoutId = setTimeout(() => {
-      triggerNotification(title, format(startTime, "HH:mm"));
-    }, startTime - Date.now());
-  } else if (notificationTime > Date.now()) {
-    const timeoutDuration = notificationTime - Date.now();
-    timeoutId = setTimeout(() => {
-      triggerNotification(title, format(startTime, "HH:mm"));
-    }, timeoutDuration);
+  if ("serviceWorker" in navigator) {
+    const registration = await navigator.serviceWorker.ready;
+    registration.active.postMessage({
+      type: "SCHEDULE_NOTIFICATION",
+      notification: {
+        id: notificationId,
+        title: title,
+        time: notificationTime.getTime(),
+        body: `⏰ Başlangıç saati: ${format(startTime, "HH:mm")}`,
+      },
+    });
   }
 
-  if (timeoutId) {
-    scheduledTimeouts[timeoutId] = true;
-    return timeoutId;
-  }
-  return null;
+  return notificationId;
 };
 
 // Bildirim gösterme fonksiyonu
@@ -131,10 +110,13 @@ export const showToast = (message, type = "info") => {
 };
 
 // Bildirim iptal fonksiyonu
-export const cancelScheduledNotifications = (timeoutId) => {
-  if (timeoutId && scheduledTimeouts[timeoutId]) {
-    clearTimeout(timeoutId);
-    delete scheduledTimeouts[timeoutId];
+export const cancelScheduledNotifications = async (notificationId) => {
+  if ("serviceWorker" in navigator) {
+    const registration = await navigator.serviceWorker.ready;
+    registration.active.postMessage({
+      type: "CANCEL_NOTIFICATION",
+      id: notificationId,
+    });
   }
 };
 

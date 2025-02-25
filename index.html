@@ -6,7 +6,19 @@
     <link rel="manifest" href="/public/manifest.json" />
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/public/sw.js");
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/public/sw.js")
+            .then((registration) => {
+              console.log(
+                "Servis worker başarıyla kaydedildi:",
+                registration.scope
+              );
+            })
+            .catch((error) => {
+              console.error("Servis worker kaydında hata:", error);
+            });
+        });
       }
     </script>
 

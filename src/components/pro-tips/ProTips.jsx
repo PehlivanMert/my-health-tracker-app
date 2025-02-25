@@ -114,17 +114,6 @@ const dialogPaperSx = {
   p: 2,
 };
 
-const TASTY_API_URL = "https://tasty.p.rapidapi.com/recipes/list";
-
-const API_OPTIONS = {
-  headers: {
-    "X-RapidAPI-Key": import.meta.env.VITE_XRAPID_API_KEY,
-    "X-RapidAPI-Host": "tasty.p.rapidapi.com",
-  },
-  params: { from: "0", size: "6", q: " " },
-  timeout: 10000,
-};
-
 const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
   const [openModal, setOpenModal] = useState(false);
   const [openTastyModal, setOpenTastyModal] = useState(false);
@@ -133,7 +122,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [tastyRecipes, setTastyRecipes] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("Tarif Ara");
+  const [searchQuery, setSearchQuery] = useState("");
   const [editData, setEditData] = useState({
     index: null,
     groupIndex: null,
@@ -142,61 +131,105 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
   const [selectedTag, setSelectedTag] = useState(""); // Yeni: kategori/etiket seçimi
   const TAG_OPTIONS = [
     { value: "", label: "Tümü" },
-    { value: "vegan", label: "Vegan" },
     { value: "vegetarian", label: "Vejetaryen" },
-    { value: "dessert", label: "Tatlı" },
-    { value: "breakfast", label: "Kahvaltı" },
-    { value: "dinner", label: "Akşam Yemeği" },
-    { value: "gluten-free", label: "Glutensiz" },
-    { value: "low-carb", label: "Düşük Karbonhidrat" },
-    { value: "low-fat", label: "Düşük Yağ" },
-    { value: "low-sugar", label: "Düşük Şeker" },
-    { value: "high-protein", label: "Yüksek Protein" },
-    { value: "quick", label: "Hızlı" },
-    { value: "easy", label: "Kolay" },
-    { value: "healthy", label: "Sağlıklı" },
-    { value: "comfort-food", label: "Rahat Yemek" },
+    { value: "vegan", label: "Vegan" },
+    { value: "gluten_free", label: "Glutensiz" },
+    { value: "ketogenic", label: "Ketojenik" },
+    { value: "low_carb", label: "Düşük Karbonhidrat" },
+    { value: "low_fat", label: "Düşük Yağ" },
   ];
 
-  const fetchTastyRecipes = async () => {
-    if (!searchQuery.trim()) {
-      toast.info("Lütfen arama terimi giriniz");
+  const translateText = async (text, targetLang = "en") => {
+    try {
+      const response = await axios.post(
+        "https://google-translate113.p.rapidapi.com/api/v1/translator/text",
+        new URLSearchParams({ from: "auto", to: targetLang, text }),
+        {
+          headers: {
+            "x-rapidapi-key": import.meta.env.VITE_XRAPID_API_KEY,
+            "x-rapidapi-host": "google-translate113.p.rapidapi.com",
+          },
+        }
+      );
+      return response.data.trans;
+    } catch (error) {
+      return text;
+    }
+  };
+
+  const fetchRecipes = async () => {
+    if (!searchQuery.trim() && !selectedTag.trim()) {
+      toast.info("Lütfen geçerli bir arama terimi giriniz");
       return;
     }
+
     try {
       setLoading(true);
-      setError("");
-      // Rastgele offset oluşturuyoruz (örneğin 0 ile 100 arasında)
-      const randomOffset = Math.floor(Math.random() * 100);
-      const params = {
-        from: randomOffset,
-        size: 6,
-        q: searchQuery,
-      };
-      // Eğer kullanıcı bir kategori/etiket seçtiyse bunu ekle
-      if (selectedTag.trim()) {
-        params.tags = selectedTag;
-      }
-      const response = await axios.get(TASTY_API_URL, {
-        headers: {
-          "X-RapidAPI-Key": import.meta.env.VITE_XRAPID_API_KEY,
-          "X-RapidAPI-Host": "tasty.p.rapidapi.com",
-        },
-        params,
-        timeout: 10000,
+      const translatedQuery = await translateText(searchQuery.trim(), "en");
+
+      const params = new URLSearchParams({
+        query: translatedQuery.replace(/%20/g, " "),
+        diet: selectedTag,
+        max_results: 10,
+        offset: Math.floor(Math.random() * 50),
+        timestamp: Date.now(),
       });
-      setTastyRecipes(response.data.results || []);
-    } catch (err) {
-      setError(err.message || "Tarifler yüklenirken hata oluştu");
-      toast.error("Tarif verileri alınamadı");
+
+      const { data } = await axios.get(
+        "https://recipe-by-api-ninjas.p.rapidapi.com/v1/recipe",
+        {
+          headers: {
+            "X-RapidAPI-Key": import.meta.env.VITE_XRAPID_API_KEY,
+            "X-RapidAPI-Host": "recipe-by-api-ninjas.p.rapidapi.com",
+          },
+          params,
+        }
+      );
+
+      const processedRecipes = await Promise.all(
+        data.map(async (recipe) => ({
+          ...recipe,
+          translatedTitle: await translateText(recipe.title, "tr"),
+          ingredients: (
+            await translateText(recipe.ingredients?.replace(/\n/g, "|"), "tr")
+          ).split("|"),
+          instructions: (
+            await translateText(recipe.instructions?.replace(/\n/g, "|"), "tr")
+          ).split("|"),
+        }))
+      );
+
+      setTastyRecipes(processedRecipes);
+    } catch (error) {
+      toast.error("Tarif bulunamadı");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchTastyRecipes();
-  }, []);
+  const handleAddRecipe = async (recipeItem) => {
+    try {
+      const newRecipe = {
+        title: recipeItem.translatedTitle,
+        ingredients: recipeItem.ingredients,
+        preparation: recipeItem.instructions,
+        id: Date.now().toString(),
+      };
+
+      const updated = {
+        ...additionalInfo,
+        recipes: [...(additionalInfo.recipes || []), newRecipe],
+      };
+
+      setAdditionalInfo(updated);
+      handleSaveToFirebase(updated);
+      toast.success("Tarif başarıyla eklendi!");
+      setOpenTastyModal(false);
+    } catch (error) {
+      console.error("Tarif ekleme hatası:", error);
+      toast.error("Tarif eklenirken hata oluştu");
+    }
+  };
 
   const handleSaveToFirebase = async (updatedData) => {
     if (!user) return;
@@ -322,7 +355,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
           alignItems="center"
           height={60}
         >
-          Tarif Ara (Tasty)
+          Tarif Ara
           <IconButton onClick={() => setOpenTastyModal(false)}>
             <Close sx={{ color: "#fff" }} />
           </IconButton>
@@ -377,7 +410,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
           <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
             <Button
               variant="contained"
-              onClick={fetchTastyRecipes}
+              onClick={fetchRecipes}
               sx={{
                 minWidth: "120px",
                 height: "40px",
@@ -387,7 +420,6 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
             </Button>
           </Box>
         </Box>
-
         {/* Yükleniyor ve Hata Durumları */}
         {loading && (
           <Box sx={{ display: "flex", justifyContent: "center", my: 3 }}>
@@ -399,36 +431,45 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
             {error}
           </Alert>
         )}
-
         {/* Tarif Sonuçları */}
         <Grid container spacing={3}>
-          {tastyRecipes.slice(0, 6).map((recipe) => (
-            <Grid item xs={12} md={6} key={recipe.id}>
-              <Card sx={cardSx}>
+          {tastyRecipes.slice(0, 6).map((recipeItem) => (
+            <Grid
+              item
+              xs={12}
+              md={6}
+              key={recipeItem.title + recipeItem.servings}
+            >
+              <Card
+                sx={{
+                  ...cardSx,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  height: "100%",
+                }}
+              >
                 <CardContent>
-                  <Typography variant="h6" sx={{ color: "#fff" }}>
-                    {recipe.name}
+                  <Typography variant="h6" sx={{ color: "#fff", mb: 1 }}>
+                    {recipeItem.translatedTitle}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {recipe.description}
+                  <Typography variant="body2" sx={{ color: "#90CAF9" }}>
+                    {recipeItem.servings} porsiyon •
+                    {recipeItem.cook_time_minutes} dakika
                   </Typography>
                 </CardContent>
-                <CardActions>
+
+                <CardActions sx={{ justifyContent: "flex-end" }}>
                   <Button
-                    size="small"
                     variant="outlined"
-                    onClick={() => {
-                      const newRecipe = {
-                        title: recipe.name,
-                        ingredients:
-                          recipe.sections?.[0]?.components?.map(
-                            (c) => c.raw_text
-                          ) || [],
-                        preparation:
-                          recipe.instructions?.map((i) => i.display_text) || [],
-                      };
-                      handleAddItem("recipes", newRecipe);
-                      setOpenTastyModal(false);
+                    size="small"
+                    onClick={() => handleAddRecipe(recipeItem)}
+                    sx={{
+                      color: "#fff",
+                      borderColor: "#90CAF9",
+                      "&:hover": {
+                        backgroundColor: "rgba(144, 202, 249, 0.1)",
+                      },
                     }}
                   >
                     Ekle

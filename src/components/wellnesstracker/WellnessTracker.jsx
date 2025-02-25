@@ -17,6 +17,9 @@ import {
   Container,
   useTheme,
   alpha,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import { styled, keyframes } from "@mui/material/styles";
 import Confetti from "react-confetti";
@@ -38,6 +41,7 @@ import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import WaterDropIcon from "@mui/icons-material/WaterDrop";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ResponsiveContainer,
@@ -50,6 +54,8 @@ import {
   Legend,
   BarChart,
   Bar,
+  RadialBarChart,
+  RadialBar,
 } from "recharts";
 import styles from "./waterAnimation.module.css";
 
@@ -143,12 +149,45 @@ const WaterContainer = styled(Box)(({ theme }) => ({
   boxShadow: "inset 0 0 50px rgba(0, 0, 0, 0.2)",
 }));
 
-const FloatingIcon = styled(Box)(({ delay = 0 }) => ({
-  animation: `${float} 3s ease-in-out infinite`,
-  animationDelay: `${delay}s`,
+// Özel StyledAccordionSummary: Accordion kapalıyken AnimatedButton benzeri görünsün
+const StyledAccordionSummary = styled(AccordionSummary)(({ theme }) => ({
+  background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
+  borderRadius: 25,
+  boxShadow: "0 3px 5px 2px rgba(33, 150, 243, 0.3)",
+  color: "white",
+  padding: "12px 35px",
+  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+  position: "relative",
+  overflow: "hidden",
+  cursor: "pointer",
+  "&:hover": {
+    transform: "scale(1.05)",
+    boxShadow: "0 5px 15px 3px rgba(33, 150, 243, 0.4)",
+  },
+  "&::after": {
+    content: '""',
+    position: "absolute",
+    top: "-50%",
+    left: "-50%",
+    width: "200%",
+    height: "200%",
+    background:
+      "linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent)",
+    transform: "rotate(45deg)",
+    animation: `${ripple} 2s infinite`,
+  },
+  // Accordion açıldığında (expanded) header sadeleşsin
+  "&.Mui-expanded": {
+    background: "transparent",
+    boxShadow: "none",
+    transform: "none",
+    "&::after": {
+      display: "none",
+    },
+  },
 }));
 
-// Color util
+// Color utility
 const getVitaminColor = (remainingPercentage) => {
   if (remainingPercentage > 66) return "#2196F3";
   if (remainingPercentage > 33) return "#00BCD4";
@@ -180,10 +219,16 @@ const Achievement = ({ message }) => (
 );
 
 // VitaminCard Component
-const VitaminCard = ({ supplement, onConsume, onDelete }) => {
+const VitaminCard = ({
+  supplement,
+  onConsume,
+  onDelete,
+  consumedToday = 0,
+}) => {
   const remainingPercentage =
     (supplement.quantity / supplement.initialQuantity) * 100;
   const cardColor = getVitaminColor(remainingPercentage);
+  const remainingForToday = Math.max(0, supplement.dailyUsage - consumedToday);
 
   return (
     <motion.div
@@ -222,38 +267,18 @@ const VitaminCard = ({ supplement, onConsume, onDelete }) => {
               variant="body1"
               sx={{ color: "#fff", opacity: 0.9, mb: 1 }}
             >
-              Remaining: {supplement.quantity} / {supplement.initialQuantity}
+              Kalan: {supplement.quantity} / {supplement.initialQuantity}
             </Typography>
             <Typography variant="body1" sx={{ color: "#fff", opacity: 0.9 }}>
-              Days Left:{" "}
+              Tahmini Kalan Gün:{" "}
               {Math.floor(supplement.quantity / supplement.dailyUsage)}
             </Typography>
-          </Box>
-
-          <Box
-            sx={{
-              position: "relative",
-              height: "6px",
-              background: "rgba(255,255,255,0.1)",
-              borderRadius: "3px",
-              mb: 3,
-            }}
-          >
-            <Box
-              sx={{
-                position: "absolute",
-                left: 0,
-                top: 0,
-                height: "100%",
-                width: `${remainingPercentage}%`,
-                background: `linear-gradient(90deg, ${cardColor}, ${alpha(
-                  cardColor,
-                  0.7
-                )})`,
-                borderRadius: "3px",
-                transition: "width 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
-              }}
-            />
+            <Typography
+              variant="body1"
+              sx={{ color: "#fff", opacity: 0.9, mt: 1 }}
+            >
+              Bugün: Tüketilen {consumedToday} / Kalan {remainingForToday}
+            </Typography>
           </Box>
 
           <AnimatedButton
@@ -262,7 +287,7 @@ const VitaminCard = ({ supplement, onConsume, onDelete }) => {
             disabled={supplement.quantity <= 0}
             startIcon={<EmojiEventsIcon />}
           >
-            Take Daily Dose
+            Günlük Dozu Al
           </AnimatedButton>
         </CardContent>
       </GlowingCard>
@@ -314,92 +339,104 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   const timerRef = useRef(null);
 
   const getWaterDocRef = () => {
-    if (!user) return null;
     return doc(db, "users", user.uid, "water", "current");
   };
 
   const fetchWaterData = async () => {
-    if (!user) return;
+    const ref = getWaterDocRef();
+    const docSnap = await getDoc(ref);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      setWaterData({
+        waterIntake: data.waterIntake || 0,
+        dailyWaterTarget: data.dailyWaterTarget || 2000,
+        glassSize: data.glassSize || 250,
+        history: data.history
+          ? data.history.sort((a, b) => new Date(a.date) - new Date(b.date))
+          : [],
+        yesterdayWaterIntake: data.yesterdayWaterIntake || 0,
+      });
+    }
+  };
+
+  const resetDailyWaterIntake = async () => {
     try {
-      const docSnap = await getDoc(getWaterDocRef());
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        const sortedHistory = (data.history || []).sort(
-          (a, b) => new Date(a.date) - new Date(b.date)
+      // Türkiye saat dilimi için tarih ayarı
+      const now = new Date(
+        new Date().toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" })
+      );
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+
+      const yesterdayStr = yesterday.toISOString().split("T")[0];
+      const todayStr = now.toISOString().split("T")[0];
+
+      // Firestore transaction ile güvenli güncelleme
+      await runTransaction(db, async (transaction) => {
+        const ref = getWaterDocRef();
+        const doc = await transaction.get(ref);
+
+        if (!doc.exists()) throw "Document does not exist!";
+
+        const currentData = doc.data();
+        const newHistory = currentData.history.filter(
+          (entry) => entry.date !== yesterdayStr && entry.date !== todayStr
         );
-        const newWaterData = {
-          waterIntake: data.waterIntake || 0,
-          dailyWaterTarget: data.dailyWaterTarget || 2000,
-          glassSize: data.glassSize || 250,
-          history: sortedHistory,
-          yesterdayWaterIntake: data.yesterdayWaterIntake || 0,
-        };
-        setWaterData(newWaterData);
-      }
+
+        transaction.update(ref, {
+          history: [
+            ...newHistory,
+            {
+              date: yesterdayStr,
+              intake: currentData.waterIntake,
+            },
+          ],
+          yesterdayWaterIntake: currentData.waterIntake,
+          waterIntake: 0,
+        });
+      });
+
+      await fetchWaterData();
     } catch (error) {
-      console.error("Error fetching water data:", error);
+      console.error("Reset error:", error);
     }
   };
 
   useEffect(() => {
-    if (user) fetchWaterData();
+    // Eğer user yoksa hiçbir hook çalıştırılmasın
+    if (!user) return;
+    fetchWaterData();
+    const scheduleMidnightReset = () => {
+      const now = new Date();
+      const nextMidnight = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 1
+      );
+      const msUntilMidnight = nextMidnight - now;
+      timerRef.current = setTimeout(() => {
+        resetDailyWaterIntake();
+        scheduleMidnightReset();
+      }, msUntilMidnight);
+    };
+    scheduleMidnightReset();
+    return () => clearTimeout(timerRef.current);
   }, [user]);
 
   useEffect(() => {
     if (onWaterDataChange) onWaterDataChange(waterData);
   }, [waterData, onWaterDataChange]);
 
-  useEffect(() => {
-    const scheduleMidnightReset = () => {
-      const now = new Date();
-      const nextMidnight = new Date(now);
-      nextMidnight.setHours(24, 0, 0, 0);
-      const msUntilMidnight = nextMidnight - now;
-
-      timerRef.current = setTimeout(() => {
-        resetDailyWaterIntake();
-        scheduleMidnightReset();
-      }, msUntilMidnight);
-    };
-
-    scheduleMidnightReset();
-    return () => clearTimeout(timerRef.current);
-  }, [user]);
-
-  const resetDailyWaterIntake = async () => {
-    if (!user) return;
-    try {
-      const todayStr = new Date().toISOString().split("T")[0];
-      const newHistory = [
-        ...waterData.history.filter((entry) => entry.date !== todayStr),
-        { date: todayStr, intake: waterData.waterIntake },
-      ];
-
-      await setDoc(
-        getWaterDocRef(),
-        {
-          yesterdayWaterIntake: waterData.waterIntake,
-          waterIntake: 0,
-          history: newHistory,
-        },
-        { merge: true }
-      );
-      fetchWaterData();
-    } catch (error) {
-      console.error("Error resetting water intake:", error);
-    }
-  };
-
   const handleAddWater = async () => {
-    if (!user) return;
     const newIntake = waterData.waterIntake + waterData.glassSize;
     const isGoalAchieved =
       newIntake >= waterData.dailyWaterTarget &&
       waterData.waterIntake < waterData.dailyWaterTarget;
 
+    const ref = getWaterDocRef();
     try {
       await setDoc(
-        getWaterDocRef(),
+        ref,
         {
           waterIntake: newIntake,
           dailyWaterTarget: waterData.dailyWaterTarget,
@@ -424,12 +461,9 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
 
   const handleRemoveWater = async () => {
     const newIntake = Math.max(0, waterData.waterIntake - waterData.glassSize);
+    const ref = getWaterDocRef();
     try {
-      await setDoc(
-        getWaterDocRef(),
-        { waterIntake: newIntake },
-        { merge: true }
-      );
+      await setDoc(ref, { waterIntake: newIntake }, { merge: true });
       await fetchWaterData();
     } catch (error) {
       console.error("Error updating water intake:", error);
@@ -437,12 +471,9 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   };
 
   const handleWaterSettingChange = async (field, value) => {
+    const ref = getWaterDocRef();
     try {
-      await setDoc(
-        getWaterDocRef(),
-        { [field]: Number(value) },
-        { merge: true }
-      );
+      await setDoc(ref, { [field]: Number(value) }, { merge: true });
       await fetchWaterData();
     } catch (error) {
       console.error("Error updating water settings:", error);
@@ -482,7 +513,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
             transition: "transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
             transform: `scaleY(${fillPercentage / 100})`,
             transformOrigin: "bottom",
-            overflow: "hidden", // Ekledik
+            overflow: "hidden",
           }}
         >
           <Lottie
@@ -561,7 +592,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         <Grid container spacing={2}>
           <Grid item xs={6}>
             <TextField
-              label="Glass Size (ml)"
+              label="Bardak Boyutu (ml)"
               type="number"
               value={waterData.glassSize}
               onChange={(e) =>
@@ -587,7 +618,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           </Grid>
           <Grid item xs={6}>
             <TextField
-              label="Daily Water Goal (ml)"
+              label="Günlük Su Hedefi (ml)"
               type="number"
               value={waterData.dailyWaterTarget}
               onChange={(e) =>
@@ -629,26 +660,97 @@ const WaterConsumptionChart = ({ waterHistory }) => {
   }));
 
   return (
-    <Box sx={{ background: "#fff", borderRadius: 2, p: 2 }}>
-      <Typography variant="h6" textAlign="center" mb={2}>
-        Son 7 Gün Su Tüketimi
-      </Typography>
-      <ResponsiveContainer width="100%" height={250}>
-        <LineChart data={formattedData}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" />
-          <YAxis />
-          <RechartsTooltip />
-          <Legend />
-          <Line
-            type="monotone"
-            dataKey="intake"
-            stroke="#8884d8"
-            activeDot={{ r: 8 }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </Box>
+    <GlowingCard glowColor="#2196F322">
+      <CardContent>
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: 700,
+            color: "#fff",
+            mb: 3,
+            textAlign: "center",
+          }}
+        >
+          Son 7 Gün Su Tüketimi
+        </Typography>
+
+        {formattedData.length > 0 ? (
+          <ResponsiveContainer width="100%" height={250}>
+            <AreaChart data={formattedData}>
+              <defs>
+                <linearGradient id="waterColor" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#2196F3" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="#2196F3" stopOpacity={0.1} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="rgba(255,255,255,0.2)"
+              />
+              <XAxis
+                dataKey="date"
+                tick={{ fill: "#fff", fontSize: 12 }}
+                stroke="rgba(255,255,255,0.5)"
+              />
+              <YAxis
+                tick={{ fill: "#fff", fontSize: 12 }}
+                stroke="rgba(255,255,255,0.5)"
+              />
+              <RechartsTooltip
+                contentStyle={{
+                  backgroundColor: "rgba(0, 10, 50, 0.8)",
+                  border: "none",
+                  borderRadius: "10px",
+                  color: "#fff",
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="intake"
+                stroke="#4dabf5"
+                fillOpacity={1}
+                fill="url(#waterColor)"
+                strokeWidth={3}
+                activeDot={{
+                  r: 8,
+                  fill: "#fff",
+                  stroke: "#2196F3",
+                  strokeWidth: 2,
+                }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <Box
+            sx={{
+              height: 250,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "column",
+              backgroundColor: "rgba(255, 255, 255, 0.1)",
+              borderRadius: 2,
+              padding: 2,
+            }}
+          >
+            <WaterDropIcon
+              sx={{ fontSize: 60, color: "rgba(255, 255, 255, 0.7)", mb: 2 }}
+            />
+            <Typography variant="body1" color="#fff" textAlign="center">
+              Henüz su tüketim verisi bulunmamaktadır
+            </Typography>
+            <Typography
+              variant="body2"
+              color="rgba(255, 255, 255, 0.7)"
+              mt={1}
+              textAlign="center"
+            >
+              Su içmeye başladığınızda burada grafiğiniz görünecektir
+            </Typography>
+          </Box>
+        )}
+      </CardContent>
+    </GlowingCard>
   );
 };
 
@@ -658,14 +760,13 @@ const SupplementConsumptionChart = ({ user }) => {
   const theme = useTheme();
 
   const getConsumptionDocRef = () => {
-    if (!user) return null;
     return doc(db, "users", user.uid, "stats", "supplementConsumption");
   };
 
   const fetchConsumptionData = async () => {
-    if (!user) return;
+    const ref = getConsumptionDocRef();
     try {
-      const docSnap = await getDoc(getConsumptionDocRef());
+      const docSnap = await getDoc(ref);
       if (docSnap.exists()) {
         const data = docSnap.data();
         const sortedDates = Object.keys(data).sort(
@@ -681,7 +782,6 @@ const SupplementConsumptionChart = ({ user }) => {
 
         const chartData = sortedDates.map((date) => {
           const dayStats = data[date];
-          let total = 0;
           const dayData = {
             date: new Date(date + "T00:00:00").toLocaleDateString("tr-TR"),
           };
@@ -689,10 +789,8 @@ const SupplementConsumptionChart = ({ user }) => {
           allSuppNames.forEach((suppName) => {
             const count = dayStats[suppName] || 0;
             dayData[suppName] = count;
-            total += count;
           });
 
-          dayData.total = total;
           return dayData;
         });
 
@@ -708,52 +806,125 @@ const SupplementConsumptionChart = ({ user }) => {
   }, [user]);
 
   const colors = [
-    "#4caf50",
-    "#ff9800",
-    "#f44336",
-    "#2196f3",
-    "#9c27b0",
-    "#00bcd4",
+    "#4CAF50", // Green
+    "#FF9800", // Orange
+    "#F44336", // Red
+    "#2196F3", // Blue
+    "#9C27B0", // Purple
+    "#00BCD4", // Cyan
   ];
 
   return (
-    <Box sx={{ background: "#fff", borderRadius: 2, p: 2 }}>
-      <Typography variant="h6" textAlign="center" mb={2}>
-        Takviye Kullanım İstatistikleri
-      </Typography>
-      <ResponsiveContainer width="100%" height={250}>
-        <BarChart data={consumptionData}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" />
-          <YAxis />
-          <RechartsTooltip />
-          <Legend />
-          {consumptionData.length > 0 &&
-            Array.from(
-              new Set(
-                consumptionData.flatMap((day) =>
-                  Object.keys(day).filter(
-                    (key) => key !== "date" && key !== "total"
-                  )
-                )
-              )
-            ).map((key, index) => (
-              <Bar
-                key={key}
-                dataKey={key}
-                fill={colors[index % colors.length]}
-                name={key}
+    <GlowingCard glowColor="#3F51B522">
+      <CardContent>
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: 700,
+            color: "#fff",
+            mb: 3,
+            textAlign: "center",
+          }}
+        >
+          Takviye Kullanım İstatistikleri
+        </Typography>
+
+        {consumptionData.length > 0 ? (
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart
+              data={consumptionData}
+              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="rgba(255,255,255,0.2)"
               />
-            ))}
-          <Bar dataKey="total" fill="#607d8b" name="Toplam" />
-        </BarChart>
-      </ResponsiveContainer>
-    </Box>
+              <XAxis
+                dataKey="date"
+                tick={{ fill: "#fff", fontSize: 12 }}
+                stroke="rgba(255,255,255,0.5)"
+              />
+              <YAxis
+                tick={{ fill: "#fff", fontSize: 12 }}
+                stroke="rgba(255,255,255,0.5)"
+              />
+              <RechartsTooltip
+                contentStyle={{
+                  backgroundColor: "rgba(0, 10, 50, 0.8)",
+                  border: "none",
+                  borderRadius: "10px",
+                  color: "#fff",
+                }}
+                itemStyle={{ color: "#fff" }}
+              />
+              <Legend
+                wrapperStyle={{ color: "#fff" }}
+                formatter={(value) => (
+                  <span style={{ color: "#fff" }}>{value}</span>
+                )}
+              />
+              {consumptionData.length > 0 &&
+                Array.from(
+                  new Set(
+                    consumptionData.flatMap((day) =>
+                      Object.keys(day).filter(
+                        (key) => key !== "date" && key !== "total"
+                      )
+                    )
+                  )
+                ).map((key, index) => (
+                  <Bar
+                    key={key}
+                    dataKey={key}
+                    fill={colors[index % colors.length]}
+                    name={key}
+                    radius={[4, 4, 0, 0]}
+                    animationDuration={1500}
+                    animationEasing="ease-out"
+                    // Remove the stackId to make bars grouped instead of stacked
+                  />
+                ))}
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <Box
+            sx={{
+              height: 250,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "column",
+              backgroundColor: "rgba(255, 255, 255, 0.1)",
+              borderRadius: 2,
+              padding: 2,
+            }}
+          >
+            <EmojiEventsIcon
+              sx={{ fontSize: 60, color: "rgba(255, 255, 255, 0.7)", mb: 2 }}
+            />
+            <Typography variant="body1" color="#fff" textAlign="center">
+              Henüz takviye kullanım verisi bulunmamaktadır
+            </Typography>
+            <Typography
+              variant="body2"
+              color="rgba(255, 255, 255, 0.7)"
+              mt={1}
+              textAlign="center"
+            >
+              Takviyeleri kullanmaya başladığınızda burada istatistikleriniz
+              görünecektir
+            </Typography>
+          </Box>
+        )}
+      </CardContent>
+    </GlowingCard>
   );
 };
-
-// Ana WellnessTracker bileşeni
+// Main WellnessTracker Component
 const WellnessTracker = ({ user }) => {
+  // Eğer user yoksa, bileşenin hiç render edilmemesi için erken dönüş yapıyoruz.
+  if (!user) return <div>Lütfen giriş yapın</div>;
+
   const [supplements, setSupplements] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [newSupplement, setNewSupplement] = useState({
@@ -762,16 +933,18 @@ const WellnessTracker = ({ user }) => {
     dailyUsage: 1,
   });
   const [waterData, setWaterData] = useState({ history: [] });
+  const [supplementConsumptionToday, setSupplementConsumptionToday] = useState(
+    {}
+  );
 
   const getSupplementsRef = () => {
-    if (!user) return null;
     return collection(db, "users", user.uid, "supplements");
   };
 
   const fetchSupplements = async () => {
-    if (!user) return;
+    const ref = getSupplementsRef();
     try {
-      const querySnapshot = await getDocs(getSupplementsRef());
+      const querySnapshot = await getDocs(ref);
       const supplementsData = querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -782,14 +955,25 @@ const WellnessTracker = ({ user }) => {
     }
   };
 
+  const fetchSupplementConsumptionToday = async () => {
+    const docRef = doc(db, "users", user.uid, "stats", "supplementConsumption");
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      const today = new Date().toISOString().split("T")[0];
+      setSupplementConsumptionToday(data[today] || {});
+    }
+  };
+
   useEffect(() => {
-    if (user) fetchSupplements();
+    fetchSupplements();
+    fetchSupplementConsumptionToday();
   }, [user]);
 
   const handleAddSupplement = async () => {
-    if (!user) return;
+    const ref = getSupplementsRef();
     try {
-      await addDoc(getSupplementsRef(), {
+      await addDoc(ref, {
         ...newSupplement,
         quantity: Number(newSupplement.quantity),
         initialQuantity: Number(newSupplement.quantity),
@@ -804,40 +988,41 @@ const WellnessTracker = ({ user }) => {
   };
 
   const handleConsume = async (id) => {
-    if (!user) return;
+    const ref = getSupplementsRef();
     try {
       const supplement = supplements.find((supp) => supp.id === id);
       const newQuantity = Math.max(0, supplement.quantity - 1);
-      const supplementRef = doc(getSupplementsRef(), id);
+      const supplementRef = doc(ref, id);
       await updateDoc(supplementRef, { quantity: newQuantity });
       await fetchSupplements();
 
       const suppName = supplement.name;
       const today = new Date().toISOString().split("T")[0];
-      const docRef = doc(
+      const statsDocRef = doc(
         db,
         "users",
         user.uid,
         "stats",
         "supplementConsumption"
       );
-      const docSnap = await getDoc(docRef);
+      const statsDocSnap = await getDoc(statsDocRef);
 
-      let updatedStats = docSnap.exists() ? docSnap.data() : {};
+      let updatedStats = statsDocSnap.exists() ? statsDocSnap.data() : {};
       if (!updatedStats[today]) updatedStats[today] = {};
       updatedStats[today][suppName] = (updatedStats[today][suppName] || 0) + 1;
       updatedStats[today].total = (updatedStats[today].total || 0) + 1;
 
-      await setDoc(docRef, updatedStats);
+      await setDoc(statsDocRef, updatedStats);
+      await fetchSupplementConsumptionToday();
     } catch (error) {
       console.error("Error consuming supplement:", error);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!user) return;
+    const ref = getSupplementsRef();
     try {
-      const supplementRef = doc(getSupplementsRef(), id);
+      const supplementRef = doc(ref, id);
       await deleteDoc(supplementRef);
       await fetchSupplements();
     } catch (error) {
@@ -866,13 +1051,11 @@ const WellnessTracker = ({ user }) => {
             mt: { xs: 4, md: 6 },
             textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
             animation: `${float} 3s ease-in-out infinite`,
-            // Mobilde daha küçük, büyük ekranlarda normal boyut
             fontSize: { xs: "2rem", md: "3rem" },
           }}
         >
           <WaterDropIcon
             sx={{
-              // Mobilde ikon 30px, büyük ekranlarda 50px
               fontSize: { xs: 30, md: 50 },
               color: "lightblue",
               mr: { xs: -3, md: -15 },
@@ -890,22 +1073,45 @@ const WellnessTracker = ({ user }) => {
             startIcon={<AddIcon />}
             sx={{ minWidth: 200 }}
           >
-            Add Supplement
+            Yeni Takviye Ekle
           </AnimatedButton>
         </Box>
-        <Grid container spacing={4} sx={{ mt: 2 }}>
-          <AnimatePresence>
-            {supplements.map((supplement) => (
-              <Grid item xs={12} sm={6} md={4} key={supplement.id}>
-                <VitaminCard
-                  supplement={supplement}
-                  onConsume={handleConsume}
-                  onDelete={handleDelete}
-                />
-              </Grid>
-            ))}
-          </AnimatePresence>
-        </Grid>
+
+        <Accordion
+          defaultExpanded={false}
+          sx={{
+            background: "transparent",
+            boxShadow: "none",
+            color: "#fff",
+            mt: 4,
+          }}
+        >
+          <StyledAccordionSummary
+            expandIcon={<ExpandMoreIcon sx={{ color: "#fff" }} />}
+          >
+            <Typography variant="h5" sx={{ fontWeight: 700, color: "#fff" }}>
+              Takviyeler
+            </Typography>
+          </StyledAccordionSummary>
+          <AccordionDetails>
+            <Grid container spacing={4} sx={{ mt: 2 }}>
+              <AnimatePresence>
+                {supplements.map((supplement) => (
+                  <Grid item xs={12} sm={6} md={4} key={supplement.id}>
+                    <VitaminCard
+                      supplement={supplement}
+                      onConsume={handleConsume}
+                      onDelete={handleDelete}
+                      consumedToday={
+                        supplementConsumptionToday[supplement.name] || 0
+                      }
+                    />
+                  </Grid>
+                ))}
+              </AnimatePresence>
+            </Grid>
+          </AccordionDetails>
+        </Accordion>
 
         <Grid container spacing={4} sx={{ mt: 4 }}>
           <Grid item xs={12} md={6}>
@@ -929,12 +1135,12 @@ const WellnessTracker = ({ user }) => {
             },
           }}
         >
-          <DialogTitle>Add New Supplement</DialogTitle>
+          <DialogTitle>Yeni Takviye Ekle</DialogTitle>
           <DialogContent>
             <TextField
               autoFocus
               margin="dense"
-              label="Supplement Name"
+              label="Takviye Adı"
               fullWidth
               value={newSupplement.name}
               onChange={(e) =>
@@ -944,7 +1150,7 @@ const WellnessTracker = ({ user }) => {
             />
             <TextField
               margin="dense"
-              label="Quantity"
+              label="Miktar"
               type="number"
               fullWidth
               value={newSupplement.quantity}
@@ -958,7 +1164,7 @@ const WellnessTracker = ({ user }) => {
             />
             <TextField
               margin="dense"
-              label="Daily Usage"
+              label="Günlük Kullanım Miktarı"
               type="number"
               fullWidth
               value={newSupplement.dailyUsage}

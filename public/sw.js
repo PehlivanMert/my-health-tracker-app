@@ -52,24 +52,41 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET" || !request.url.startsWith("http")) {
     return;
   }
+
   event.respondWith(
     caches.match(request).then((response) => {
       if (response) {
         return response; // Cache'de varsa döndür
       }
+
       return fetch(request)
         .then((fetchResponse) => {
-          // Eğer yanıt kısmi içerik (206) içeriyorsa, önbelleğe alma işlemini atla
-          if (fetchResponse.status === 206) {
+          // Eğer geçerli bir yanıt değilse, yanıtı önbelleğe almadan döndür
+          if (
+            !fetchResponse ||
+            fetchResponse.status !== 200 ||
+            fetchResponse.type !== "basic"
+          ) {
             return fetchResponse;
           }
+
+          // Kopyasını cache'e kaydet
           const responseToCache = fetchResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseToCache);
-          });
+          caches
+            .open(CACHE_NAME)
+            .then((cache) => {
+              cache.put(request, responseToCache);
+            })
+            .catch((error) => {
+              console.error("Cache put hatası:", error);
+            });
+
           return fetchResponse;
         })
-        .catch(() => caches.match("/offline.html"));
+        .catch(() => {
+          // Çevrimdışı sayfayı göster
+          return caches.match("/offline.html");
+        });
     })
   );
 });

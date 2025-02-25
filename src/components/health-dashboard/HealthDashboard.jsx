@@ -68,10 +68,12 @@ const HealthDashboard = ({ user }) => {
   const [loading, setLoading] = useState(false);
   const [apiCooldown, setApiCooldown] = useState(false);
   const [qwenUsage, setQwenUsage] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   // Geçmişte kaydedilen öneriden seçim yapıldığında ana içerikte göster
   const handleSelectRecommendation = (rec) => {
     setRecommendations(rec.content);
+    setShowHistory(false); // Seçim yapıldığında dropdown'ı kapat
   };
 
   useEffect(() => {
@@ -152,6 +154,22 @@ const HealthDashboard = ({ user }) => {
           birthDate: data.profile?.birthDate?.toDate() || null,
         });
 
+        // Öneri geçmişini tarih sırasına göre sırala (en son en üstte olacak)
+        let recommendationHistory =
+          data.healthData?.recommendationsHistory || [];
+
+        // Tarih bilgisine göre sıralama yapmadan önce tarihleri karşılaştırılabilir format kontrolü
+        const sortedHistory = [...recommendationHistory].sort((a, b) => {
+          // Eğer tarih formatı ISO string ise doğrudan karşılaştır
+          if (a.date.includes("T") && b.date.includes("T")) {
+            return new Date(b.date) - new Date(a.date);
+          }
+
+          // Tarih formatı düz string ise, yeni Date nesnesi oluştur
+          // Türkçe tarih formatını parse et (örn: "25 Şubat 2025 Salı")
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        });
+
         setHealthData((prev) => ({
           ...prev,
           ...data.healthData,
@@ -163,7 +181,7 @@ const HealthDashboard = ({ user }) => {
             yesterday: waterData.yesterdayWaterIntake || 0,
           },
           supplementStats,
-          recommendationsHistory: data.healthData?.recommendationsHistory || [],
+          recommendationsHistory: sortedHistory,
         }));
 
         setRecommendations(data.healthData?.recommendations || null);
@@ -277,14 +295,15 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
       if (data.choices?.[0]?.message?.content) {
         const recommendationText = data.choices[0].message.content;
         const newRecommendation = {
-          date: currentDateTime,
+          date: new Date().toISOString(), // ISO string formatında kaydet
           content: recommendationText,
+          displayDate: currentDateTime, // Görüntüleme için ayrı bir alan
         };
 
         // Güncellenmiş öneri geçmişini oluştur
         const updatedHistory = [
-          ...(healthData.recommendationsHistory || []),
           newRecommendation,
+          ...(healthData.recommendationsHistory || []),
         ];
 
         await updateDoc(doc(db, "users", user.uid), {
@@ -292,6 +311,7 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
           "healthData.lastUpdated": new Date().toISOString(),
           "healthData.recommendationsHistory": updatedHistory,
         });
+
         setRecommendations(recommendationText);
         setHealthData((prev) => ({
           ...prev,
@@ -516,11 +536,13 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
         </Grid>
 
         {/* Kişiselleştirilmiş Öneriler Header with Accordion for History */}
+
         <Box
           display="flex"
           justifyContent="space-between"
           alignItems="center"
           mb={3}
+          position="relative"
         >
           <Typography
             variant="h4"
@@ -534,59 +556,97 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
           >
             Kişiselleştirilmiş Öneriler
           </Typography>
-          <Accordion
-            sx={{
-              width: "auto",
-              boxShadow: "none",
-              background: "transparent",
-              "&::before": { display: "none" },
-            }}
-          >
-            <AccordionSummary
-              expandIcon={<ExpandMoreIcon />}
-              aria-controls="panel-content"
-              id="panel-header"
-              sx={{ padding: 0, margin: 0, minWidth: "150px" }}
+
+          {/* Geçmiş Öneriler Panel */}
+          <Box sx={{ position: "relative", display: "inline-block" }}>
+            <Button
+              variant="outlined"
+              endIcon={<ExpandMoreIcon />}
+              onClick={(e) => setShowHistory(!showHistory)}
+              sx={{
+                borderRadius: "12px",
+                py: 1,
+                px: 3,
+                fontWeight: 600,
+                color: "#1a2a6c",
+                borderColor: "#1a2a6c",
+                "&:hover": { borderColor: "#2196F3" },
+              }}
             >
-              <Typography
-                variant="h5"
-                fontWeight={200}
+              Geçmiş Öneriler
+            </Button>
+            {showHistory && (
+              <Box
                 sx={{
-                  fontFamily: '"Montserrat", sans-serif',
-                  letterSpacing: "0.5px",
-                  color: "#1a2a6c",
-                  fontSize: { xs: "1rem", md: "3rem" },
-                  ml: { xs: 5 },
+                  position: "absolute",
+                  right: 0,
+                  top: "100%",
+                  mt: 1,
+                  width: 300,
+                  maxHeight: 400,
+                  bgcolor: "background.paper",
+                  borderRadius: "12px",
+                  boxShadow: 3,
+                  zIndex: 999,
+                  overflow: "hidden",
+                  border: "1px solid #e0e0e0",
                 }}
               >
-                Geçmiş Öneriler
-              </Typography>
-            </AccordionSummary>
-            <AccordionDetails sx={{ padding: 0 }}>
-              {healthData.recommendationsHistory &&
-              healthData.recommendationsHistory.length > 0 ? (
-                healthData.recommendationsHistory.map((rec, index) => (
-                  <Box
-                    key={index}
-                    sx={{
-                      cursor: "pointer",
-                      padding: "8px",
-                      borderBottom: "1px solid #ccc",
-                    }}
-                    onClick={() => handleSelectRecommendation(rec)}
-                  >
-                    <Typography variant="caption" color="textSecondary">
-                      {rec.date}
+                <Box
+                  sx={{
+                    maxHeight: 380,
+                    overflowY: "auto",
+                    p: 2,
+                    "&::-webkit-scrollbar": { width: "6px" },
+                    "&::-webkit-scrollbar-thumb": {
+                      backgroundColor: "#1a2a6c",
+                      borderRadius: "3px",
+                    },
+                  }}
+                >
+                  {healthData.recommendationsHistory?.length > 0 ? (
+                    healthData.recommendationsHistory.map((rec, index) => (
+                      <Box
+                        key={index}
+                        sx={{
+                          cursor: "pointer",
+                          p: 1.5,
+                          mb: 1,
+                          borderRadius: "8px",
+                          transition: "all 0.2s ease",
+                          "&:hover": {
+                            backgroundColor: "#f5f5f5",
+                            transform: "translateX(4px)",
+                          },
+                        }}
+                        onClick={() => handleSelectRecommendation(rec)}
+                      >
+                        <Typography variant="body2" fontWeight={500}>
+                          {rec.displayDate || rec.date}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          color="textSecondary"
+                          sx={{
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                          }}
+                        >
+                          {rec.content}
+                        </Typography>
+                      </Box>
+                    ))
+                  ) : (
+                    <Typography variant="body2" color="textSecondary">
+                      Önceki öneri bulunamadı.
                     </Typography>
-                  </Box>
-                ))
-              ) : (
-                <Typography variant="body2" color="textSecondary">
-                  Önceki öneri bulunamadı.
-                </Typography>
-              )}
-            </AccordionDetails>
-          </Accordion>
+                  )}
+                </Box>
+              </Box>
+            )}
+          </Box>
         </Box>
 
         {/* Kişiselleştirilmiş Öneriler Content */}

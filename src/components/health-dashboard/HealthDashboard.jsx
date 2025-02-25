@@ -278,7 +278,7 @@ Günlük Detaylı sağlık önerileri oluştur:
 4. Günlük aktivite planı
 5. Beslenme önerileri
 6. Sağlıklı bir tarif
-Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve eğlenceli bir dil kullan.`;
+Madde madde ve sade metin formatında max 1750 karakterle oluştur bilimsel ve eğlenceli bir dil kullan sonuna da özlü bir söz ekle.`;
 
       const response = await fetch(API_URL, {
         method: "POST",
@@ -286,7 +286,7 @@ Madde madde ve sade metin formatında max 1500 karakterle oluştur bilimsel ve e
         body: JSON.stringify({
           model: "qwen-max",
           messages: [{ role: "user", content: prompt }],
-          max_tokens: 1500,
+          max_tokens: 2000,
           temperature: 0.6,
         }),
       });

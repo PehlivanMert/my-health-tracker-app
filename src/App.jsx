@@ -28,7 +28,7 @@ import "tippy.js/dist/tippy.css";
 import "./App.css";
 import UserAuth from "./components/auth/UserAuth";
 import WeatherWidget from "./utils/weather-theme-notify/WeatherWidget";
-import { requestNotificationPermission } from "./utils/weather-theme-notify/NotificationManager";
+
 import {
   initialExercises,
   initialSupplements,
@@ -142,11 +142,6 @@ function App() {
   const [isRegister, setIsRegister] = useState(false);
   const [errors, setErrors] = useState({ username: false, password: false });
   const [remainingTime, setRemainingTime] = useState(0);
-
-  // Bildirim izni
-  useEffect(() => {
-    requestNotificationPermission();
-  }, []);
 
   // additionalInfo
   const [additionalInfo, setAdditionalInfo] = useState({

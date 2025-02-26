@@ -1,195 +1,101 @@
-# Sağlık Takip ve Yönetim Sistemi
+ # Sağlık ve Rutin Takip Sistemi 🏋️‍♂️💧
 
-Türkçe destekli, kapsamlı sağlık takip ve yaşam yönetim platformu.
+![Proje Logo](/public/logo4.jpeg)
 
-## 📌 Ana Modüller
+Türkçe dil desteğiyle kişisel sağlık, fitness ve wellness takip platformu. Firebase tabanlı, PWA destekli ve AI entegreli modern bir React uygulaması.
 
-### 1. Günlük Rutin Yönetimi
+## 🌟 Temel Özellikler
 
-- **Özellikler:**
-  - Drag & Drop ile rutin sıralama
-  - Zaman bazlı rutin takibi
-  - Tamamlama durumuna göre ilerleme grafiği
-  - Tekrar eden rutinler
-  - Sesli bildirim entegrasyonu
+### 📅 Entegre Sistemler
+- **Günlük Rutin Takibi** (Alarmlı hatırlatıcılar)
+- **Akıllı Su Takip Sistemi** (Hareketli su animasyonlu)
+- **Egzersiz Kütüphanesi** (1000+ hareket, GIF destekli)
+- **Kişiselleştirilmiş Sağlık Panosu** (AI öneri sistemi)
+- **Takviye Yönetimi** (Vitamin, mineral takibi)
+- **Akıllı Takvim** (Renk kodlu etkinlikler)
 
-```javascript
-// Örnek Rutin Objesi
-{
-  id: "routine_123",
-  time: "08:30",
-  title: "Kahvaltı",
-  checked: false,
-  repeat: "daily"
-}
-```
+### 🚀 Teknolojik Alt Yapı
+- **Firebase Realtime Database**
+- **Qwen AI Entegrasyonu**
+- **PWA & Offline Destek**
+- **Bildirim Yönetim Sistemi**
+- **Çoklu Dil Desteği** (Türkçe/İngilizce)
+- **Responsive Tasarım**
 
-### 2. Egzersiz Takip Modülü
+## 🛠 Kurulum
 
-- **Özellikler:**
-  - Özel egzersiz programları
-  - Set ve tekrar takibi
-  - Antrenman geçmişi
-  - PDF rapor oluşturma
-
-```jsx
-<ExerciseForm onSubmit={handleExerciseSubmit} initialData={editingExercise} />
-```
-
-### 3. Takviye Yönetim Sistemi
-
-- **Özellikler:**
-  - Takviye zamanlama
-  - Dozaj hatırlatıcıları
-  - Etkileşim analizi
-  - Stok takip sistemi
-
-### 4. Profesyonel Öneriler
-
-- **İçerik:**
-  - Beslenme planları
-  - Hidrasyon takip çizelgesi
-  - Vitamin kullanım kılavuzu
-  - Özel tarifler
-  - Aktivite önerileri
-
-### 5. Akıllı Takvim
-
-- **Özellikler:**
-  - Entegre hatırlatıcı sistemi
-  - Doktor randevu yönetimi
-  - İlaç takip entegrasyonu
-  - Otomatik tekrar ayarları
-
-## 🚀 Kurulum
+### Gereksinimler
+- Node.js v18+
+- Firebase Projesi
+- RapidAPI Hesapları (ExerciseDB, Translation)
 
 ```bash
-# Gerekli Bağımlılıklar
-npm install @mui/material @emotion/react @emotion/styled @fullcalendar/react date-fns react-toastify jwt-decode react-beautiful-dnd chart.js
+git clone https://github.com/PehlivanMert/my-health-tracker-app.git
+cd my-health-tracker-app
+npm install
 ```
 
-## ⚙️ Yapılandırma
-
-`.env` Örneği:
-
+### Ortam Değişkenleri
+`.env` dosyası oluşturun:
 ```ini
-REACT_APP_API_URL=http://localhost:3000
-REACT_APP_JWT_SECRET=your_secret_key
-REACT_APP_THEME=default
+VITE_FIREBASE_API_KEY=xxx
+VITE_FIREBASE_AUTH_DOMAIN=xxx
+VITE_XRAPID_API_KEY=xxx
+VITE_QWEN_API_URL=xxx
 ```
 
-## 📊 Veri Yapısı
-
-```javascript
-// Kullanıcı Veri Modeli
-{
-  username: "kullanici123",
-  routines: [...],
-  exercises: [...],
-  supplements: [...],
-  calendarEvents: [...],
-  preferences: {
-    theme: "health",
-    notifications: true
-  }
-}
+### Çalıştırma
+```bash
+npm run dev
 ```
 
-## 🔧 Teknik Özellikler
+## 📚 Sistem Mimarisi
 
-| Teknoloji           | Kullanım Amacı                 |
-| ------------------- | ------------------------------ |
-| React               | Ana UI Framework               |
-| Material-UI         | UI Component Kütüphanesi       |
-| FullCalendar        | Etkileşimli Takvim Sistemi     |
-| react-beautiful-dnd | Sürükle-Bırak Fonksiyonalitesi |
-| date-fns            | Tarih Yönetimi                 |
-| Chart.js            | İlerleme Grafikleri            |
+### Ana Bileşenler
+1. **Kimlik Yönetimi** 
+   - E-posta/Şifre ile Giriş
+   - Şifre Sıfırlama
+   - E-posta Doğrulama
 
-## 🛠 Geliştirici Rehberi
+2. **Sağlık Modülleri**
+   ![Diagram](/screenshots/Ekran%20görüntüsü%202025-02-26%20153511.png)
 
-### Ana Bileşen Yapısı
+3. **Veri Akış Diyagramı**
+ ![sequenceDiagram](/screenshots/Ekran%20görüntüsü%202025-02-26%20153316.png)
+   
+    
 
+
+## 📱 Ekran Görüntüleri
+
+| Özellik | Görsel |
+|---------|--------|
+| **Giriş Ekranı** | ![Giriş Ekranı](/screenshots/Ekran%20görüntüsü%202025-02-26%20155133.png) |
+| **Profil Sayfası** | ![Profil Sayfası](/screenshots/Ekran%20görüntüsü%202025-02-26%20155121.png) |
+| **Rutin Takip** | ![Rutin Takip](/screenshots/Ekran%20görüntüsü%202025-02-26%20154057.png) |
+| **Su Takibi** | ![Su Takibi](/screenshots/Ekran%20görüntüsü%202025-02-26%20153741.png) |
+| **Egzersiz Kütüphanesi** | ![Egzersizler](/screenshots/Ekran%20görüntüsü%202025-02-26%20153835.png) |
+| **Api Egzersizler** | ![Api Egzersizler](/screenshots/Ekran%20görüntüsü%202025-02-26%20154247.png) |
+| **Sağlık Panosu** | ![Dashboard](/screenshots/Ekran%20görüntüsü%202025-02-26%20153924.png) |
+| **Takviye Yönetimi** | ![Takviyeler](/screenshots/Ekran%20görüntüsü%202025-02-26%20154135.png) |
+| **Takviye Detayları** | ![Takviye Detayları](/screenshots/Ekran%20görüntüsü%202025-02-26%20154157.png) |
+| **Tarifler** | ![Tarifler](/screenshots/Ekran%20görüntüsü%202025-02-26%20154210.png) |
+| **Api Tarifler** | ![Api Tarifler](/screenshots/Ekran%20görüntüsü%202025-02-26%20154226.png) |
+| **Tam Ekran Akıllı Takvim** | ![Takvim](/screenshots/Ekran%20görüntüsü%202025-02-26%20154400.png) |  
+| **Takvim Renkleri** | ![Takvim Renkleri](/screenshots/Ekran%20görüntüsü%202025-02-26%20154342.png) |
+
+
+## 🌍 Canlı Demo
+
+👉 [Site Linki](https://www.stayhealthywith.me)
+
+## 📜 Lisans
+
+MIT Lisansı - Detaylar için [LICENSE](LICENSE) dosyasına bakınız.
+
+---
+
+**🌍 Katkıda Bulunma**  
+Hata raporları ve özellik istekleri için Issues bölümünü kullanın.  
+**⭐ Projeyi Beğendiyseniz Yıldız Verin!**
 ```
-src/
-├── components/
-│   ├── calendar/          # Takvim modülü
-│   ├── daily-routine/     # Rutin yönetimi
-│   ├── exercises/         # Egzersiz takip
-│   ├── supplements/       # Takviye yönetimi
-│   └── pro-tips/          # Sağlık önerileri
-```
-
-### Önemli Fonksiyonlar
-
-```javascript
-// Rutin Sıralama Mantığı
-const onDragEnd = (result) => {
-  const items = Array.from(routines);
-  const [removed] = items.splice(result.source.index, 1);
-  items.splice(result.destination.index, 0, removed);
-  setRoutines(items);
-};
-
-// Takvim Etkinlik Üretimi
-const generateRecurringEvents = (baseEvent) => {
-  if (baseEvent.repeat === "weekly") {
-    return Array(52)
-      .fill()
-      .map((_, i) => ({
-        ...baseEvent,
-        start: addWeeks(baseEvent.start, i),
-      }));
-  }
-  return [baseEvent];
-};
-```
-
-## 🌐 API Entegrasyonları
-
-```javascript
-// Örnek Servis Çağrısı
-const fetchHealthData = async (userId) => {
-  try {
-    const response = await axios.get(`${API_URL}/health-data/${userId}`);
-    return response.data;
-  } catch (error) {
-    toast.error("Veri alınamadı");
-    return null;
-  }
-};
-```
-
-## 📱 Responsive Tasarım
-
-```css
-/* Mobil Uyumlu Grid Sistemi */
-.grid-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1rem;
-  padding: 1rem;
-}
-```
-
-## 🚨 Sık Karşılaşılan Sorunlar
-
-| Sorun                    | Çözüm                              |
-| ------------------------ | ---------------------------------- |
-| LocalStorage veri kaybı  | JSON parse/hatalarını kontrol et   |
-| Tarih format uyuşmazlığı | date-fns kullanarak standartlaştır |
-| Drag & Drop performans   | react-beautiful-dnd optimizasyonu  |
-| Bildirim izinleri        | Kullanıcı onay süreci ekle         |
-
-## 📜 Lisans Bilgisi
-
-MIT Lisansı - Detaylar için [LICENSE](LICENSE) dosyasını inceleyin.
-
-## ✨ Katkıda Bulunma
-
-1. Issue açarak değişiklik öner
-2. Fork işlemi yap
-3. Özellik branch'i oluştur (`feat/yeni-ozellik`)
-4. Değişiklikleri commit et
-5. Push işlemi yap
-6. Pull Request oluştur

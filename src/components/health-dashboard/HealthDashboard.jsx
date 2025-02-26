@@ -341,38 +341,55 @@ Madde madde ve sade metin formatında max 1750 karakterle oluştur bilimsel ve e
   const parseRecommendations = () => {
     if (!recommendations) return { preamble: null, sections: [] };
 
-    // Metni satırlara bölüyoruz
-    let lines = recommendations
-      .split("\n")
-      .filter((line) => line.trim() !== "");
-
-    // İlk satır bölüm numarası içermiyorsa preamble olarak al
+    const lines = recommendations.split("\n");
     let preamble = null;
-    if (lines.length > 0 && !lines[0].match(/^\d+\./)) {
+    let sections = [];
+    let currentSection = null;
+
+    // İlk satır bir header değilse preamble olarak alıyoruz.
+    if (lines.length > 0 && !lines[0].match(/^\d+\.\s/)) {
       preamble = lines[0].trim();
-      lines.shift();
     }
 
-    // Kalan satırları yeniden birleştirip, bölüm başına "1. " gibi desenlere göre ayırıyoruz.
-    const sectionRegex = /(?=^\d+\.\s)/m;
-    const sectionStrings = lines
-      .join("\n")
-      .split(sectionRegex)
-      .filter((s) => s.trim() !== "");
+    // Eğer preamble varsa, döngüye ikinci satırdan başlıyoruz.
+    const startIndex = preamble ? 1 : 0;
 
-    const processedSections = sectionStrings.map((section) => {
-      const sectionLines = section
-        .split("\n")
-        .filter((line) => line.trim() !== "");
-      const headerLine = sectionLines[0].trim();
-      const match = headerLine.match(/^(\d+)\.\s*(.+?):?$/);
-      const number = match ? match[1] : null;
-      const heading = match ? match[2] : headerLine;
-      const content = sectionLines.slice(1).join("\n").trim();
-      return { number, heading, content };
-    });
+    for (let i = startIndex; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line === "") continue;
 
-    return { preamble, sections: processedSections };
+      // Eğer satır, "numara nokta boşluk" formatında başlıyorsa:
+      if (line.match(/^\d+\.\s/)) {
+        // Eğer hemen önceki satır "Hazırlanışı:" ile bitiyorsa, bu satırı alt madde olarak kabul et.
+        if (i > 0 && lines[i - 1].trim().endsWith("Hazırlanışı:")) {
+          if (currentSection) {
+            currentSection.content += "\n" + line;
+          } else {
+            preamble = (preamble ? preamble + "\n" : "") + line;
+          }
+        } else {
+          // Yeni bölüm başlığı olduğunu varsayalım.
+          if (currentSection) {
+            sections.push(currentSection);
+          }
+          const match = line.match(/^(\d+)\.\s*(.+)$/);
+          const number = match ? match[1] : null;
+          const heading = match ? match[2] : line;
+          currentSection = { number, heading, content: "" };
+        }
+      } else {
+        // Satır, header formatında değilse, mevcut bölümün içeriğine ekle.
+        if (currentSection) {
+          currentSection.content += (currentSection.content ? "\n" : "") + line;
+        } else {
+          preamble = (preamble ? preamble + "\n" : "") + line;
+        }
+      }
+    }
+    if (currentSection) {
+      sections.push(currentSection);
+    }
+    return { preamble, sections };
   };
 
   const parsed = parseRecommendations();

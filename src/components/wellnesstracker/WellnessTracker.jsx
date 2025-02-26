@@ -45,8 +45,6 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -54,8 +52,8 @@ import {
   Legend,
   BarChart,
   Bar,
-  RadialBarChart,
-  RadialBar,
+  AreaChart,
+  Area,
 } from "recharts";
 import styles from "./waterAnimation.module.css";
 
@@ -332,6 +330,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     glassSize: 250,
     history: [],
     yesterdayWaterIntake: 0,
+    lastResetDate: null, // Son sıfırlama tarihi tutulacak
   });
   const [showConfetti, setShowConfetti] = useState(false);
   const [achievement, setAchievement] = useState(null);
@@ -340,6 +339,36 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
 
   const getWaterDocRef = () => {
     return doc(db, "users", user.uid, "water", "current");
+  };
+
+  // Reset kontrolünü her zaman 00:00 için yapıyoruz.
+  const checkIfResetNeeded = async (data) => {
+    const nowTurkey = getNowTurkeyTime();
+    const resetHour = 0;
+    const resetMinute = 0;
+
+    if (!data.lastResetDate) {
+      await resetDailyWaterIntake();
+      return;
+    }
+
+    const lastReset = new Date(data.lastResetDate);
+    const lastResetTurkey = new Date(
+      lastReset.toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
+    );
+
+    const isSameDay =
+      nowTurkey.getFullYear() === lastResetTurkey.getFullYear() &&
+      nowTurkey.getMonth() === lastResetTurkey.getMonth() &&
+      nowTurkey.getDate() === lastResetTurkey.getDate();
+
+    if (!isSameDay) {
+      const resetTimeToday = new Date(nowTurkey);
+      resetTimeToday.setHours(resetHour, resetMinute, 0, 0);
+      if (nowTurkey >= resetTimeToday) {
+        await resetDailyWaterIntake();
+      }
+    }
   };
 
   const fetchWaterData = async () => {
@@ -355,47 +384,59 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           ? data.history.sort((a, b) => new Date(a.date) - new Date(b.date))
           : [],
         yesterdayWaterIntake: data.yesterdayWaterIntake || 0,
+        lastResetDate: data.lastResetDate || null,
       });
+
+      // Uygulama başlangıcında reset kontrolü
+      await checkIfResetNeeded(data);
     }
   };
 
+  // Günlük su tüketimini sıfırlayan fonksiyon, reset saat ayarı kaldırıldı.
   const resetDailyWaterIntake = async () => {
     try {
-      // Türkiye saat dilimi için tarih ayarı
-      const now = new Date(
-        new Date().toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" })
-      );
-      const yesterday = new Date(now);
-      yesterday.setDate(now.getDate() - 1);
-
+      const nowTurkey = getNowTurkeyTime();
+      const yesterday = new Date(nowTurkey);
+      yesterday.setDate(nowTurkey.getDate() - 1);
       const yesterdayStr = yesterday.toISOString().split("T")[0];
-      const todayStr = now.toISOString().split("T")[0];
+      const todayStr = nowTurkey.toISOString().split("T")[0];
 
-      // Firestore transaction ile güvenli güncelleme
-      await runTransaction(db, async (transaction) => {
-        const ref = getWaterDocRef();
-        const doc = await transaction.get(ref);
+      const ref = getWaterDocRef();
+      const docSnap = await getDoc(ref);
 
-        if (!doc.exists()) throw "Document does not exist!";
-
-        const currentData = doc.data();
-        const newHistory = currentData.history.filter(
+      if (!docSnap.exists()) {
+        await setDoc(ref, {
+          waterIntake: 0,
+          dailyWaterTarget: 2000,
+          glassSize: 250,
+          history: [],
+          yesterdayWaterIntake: 0,
+          lastResetDate: nowTurkey.toISOString(),
+        });
+      } else {
+        const currentData = docSnap.data();
+        const currentHistory = currentData.history || [];
+        const filteredHistory = currentHistory.filter(
           (entry) => entry.date !== yesterdayStr && entry.date !== todayStr
         );
+        const updatedHistory = [
+          ...filteredHistory,
+          { date: yesterdayStr, intake: currentData.waterIntake || 0 },
+        ];
 
-        transaction.update(ref, {
-          history: [
-            ...newHistory,
-            {
-              date: yesterdayStr,
-              intake: currentData.waterIntake,
-            },
-          ],
-          yesterdayWaterIntake: currentData.waterIntake,
-          waterIntake: 0,
-        });
-      });
-
+        await setDoc(
+          ref,
+          {
+            waterIntake: 0,
+            dailyWaterTarget: currentData.dailyWaterTarget || 2000,
+            glassSize: currentData.glassSize || 250,
+            history: updatedHistory,
+            yesterdayWaterIntake: currentData.waterIntake || 0,
+            lastResetDate: nowTurkey.toISOString(),
+          },
+          { merge: true }
+        );
+      }
       await fetchWaterData();
     } catch (error) {
       console.error("Reset error:", error);
@@ -405,22 +446,14 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   useEffect(() => {
     // Eğer user yoksa hiçbir hook çalıştırılmasın
     if (!user) return;
+
     fetchWaterData();
-    const scheduleMidnightReset = () => {
-      const now = new Date();
-      const nextMidnight = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() + 1
-      );
-      const msUntilMidnight = nextMidnight - now;
-      timerRef.current = setTimeout(() => {
-        resetDailyWaterIntake();
-        scheduleMidnightReset();
-      }, msUntilMidnight);
+
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
     };
-    scheduleMidnightReset();
-    return () => clearTimeout(timerRef.current);
   }, [user]);
 
   useEffect(() => {
@@ -484,6 +517,13 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     (waterData.waterIntake / waterData.dailyWaterTarget) * 100,
     100
   );
+
+  const getNowTurkeyTime = () => {
+    const now = new Date();
+    return new Date(
+      now.toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
+    );
+  };
 
   return (
     <Box sx={{ textAlign: "center", mb: 6 }}>
@@ -1113,14 +1153,33 @@ const WellnessTracker = ({ user }) => {
           </AccordionDetails>
         </Accordion>
 
-        <Grid container spacing={4} sx={{ mt: 4 }}>
-          <Grid item xs={12} md={6}>
-            <WaterConsumptionChart waterHistory={waterData.history} />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <SupplementConsumptionChart user={user} />
-          </Grid>
-        </Grid>
+        <Accordion
+          defaultExpanded={false}
+          sx={{
+            background: "transparent",
+            boxShadow: "none",
+            color: "#fff",
+            mt: 4,
+          }}
+        >
+          <StyledAccordionSummary
+            expandIcon={<ExpandMoreIcon sx={{ color: "#fff" }} />}
+          >
+            <Typography variant="h5" sx={{ fontWeight: 700, color: "#fff" }}>
+              İstatistikler
+            </Typography>
+          </StyledAccordionSummary>
+          <AccordionDetails>
+            <Grid container spacing={4} sx={{ mt: 2 }}>
+              <Grid item xs={12} md={6}>
+                <WaterConsumptionChart waterHistory={waterData.history} />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <SupplementConsumptionChart user={user} />
+              </Grid>
+            </Grid>
+          </AccordionDetails>
+        </Accordion>
 
         <Dialog
           open={openDialog}

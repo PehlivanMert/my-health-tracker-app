@@ -7,9 +7,6 @@ const ASSETS = [
   "/public/manifest.json",
   "/public/logo4.jpeg",
   "/offline.html",
-  "/src/App.jsx",
-  "/src/app.css",
-  "/src/main.jsx",
 ];
 
 // Install event

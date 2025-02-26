@@ -126,6 +126,37 @@ const generateAvatars = (count) =>
 
 const availableAvatars = generateAvatars(200);
 
+const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker
+    .register("/firebase-messaging-sw.js")
+    .then((registration) => {
+      console.log("Firebase Messaging SW registered:", registration.scope);
+      return getToken(messaging, {
+        vapidKey: VAPID_KEY,
+        serviceWorkerRegistration: registration,
+      });
+    })
+    .then((token) => {
+      console.log("Token alındı:", token);
+      // Token işlemlerinizi burada yapabilirsiniz (örneğin, token'ı Firestore'a kaydedin)
+    })
+    .catch((err) => {
+      console.error("Service Worker registration or token error:", err);
+    });
+
+  // Ayrıca, genel PWA service worker'ınızı da kaydedin:
+  navigator.serviceWorker
+    .register("/sw.js")
+    .then((registration) => {
+      console.log("PWA SW registered:", registration.scope);
+    })
+    .catch((err) => {
+      console.error("PWA SW registration error:", err);
+    });
+}
+
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
 function App() {
@@ -144,36 +175,7 @@ function App() {
   const [isRegister, setIsRegister] = useState(false);
   const [errors, setErrors] = useState({ username: false, password: false });
   const [remainingTime, setRemainingTime] = useState(0);
-  const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY;
 
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker
-      .register("/firebase-messaging-sw.js")
-      .then((registration) => {
-        console.log("Firebase Messaging SW registered:", registration.scope);
-        return getToken(messaging, {
-          vapidKey: VAPID_KEY,
-          serviceWorkerRegistration: registration,
-        });
-      })
-      .then((token) => {
-        console.log("Token alındı:", token);
-        // Token işlemlerinizi burada yapabilirsiniz (örneğin, token'ı Firestore'a kaydedin)
-      })
-      .catch((err) => {
-        console.error("Service Worker registration or token error:", err);
-      });
-
-    // Ayrıca, genel PWA service worker'ınızı da kaydedin:
-    navigator.serviceWorker
-      .register("/sw.js")
-      .then((registration) => {
-        console.log("PWA SW registered:", registration.scope);
-      })
-      .catch((err) => {
-        console.error("PWA SW registration error:", err);
-      });
-  }
   // additionalInfo
   const [additionalInfo, setAdditionalInfo] = useState({
     ...constantAdditionalInfo,

@@ -20,6 +20,7 @@ firebase.initializeApp({
 });
 
 const messaging = firebase.messaging();
+const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY;
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker

@@ -47,6 +47,8 @@ import { handlePasswordReset } from "./components/auth/AuthHandlers";
 import Lottie from "lottie-react";
 import welcomeAnimation from "./assets/welcomeAnimation.json";
 import HealthDashboard from "./components/health-dashboard/HealthDashboard";
+import { getMessaging, getToken } from "firebase/messaging";
+import { messaging } from "./components/auth/firebaseMessaging";
 
 // Animasyonlar
 const float = keyframes`
@@ -155,14 +157,23 @@ function App() {
         });
       })
       .then((token) => {
-        // token işlemleri
         console.log("Token alındı:", token);
+        // Token işlemlerinizi burada yapabilirsiniz (örneğin, token'ı Firestore'a kaydedin)
       })
       .catch((err) => {
         console.error("Service Worker registration or token error:", err);
       });
-  }
 
+    // Ayrıca, genel PWA service worker'ınızı da kaydedin:
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then((registration) => {
+        console.log("PWA SW registered:", registration.scope);
+      })
+      .catch((err) => {
+        console.error("PWA SW registration error:", err);
+      });
+  }
   // additionalInfo
   const [additionalInfo, setAdditionalInfo] = useState({
     ...constantAdditionalInfo,

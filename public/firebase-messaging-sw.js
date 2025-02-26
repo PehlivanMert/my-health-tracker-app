@@ -21,6 +21,24 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker
+    .register("/firebase-messaging-sw.js")
+    .then((registration) => {
+      console.log("Service Worker registered:", registration);
+      return getToken(messaging, {
+        vapidKey: VAPID_KEY,
+        serviceWorkerRegistration: registration,
+      });
+    })
+    .then((token) => {
+      // token işlemleri
+    })
+    .catch((err) => {
+      console.error("Service Worker registration or token error:", err);
+    });
+}
+
 // Arka plan bildirimlerini işle
 messaging.onBackgroundMessage((payload) => {
   console.log("[firebase-messaging-sw.js] Arka plan mesajı alındı:", payload);

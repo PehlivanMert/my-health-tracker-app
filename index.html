@@ -3,13 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="/logo4.jpeg" />
-    <link rel="manifest" href="/public/manifest.json" />
+    <link rel="manifest" href="/manifest.json" />
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
           // PWA için service worker
           navigator.serviceWorker
-            .register("/public/sw.js")
+            .register("/sw.js")
             .then((registration) => {
               console.log(
                 "Servis worker başarıyla kaydedildi:",

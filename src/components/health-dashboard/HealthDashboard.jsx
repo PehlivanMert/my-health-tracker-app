@@ -341,47 +341,38 @@ Madde madde ve sade metin formatında max 1750 karakterle oluştur bilimsel ve e
   const parseRecommendations = () => {
     if (!recommendations) return { preamble: null, sections: [] };
 
-    // Metni ön yazı ve bölümlere ayır
-    const sections = recommendations
-      .split(/---/)
-      .map((s) => s.trim())
-      .filter((s) => s);
+    // Metni satırlara bölüyoruz
+    let lines = recommendations
+      .split("\n")
+      .filter((line) => line.trim() !== "");
 
+    // İlk satır bölüm numarası içermiyorsa preamble olarak al
     let preamble = null;
-    let processedSections = [];
-
-    // İlk bölümde numara yoksa ön yazı olarak al
-    if (sections.length > 0 && !sections[0].match(/^\d+\./)) {
-      preamble = sections[0];
-      processedSections = sections.slice(1).map(processSection);
-    } else {
-      processedSections = sections.map(processSection);
+    if (lines.length > 0 && !lines[0].match(/^\d+\./)) {
+      preamble = lines[0].trim();
+      lines.shift();
     }
+
+    // Kalan satırları yeniden birleştirip, bölüm başına "1. " gibi desenlere göre ayırıyoruz.
+    const sectionRegex = /(?=^\d+\.\s)/m;
+    const sectionStrings = lines
+      .join("\n")
+      .split(sectionRegex)
+      .filter((s) => s.trim() !== "");
+
+    const processedSections = sectionStrings.map((section) => {
+      const sectionLines = section
+        .split("\n")
+        .filter((line) => line.trim() !== "");
+      const headerLine = sectionLines[0].trim();
+      const match = headerLine.match(/^(\d+)\.\s*(.+?):?$/);
+      const number = match ? match[1] : null;
+      const heading = match ? match[2] : headerLine;
+      const content = sectionLines.slice(1).join("\n").trim();
+      return { number, heading, content };
+    });
 
     return { preamble, sections: processedSections };
-
-    function processSection(section) {
-      const lines = section
-        .split("\n")
-        .map((l) => l.trim())
-        .filter((l) => l);
-      const firstLine = lines[0] || "";
-      const match = firstLine.match(/^(\d+)\.\s*(\*\*(.*)\*\*|(.+))/);
-      let number = null;
-      let heading = "";
-
-      if (match) {
-        number = match[1];
-        heading = (match[3] || match[4] || firstLine)
-          .replace(/[#*]+/g, "")
-          .trim();
-      } else {
-        heading = firstLine.replace(/[#*]+/g, "").trim();
-      }
-
-      const content = lines.slice(1).join("\n").replace(/[#*]+/g, "").trim();
-      return { number, heading, content };
-    }
   };
 
   const parsed = parseRecommendations();
@@ -666,6 +657,7 @@ Madde madde ve sade metin formatında max 1750 karakterle oluştur bilimsel ve e
           </Box>
         </Box>
         {/* Kişiselleştirilmiş Öneriler Content */}
+        {/* Header, metrikler ve diğer bileşenler */}
         {parsed.preamble && (
           <Grid item xs={12}>
             <Card
@@ -676,7 +668,6 @@ Madde madde ve sade metin formatında max 1750 karakterle oluştur bilimsel ve e
                   "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
                 borderRadius: "16px",
                 boxShadow: 3,
-                animation: `${fadeIn} 0.5s ease`,
               }}
             >
               <CardContent sx={{ color: "white", py: 4 }}>
@@ -715,12 +706,7 @@ Madde madde ve sade metin formatında max 1750 karakterle oluştur bilimsel ve e
                       },
                     }}
                   >
-                    <CardContent
-                      sx={{
-                        height: "100%",
-                        p: 3,
-                      }}
-                    >
+                    <CardContent sx={{ height: "100%", p: 3 }}>
                       <Box
                         sx={{
                           display: "flex",
@@ -739,8 +725,6 @@ Madde madde ve sade metin formatında max 1750 karakterle oluştur bilimsel ve e
                             fontWeight: 700,
                             fontSize: "1.25rem",
                             letterSpacing: "0.5px",
-                            textShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                            fontFamily: '"Montserrat", sans-serif',
                           }}
                         >
                           {section.number
@@ -754,28 +738,6 @@ Madde madde ve sade metin formatında max 1750 karakterle oluştur bilimsel ve e
                             flex: 1,
                             fontSize: "0.95rem",
                             lineHeight: 1.8,
-                            letterSpacing: "0.3px",
-                            fontWeight: 400,
-                            "& p": {
-                              mb: 2,
-                              "&:last-child": {
-                                mb: 0,
-                              },
-                            },
-                            "& ul, & ol": {
-                              pl: 2,
-                              mb: 2,
-                              "& li": {
-                                mb: 1,
-                              },
-                            },
-                            "& strong": {
-                              color: "#fff",
-                              fontWeight: 600,
-                            },
-                            textShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                            fontFamily:
-                              '"Roboto", "Helvetica", "Arial", sans-serif',
                           }}
                         >
                           {section.content.split("\n").map((paragraph, idx) => (

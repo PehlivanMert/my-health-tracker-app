@@ -1087,7 +1087,7 @@ const WellnessTracker = ({ user }) => {
             color: "#fff",
             fontWeight: 800,
             mb: { xs: 2, md: 6 },
-            ml: { xs: 2, md: 7 },
+            ml: { xs: 0, md: 7 },
             mt: { xs: 4, md: 6 },
             textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
             animation: `${float} 3s ease-in-out infinite`,
@@ -1098,7 +1098,7 @@ const WellnessTracker = ({ user }) => {
             sx={{
               fontSize: { xs: 30, md: 50 },
               color: "lightblue",
-              mr: { xs: -3, md: -15 },
+              mr: { xs: -2, md: -15 },
               mb: { xs: -7, md: -13 },
             }}
           />

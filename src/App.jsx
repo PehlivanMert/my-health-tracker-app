@@ -122,7 +122,7 @@ const generateAvatars = (count) =>
     (_, i) => `https://api.dicebear.com/6.x/adventurer/svg?seed=avatar${i + 1}`
   );
 
-const availableAvatars = generateAvatars(100);
+const availableAvatars = generateAvatars(200);
 
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 

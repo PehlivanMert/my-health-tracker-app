@@ -47,7 +47,6 @@ const fadeIn = keyframes`
 `;
 
 const API_URL = "/api/qwen-proxy"; /* "http://localhost:3001/api/qwen-proxy"; */
-
 const HealthDashboard = ({ user }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -272,6 +271,7 @@ ${JSON.stringify(healthData.supplementStats, null, 2) || "Veri yok"}
 Tarih ve Saat: ${currentDateTime}
 
 Günlük Detaylı sağlık önerileri oluştur:
+İsim Bey'e/Hanıma Özel Sağlık Önerileri - 26 Şubat 2025
 1. Su tüketim analizi ve öneriler
 2. Takviye kullanım değerlendirmesi
 3. VKİ analizi ve yorumu
@@ -339,20 +339,37 @@ Madde madde ve sade metin formatında max 1750 karakterle oluştur bilimsel ve e
 
   // Öneri metnini bölümlere ayırıyoruz.
   const parseRecommendations = () => {
-    if (!recommendations) return [];
+    if (!recommendations) return { preamble: null, sections: [] };
+
+    // Metni ön yazı ve bölümlere ayır
     const sections = recommendations
       .split(/---/)
-      .map((section) => section.trim())
-      .filter((section) => section);
-    return sections.map((section) => {
+      .map((s) => s.trim())
+      .filter((s) => s);
+
+    let preamble = null;
+    let processedSections = [];
+
+    // İlk bölümde numara yoksa ön yazı olarak al
+    if (sections.length > 0 && !sections[0].match(/^\d+\./)) {
+      preamble = sections[0];
+      processedSections = sections.slice(1).map(processSection);
+    } else {
+      processedSections = sections.map(processSection);
+    }
+
+    return { preamble, sections: processedSections };
+
+    function processSection(section) {
       const lines = section
         .split("\n")
-        .map((line) => line.trim())
-        .filter((line) => line);
+        .map((l) => l.trim())
+        .filter((l) => l);
       const firstLine = lines[0] || "";
       const match = firstLine.match(/^(\d+)\.\s*(\*\*(.*)\*\*|(.+))/);
       let number = null;
       let heading = "";
+
       if (match) {
         number = match[1];
         heading = (match[3] || match[4] || firstLine)
@@ -361,10 +378,13 @@ Madde madde ve sade metin formatında max 1750 karakterle oluştur bilimsel ve e
       } else {
         heading = firstLine.replace(/[#*]+/g, "").trim();
       }
+
       const content = lines.slice(1).join("\n").replace(/[#*]+/g, "").trim();
       return { number, heading, content };
-    });
+    }
   };
+
+  const parsed = parseRecommendations();
 
   const MetricCard = ({ icon, title, value, unit, color }) => (
     <Card
@@ -497,7 +517,6 @@ Madde madde ve sade metin formatında max 1750 karakterle oluştur bilimsel ve e
             </Button>
           </Box>
         </Box>
-
         {/* Metrikler */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           {[
@@ -534,9 +553,7 @@ Madde madde ve sade metin formatında max 1750 karakterle oluştur bilimsel ve e
             </Grid>
           ))}
         </Grid>
-
         {/* Kişiselleştirilmiş Öneriler Header with Accordion for History */}
-
         <Box
           display="flex"
           justifyContent="space-between"
@@ -648,12 +665,41 @@ Madde madde ve sade metin formatında max 1750 karakterle oluştur bilimsel ve e
             )}
           </Box>
         </Box>
-
         {/* Kişiselleştirilmiş Öneriler Content */}
+        {parsed.preamble && (
+          <Grid item xs={12}>
+            <Card
+              sx={{
+                width: "100%",
+                mb: 4,
+                background:
+                  "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
+                borderRadius: "16px",
+                boxShadow: 3,
+                animation: `${fadeIn} 0.5s ease`,
+              }}
+            >
+              <CardContent sx={{ color: "white", py: 4 }}>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    whiteSpace: "pre-line",
+                    fontSize: "1.1rem",
+                    lineHeight: 1.8,
+                    textAlign: "center",
+                    fontStyle: "italic",
+                  }}
+                >
+                  {parsed.preamble}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
         <Grid container spacing={4}>
           <Grid item xs={12}>
             <Grid container spacing={3}>
-              {parseRecommendations().map((section, index) => (
+              {parsed.sections.map((section, index) => (
                 <Grid item xs={12} md={6} lg={4} key={index}>
                   <Card
                     sx={{
@@ -744,7 +790,6 @@ Madde madde ve sade metin formatında max 1750 karakterle oluştur bilimsel ve e
             </Grid>
           </Grid>
         </Grid>
-
         {loading && (
           <Box
             sx={{

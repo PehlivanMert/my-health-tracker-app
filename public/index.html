@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="/logo4.jpeg" />
+    <link rel="manifest" href="/manifest.json" />
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          // PWA için service worker
+          navigator.serviceWorker
+            .register("/sw.js")
+            .then((registration) => {
+              console.log(
+                "Servis worker başarıyla kaydedildi:",
+                registration.scope
+              );
+            })
+            .catch((error) => {
+              console.error("Servis worker kaydında hata:", error);
+            });
+
+          // Firebase için service worker
+          navigator.serviceWorker
+            .register("/firebase-messaging-sw.js")
+            .then((registration) => {
+              console.log(
+                "Firebase Messaging Service Worker başarıyla kaydedildi:",
+                registration.scope
+              );
+            })
+            .catch((error) => {
+              console.error(
+                "Firebase Messaging Service Worker kaydında hata:",
+                error
+              );
+            });
+        });
+      }
+    </script>
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <meta http-equiv="ScreenOrientation" content="autoRotate:enable" />
+    <meta name="theme-color" content="#1976d2" />
+    <meta
+      name="Sağlık ve Rutin Takip Sistemi"
+      content="Sağlık ve Rutin Takip Sistemi"
+    />
+    <link rel="apple-touch-icon" href="/logo4.jpeg" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="Sağlık Takip Sistemi" />
+    <link rel="apple-touch-icon" href="/logo4.jpeg" />
+    <link rel="apple-touch-startup-image" href="/logo4.jpeg" />
+    <!--
+      manifest.json provides metadata used when your web app is installed on a
+      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
+    -->
+    <link rel="manifest" href="/public/manifest.json" />
+    <title>Sağlık ve Rutin Takip Sistemi</title>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <!-- Vite giriş dosyası -->
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

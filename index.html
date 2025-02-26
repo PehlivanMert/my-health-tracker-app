@@ -2,8 +2,25 @@
 <html lang="tr">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="/public/logo4.jpeg" />
+    <link rel="icon" href="/logo4.jpeg" />
     <link rel="manifest" href="/public/manifest.json" />
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/public/sw.js")
+            .then((registration) => {
+              console.log(
+                "Servis worker başarıyla kaydedildi:",
+                registration.scope
+              );
+            })
+            .catch((error) => {
+              console.error("Servis worker kaydında hata:", error);
+            });
+        });
+      }
+    </script>
 
     <meta
       name="viewport"

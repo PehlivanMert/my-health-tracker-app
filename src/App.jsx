@@ -142,6 +142,26 @@ function App() {
   const [isRegister, setIsRegister] = useState(false);
   const [errors, setErrors] = useState({ username: false, password: false });
   const [remainingTime, setRemainingTime] = useState(0);
+  const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker
+      .register("/firebase-messaging-sw.js")
+      .then((registration) => {
+        console.log("Firebase Messaging SW registered:", registration.scope);
+        return getToken(messaging, {
+          vapidKey: VAPID_KEY,
+          serviceWorkerRegistration: registration,
+        });
+      })
+      .then((token) => {
+        // token işlemleri
+        console.log("Token alındı:", token);
+      })
+      .catch((err) => {
+        console.error("Service Worker registration or token error:", err);
+      });
+  }
 
   // additionalInfo
   const [additionalInfo, setAdditionalInfo] = useState({

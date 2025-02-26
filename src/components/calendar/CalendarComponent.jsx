@@ -1,10 +1,13 @@
+// CalendarComponent.jsx
+
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import multiMonthPlugin from "@fullcalendar/multimonth";
-import { DateTime } from "luxon";
+import rrulePlugin from "@fullcalendar/rrule";
+import { DateTime, Duration } from "luxon";
 import {
   Paper,
   Box,
@@ -19,7 +22,8 @@ import {
   useTheme,
   Typography,
   Chip,
-  colors,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import { Delete, Add, Edit } from "@mui/icons-material";
 import { toast } from "react-toastify";
@@ -40,6 +44,14 @@ import "@fullcalendar/core";
 import "@fullcalendar/daygrid";
 import "@fullcalendar/timegrid";
 import "@fullcalendar/multimonth";
+
+// Bildirim işlevlerini içeren modül (kodun başındaki bildirim sınıfı)
+import {
+  requestNotificationPermission,
+  scheduleNotification,
+  cancelScheduledNotifications,
+  notificationIntervals,
+} from "../../utils/weather-theme-notify/NotificationManager";
 
 // ----------------------------------------------------------------
 // Renk seçimi için ayrı bir Dialog
@@ -110,40 +122,44 @@ const CalendarComponent = ({ user }) => {
 
   // Neon renkler
   const calendarColors = {
-    limon: "#00ff87", // Neon yeşil
-    sakız: "#ff00ff", // Neon pembe
-    kızılÖte: "#ff0055", // Neon kırmızı
-    mandalina: "#ff9100", // Neon turuncu
-    buz: "#00ffcc", // Neon turkuaz
-    üzüm: "#bf00ff", // Neon mor
-    okyanus: "#00ffff", // Neon mavi
-    güneş: "#ffff00", // Neon sarı
-    lavanta: "#E066FF", // Neon açık mor
-    zümrüt: "#00FF7F", // Neon açık yeşil
-    şeker: "#FF1493", // Neon koyu pembe
-    gökyüzü: "#87CEFA", // Parlak mavi
-    ateş: "#FF4500", // Parlak turuncu-kırmızı
-    neonGece: "#4D4DFF", // Elektrik mavisi
-    fosfor: "#39FF14", // Fosforlu yeşil
-    şafak: "#FF69B4", // Sıcak pembe
-    yıldız: "#FFD700", // Parlak altın
-    galaksi: "#8A2BE2", // Parlak menekşe
-    aurora: "#00FF00", // Saf yeşil
-    neonRüya: "#FF1177", // Sıcak pembe
+    limon: "#00ff87",
+    sakız: "#ff00ff",
+    kızılÖte: "#ff0055",
+    mandalina: "#ff9100",
+    buz: "#00ffcc",
+    üzüm: "#bf00ff",
+    okyanus: "#00ffff",
+    güneş: "#ffff00",
+    lavanta: "#E066FF",
+    zümrüt: "#00FF7F",
+    şeker: "#FF1493",
+    gökyüzü: "#87CEFA",
+    ateş: "#FF4500",
+    neonGece: "#4D4DFF",
+    fosfor: "#39FF14",
+    şafak: "#FF69B4",
+    yıldız: "#FFD700",
+    galaksi: "#8A2BE2",
+    aurora: "#00FF00",
+    neonRüya: "#FF1177",
   };
 
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [editEvent, setEditEvent] = useState(null);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
   const [newEvent, setNewEvent] = useState({
     title: "",
     start: DateTime.local().startOf("day"),
     end: DateTime.local().endOf("day"),
     allDay: false,
     color: calendarColors.fosfor,
+    notification: "none", // "none", "on-time", "15-minutes", "1-hour", "1-day"
+    isRecurring: false,
+    recurrenceType: "", // "daily", "weekly", "monthly", "yearly"
+    recurrenceUntil: DateTime.local().plus({ months: 1 }),
   });
-  const [openDialog, setOpenDialog] = useState(false);
-  const [openEditDialog, setOpenEditDialog] = useState(false);
 
   // Etkinlikleri Firestore'dan çek
   const fetchEvents = useCallback(async () => {
@@ -152,11 +168,12 @@ const CalendarComponent = ({ user }) => {
       const eventsRef = collection(db, "users", user.uid, "calendarEvents");
       const q = query(eventsRef);
       const snapshot = await getDocs(q);
-      const eventsData = snapshot.docs.map((doc) => {
-        const data = doc.data();
+      // fetchEvents fonksiyonundaki değişiklik
+      const eventsData = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
         const colorValue = data.color || calendarColors.limon;
-        return {
-          id: doc.id,
+        const baseEvent = {
+          id: docSnap.id,
           title: data.title,
           start: data.start.toDate(),
           end: data.end.toDate(),
@@ -166,8 +183,61 @@ const CalendarComponent = ({ user }) => {
           textColor: "#fff",
           extendedProps: {
             calendarId: data.calendarId,
+            notification: data.notification || "none",
+            notificationId: data.notificationId || null,
+            recurrence: data.recurrence || null,
           },
         };
+
+        if (data.recurrence) {
+          let freq;
+          switch (data.recurrence.recurrenceType) {
+            case "daily":
+              freq = "DAILY";
+              break;
+            case "weekly":
+              freq = "WEEKLY";
+              break;
+            case "monthly":
+              freq = "MONTHLY";
+              break;
+            case "yearly":
+              freq = "YEARLY";
+              break;
+            default:
+              freq = null;
+          }
+          if (freq) {
+            // Buradaki değişiklikler önemli
+            const rruleObj = {
+              freq,
+              dtstart: data.start.toDate(),
+              tzid: "Europe/Istanbul", // Zaman dilimini belirtiyoruz
+            };
+            if (data.recurrence.recurrenceUntil) {
+              const untilDate = data.recurrence.recurrenceUntil.toDate();
+              if (!isNaN(untilDate.getTime())) {
+                rruleObj.until = untilDate;
+              } else {
+                console.warn(
+                  "Invalid recurrenceUntil value:",
+                  data.recurrence.recurrenceUntil
+                );
+              }
+            }
+            baseEvent.rrule = rruleObj;
+            const diff = data.end.toDate() - data.start.toDate();
+            baseEvent.duration = {
+              hours: Math.floor(diff / (1000 * 60 * 60)),
+              minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+              seconds: Math.floor((diff % (1000 * 60)) / 1000),
+            };
+            // Dikkat: Tekrarlı etkinliklerde 'end' özelliğini kaldırıyoruz.
+            delete baseEvent.end;
+          }
+        }
+
+        return baseEvent;
       });
       setEvents(eventsData);
     } catch (error) {
@@ -177,6 +247,8 @@ const CalendarComponent = ({ user }) => {
 
   useEffect(() => {
     fetchEvents();
+    // Bildirim izni isteği
+    requestNotificationPermission();
   }, [fetchEvents]);
 
   // Yeni etkinlik oluştur
@@ -194,10 +266,35 @@ const CalendarComponent = ({ user }) => {
         end: Timestamp.fromDate(newEvent.end.toJSDate()),
         allDay: newEvent.allDay,
         color: newEvent.color,
+        notification: newEvent.notification,
+        recurrence: newEvent.isRecurring
+          ? {
+              recurrenceType: newEvent.recurrenceType,
+              recurrenceUntil: newEvent.recurrenceUntil.toJSDate(),
+            }
+          : null,
       };
       const docRef = doc(eventsRef);
       batch.set(docRef, eventData);
       await batch.commit();
+
+      // Bildirim zamanı ayarlıysa (tekrarlı etkinliklerde yalnızca ilk sefer için bildirim planlanabilir)
+      if (newEvent.notification && newEvent.notification !== "none") {
+        const notifId = await scheduleNotification(
+          newEvent.title,
+          newEvent.start.toJSDate(),
+          newEvent.notification
+        );
+        if (notifId) {
+          await updateDoc(
+            doc(db, "users", user.uid, "calendarEvents", docRef.id),
+            {
+              notificationId: notifId,
+            }
+          );
+        }
+      }
+
       await fetchEvents();
       setOpenDialog(false);
       setNewEvent({
@@ -206,6 +303,10 @@ const CalendarComponent = ({ user }) => {
         end: DateTime.local().endOf("day"),
         allDay: true,
         color: theme.palette.primary.main,
+        notification: "none",
+        isRecurring: false,
+        recurrenceType: "",
+        recurrenceUntil: DateTime.local().plus({ months: 1 }),
       });
       toast.success("Etkinlik başarıyla eklendi");
     } catch (error) {
@@ -214,8 +315,11 @@ const CalendarComponent = ({ user }) => {
   };
 
   // Etkinlik sil
-  const handleDeleteEvent = async (eventId) => {
+  const handleDeleteEvent = async (eventId, notificationId) => {
     try {
+      if (notificationId) {
+        await cancelScheduledNotifications(notificationId);
+      }
       await deleteDoc(doc(db, "users", user.uid, "calendarEvents", eventId));
       await fetchEvents();
       toast.success("Etkinlik silindi");
@@ -228,6 +332,10 @@ const CalendarComponent = ({ user }) => {
   // Etkinlik güncelle
   const handleUpdateEvent = async () => {
     try {
+      // Önce eski bildirim varsa iptal edelim
+      if (editEvent.notificationId) {
+        await cancelScheduledNotifications(editEvent.notificationId);
+      }
       await updateDoc(
         doc(db, "users", user.uid, "calendarEvents", editEvent.id),
         {
@@ -236,10 +344,34 @@ const CalendarComponent = ({ user }) => {
           end: Timestamp.fromDate(editEvent.end.toJSDate()),
           allDay: editEvent.allDay,
           color: editEvent.color,
+          notification: editEvent.notification,
+          recurrence: editEvent.isRecurring
+            ? {
+                recurrenceType: editEvent.recurrenceType,
+                recurrenceUntil: editEvent.recurrenceUntil.toJSDate(),
+              }
+            : null,
         }
       );
+      // Yeni bildirim zamanlandıysa
+      if (editEvent.notification && editEvent.notification !== "none") {
+        const newNotifId = await scheduleNotification(
+          editEvent.title,
+          editEvent.start.toJSDate(),
+          editEvent.notification
+        );
+        if (newNotifId) {
+          await updateDoc(
+            doc(db, "users", user.uid, "calendarEvents", editEvent.id),
+            {
+              notificationId: newNotifId,
+            }
+          );
+        }
+      }
       await fetchEvents();
       setOpenEditDialog(false);
+      setSelectedEvent;
       toast.success("Etkinlik güncellendi");
     } catch (error) {
       toast.error(`Güncelleme hatası: ${error.message}`);
@@ -254,6 +386,12 @@ const CalendarComponent = ({ user }) => {
       end: DateTime.fromJSDate(selectInfo.end),
       allDay: selectInfo.allDay,
       color: calendarColors.lavanta,
+      notification: "none",
+      isRecurring: false,
+      recurrenceType: "",
+      recurrenceUntil: DateTime.fromJSDate(selectInfo.start).plus({
+        months: 1,
+      }),
     });
     setOpenDialog(true);
   };
@@ -261,17 +399,20 @@ const CalendarComponent = ({ user }) => {
   // Sürükle-bırak sonrası güncelle
   const handleEventDrop = async (dropInfo) => {
     try {
-      const event = {
+      const updatedEvent = {
         id: dropInfo.event.id,
         start: DateTime.fromJSDate(dropInfo.event.start),
         end: DateTime.fromJSDate(dropInfo.event.end),
         allDay: dropInfo.event.allDay,
       };
-      await updateDoc(doc(db, "users", user.uid, "calendarEvents", event.id), {
-        start: Timestamp.fromDate(event.start.toJSDate()),
-        end: Timestamp.fromDate(event.end.toJSDate()),
-        allDay: event.allDay,
-      });
+      await updateDoc(
+        doc(db, "users", user.uid, "calendarEvents", updatedEvent.id),
+        {
+          start: Timestamp.fromDate(updatedEvent.start.toJSDate()),
+          end: Timestamp.fromDate(updatedEvent.end.toJSDate()),
+          allDay: updatedEvent.allDay,
+        }
+      );
       await fetchEvents();
     } catch (error) {
       toast.error(`Güncelleme hatası: ${error.message}`);
@@ -281,16 +422,19 @@ const CalendarComponent = ({ user }) => {
   // Resize sonrası güncelle
   const handleEventResize = async (resizeInfo) => {
     try {
-      const event = {
+      const updatedEvent = {
         id: resizeInfo.event.id,
         start: DateTime.fromJSDate(resizeInfo.event.start),
         end: DateTime.fromJSDate(resizeInfo.event.end),
         allDay: resizeInfo.event.allDay,
       };
-      await updateDoc(doc(db, "users", user.uid, "calendarEvents", event.id), {
-        start: Timestamp.fromDate(event.start.toJSDate()),
-        end: Timestamp.fromDate(event.end.toJSDate()),
-      });
+      await updateDoc(
+        doc(db, "users", user.uid, "calendarEvents", updatedEvent.id),
+        {
+          start: Timestamp.fromDate(updatedEvent.start.toJSDate()),
+          end: Timestamp.fromDate(updatedEvent.end.toJSDate()),
+        }
+      );
       await fetchEvents();
     } catch (error) {
       toast.error(`Güncelleme hatası: ${error.message}`);
@@ -319,26 +463,168 @@ const CalendarComponent = ({ user }) => {
     const container = paperRef.current;
     if (!container) return;
     if (!document.fullscreenElement) {
-      if (container.requestFullscreen) {
-        container.requestFullscreen();
-      } else if (container.mozRequestFullScreen) {
-        container.mozRequestFullScreen();
-      } else if (container.webkitRequestFullscreen) {
-        container.webkitRequestFullscreen();
-      } else if (container.msRequestFullscreen) {
-        container.msRequestFullscreen();
-      }
+      container.requestFullscreen?.() ||
+        container.mozRequestFullScreen?.() ||
+        container.webkitRequestFullscreen?.() ||
+        container.msRequestFullscreen?.();
     } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      } else if (document.mozCancelFullScreen) {
-        document.mozCancelFullScreen();
-      } else if (document.webkitExitFullscreen) {
-        document.webkitExitFullscreen();
-      } else if (document.msExitFullscreen) {
-        document.msExitFullscreen();
-      }
+      document.exitFullscreen?.() ||
+        document.mozCancelFullScreen?.() ||
+        document.webkitExitFullscreen?.() ||
+        document.msExitFullscreen?.();
     }
+  };
+
+  const RecurrenceDialog = ({
+    container,
+    open,
+    onClose,
+    onSave,
+    recurrenceType,
+    recurrenceUntil,
+  }) => {
+    const [localRecurrenceType, setLocalRecurrenceType] = useState(
+      recurrenceType || ""
+    );
+    const [localRecurrenceUntil, setLocalRecurrenceUntil] = useState(
+      recurrenceUntil ? recurrenceUntil.toFormat("yyyy-MM-dd") : ""
+    );
+
+    useEffect(() => {
+      setLocalRecurrenceType(recurrenceType || "");
+      setLocalRecurrenceUntil(
+        recurrenceUntil ? recurrenceUntil.toFormat("yyyy-MM-dd") : ""
+      );
+    }, [recurrenceType, recurrenceUntil]);
+
+    const handleSave = () => {
+      const newRecurrenceUntil = DateTime.fromISO(localRecurrenceUntil);
+      onSave(localRecurrenceType, newRecurrenceUntil);
+      onClose();
+    };
+
+    return (
+      <Dialog
+        container={container}
+        open={open}
+        onClose={onClose}
+        disableEnforceFocus
+        PaperProps={{
+          sx: {
+            zIndex: 99999,
+            background: "rgba(83, 134, 176, 0.33)",
+            backdropFilter: "blur(10px)",
+            borderRadius: "24px",
+            border: "1px solid rgba(33, 150, 243, 0.2)",
+            color: "#fff",
+            p: 2,
+          },
+        }}
+      >
+        <DialogTitle>Tekrarlı Etkinlik Ayarları</DialogTitle>
+        <DialogContent
+          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+        >
+          <Typography variant="subtitle1">Tekrarlama Türü</Typography>
+          <Select
+            value={localRecurrenceType}
+            onChange={(e) => setLocalRecurrenceType(e.target.value)}
+            fullWidth
+            sx={{ color: "#fff", borderColor: "#fff" }}
+          >
+            <MenuItem value="daily">Her Gün</MenuItem>
+            <MenuItem value="weekly">Her Hafta</MenuItem>
+            <MenuItem value="monthly">Her Ay</MenuItem>
+            <MenuItem value="yearly">Her Yıl</MenuItem>
+          </Select>
+          <Typography variant="subtitle1">Tekrarlama Bitiş Tarihi</Typography>
+          <TextField
+            type="date"
+            value={localRecurrenceUntil}
+            onChange={(e) => setLocalRecurrenceUntil(e.target.value)}
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+            sx={{ input: { color: "#fff" }, label: { color: "#fff" } }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose} sx={{ color: "#fff" }}>
+            İptal
+          </Button>
+          <Button onClick={handleSave} variant="contained">
+            Kaydet
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  };
+
+  const NotificationDialog = ({
+    container,
+    open,
+    onClose,
+    onSave,
+    notification,
+  }) => {
+    const [localNotification, setLocalNotification] = useState(
+      notification || "none"
+    );
+
+    useEffect(() => {
+      setLocalNotification(notification || "none");
+    }, [notification]);
+
+    const handleSave = () => {
+      onSave(localNotification);
+      onClose();
+    };
+
+    return (
+      <Dialog
+        container={container}
+        open={open}
+        onClose={onClose}
+        disableEnforceFocus
+        PaperProps={{
+          sx: {
+            zIndex: 99999,
+            background: "rgba(83, 134, 176, 0.33)",
+            backdropFilter: "blur(10px)",
+            borderRadius: "24px",
+            border: "1px solid rgba(33, 150, 243, 0.2)",
+            color: "#fff",
+            p: 2,
+          },
+        }}
+      >
+        <DialogTitle>Bildirim Ayarları</DialogTitle>
+        <DialogContent
+          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+        >
+          <Typography variant="subtitle1">Bildirim Zamanı</Typography>
+          <Select
+            value={localNotification}
+            onChange={(e) => setLocalNotification(e.target.value)}
+            fullWidth
+            sx={{ color: "#fff", borderColor: "#fff" }}
+          >
+            <MenuItem value="none">Yok</MenuItem>
+            <MenuItem value="on-time">Tam Zamanında</MenuItem>
+            <MenuItem value="15-minutes">15 Dakika Önce</MenuItem>
+            <MenuItem value="1-hour">1 Saat Önce</MenuItem>
+            <MenuItem value="1-day">1 Gün Önce</MenuItem>
+          </Select>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose} sx={{ color: "#fff" }}>
+            İptal
+          </Button>
+          <Button onClick={handleSave} variant="contained">
+            Kaydet
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
   };
 
   return (
@@ -369,12 +655,14 @@ const CalendarComponent = ({ user }) => {
         }}
       >
         <FullCalendar
+          timeZone="Europe/Istanbul"
           ref={calendarRef}
           plugins={[
             dayGridPlugin,
             timeGridPlugin,
             interactionPlugin,
             multiMonthPlugin,
+            rrulePlugin,
           ]}
           initialView="dayGridMonth"
           firstDay={1}
@@ -404,15 +692,51 @@ const CalendarComponent = ({ user }) => {
           eventDrop={handleEventDrop}
           eventResize={handleEventResize}
           eventClick={(clickInfo) => {
-            const event = {
+            // Başlangıç zamanını düzgün formatta alıyoruz
+            const eventStart = DateTime.fromJSDate(
+              clickInfo.event.start
+            ).setZone("Europe/Istanbul");
+
+            // Bitiş zamanını düzgün hesaplıyoruz
+            let eventEnd = null;
+            if (clickInfo.event.end) {
+              eventEnd = DateTime.fromJSDate(clickInfo.event.end).setZone(
+                "Europe/Istanbul"
+              );
+            } else if (clickInfo.event.extendedProps.recurrence) {
+              // Tekrarlanan etkinliklerde süreyi kullanarak bitiş zamanını hesaplıyoruz
+              const duration = clickInfo.event.duration || { hours: 1 };
+              eventEnd = eventStart.plus(duration);
+            }
+
+            const ev = {
               id: clickInfo.event.id,
               title: clickInfo.event.title,
-              start: DateTime.fromJSDate(clickInfo.event.start),
-              end: DateTime.fromJSDate(clickInfo.event.end),
+              start: eventStart,
+              end: eventEnd,
               color: clickInfo.event.backgroundColor,
               allDay: clickInfo.event.allDay,
+              notification:
+                clickInfo.event.extendedProps.notification || "none",
+              isRecurring: !!clickInfo.event.extendedProps.recurrence,
+              recurrenceType: clickInfo.event.extendedProps.recurrence
+                ? clickInfo.event.extendedProps.recurrence.recurrenceType
+                : "",
+              recurrenceUntil:
+                clickInfo.event.extendedProps.recurrence &&
+                clickInfo.event.extendedProps.recurrence.recurrenceUntil
+                  ? DateTime.fromJSDate(
+                      new Date(
+                        clickInfo.event.extendedProps.recurrence.recurrenceUntil
+                      )
+                    ).setZone("Europe/Istanbul")
+                  : DateTime.local()
+                      .plus({ months: 1 })
+                      .setZone("Europe/Istanbul"),
+              notificationId:
+                clickInfo.event.extendedProps.notificationId || null,
             };
-            setSelectedEvent(event);
+            setSelectedEvent(ev);
           }}
           height="100%"
           nowIndicator={true}
@@ -469,11 +793,11 @@ const CalendarComponent = ({ user }) => {
           <Typography variant="h6" gutterBottom>
             {selectedEvent?.title}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="#fff">
             Başlangıç:{" "}
             {selectedEvent?.start?.toFormat("dd.MM.yyyy HH:mm") || "-"}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="#fff">
             Bitiş: {selectedEvent?.end?.toFormat("dd.MM.yyyy HH:mm") || "-"}
           </Typography>
           <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
@@ -490,7 +814,12 @@ const CalendarComponent = ({ user }) => {
             <Button
               color="error"
               startIcon={<Delete />}
-              onClick={() => handleDeleteEvent(selectedEvent.id)}
+              onClick={() =>
+                handleDeleteEvent(
+                  selectedEvent.id,
+                  selectedEvent.notificationId
+                )
+              }
             >
               Sil
             </Button>
@@ -502,7 +831,7 @@ const CalendarComponent = ({ user }) => {
 };
 
 // ----------------------------------------------------------------
-// EventContent: Etkinliğin nasıl görüneceğini özelleştirir
+// Etkinliğin nasıl görüneceğini özelleştiren içerik fonksiyonu
 const renderEventContent = (eventInfo) => {
   const startStr = DateTime.fromJSDate(eventInfo.event.start).toFormat("HH:mm");
   const endStr = DateTime.fromJSDate(eventInfo.event.end).toFormat("HH:mm");
@@ -531,8 +860,9 @@ const renderEventContent = (eventInfo) => {
   );
 };
 
-// ----------------------------------------------------------------
-// EventDialog: Etkinlik oluşturma/düzenleme diyaloğu
+// ----------------------------------------------------------------7
+
+// EventDialog: Etkinlik oluşturma/düzenleme diyaloğu (bildirim ve tekrarlı ayarlar eklendi)
 const EventDialog = ({
   container,
   open,
@@ -544,16 +874,37 @@ const EventDialog = ({
   colors,
   handleDateTimeChange,
 }) => {
-  // Renk seçimi için ayrı diyaloğu kontrol edecek state
+  // Eğer event null ise bileşeni hiç render etmeyelim
+  if (!event) return null;
+
   const [openColorPicker, setOpenColorPicker] = useState(false);
+
   const handleAllDayChange = (e) => {
     setEvent((prev) => ({
-      ...prev,
+      ...(prev || {}),
       allDay: e.target.checked,
       start: e.target.checked ? prev.start.startOf("day") : prev.start,
       end: e.target.checked ? prev.end.endOf("day") : prev.end,
     }));
   };
+
+  // Bildirim seçenekleri
+  const notificationOptions = [
+    { value: "none", label: "Yok" },
+    { value: "on-time", label: "Tam Zamanında" },
+    { value: "15-minutes", label: "15 Dakika Önce" },
+    { value: "1-hour", label: "1 Saat Önce" },
+    { value: "1-day", label: "1 Gün Önce" },
+  ];
+
+  // Tekrarlama seçenekleri
+  const recurrenceOptions = [
+    { value: "daily", label: "Her Gün" },
+    { value: "weekly", label: "Her Hafta" },
+    { value: "monthly", label: "Her Ay" },
+    { value: "yearly", label: "Her Yıl" },
+  ];
+
   return (
     <>
       <Dialog
@@ -569,23 +920,26 @@ const EventDialog = ({
             border: "1px solid rgba(33, 150, 243, 0.2)",
             color: "#fff",
             p: 2,
+            width: "auto", // tüm dialoglar aynı genişlikte olsun
           },
         }}
       >
         <DialogTitle>{title}</DialogTitle>
-        <DialogContent sx={styles.dialogContent}>
+        <DialogContent sx={{ py: 2, minWidth: 480 }}>
           <TextField
             label="Etkinlik Başlığı"
             fullWidth
             margin="normal"
-            value={event?.title || ""}
-            onChange={(e) => setEvent({ ...event, title: e.target.value })}
+            value={event.title || ""}
+            onChange={(e) =>
+              setEvent((prev) => ({ ...(prev || {}), title: e.target.value }))
+            }
             sx={{ input: { color: "#fff" }, label: { color: "#fff" } }}
           />
           <FormControlLabel
             control={
               <Checkbox
-                checked={event?.allDay ?? true}
+                checked={event.allDay ?? true}
                 onChange={handleAllDayChange}
                 sx={{ color: "#fff" }}
               />
@@ -596,10 +950,10 @@ const EventDialog = ({
           <Box sx={styles.timeInputs}>
             <TextField
               label="Başlangıç"
-              type={event?.allDay ? "date" : "datetime-local"}
+              type={event.allDay ? "date" : "datetime-local"}
               InputLabelProps={{ shrink: true }}
               value={
-                event?.start?.isValid
+                event.start?.isValid
                   ? event.start.toFormat(
                       event.allDay ? "yyyy-MM-dd" : "yyyy-MM-dd'T'HH:mm"
                     )
@@ -613,10 +967,10 @@ const EventDialog = ({
             />
             <TextField
               label="Bitiş"
-              type={event?.allDay ? "date" : "datetime-local"}
+              type={event.allDay ? "date" : "datetime-local"}
               InputLabelProps={{ shrink: true }}
               value={
-                event?.end?.isValid
+                event.end?.isValid
                   ? event.end.toFormat(
                       event.allDay ? "yyyy-MM-dd" : "yyyy-MM-dd'T'HH:mm"
                     )
@@ -629,15 +983,18 @@ const EventDialog = ({
               sx={{ input: { color: "#fff" }, label: { color: "#fff" } }}
             />
           </Box>
-          {/* Mevcut rengi gösteren küçük bir Chip ve Renk Seç butonu */}
-          <Box sx={{ mt: 2, display: "flex", alignItems: "center", gap: 2 }}>
+
+          {/* Renk Seçimi */}
+          <Typography variant="subtitle1" sx={{ mt: 2 }}>
+            Seçili Renk
+          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
             <Chip
-              label="Seçili Renk"
+              label=""
               sx={{
-                bgcolor: event?.color || colors.lavanta,
-                color: "#fff",
-                width: 100,
-                justifyContent: "center",
+                backgroundColor: event.color || colors.lavanta,
+                width: "1cm",
+                height: "1cm",
               }}
             />
             <Button
@@ -647,6 +1004,109 @@ const EventDialog = ({
               Renk Seç
             </Button>
           </Box>
+
+          {/* Bildirim Zamanı Seçimi */}
+          <Typography variant="subtitle1" sx={{ mt: 2 }}>
+            Bildirim Zamanı
+          </Typography>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
+            {notificationOptions.map((option) => (
+              <Chip
+                key={option.value}
+                label={option.label}
+                onClick={() =>
+                  setEvent((prev) => ({
+                    ...(prev || {}),
+                    notification: option.value,
+                  }))
+                }
+                sx={{
+                  width: "4cm",
+                  height: "0,7cm",
+                  backgroundColor:
+                    (event.notification || "none") === option.value
+                      ? "primary.main"
+                      : "grey.500",
+                  color: "#fff",
+                  cursor: "pointer",
+                }}
+              />
+            ))}
+          </Box>
+
+          {/* Tekrarlı Etkinlik Seçimi */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={event.isRecurring || false}
+                  onChange={(e) =>
+                    setEvent((prev) => ({
+                      ...(prev || {}),
+                      isRecurring: e.target.checked,
+                      recurrenceType: "", // yeni seçim yapılması için sıfırla
+                    }))
+                  }
+                  sx={{ color: "#fff" }}
+                />
+              }
+              label="Tekrarlı Etkinlik"
+              sx={{ color: "#fff" }}
+            />
+          </Box>
+          {event.isRecurring && (
+            <>
+              <Typography variant="subtitle1" sx={{ mt: 2 }}>
+                Tekrarlama Türü
+              </Typography>
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
+                {recurrenceOptions.map((option) => (
+                  <Chip
+                    key={option.value}
+                    label={option.label}
+                    onClick={() =>
+                      setEvent((prev) => ({
+                        ...(prev || {}),
+                        recurrenceType: option.value,
+                      }))
+                    }
+                    sx={{
+                      width: "4cm",
+                      height: "0,7cm",
+                      backgroundColor:
+                        event.recurrenceType === option.value
+                          ? "primary.main"
+                          : "grey.500",
+                      color: "#fff",
+                      cursor: "pointer",
+                    }}
+                  />
+                ))}
+              </Box>
+              <TextField
+                label="Sonlanma Tarihi"
+                style={{ marginTop: 14 }}
+                type="date"
+                InputLabelProps={{ shrink: true }}
+                value={
+                  event.recurrenceUntil?.isValid
+                    ? event.recurrenceUntil.toFormat("yyyy-MM-dd")
+                    : ""
+                }
+                onChange={(e) =>
+                  setEvent((prev) => ({
+                    ...(prev || {}),
+                    recurrenceUntil: DateTime.fromISO(e.target.value),
+                  }))
+                }
+                fullWidth
+                sx={{
+                  input: { color: "#fff", mt: 1 },
+                  label: { color: "#fff" },
+                }}
+              />
+            </>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose} sx={{ color: "#fff" }}>
@@ -655,20 +1115,21 @@ const EventDialog = ({
           <Button
             variant="contained"
             onClick={onSubmit}
-            disabled={!event?.start?.isValid || !event?.end?.isValid}
+            disabled={!event.start?.isValid || !event.end?.isValid}
           >
             Kaydet
           </Button>
         </DialogActions>
       </Dialog>
-      {/* Renk Seçim Diyaloğu (ayrı pencere) */}
       <ColorPickerDialog
         container={container}
         open={openColorPicker}
         onClose={() => setOpenColorPicker(false)}
-        onColorSelect={(color) => setEvent((prev) => ({ ...prev, color }))}
+        onColorSelect={(color) =>
+          setEvent((prev) => ({ ...(prev || {}), color }))
+        }
         colors={colors}
-        selectedColor={event?.color}
+        selectedColor={event.color}
       />
     </>
   );
@@ -729,7 +1190,7 @@ const styles = {
         },
       },
       "& .fc-now-indicator": {
-        borderColor: colors.red[600],
+        borderColor: "#FF5252",
       },
       "& .fc-button": {
         backgroundColor: "#3674B5",

@@ -1098,7 +1098,7 @@ const WellnessTracker = ({ user }) => {
             sx={{
               fontSize: { xs: 30, md: 50 },
               color: "lightblue",
-              mr: { xs: -2, md: -15 },
+              mr: { xs: -4, md: -15 },
               mb: { xs: -7, md: -13 },
             }}
           />

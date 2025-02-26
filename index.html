@@ -7,6 +7,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
+          // PWA için service worker
           navigator.serviceWorker
             .register("/public/sw.js")
             .then((registration) => {
@@ -17,6 +18,22 @@
             })
             .catch((error) => {
               console.error("Servis worker kaydında hata:", error);
+            });
+
+          // Firebase için service worker
+          navigator.serviceWorker
+            .register("/firebase-messaging-sw.js")
+            .then((registration) => {
+              console.log(
+                "Firebase Messaging Service Worker başarıyla kaydedildi:",
+                registration.scope
+              );
+            })
+            .catch((error) => {
+              console.error(
+                "Firebase Messaging Service Worker kaydında hata:",
+                error
+              );
             });
         });
       }

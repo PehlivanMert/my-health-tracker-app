@@ -28,7 +28,7 @@ import "tippy.js/dist/tippy.css";
 import "./App.css";
 import UserAuth from "./components/auth/UserAuth";
 import WeatherWidget from "./utils/weather-theme-notify/WeatherWidget";
-
+import { requestNotificationPermission } from "./utils/weather-theme-notify/NotificationManager";
 import {
   initialExercises,
   initialSupplements,
@@ -47,8 +47,6 @@ import { handlePasswordReset } from "./components/auth/AuthHandlers";
 import Lottie from "lottie-react";
 import welcomeAnimation from "./assets/welcomeAnimation.json";
 import HealthDashboard from "./components/health-dashboard/HealthDashboard";
-import { getMessaging, getToken } from "firebase/messaging";
-import { messaging } from "./components/auth/firebaseMessaging";
 
 // Animasyonlar
 const float = keyframes`
@@ -126,41 +124,6 @@ const generateAvatars = (count) =>
 
 const availableAvatars = generateAvatars(200);
 
-const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY;
-
-if ("serviceWorker" in navigator) {
-  // Firebase Messaging SW kaydı ve token alma (ana uygulamada yapılmalı)
-  navigator.serviceWorker
-    .register("/firebase-messaging-sw.js")
-    .then((registration) => {
-      console.log("Firebase Messaging SW registered:", registration.scope);
-      return navigator.serviceWorker.ready;
-    })
-    .then((registration) => {
-      return getToken(messaging, {
-        vapidKey: VAPID_KEY,
-        serviceWorkerRegistration: registration,
-      });
-    })
-    .then((token) => {
-      console.log("Token alındı:", token);
-      // Token işlemleri
-    })
-    .catch((err) => {
-      console.error("Service Worker registration or token error:", err);
-    });
-
-  // PWA SW kaydı
-  navigator.serviceWorker
-    .register("/sw.js")
-    .then((registration) => {
-      console.log("PWA SW registered:", registration.scope);
-    })
-    .catch((err) => {
-      console.error("PWA SW registration error:", err);
-    });
-}
-
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
 function App() {
@@ -179,6 +142,11 @@ function App() {
   const [isRegister, setIsRegister] = useState(false);
   const [errors, setErrors] = useState({ username: false, password: false });
   const [remainingTime, setRemainingTime] = useState(0);
+
+  // Bildirim izni
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
 
   // additionalInfo
   const [additionalInfo, setAdditionalInfo] = useState({

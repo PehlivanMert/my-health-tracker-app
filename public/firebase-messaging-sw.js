@@ -61,13 +61,7 @@ self.addEventListener("notificationclick", (event) => {
 // Standart service worker fonksiyonları
 // Önbelleğe alma ve çevrimdışı çalışma
 const CACHE_NAME = "wellness-tracker-v4";
-const ASSETS = [
-  "/",
-  "/index.html",
-  "/public/manifest.json",
-  "/public/logo4.jpeg",
-  "/offline.html",
-];
+const ASSETS = ["/", "/index.html"];
 
 // Install event
 self.addEventListener("install", (event) => {

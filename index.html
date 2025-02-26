@@ -4,40 +4,6 @@
     <meta charset="utf-8" />
     <link rel="icon" href="/public/logo4.jpeg" />
     <link rel="manifest" href="/public/manifest.json" />
-    <script>
-      if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          // PWA için service worker
-          navigator.serviceWorker
-            .register("/sw.js")
-            .then((registration) => {
-              console.log(
-                "Servis worker başarıyla kaydedildi:",
-                registration.scope
-              );
-            })
-            .catch((error) => {
-              console.error("Servis worker kaydında hata:", error);
-            });
-
-          // Firebase için service worker
-          navigator.serviceWorker
-            .register("/firebase-messaging-sw.js")
-            .then((registration) => {
-              console.log(
-                "Firebase Messaging Service Worker başarıyla kaydedildi:",
-                registration.scope
-              );
-            })
-            .catch((error) => {
-              console.error(
-                "Firebase Messaging Service Worker kaydında hata:",
-                error
-              );
-            });
-        });
-      }
-    </script>
 
     <meta
       name="viewport"

@@ -1,13 +1,7 @@
 // import ifadesini kaldırın ve vanilya IndexedDB kullanın
 const CACHE_NAME = "wellness-tracker-v4";
 const NOTIFICATION_DB = "scheduled-notifications";
-const ASSETS = [
-  "/",
-  "/index.html",
-  "/public/manifest.json",
-  "/public/logo4.jpeg",
-  "/offline.html",
-];
+const ASSETS = ["/", "/index.html"];
 
 // Install event
 self.addEventListener("install", (event) => {

@@ -129,10 +129,15 @@ const availableAvatars = generateAvatars(200);
 const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY;
 
 if ("serviceWorker" in navigator) {
+  // Firebase Messaging Service Worker kaydı ve token alma
   navigator.serviceWorker
     .register("/firebase-messaging-sw.js")
     .then((registration) => {
       console.log("Firebase Messaging SW registered:", registration.scope);
+      // Service worker'ın hazır olmasını bekleyin:
+      return navigator.serviceWorker.ready;
+    })
+    .then((registration) => {
       return getToken(messaging, {
         vapidKey: VAPID_KEY,
         serviceWorkerRegistration: registration,
@@ -146,7 +151,7 @@ if ("serviceWorker" in navigator) {
       console.error("Service Worker registration or token error:", err);
     });
 
-  // Ayrıca, genel PWA service worker'ınızı da kaydedin:
+  // Genel PWA service worker'ınızı kaydedin:
   navigator.serviceWorker
     .register("/sw.js")
     .then((registration) => {

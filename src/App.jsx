@@ -834,7 +834,7 @@ function App() {
           // --- PWA MODE: BOTTOM NAVIGATION ---
           <React.Fragment>
             {/* İçerik alanına ekstra alt boşluk eklenerek alt navigasyonun üzerine taşmaması sağlandı */}
-            <Box sx={{ pb: 10, mt: 2 }}>
+            <Box sx={{ pb: 15, mt: 2 }}>
               {activeTab === 0 && <DailyRoutine user={user} />}
               {activeTab === 1 && <WellnessTracker user={user} />}
               {activeTab === 2 && <HealthDashboard user={user} />}

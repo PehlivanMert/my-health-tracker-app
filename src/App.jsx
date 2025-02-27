@@ -682,6 +682,7 @@ function App() {
                 onChange={handleProfileChange}
                 variant="outlined"
                 sx={{ background: "rgba(255,255,255,0.9)" }}
+                inputProps={{ readOnly: true }}
               />
               <TextField
                 label="İsim"

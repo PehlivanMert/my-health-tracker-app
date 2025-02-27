@@ -397,7 +397,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     try {
       const nowTurkey = getNowTurkeyTime();
       const yesterday = new Date(nowTurkey);
-      yesterday.setDate(nowTurkey.getDate() - 1);
+      yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStr = yesterday.toISOString().split("T")[0];
       const todayStr = nowTurkey.toISOString().split("T")[0];
 
@@ -692,9 +692,9 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   );
 };
 
-// WaterConsumptionChart Component
 const WaterConsumptionChart = ({ waterHistory }) => {
-  const formattedData = waterHistory.slice(-7).map((entry) => ({
+  // Change from 7 days to 30 days
+  const formattedData = waterHistory.slice(-30).map((entry) => ({
     ...entry,
     date: new Date(entry.date).toLocaleDateString("tr-TR"),
   }));
@@ -711,7 +711,7 @@ const WaterConsumptionChart = ({ waterHistory }) => {
             textAlign: "center",
           }}
         >
-          Son 7 Gün Su Tüketimi
+          Son 30 Gün Su Tüketimi
         </Typography>
 
         {formattedData.length > 0 ? (
@@ -731,6 +731,7 @@ const WaterConsumptionChart = ({ waterHistory }) => {
                 dataKey="date"
                 tick={{ fill: "#fff", fontSize: 12 }}
                 stroke="rgba(255,255,255,0.5)"
+                interval={"preserveStartEnd"}
               />
               <YAxis
                 tick={{ fill: "#fff", fontSize: 12 }}

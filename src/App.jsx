@@ -885,6 +885,7 @@ function App() {
                 sx={{
                   flex: 1,
                   minWidth: 0,
+                  backgroundColor: "rgba(250, 250, 250, 0.69)",
                   "&.Mui-selected": {
                     backgroundColor: "rgba(33,150,243,0.15)",
                     borderRadius: "8px",
@@ -897,6 +898,8 @@ function App() {
                 sx={{
                   flex: 1,
                   minWidth: 0,
+                  backgroundColor: "rgba(250, 250, 250, 0.69)",
+
                   "&.Mui-selected": {
                     backgroundColor: "rgba(33,150,243,0.15)",
                     borderRadius: "8px",
@@ -909,6 +912,8 @@ function App() {
                 sx={{
                   flex: 1,
                   minWidth: 0,
+                  backgroundColor: "rgba(250, 250, 250, 0.69)",
+
                   "&.Mui-selected": {
                     backgroundColor: "rgba(33,150,243,0.15)",
                     borderRadius: "8px",
@@ -921,6 +926,8 @@ function App() {
                 sx={{
                   flex: 1,
                   minWidth: 0,
+                  backgroundColor: "rgba(250, 250, 250, 0.69)",
+
                   "&.Mui-selected": {
                     backgroundColor: "rgba(33,150,243,0.15)",
                     borderRadius: "8px",
@@ -933,6 +940,8 @@ function App() {
                 sx={{
                   flex: 1,
                   minWidth: 0,
+                  backgroundColor: "rgba(250, 250, 250, 0.69)",
+
                   "&.Mui-selected": {
                     backgroundColor: "rgba(33,150,243,0.15)",
                     borderRadius: "8px",
@@ -945,6 +954,8 @@ function App() {
                 sx={{
                   flex: 1,
                   minWidth: 0,
+                  backgroundColor: "rgba(250, 250, 250, 0.69)",
+
                   "&.Mui-selected": {
                     backgroundColor: "rgba(33,150,243,0.15)",
                     borderRadius: "8px",

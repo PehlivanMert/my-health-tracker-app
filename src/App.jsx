@@ -885,84 +885,73 @@ function App() {
                 sx={{
                   flex: 1,
                   minWidth: 0,
-                  backgroundColor: "rgba(250, 250, 250, 0.69)",
                   "&.Mui-selected": {
                     backgroundColor: "rgba(33,150,243,0.15)",
                     borderRadius: "8px",
                   },
                 }}
                 label="Rutin"
-                icon={<HomeIcon />}
+                icon={<HomeIcon sx={{ color: "white" }} />}
               />
               <BottomNavigationAction
                 sx={{
                   flex: 1,
                   minWidth: 0,
-                  backgroundColor: "rgba(250, 250, 250, 0.69)",
-
                   "&.Mui-selected": {
                     backgroundColor: "rgba(33,150,243,0.15)",
                     borderRadius: "8px",
                   },
                 }}
                 label="Yaşam"
-                icon={<FavoriteIcon />}
+                icon={<FavoriteIcon sx={{ color: "white" }} />}
               />
               <BottomNavigationAction
                 sx={{
                   flex: 1,
                   minWidth: 0,
-                  backgroundColor: "rgba(250, 250, 250, 0.69)",
-
                   "&.Mui-selected": {
                     backgroundColor: "rgba(33,150,243,0.15)",
                     borderRadius: "8px",
                   },
                 }}
                 label="Sağlık"
-                icon={<DashboardIcon />}
+                icon={<DashboardIcon sx={{ color: "white" }} />}
               />
               <BottomNavigationAction
                 sx={{
                   flex: 1,
                   minWidth: 0,
-                  backgroundColor: "rgba(250, 250, 250, 0.69)",
-
                   "&.Mui-selected": {
                     backgroundColor: "rgba(33,150,243,0.15)",
                     borderRadius: "8px",
                   },
                 }}
                 label="İpuçları"
-                icon={<LightbulbIcon />}
+                icon={<LightbulbIcon sx={{ color: "white" }} />}
               />
               <BottomNavigationAction
                 sx={{
                   flex: 1,
                   minWidth: 0,
-                  backgroundColor: "rgba(250, 250, 250, 0.69)",
-
                   "&.Mui-selected": {
                     backgroundColor: "rgba(33,150,243,0.15)",
                     borderRadius: "8px",
                   },
                 }}
                 label="Egzersiz"
-                icon={<FitnessCenterIcon />}
+                icon={<FitnessCenterIcon sx={{ color: "white" }} />}
               />
               <BottomNavigationAction
                 sx={{
                   flex: 1,
                   minWidth: 0,
-                  backgroundColor: "rgba(250, 250, 250, 0.69)",
-
                   "&.Mui-selected": {
                     backgroundColor: "rgba(33,150,243,0.15)",
                     borderRadius: "8px",
                   },
                 }}
                 label="Takvim"
-                icon={<CalendarMonthIcon />}
+                icon={<CalendarMonthIcon sx={{ color: "white" }} />}
               />
             </BottomNavigation>
           </React.Fragment>

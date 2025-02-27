@@ -30,7 +30,7 @@ import BottomNavigationAction from "@mui/material/BottomNavigationAction";
 import HomeIcon from "@mui/icons-material/Home";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import DashboardIcon from "@mui/icons-material/Dashboard";
-import RestaurantIcon from "@mui/icons-material/Restaurant";
+import LightbulbIcon from "@mui/icons-material/Lightbulb";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 
@@ -837,9 +837,7 @@ function App() {
         </Dialog>
 
         {/* İçerik Alanı */}
-        {/* PWA ise BottomNavigation, değilse Tabs kullanalım. 
-            İçerik (activeTab'e göre component) altta ortak gösterilecek. 
-        */}
+        {/* PWA ise BottomNavigation, değilse Tabs kullanalım */}
         {isPWA ? (
           // --- BOTTOM NAVIGATION (PWA) ---
           <React.Fragment>
@@ -872,7 +870,7 @@ function App() {
               onChange={(event, newValue) => handleTabChange(newValue)}
               sx={{
                 position: "fixed",
-                bottom: 0,
+                bottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)",
                 left: 0,
                 right: 0,
                 zIndex: 1300,
@@ -881,26 +879,74 @@ function App() {
               }}
             >
               <BottomNavigationAction
-                label="Günlük Rutin"
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  "&.Mui-selected": {
+                    backgroundColor: "rgba(33,150,243,0.15)",
+                    borderRadius: "8px",
+                  },
+                }}
+                label="Rutin"
                 icon={<HomeIcon />}
               />
               <BottomNavigationAction
-                label="Yaşam Kalitesi"
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  "&.Mui-selected": {
+                    backgroundColor: "rgba(33,150,243,0.15)",
+                    borderRadius: "8px",
+                  },
+                }}
+                label="Yaşam"
                 icon={<FavoriteIcon />}
               />
               <BottomNavigationAction
-                label="Sağlık Panosu"
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  "&.Mui-selected": {
+                    backgroundColor: "rgba(33,150,243,0.15)",
+                    borderRadius: "8px",
+                  },
+                }}
+                label="Sağlık"
                 icon={<DashboardIcon />}
               />
               <BottomNavigationAction
-                label="Tarifler"
-                icon={<RestaurantIcon />}
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  "&.Mui-selected": {
+                    backgroundColor: "rgba(33,150,243,0.15)",
+                    borderRadius: "8px",
+                  },
+                }}
+                label="İpuçları"
+                icon={<LightbulbIcon />}
               />
               <BottomNavigationAction
-                label="Fitness"
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  "&.Mui-selected": {
+                    backgroundColor: "rgba(33,150,243,0.15)",
+                    borderRadius: "8px",
+                  },
+                }}
+                label="Egzersiz"
                 icon={<FitnessCenterIcon />}
               />
               <BottomNavigationAction
+                sx={{
+                  flex: 1,
+                  minWidth: 0,
+                  "&.Mui-selected": {
+                    backgroundColor: "rgba(33,150,243,0.15)",
+                    borderRadius: "8px",
+                  },
+                }}
                 label="Takvim"
                 icon={<CalendarMonthIcon />}
               />
@@ -917,6 +963,8 @@ function App() {
               textColor="primary"
               indicatorColor="primary"
               sx={{
+                height: "60px",
+                minHeight: "60px",
                 justifyContent: "center",
                 background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
                 position: "relative",
@@ -927,7 +975,7 @@ function App() {
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  height: "3px",
+                  height: "1px",
                   background:
                     "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
                   opacity: 0.7,
@@ -945,11 +993,11 @@ function App() {
                 },
                 "& .MuiTab-root": {
                   textTransform: "none",
-                  fontWeight: 600,
-                  fontSize: { xs: "0.9rem", md: "1rem" },
+                  fontWeight: 700,
+                  fontSize: { xs: "0.8rem", md: "0.95rem" },
                   margin: "0 5px",
                   minWidth: "auto",
-                  padding: "12px 24px",
+                  padding: "10px 20px",
                   borderRadius: "8px 8px 0 0",
                   transition: "all 0.3s ease",
                   color: "rgba(0, 0, 0, 0.6)",
@@ -976,12 +1024,30 @@ function App() {
                 },
               }}
             >
-              <Tab label="Günlük Rutin" />
-              <Tab label="Yaşam Kalitesi Paneli" />
-              <Tab label="Sağlık Panosu" />
-              <Tab label="Tarifler - Değerler - Hedefler" />
-              <Tab label="Fitness Takip Paneli" />
-              <Tab label="Takvim" />
+              <Tab
+                icon={<HomeIcon sx={{ fontSize: "1.0rem" }} />}
+                label="Rutin"
+              />
+              <Tab
+                icon={<FavoriteIcon sx={{ fontSize: "1.0rem" }} />}
+                label="Yaşam"
+              />
+              <Tab
+                icon={<DashboardIcon sx={{ fontSize: "1.0rem" }} />}
+                label="Sağlık"
+              />
+              <Tab
+                icon={<LightbulbIcon sx={{ fontSize: "1.0rem" }} />}
+                label="İpuçları"
+              />
+              <Tab
+                icon={<FitnessCenterIcon sx={{ fontSize: "1.0rem" }} />}
+                label="Egzersiz"
+              />
+              <Tab
+                icon={<CalendarMonthIcon sx={{ fontSize: "1.0rem" }} />}
+                label="Takvim"
+              />
             </Tabs>
 
             {/* Tabs içerik */}
@@ -1035,7 +1101,6 @@ function App() {
             },
             boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.05)",
             gap: { xs: 2, sm: 0 },
-            // BottomNavigation ile çakışmaması için marginBottom ayarlayabilirsiniz (isteğe bağlı).
             mb: isPWA ? 8 : 0,
           }}
         >

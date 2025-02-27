@@ -398,8 +398,17 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
       const nowTurkey = getNowTurkeyTime();
       const yesterday = new Date(nowTurkey);
       yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split("T")[0];
-      const todayStr = nowTurkey.toISOString().split("T")[0];
+
+      php;
+      Kopyala;
+      Düzenle;
+      // Türkiye saatine göre tarihleri YYYY-MM-DD formatında alıyoruz.
+      const yesterdayStr = yesterday.toLocaleDateString("en-CA", {
+        timeZone: "Europe/Istanbul",
+      });
+      const todayStr = nowTurkey.toLocaleDateString("en-CA", {
+        timeZone: "Europe/Istanbul",
+      });
 
       const ref = getWaterDocRef();
       const docSnap = await getDoc(ref);
@@ -411,7 +420,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           glassSize: 250,
           history: [],
           yesterdayWaterIntake: 0,
-          lastResetDate: nowTurkey.toISOString(),
+          lastResetDate: todayStr,
         });
       } else {
         const currentData = docSnap.data();
@@ -432,7 +441,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
             glassSize: currentData.glassSize || 250,
             history: updatedHistory,
             yesterdayWaterIntake: currentData.waterIntake || 0,
-            lastResetDate: nowTurkey.toISOString(),
+            lastResetDate: todayStr,
           },
           { merge: true }
         );

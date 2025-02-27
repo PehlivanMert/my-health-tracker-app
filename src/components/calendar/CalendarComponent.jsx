@@ -685,7 +685,7 @@ const CalendarComponent = ({ user }) => {
             multiMonthPlugin,
             rrulePlugin,
           ]}
-          initialView="dayGridMonth"
+          initialView={window.innerWidth < 600 ? "timeGridDay" : "dayGridMonth"}
           firstDay={1}
           headerToolbar={{
             left: "prev,next today",
@@ -860,20 +860,21 @@ const renderEventContent = (eventInfo) => {
   return (
     <Box
       sx={{
-        ...styles.eventContent,
         backgroundColor: eventInfo.event.backgroundColor,
-        border: `1px solid ${eventInfo.event.borderColor}`,
-        padding: "2px 8px",
-        borderRadius: "4px",
-        lineHeight: 1.2,
+        // Mobilde daha geniş padding, yuvarlatılmış kenarlar ve hafif gölge ile Apple Calendar benzeri görünüm
+        padding: { xs: "8px 12px", md: "6px 10px" },
+        borderRadius: "8px",
+        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+        lineHeight: 1.4,
         width: "100%",
+        color: "#fff",
       }}
     >
-      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.8rem" }}>
+      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.85rem" }}>
         {eventInfo.event.title}
       </Typography>
       {!isAllDay && (
-        <Typography variant="caption" sx={{ fontSize: "0.7rem" }}>
+        <Typography variant="caption" sx={{ fontSize: "0.75rem" }}>
           {startStr} - {endStr}
         </Typography>
       )}

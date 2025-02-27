@@ -235,7 +235,6 @@ function App() {
               ? loadedAdditionalInfo.recipes
               : Object.values(loadedAdditionalInfo.recipes),
           });
-          // Eğer doğum tarihi Firestore Timestamp ise, input formatına çevir
           if (
             data.profile &&
             data.profile.birthDate &&
@@ -366,10 +365,8 @@ function App() {
         if (docSnap.exists() && docSnap.data().profile) {
           let prof = docSnap.data().profile;
           if (prof.birthDate?.toDate) {
-            // Firestore Timestamp kontrolü
             prof.birthDate = format(prof.birthDate.toDate(), "yyyy-MM-dd");
           } else if (prof.birthDate?.includes("T")) {
-            // ISO string kontrolü
             prof.birthDate = format(new Date(prof.birthDate), "yyyy-MM-dd");
           }
           setProfileData(prof);
@@ -386,7 +383,6 @@ function App() {
         }
       };
       fetchProfile();
-      // Hoşgeldin animasyonu: sadece ilk oturum açmada göster (localStorage kontrolü)
       if (!localStorage.getItem("welcomeShown")) {
         setShowWelcome(true);
         localStorage.setItem("welcomeShown", "true");
@@ -412,7 +408,6 @@ function App() {
     const { name, value } = e.target;
     setProfileData((prev) => ({ ...prev, [name]: value }));
   };
-  // Dosya yükleme yerine avatar seçimi için buton ekliyoruz:
   const handleAvatarSelect = (url) => {
     setProfileData((prev) => ({ ...prev, profileImage: url }));
   };
@@ -423,13 +418,10 @@ function App() {
     try {
       const userDocRef = doc(db, "users", user.uid);
       const profileToSave = { ...profileData };
-
-      // Doğum tarihini doğru formatta kaydet
       if (profileToSave.birthDate) {
         const [year, month, day] = profileToSave.birthDate.split("-");
         profileToSave.birthDate = new Date(year, month - 1, day);
       }
-
       await updateDoc(userDocRef, {
         profile: profileToSave,
       });
@@ -443,7 +435,7 @@ function App() {
     auth.signOut();
     setUser(null);
     localStorage.removeItem("currentUser");
-    localStorage.removeItem("welcomeShown"); // Çıkışta bayrağı temizle
+    localStorage.removeItem("welcomeShown");
     setAnchorEl(null);
   };
 
@@ -838,11 +830,11 @@ function App() {
         </Dialog>
 
         {/* İçerik Alanı */}
-        {/* PWA ise BottomNavigation, değilse Tabs kullanalım */}
         {isPWA ? (
-          // --- BOTTOM NAVIGATION (PWA) ---
+          // --- PWA MODE: BOTTOM NAVIGATION ---
           <React.Fragment>
-            <Box sx={{ pb: 8, mt: 2 }}>
+            {/* İçerik alanına ekstra alt boşluk eklenerek alt navigasyonun üzerine taşmaması sağlandı */}
+            <Box sx={{ pb: 10, mt: 2 }}>
               {activeTab === 0 && <DailyRoutine user={user} />}
               {activeTab === 1 && <WellnessTracker user={user} />}
               {activeTab === 2 && <HealthDashboard user={user} />}
@@ -871,10 +863,11 @@ function App() {
               onChange={(event, newValue) => handleTabChange(newValue)}
               sx={{
                 position: "fixed",
-                bottom: 0, // iOS için ekstra boşluk bırakma
-                pb: "env(safe-area-inset-bottom, 0px)", // Safe area'yı otomatik kullan
+                bottom: 0,
                 left: 0,
                 right: 0,
+                height: "64px",
+                pb: "env(safe-area-inset-bottom, 0px)",
                 zIndex: 1300,
                 borderTop: "1px solid #ccc",
                 background:
@@ -886,8 +879,8 @@ function App() {
                   flex: 1,
                   minWidth: 0,
                   "&.Mui-selected": {
-                    backgroundColor: "rgba(33,150,243,0.15)",
-                    borderRadius: "8px",
+                    backgroundColor: "transparent",
+                    borderTop: "3px solid white",
                   },
                 }}
                 label="Rutin"
@@ -898,8 +891,8 @@ function App() {
                   flex: 1,
                   minWidth: 0,
                   "&.Mui-selected": {
-                    backgroundColor: "rgba(33,150,243,0.15)",
-                    borderRadius: "8px",
+                    backgroundColor: "transparent",
+                    borderTop: "3px solid white",
                   },
                 }}
                 label="Yaşam"
@@ -910,8 +903,8 @@ function App() {
                   flex: 1,
                   minWidth: 0,
                   "&.Mui-selected": {
-                    backgroundColor: "rgba(33,150,243,0.15)",
-                    borderRadius: "8px",
+                    backgroundColor: "transparent",
+                    borderTop: "3px solid white",
                   },
                 }}
                 label="Sağlık"
@@ -922,8 +915,8 @@ function App() {
                   flex: 1,
                   minWidth: 0,
                   "&.Mui-selected": {
-                    backgroundColor: "rgba(33,150,243,0.15)",
-                    borderRadius: "8px",
+                    backgroundColor: "transparent",
+                    borderTop: "3px solid white",
                   },
                 }}
                 label="İpuçları"
@@ -934,8 +927,8 @@ function App() {
                   flex: 1,
                   minWidth: 0,
                   "&.Mui-selected": {
-                    backgroundColor: "rgba(33,150,243,0.15)",
-                    borderRadius: "8px",
+                    backgroundColor: "transparent",
+                    borderTop: "3px solid white",
                   },
                 }}
                 label="Egzersiz"
@@ -946,8 +939,8 @@ function App() {
                   flex: 1,
                   minWidth: 0,
                   "&.Mui-selected": {
-                    backgroundColor: "rgba(33,150,243,0.15)",
-                    borderRadius: "8px",
+                    backgroundColor: "transparent",
+                    borderTop: "3px solid white",
                   },
                 }}
                 label="Takvim"
@@ -956,7 +949,7 @@ function App() {
             </BottomNavigation>
           </React.Fragment>
         ) : (
-          // --- ESKİ TABS (PWA Değilken) ---
+          // --- PWA dışı: TABS ---
           <React.Fragment>
             <Tabs
               value={activeTab}
@@ -999,7 +992,6 @@ function App() {
                   fontWeight: 700,
                   fontSize: { xs: "0.8rem", md: "0.95rem" },
                   margin: "0 5px",
-
                   minWidth: "auto",
                   padding: "10px 20px",
                   borderRadius: "8px 8px 0 0",
@@ -1054,7 +1046,6 @@ function App() {
               />
             </Tabs>
 
-            {/* Tabs içerik */}
             {activeTab === 0 && <DailyRoutine user={user} />}
             {activeTab === 1 && <WellnessTracker user={user} />}
             {activeTab === 2 && <HealthDashboard user={user} />}
@@ -1078,66 +1069,68 @@ function App() {
           </React.Fragment>
         )}
 
-        <Box
-          className="footer-container"
-          sx={{
-            display: "flex",
-            flexDirection: { xs: "column", sm: "row" },
-            alignItems: "center",
-            justifyContent: "space-between",
-            p: 1.5,
-            background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
-            borderTop: "1px solid rgba(33, 150, 243, 0.1)",
-            position: "relative",
-            bottom: 0,
-            left: 0,
-            width: "100%",
-            "&::before": {
-              content: '""',
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              height: "3px",
-              background:
-                "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
-              opacity: 0.5,
-            },
-            boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.05)",
-            gap: { xs: 2, sm: 0 },
-            mb: isPWA ? 8 : 0,
-          }}
-        >
-          <Typography
-            variant="body2"
-            sx={{
-              fontWeight: 600,
-              background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              transition: "all 0.3s ease",
-              "&:hover": { transform: "translateX(5px)" },
-            }}
-          >
-            © 2025 Sağlık ve Rutin Takip Sistemi
-          </Typography>
+        {/* Footer yalnızca PWA dışı modda gösterilsin */}
+        {!isPWA && (
           <Box
+            className="footer-container"
             sx={{
               display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
               alignItems: "center",
-              gap: 2,
-              background: "rgba(255, 255, 255, 0.8)",
-              backdropFilter: "blur(8px)",
-              padding: "8px 16px",
-              borderRadius: 3,
-              transition: "all 0.3s ease",
-              "&:hover": {
-                transform: "translateY(-2px)",
-                boxShadow: "0 4px 15px rgba(33, 150, 243, 0.1)",
+              justifyContent: "space-between",
+              p: 1.5,
+              background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
+              borderTop: "1px solid rgba(33, 150, 243, 0.1)",
+              position: "relative",
+              bottom: 0,
+              left: 0,
+              width: "100%",
+              "&::before": {
+                content: '""',
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                height: "3px",
+                background:
+                  "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
+                opacity: 0.5,
               },
+              boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.05)",
+              gap: { xs: 2, sm: 0 },
             }}
-          ></Box>
-        </Box>
+          >
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 600,
+                background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                transition: "all 0.3s ease",
+                "&:hover": { transform: "translateX(5px)" },
+              }}
+            >
+              © 2025 Sağlık ve Rutin Takip Sistemi
+            </Typography>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 2,
+                background: "rgba(255, 255, 255, 0.8)",
+                backdropFilter: "blur(8px)",
+                padding: "8px 16px",
+                borderRadius: 3,
+                transition: "all 0.3s ease",
+                "&:hover": {
+                  transform: "translateY(-2px)",
+                  boxShadow: "0 4px 15px rgba(33, 150, 243, 0.1)",
+                },
+              }}
+            ></Box>
+          </Box>
+        )}
 
         <ToastContainer position="bottom-right" autoClose={3000} />
         <ToastContainer

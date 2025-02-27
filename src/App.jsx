@@ -58,6 +58,7 @@ import { handlePasswordReset } from "./components/auth/AuthHandlers";
 import Lottie from "lottie-react";
 import welcomeAnimation from "./assets/welcomeAnimation.json";
 import HealthDashboard from "./components/health-dashboard/HealthDashboard";
+import { px } from "framer-motion";
 
 // Animasyonlar
 const float = keyframes`
@@ -870,12 +871,14 @@ function App() {
               onChange={(event, newValue) => handleTabChange(newValue)}
               sx={{
                 position: "fixed",
-                bottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)",
+                bottom: 0, // iOS için ekstra boşluk bırakma
+                pb: "env(safe-area-inset-bottom, 0px)", // Safe area'yı otomatik kullan
                 left: 0,
                 right: 0,
                 zIndex: 1300,
                 borderTop: "1px solid #ccc",
-                backgroundColor: "#fff",
+                background:
+                  "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
               }}
             >
               <BottomNavigationAction
@@ -996,6 +999,7 @@ function App() {
                   fontWeight: 700,
                   fontSize: { xs: "0.8rem", md: "0.95rem" },
                   margin: "0 5px",
+
                   minWidth: "auto",
                   padding: "10px 20px",
                   borderRadius: "8px 8px 0 0",

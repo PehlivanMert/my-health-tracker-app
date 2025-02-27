@@ -23,6 +23,17 @@ import {
   DialogActions,
   TextField,
 } from "@mui/material";
+
+// Bottom Navigation ve ikonlar
+import BottomNavigation from "@mui/material/BottomNavigation";
+import BottomNavigationAction from "@mui/material/BottomNavigationAction";
+import HomeIcon from "@mui/icons-material/Home";
+import FavoriteIcon from "@mui/icons-material/Favorite";
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import RestaurantIcon from "@mui/icons-material/Restaurant";
+import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+
 import "react-toastify/dist/ReactToastify.css";
 import "tippy.js/dist/tippy.css";
 import "./App.css";
@@ -143,6 +154,16 @@ function App() {
   const [errors, setErrors] = useState({ username: false, password: false });
   const [remainingTime, setRemainingTime] = useState(0);
 
+  // PWA kontrolü
+  const [isPWA, setIsPWA] = useState(false);
+  useEffect(() => {
+    const isInStandaloneMode = () =>
+      (window.matchMedia &&
+        window.matchMedia("(display-mode: standalone)").matches) ||
+      navigator.standalone === true;
+    setIsPWA(isInStandaloneMode());
+  }, []);
+
   // Bildirim izni
   useEffect(() => {
     requestNotificationPermission();
@@ -156,7 +177,7 @@ function App() {
       : Object.values(constantAdditionalInfo.recipes),
   });
 
-  // Sekme Yönetimi
+  // Sekme Yönetimi (hem Tabs hem BottomNavigation için aynı state)
   const [activeTab, setActiveTab] = useState(
     () => parseInt(localStorage.getItem("activeTab")) || 0
   );
@@ -559,7 +580,6 @@ function App() {
         >
           <Toolbar
             sx={{
-              // Mobilde dikey yer kaplamaması için hep "row" yönünde düzenlendi
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
@@ -625,6 +645,7 @@ function App() {
           </Toolbar>
         </AppBar>
 
+        {/* Profil Dialog */}
         <Dialog
           open={openProfileModal}
           onClose={handleProfileClose}
@@ -815,155 +836,177 @@ function App() {
           </DialogActions>
         </Dialog>
 
-        <Tabs
-          value={activeTab}
-          onChange={(event, newTab) => handleTabChange(newTab)}
-          variant="scrollable"
-          scrollButtons="auto"
-          textColor="primary"
-          indicatorColor="primary"
-          sx={{
-            justifyContent: "center",
-            background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
-            position: "relative",
-            boxShadow: "0 4px 20px rgba(33, 150, 243, 0.1)",
-            "&::after": {
-              content: '""',
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: "3px",
-              background:
-                "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
-              opacity: 0.7,
-            },
-            "& .MuiTabs-flexContainer": {
-              justifyContent: { xs: "flex-start", md: "center" },
-              gap: 1,
-            },
-            "& .MuiTabs-indicator": {
-              background:
-                "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
-              height: 3,
-              borderRadius: "3px 3px 0 0",
-              boxShadow: "0 -2px 8px rgba(33, 150, 243, 0.2)",
-            },
-            "& .MuiTab-root": {
-              textTransform: "none",
-              fontWeight: 600,
-              fontSize: { xs: "0.9rem", md: "1rem" },
-              margin: "0 5px",
-              minWidth: "auto",
-              padding: "12px 24px",
-              borderRadius: "8px 8px 0 0",
-              transition: "all 0.3s ease",
-              color: "rgba(0, 0, 0, 0.6)",
-              "&:hover": {
-                backgroundColor: "rgba(33, 150, 243, 0.08)",
-                transform: "translateY(-2px)",
-                color: "#2196F3",
-              },
-              "&.Mui-selected": {
-                color: "#2196F3",
-                background: "rgba(33, 150, 243, 0.08)",
-                fontWeight: 700,
-              },
-              "&::before": {
-                content: '""',
-                position: "absolute",
+        {/* İçerik Alanı */}
+        {/* PWA ise BottomNavigation, değilse Tabs kullanalım. 
+            İçerik (activeTab'e göre component) altta ortak gösterilecek. 
+        */}
+        {isPWA ? (
+          // --- BOTTOM NAVIGATION (PWA) ---
+          <React.Fragment>
+            <Box sx={{ pb: 8, mt: 2 }}>
+              {activeTab === 0 && <DailyRoutine user={user} />}
+              {activeTab === 1 && <WellnessTracker user={user} />}
+              {activeTab === 2 && <HealthDashboard user={user} />}
+              {activeTab === 3 && (
+                <ProTips
+                  additionalInfo={additionalInfo}
+                  setAdditionalInfo={setAdditionalInfo}
+                  user={user}
+                />
+              )}
+              {activeTab === 4 && (
+                <Exercises
+                  exercises={exercises}
+                  setExercises={setExercises}
+                  handleExerciseSubmit={handleExerciseSubmit}
+                  editingExercise={editingExercise}
+                  setEditingExercise={setEditingExercise}
+                />
+              )}
+              {activeTab === 5 && <CalendarComponent user={user} />}
+            </Box>
+
+            <BottomNavigation
+              showLabels
+              value={activeTab}
+              onChange={(event, newValue) => handleTabChange(newValue)}
+              sx={{
+                position: "fixed",
                 bottom: 0,
                 left: 0,
                 right: 0,
-                height: "3px",
-                background: "transparent",
-                transition: "all 0.3s ease",
-              },
-              "&.Mui-selected::before": {
-                background:
-                  "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
-                opacity: 0.5,
-              },
-            },
-            "& .MuiTabScrollButton-root": {
-              width: 48,
-              transition: "all 0.3s ease",
-              "&.Mui-disabled": { opacity: 0 },
-              "&:hover": { backgroundColor: "rgba(33, 150, 243, 0.08)" },
-              "& .MuiSvgIcon-root": { fontSize: "1.5rem", color: "#2196F3" },
-            },
-          }}
-        >
-          <Tab
-            label="Günlük Rutin"
-            sx={{
-              background: "#e6f7ff",
-              borderRadius: "8px",
-              "&:hover": { background: "#b3e5fc" },
-            }}
-          />
-          <Tab
-            label="Yaşam Kalitesi Paneli"
-            sx={{
-              background: "#e8f5e9",
-              borderRadius: "8px",
-              "&:hover": { background: "#c8e6c9" },
-            }}
-          />
-          <Tab
-            label="Sağlık Panosu"
-            sx={{
-              background: "linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)",
-              borderRadius: "8px",
-              "&:hover": { background: "#a5d6a7" },
-            }}
-          />
-          <Tab
-            label="Tarifler - Değerler - Hedefler"
-            sx={{
-              background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
-              borderRadius: "8px",
-              "&:hover": { background: "#b3e5fc" },
-            }}
-          />
-          <Tab
-            label="Fitness Takip Paneli"
-            sx={{
-              background: "#fff3e0",
-              borderRadius: "8px",
-              "&:hover": { background: "#ffe0b2" },
-            }}
-          />
-          <Tab
-            label="Takvim"
-            sx={{
-              background: "#fffde7",
-              borderRadius: "8px",
-              "&:hover": { background: "#fff9c4" },
-            }}
-          />
-        </Tabs>
-        {activeTab === 0 && <DailyRoutine user={user} />}
-        {activeTab === 1 && <WellnessTracker user={user} />}
-        {activeTab === 2 && <HealthDashboard user={user} />}
-        {activeTab === 3 && (
-          <ProTips
-            additionalInfo={additionalInfo}
-            setAdditionalInfo={setAdditionalInfo}
-            user={user}
-          />
-        )}
-        {activeTab === 4 && (
-          <Exercises
-            exercises={exercises}
-            setExercises={setExercises}
-            handleExerciseSubmit={handleExerciseSubmit}
-            editingExercise={editingExercise}
-            setEditingExercise={setEditingExercise}
-          />
-        )}
+                zIndex: 1300,
+                borderTop: "1px solid #ccc",
+                backgroundColor: "#fff",
+              }}
+            >
+              <BottomNavigationAction
+                label="Günlük Rutin"
+                icon={<HomeIcon />}
+              />
+              <BottomNavigationAction
+                label="Yaşam Kalitesi"
+                icon={<FavoriteIcon />}
+              />
+              <BottomNavigationAction
+                label="Sağlık Panosu"
+                icon={<DashboardIcon />}
+              />
+              <BottomNavigationAction
+                label="Tarifler"
+                icon={<RestaurantIcon />}
+              />
+              <BottomNavigationAction
+                label="Fitness"
+                icon={<FitnessCenterIcon />}
+              />
+              <BottomNavigationAction
+                label="Takvim"
+                icon={<CalendarMonthIcon />}
+              />
+            </BottomNavigation>
+          </React.Fragment>
+        ) : (
+          // --- ESKİ TABS (PWA Değilken) ---
+          <React.Fragment>
+            <Tabs
+              value={activeTab}
+              onChange={(event, newTab) => handleTabChange(newTab)}
+              variant="scrollable"
+              scrollButtons="auto"
+              textColor="primary"
+              indicatorColor="primary"
+              sx={{
+                justifyContent: "center",
+                background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
+                position: "relative",
+                boxShadow: "0 4px 20px rgba(33, 150, 243, 0.1)",
+                "&::after": {
+                  content: '""',
+                  position: "absolute",
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: "3px",
+                  background:
+                    "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
+                  opacity: 0.7,
+                },
+                "& .MuiTabs-flexContainer": {
+                  justifyContent: { xs: "flex-start", md: "center" },
+                  gap: 1,
+                },
+                "& .MuiTabs-indicator": {
+                  background:
+                    "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
+                  height: 3,
+                  borderRadius: "3px 3px 0 0",
+                  boxShadow: "0 -2px 8px rgba(33, 150, 243, 0.2)",
+                },
+                "& .MuiTab-root": {
+                  textTransform: "none",
+                  fontWeight: 600,
+                  fontSize: { xs: "0.9rem", md: "1rem" },
+                  margin: "0 5px",
+                  minWidth: "auto",
+                  padding: "12px 24px",
+                  borderRadius: "8px 8px 0 0",
+                  transition: "all 0.3s ease",
+                  color: "rgba(0, 0, 0, 0.6)",
+                  "&:hover": {
+                    backgroundColor: "rgba(33, 150, 243, 0.08)",
+                    transform: "translateY(-2px)",
+                    color: "#2196F3",
+                  },
+                  "&.Mui-selected": {
+                    color: "#2196F3",
+                    background: "rgba(33, 150, 243, 0.08)",
+                    fontWeight: 700,
+                  },
+                },
+                "& .MuiTabScrollButton-root": {
+                  width: 48,
+                  transition: "all 0.3s ease",
+                  "&.Mui-disabled": { opacity: 0 },
+                  "&:hover": { backgroundColor: "rgba(33, 150, 243, 0.08)" },
+                  "& .MuiSvgIcon-root": {
+                    fontSize: "1.5rem",
+                    color: "#2196F3",
+                  },
+                },
+              }}
+            >
+              <Tab label="Günlük Rutin" />
+              <Tab label="Yaşam Kalitesi Paneli" />
+              <Tab label="Sağlık Panosu" />
+              <Tab label="Tarifler - Değerler - Hedefler" />
+              <Tab label="Fitness Takip Paneli" />
+              <Tab label="Takvim" />
+            </Tabs>
 
-        {activeTab === 5 && <CalendarComponent user={user} />}
+            {/* Tabs içerik */}
+            {activeTab === 0 && <DailyRoutine user={user} />}
+            {activeTab === 1 && <WellnessTracker user={user} />}
+            {activeTab === 2 && <HealthDashboard user={user} />}
+            {activeTab === 3 && (
+              <ProTips
+                additionalInfo={additionalInfo}
+                setAdditionalInfo={setAdditionalInfo}
+                user={user}
+              />
+            )}
+            {activeTab === 4 && (
+              <Exercises
+                exercises={exercises}
+                setExercises={setExercises}
+                handleExerciseSubmit={handleExerciseSubmit}
+                editingExercise={editingExercise}
+                setEditingExercise={setEditingExercise}
+              />
+            )}
+            {activeTab === 5 && <CalendarComponent user={user} />}
+          </React.Fragment>
+        )}
 
         <Box
           className="footer-container"
@@ -992,6 +1035,8 @@ function App() {
             },
             boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.05)",
             gap: { xs: 2, sm: 0 },
+            // BottomNavigation ile çakışmaması için marginBottom ayarlayabilirsiniz (isteğe bağlı).
+            mb: isPWA ? 8 : 0,
           }}
         >
           <Typography

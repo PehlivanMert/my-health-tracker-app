@@ -87,8 +87,8 @@ const ColorPickerDialog = ({
           display: "flex",
           flexWrap: "wrap",
           gap: 2,
-          maxWidth: 400,
-          maxHeight: 300,
+          maxWidth: { xs: "90vw", sm: 400 },
+          maxHeight: { xs: "60vh", sm: 300 },
           overflowY: "auto",
         }}
       >
@@ -149,10 +149,11 @@ const CalendarComponent = ({ user }) => {
   const [editEvent, setEditEvent] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
+  const now = DateTime.local();
   const [newEvent, setNewEvent] = useState({
     title: "",
-    start: DateTime.local().startOf("day"),
-    end: DateTime.local().endOf("day"),
+    start: now.set({ hour: 10, minute: 0, second: 0, millisecond: 0 }),
+    end: now.set({ hour: 12, minute: 0, second: 0, millisecond: 0 }),
     allDay: false,
     color: calendarColors.fosfor,
     notification: "none", // "none", "on-time", "15-minutes", "1-hour", "1-day"
@@ -208,22 +209,23 @@ const CalendarComponent = ({ user }) => {
               freq = null;
           }
           if (freq) {
-            // Buradaki değişiklikler önemli
             const rruleObj = {
               freq,
               dtstart: data.start.toDate(),
-              tzid: "Europe/Istanbul", // Zaman dilimini belirtiyoruz
+              tzid: "Europe/Istanbul",
             };
+            let untilDate;
             if (data.recurrence.recurrenceUntil) {
-              const untilDate = data.recurrence.recurrenceUntil.toDate();
-              if (!isNaN(untilDate.getTime())) {
-                rruleObj.until = untilDate;
-              } else {
-                console.warn(
-                  "Invalid recurrenceUntil value:",
-                  data.recurrence.recurrenceUntil
-                );
-              }
+              untilDate = data.recurrence.recurrenceUntil.toDate();
+              // Ayarlama: Seçilen sonlanma tarihini gün sonuna çekiyoruz.
+              untilDate.setHours(23, 59, 59, 999);
+              rruleObj.until = untilDate;
+            } else {
+              untilDate = DateTime.local()
+                .plus({ months: 1 })
+                .endOf("day")
+                .toJSDate();
+              rruleObj.until = untilDate;
             }
             baseEvent.rrule = rruleObj;
             const diff = data.end.toDate() - data.start.toDate();
@@ -232,8 +234,13 @@ const CalendarComponent = ({ user }) => {
               minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
               seconds: Math.floor((diff % (1000 * 60)) / 1000),
             };
-            // Dikkat: Tekrarlı etkinliklerde 'end' özelliğini kaldırıyoruz.
+            // Tekrarlı etkinliklerde 'end' özelliğini kaldırıyoruz.
             delete baseEvent.end;
+            // extendedProps.recurrence bölümünü güncelliyoruz:
+            baseEvent.extendedProps.recurrence = {
+              recurrenceType: data.recurrence.recurrenceType,
+              recurrenceUntil: untilDate,
+            };
           }
         }
 
@@ -260,6 +267,7 @@ const CalendarComponent = ({ user }) => {
     try {
       const batch = writeBatch(db);
       const eventsRef = collection(db, "users", user.uid, "calendarEvents");
+      // handleCreateEvent içindeki eventData oluşturma kısmı:
       const eventData = {
         title: newEvent.title,
         start: Timestamp.fromDate(newEvent.start.toJSDate()),
@@ -270,10 +278,12 @@ const CalendarComponent = ({ user }) => {
         recurrence: newEvent.isRecurring
           ? {
               recurrenceType: newEvent.recurrenceType,
-              recurrenceUntil: newEvent.recurrenceUntil.toJSDate(),
+              // Burada recurrenceUntil'ı gün sonuna çekiyoruz:
+              recurrenceUntil: newEvent.recurrenceUntil.endOf("day").toJSDate(),
             }
           : null,
       };
+
       const docRef = doc(eventsRef);
       batch.set(docRef, eventData);
       await batch.commit();
@@ -297,11 +307,12 @@ const CalendarComponent = ({ user }) => {
 
       await fetchEvents();
       setOpenDialog(false);
+      const now = DateTime.local();
       setNewEvent({
         title: "",
-        start: DateTime.local().startOf("day"),
-        end: DateTime.local().endOf("day"),
-        allDay: true,
+        start: now.set({ hour: 10, minute: 0, second: 0, millisecond: 0 }),
+        end: now.set({ hour: 12, minute: 0, second: 0, millisecond: 0 }),
+        allDay: false,
         color: theme.palette.primary.main,
         notification: "none",
         isRecurring: false,
@@ -379,19 +390,27 @@ const CalendarComponent = ({ user }) => {
   };
 
   // Tarih seçildiğinde yeni etkinlik diyalogunu aç
+
   const handleDateSelect = (selectInfo) => {
+    const selectedDate = DateTime.fromJSDate(selectInfo.start);
     setNewEvent({
       title: "",
-      start: DateTime.fromJSDate(selectInfo.start),
-      end: DateTime.fromJSDate(selectInfo.end),
-      allDay: selectInfo.allDay,
+      start: selectedDate.set({
+        hour: 10,
+        minute: 0,
+        second: 0,
+        millisecond: 0,
+      }),
+      end: selectedDate.set({ hour: 12, minute: 0, second: 0, millisecond: 0 }),
+      allDay: false, // her zaman false olarak ayarlandı
       color: calendarColors.lavanta,
       notification: "none",
       isRecurring: false,
       recurrenceType: "",
-      recurrenceUntil: DateTime.fromJSDate(selectInfo.start).plus({
-        months: 1,
-      }),
+      // Seçilen tarihin sonuna kadar (23:59:59) olacak şekilde ayarlanıyor:
+      recurrenceUntil: DateTime.fromJSDate(selectInfo.start)
+        .plus({ months: 1 })
+        .endOf("day"),
     });
     setOpenDialog(true);
   };
@@ -509,6 +528,8 @@ const CalendarComponent = ({ user }) => {
         open={open}
         onClose={onClose}
         disableEnforceFocus
+        fullWidth
+        maxWidth="sm"
         PaperProps={{
           sx: {
             zIndex: 99999,
@@ -912,6 +933,8 @@ const EventDialog = ({
         open={open}
         onClose={onClose}
         disableEnforceFocus
+        fullWidth
+        maxWidth="sm"
         PaperProps={{
           sx: {
             background: "rgba(83, 134, 176, 0.33)",
@@ -920,12 +943,11 @@ const EventDialog = ({
             border: "1px solid rgba(33, 150, 243, 0.2)",
             color: "#fff",
             p: 2,
-            width: "auto", // tüm dialoglar aynı genişlikte olsun
           },
         }}
       >
         <DialogTitle>{title}</DialogTitle>
-        <DialogContent sx={{ py: 2, minWidth: 480 }}>
+        <DialogContent sx={{ py: 2, minWidth: { xs: "90vw", sm: 480 } }}>
           <TextField
             label="Etkinlik Başlığı"
             fullWidth

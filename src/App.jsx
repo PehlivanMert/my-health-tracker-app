@@ -140,20 +140,42 @@ ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
 function App() {
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/firebase-messaging-sw.js")
-        .then((registration) => {
-          console.log("Service Worker başarıyla kaydedildi:", registration);
-          // Kayıt başarılı olduğunda bildirim izni ve token alımı başlatılıyor:
-          requestNotificationPermission();
-          requestFcmToken();
-        })
-        .catch((error) => {
-          console.error("Service Worker kaydı başarısız:", error);
-        });
-    }
+    const initializeApp = async () => {
+      // 1. Servis çalışanını kaydet
+      if ("serviceWorker" in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.register(
+            "/firebase-messaging-sw.js",
+            { scope: "/" }
+          );
+          console.log("Service Worker kaydedildi:", registration);
+
+          // 2. FCM Token'ı al
+          const token = await requestFcmToken();
+          if (token) {
+            console.log("FCM Token:", token);
+            // Token'ı Firestore'a kaydet
+            await saveTokenToFirestore(token);
+          }
+        } catch (error) {
+          console.error("Servis çalışanı kaydı başarısız:", error);
+        }
+      }
+    };
+
+    initializeApp();
   }, []);
+
+  const saveTokenToFirestore = async (token) => {
+    if (!user) return;
+    try {
+      await updateDoc(doc(db, "users", user.uid), {
+        fcmToken: token,
+      });
+    } catch (error) {
+      console.error("Token kaydetme hatası:", error);
+    }
+  };
 
   // Temel state'ler
   const [isLoading, setIsLoading] = useState(true);

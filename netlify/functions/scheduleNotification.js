@@ -9,9 +9,9 @@ if (!admin.apps.length) {
   });
 }
 
-const scheduledJobs = {};
+const jobs = new Map();
 
-exports.handler = async (event, context) => {
+exports.handler = async (event) => {
   try {
     const { token, title, scheduledTime } = JSON.parse(event.body);
     const targetDate = new Date(scheduledTime);
@@ -23,36 +23,29 @@ exports.handler = async (event, context) => {
       };
     }
 
-    const notificationId = `notif-${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2, 9)}`;
-
-    const job = schedule.scheduleJob(targetDate, async () => {
+    const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const job = schedule.scheduleJob(jobId, targetDate, async () => {
       try {
         await admin.messaging().send({
           token,
-          notification: {
-            title: title,
-            body: `⏰ ${title} zamanı geldi!`,
-          },
+          notification: { title, body: `⏰ ${title} zamanı!` },
         });
-        delete scheduledJobs[notificationId];
+        jobs.delete(jobId);
       } catch (error) {
         console.error("Bildirim gönderilemedi:", error);
       }
     });
 
-    scheduledJobs[notificationId] = job;
+    jobs.set(jobId, job);
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        notificationId,
-        message: "Bildirim başarıyla planlandı",
+        notificationId: jobId,
+        scheduledTime: targetDate.toISOString(),
       }),
     };
   } catch (error) {
-    console.error("Hata:", error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: error.message }),

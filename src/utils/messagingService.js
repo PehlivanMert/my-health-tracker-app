@@ -7,29 +7,30 @@ const vapidKey =
 
 export const requestFcmToken = async () => {
   try {
-    const currentToken = await getToken(messaging, { vapidKey });
+    // Önce servis çalışanının kaydolduğundan emin ol
+    const registration = await navigator.serviceWorker.ready;
+
+    const currentToken = await getToken(messaging, {
+      vapidKey,
+      serviceWorkerRegistration: registration,
+    });
+
     if (currentToken) {
-      console.log("FCM Token:", currentToken);
       localStorage.setItem("fcmToken", currentToken);
       return currentToken;
     } else {
-      console.warn(
-        "No registration token available. Request permission to generate one."
-      );
+      console.warn("Token alınamadı. İzin gerekiyor.");
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") {
+        return await requestFcmToken(); // Recursive retry
+      }
       return null;
     }
   } catch (error) {
-    console.error("An error occurred while retrieving token. ", error);
+    console.error("Token alma hatası:", error);
     return null;
   }
 };
-
-export const onMessageListener = () =>
-  new Promise((resolve) => {
-    onMessage(messaging, (payload) => {
-      resolve(payload);
-    });
-  });
 
 export const requestNotificationPermission = async () => {
   try {

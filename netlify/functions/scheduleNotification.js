@@ -6,49 +6,108 @@ if (!admin.apps.length) {
     credential: admin.credential.cert(
       JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
     ),
+    databaseURL: `https://${
+      JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT).project_id
+    }.firebaseio.com`,
   });
 }
 
+const db = admin.firestore();
 const jobs = new Map();
 
 exports.handler = async (event) => {
   try {
-    const { token, title, scheduledTime } = JSON.parse(event.body);
-    const targetDate = new Date(scheduledTime);
+    const { token, title, scheduledTime, userId } = JSON.parse(event.body);
 
-    if (targetDate < new Date()) {
+    // Zorunlu alan kontrolü
+    if (!token || !title || !scheduledTime || !userId) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          error: "Eksik gerekli alanlar (token, title, scheduledTime, userId)",
+        }),
+      };
+    }
+
+    const targetDate = new Date(scheduledTime);
+    const now = new Date();
+
+    // Geçerlilik kontrolleri
+    if (targetDate < now) {
       return {
         statusCode: 400,
         body: JSON.stringify({ error: "Geçmiş tarihli bildirim planlanamaz" }),
       };
     }
 
-    const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    const job = schedule.scheduleJob(jobId, targetDate, async () => {
+    if (targetDate - now > 30 * 24 * 60 * 60 * 1000) {
+      // 30 günden fazla
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          error: "Maksimum 30 gün sonrası için planlama yapabilirsiniz",
+        }),
+      };
+    }
+
+    // Firestore'a kaydet
+    const notificationRef = await db
+      .collection("users")
+      .doc(userId)
+      .collection("notifications")
+      .add({
+        title,
+        scheduledTime: admin.firestore.Timestamp.fromDate(targetDate),
+        status: "scheduled",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        token, // Debug için token'ı da kaydet
+      });
+
+    // Zamanlayıcıyı ayarla
+    const job = schedule.scheduleJob(targetDate, async () => {
       try {
         await admin.messaging().send({
           token,
-          notification: { title, body: `⏰ ${title} zamanı!` },
+          notification: {
+            title: title,
+            body: `⏰ ${title} zamanı geldi!`,
+          },
         });
-        jobs.delete(jobId);
+
+        // Durumu güncelle
+        await notificationRef.update({
+          status: "sent",
+          sentAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
       } catch (error) {
-        console.error("Bildirim gönderilemedi:", error);
+        console.error("Bildirim gönderme hatası:", error);
+        await notificationRef.update({
+          status: "failed",
+          error: error.message,
+        });
+      } finally {
+        jobs.delete(job.name);
       }
     });
 
-    jobs.set(jobId, job);
+    jobs.set(job.name, job);
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        notificationId: jobId,
+        notificationId: notificationRef.id,
+        jobId: job.name,
         scheduledTime: targetDate.toISOString(),
       }),
     };
   } catch (error) {
+    console.error("Kritik hata:", error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: error.message }),
+      body: JSON.stringify({
+        error: "Internal Server Error",
+        details: error.message,
+      }),
     };
   }
 };

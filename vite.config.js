@@ -1,4 +1,3 @@
-// vite.config.js
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
@@ -35,5 +34,21 @@ export default defineConfig({
     __FIREBASE_MEASUREMENT_ID__: JSON.stringify(
       process.env.VITE_FIREBASE_MEASUREMENT_ID
     ),
+  },
+  build: {
+    rollupOptions: {
+      external: [
+        "firebase/app",
+        "firebase/messaging",
+        "firebase/firestore",
+        "firebase/auth",
+      ],
+      output: {
+        manualChunks: {
+          firebase: ["firebase/app", "firebase/auth", "firebase/firestore"],
+        },
+      },
+    },
+    sourcemap: process.env.NODE_ENV !== "production",
   },
 });

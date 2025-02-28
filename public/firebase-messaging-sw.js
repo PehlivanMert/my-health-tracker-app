@@ -42,3 +42,26 @@ self.addEventListener("activate", (event) => {
   console.log("Service Worker activated");
   event.waitUntil(self.clients.claim());
 });
+
+// Bildirim tıklama işleyici ekleyin
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: "window" }).then((clientList) => {
+      if (clients.openWindow) {
+        return clients.openWindow("/");
+      }
+    })
+  );
+});
+
+// Push aboneliklerini yenile
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil(
+    self.registration.pushManager
+      .subscribe(event.oldSubscription.options)
+      .then((newSubscription) => {
+        // Yeni subscription'ı sunucuya kaydet
+      })
+  );
+});

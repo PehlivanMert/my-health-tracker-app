@@ -66,12 +66,28 @@ exports.handler = async (event) => {
     // Zamanlayıcıyı ayarla
     const job = schedule.scheduleJob(targetDate, async () => {
       try {
-        await admin.messaging().send({
-          token,
-          notification: {
-            title: title,
-            body: `⏰ ${title} zamanı geldi!`,
-          },
+        const job = schedule.scheduleJob(targetDate, async () => {
+          // Token geçerlilik kontrolü ekleyin
+          const userDoc = await db.collection("users").doc(userId).get();
+          if (!userDoc.exists) {
+            console.log("Kullanıcı bulunamadı");
+            return;
+          }
+
+          const currentToken = userDoc.data().fcmToken;
+          if (!currentToken) {
+            await notificationRef.update({
+              status: "failed",
+              error: "Token bulunamadı",
+            });
+            return;
+          }
+
+          // Bildirimi mevcut token ile gönder
+          await admin.messaging().send({
+            token: currentToken,
+            notification: { title, body: `⏰ ${title} zamanı geldi!` },
+          });
         });
 
         // Durumu güncelle

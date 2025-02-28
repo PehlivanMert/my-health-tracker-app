@@ -21,6 +21,7 @@ export const schedulePushNotification = async (title, scheduledTime) => {
         token,
         title,
         scheduledTime: new Date(scheduledTime).toISOString(),
+        userId,
       }),
     });
 

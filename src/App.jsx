@@ -139,6 +139,20 @@ const availableAvatars = generateAvatars(200);
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
 function App() {
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/firebase-messaging-sw.js")
+        .then((registration) => {
+          console.log("Service Worker başarıyla kaydedildi:", registration);
+          // Kayıt başarılıysa token alımını başlatıyoruz.
+          requestFcmToken();
+        })
+        .catch((error) => {
+          console.error("Service Worker kaydı başarısız:", error);
+        });
+    }
+  }, []);
   // App.js içinde
   useEffect(() => {
     const initializeNotifications = async () => {
@@ -151,20 +165,6 @@ function App() {
     initializeNotifications();
   }, []);
 
-  useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/firebase-messaging-sw.js")
-        .then((registration) => {
-          console.log("Service Worker başarıyla kaydedildi:", registration);
-          // Service worker kaydından sonra FCM token'ını alabilirsiniz.
-          requestFcmToken();
-        })
-        .catch((error) => {
-          console.error("Service Worker kaydı başarısız:", error);
-        });
-    }
-  }, []);
   // Temel state'ler
   const [isLoading, setIsLoading] = useState(true);
   const [transition, setTransition] = useState(false);

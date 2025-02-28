@@ -1,3 +1,5 @@
+import { toast } from "react-toastify";
+
 const apiUrl = import.meta.env.PROD
   ? "/.netlify/functions/scheduleNotification"
   : "http://localhost:8888/.netlify/functions/scheduleNotification";

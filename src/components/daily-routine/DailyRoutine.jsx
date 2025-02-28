@@ -1,3 +1,4 @@
+// DailyRoutine.jsx
 import React, { useEffect, useState, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -10,16 +11,14 @@ import {
   Grid,
   useMediaQuery,
   useTheme,
-  InputAdornment,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Slide,
   Container,
-  alpha,
   styled,
   keyframes,
+  alpha,
 } from "@mui/material";
 import {
   DeleteForever,
@@ -38,12 +37,9 @@ import {
 } from "@mui/icons-material";
 import { Card } from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
-import confetti from "canvas-confetti";
 import {
   requestNotificationPermission,
-  scheduleNotification,
-  cancelScheduledNotifications,
-  showToast,
+  initPushNotifications,
 } from "../../utils/weather-theme-notify/NotificationManager";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
@@ -54,12 +50,6 @@ const float = keyframes`
   0% { transform: translateY(0px); }
   50% { transform: translateY(-20px); }
   100% { transform: translateY(0px); }
-`;
-
-const pulse = keyframes`
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
 `;
 
 // Stilize Bileşenler
@@ -156,7 +146,6 @@ const DailyRoutine = ({ user }) => {
   const [monthlyStats, setMonthlyStats] = useState({ completed: 0, total: 0 });
   const [modalOpen, setModalOpen] = useState(false);
   const [allNotifications, setAllNotifications] = useState(false);
-  const [scheduledNotifications, setScheduledNotifications] = useState({});
   const [routines, setRoutines] = useState([]);
   const isInitialLoad = useRef(true);
 
@@ -182,8 +171,9 @@ const DailyRoutine = ({ user }) => {
     );
   };
 
-  // Bildirim izni iste
+  // Uygulama yüklendiğinde push bildirim aboneliğini başlat
   useEffect(() => {
+    initPushNotifications();
     requestNotificationPermission();
   }, []);
 
@@ -249,7 +239,6 @@ const DailyRoutine = ({ user }) => {
     if (!newRoutine.title || !newRoutine.time) return;
 
     let updatedRoutines;
-
     if (editRoutineId) {
       updatedRoutines = routines.map((r) =>
         r.id === editRoutineId ? { ...newRoutine, id: r.id } : r
@@ -266,10 +255,7 @@ const DailyRoutine = ({ user }) => {
         },
       ];
     }
-
-    // Rutinleri saate göre sırala
     updatedRoutines = sortRoutinesByTime(updatedRoutines);
-
     setRoutines(updatedRoutines);
     setModalOpen(false);
     setNewRoutine({ title: "", time: "" });
@@ -279,6 +265,10 @@ const DailyRoutine = ({ user }) => {
   // Rutin silme işlemi
   const deleteRoutine = (id) => {
     setRoutines(routines.filter((routine) => routine.id !== id));
+    // Bildirim açıksa sunucuya iptal isteği gönder
+    if (notificationsEnabled[id]) {
+      cancelPushNotification(id);
+    }
   };
 
   // Rutin işaretleme işlemi
@@ -321,40 +311,42 @@ const DailyRoutine = ({ user }) => {
   // Tüm rutinleri sil
   const handleDeleteAll = () => {
     setRoutines([]);
-    // Tüm zamanlanmış bildirimleri iptal et
-    Object.values(scheduledNotifications).forEach((ids) => {
-      ids.forEach((id) => cancelScheduledNotifications(id));
+    // Tüm aktif bildirimler için sunucuya iptal isteği gönder
+    Object.keys(notificationsEnabled).forEach((id) => {
+      if (notificationsEnabled[id]) {
+        cancelPushNotification(id);
+      }
     });
-    setScheduledNotifications({});
   };
 
-  // Yeni bildirim zamanla
-  const scheduleNewNotification = (routine) => {
-    const [hours, minutes] = routine.time.split(":");
-    const targetTime = new Date();
-    targetTime.setHours(parseInt(hours));
-    targetTime.setMinutes(parseInt(minutes));
-    targetTime.setSeconds(0);
-    targetTime.setMilliseconds(0);
-
-    if (targetTime < new Date()) {
-      targetTime.setDate(targetTime.getDate() + 1);
+  // Yeni push bildirimi planlama (sunucuya istek gönderir)
+  const scheduleNewPushNotification = async (routine) => {
+    try {
+      await fetch("/api/schedule-routine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: routine.id,
+          title: routine.title,
+          time: routine.time, // "HH:mm" formatında
+        }),
+      });
+    } catch (error) {
+      console.error("Push bildirimi planlanamadı:", error);
     }
+  };
 
-    const reminderTime = new Date(targetTime.getTime() - 15 * 60000);
-
-    const reminderId = scheduleNotification(
-      `Hatırlatma: ${routine.title}`,
-      reminderTime,
-      "15-minutes"
-    );
-
-    const mainId = scheduleNotification(routine.title, targetTime, "on-time");
-
-    setScheduledNotifications((prev) => ({
-      ...prev,
-      [routine.id]: [reminderId, mainId],
-    }));
+  // Push bildirimi iptali (sunucuya istek gönderir)
+  const cancelPushNotification = async (routineId) => {
+    try {
+      await fetch("/api/delete-routine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: routineId }),
+      });
+    } catch (error) {
+      console.error("Push bildirimi iptal edilemedi:", error);
+    }
   };
 
   // Bildirim aç/kapa
@@ -363,7 +355,6 @@ const DailyRoutine = ({ user }) => {
     if (!routine) return;
 
     const isEnabled = !notificationsEnabled[routineId];
-
     // Toast bildirim ekle
     showToast(
       isEnabled ? "Bildirimler açıldı 🔔" : "Bildirimler kapatıldı 🔕",
@@ -371,18 +362,9 @@ const DailyRoutine = ({ user }) => {
     );
 
     if (isEnabled) {
-      scheduleNewNotification(routine);
+      scheduleNewPushNotification(routine);
     } else {
-      // Bildirimleri iptal et
-      const ids = scheduledNotifications[routineId];
-      if (ids) {
-        ids.forEach((id) => cancelScheduledNotifications(id));
-        setScheduledNotifications((prev) => {
-          const newState = { ...prev };
-          delete newState[routineId];
-          return newState;
-        });
-      }
+      cancelPushNotification(routine.id);
     }
 
     setNotificationsEnabled((prev) => ({
@@ -399,26 +381,14 @@ const DailyRoutine = ({ user }) => {
       newState ? "success" : "error"
     );
     setAllNotifications(newState);
-    const updatedNotifications = {};
-
     routines.forEach((r) => {
-      updatedNotifications[r.id] = newState;
       if (newState) {
-        scheduleNewNotification(r);
+        scheduleNewPushNotification(r);
       } else {
-        const ids = scheduledNotifications[r.id];
-        if (ids) {
-          ids.forEach((id) => cancelScheduledNotifications(id));
-          setScheduledNotifications((prev) => {
-            const newState = { ...prev };
-            delete newState[r.id];
-            return newState;
-          });
-        }
+        cancelPushNotification(r.id);
       }
+      setNotificationsEnabled((prev) => ({ ...prev, [r.id]: newState }));
     });
-
-    setNotificationsEnabled(updatedNotifications);
   };
 
   // Günlük istatistikler
@@ -428,7 +398,6 @@ const DailyRoutine = ({ user }) => {
   };
 
   // Firestore'dan rutinleri yükle
-
   useEffect(() => {
     const loadRoutines = async () => {
       if (!user) return;
@@ -438,18 +407,15 @@ const DailyRoutine = ({ user }) => {
 
         if (docSnap.exists()) {
           const data = docSnap.data();
-          // Eğer routines alanı tanımlı değilse, default rutinleri kullan
           setRoutines(data.routines || initialRoutines);
         } else {
-          // Kullanıcıya ait belge yoksa, default rutinlerle yeni belge oluştur
           const initialData = {
             routines: initialRoutines,
-            // Diğer default alanlar eklenebilir
           };
           await setDoc(userDocRef, initialData);
           setRoutines(initialRoutines);
         }
-        isInitialLoad.current = false; // İlk yükleme tamamlandı
+        isInitialLoad.current = false;
       } catch (error) {
         console.error("Rutin yükleme hatası:", error);
       }
@@ -471,6 +437,31 @@ const DailyRoutine = ({ user }) => {
     updateRoutinesInFirestore();
   }, [routines, user]);
 
+  // Basit toast bildirimi gösterme fonksiyonu (örnek)
+  const showToast = (message, type = "info") => {
+    const toast = document.createElement("div");
+    const colors = {
+      success: "#4CAF50",
+      error: "#FF5252",
+      info: "#2196F3",
+      warning: "#FFA726",
+    };
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: ${colors[type]};
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      z-index: 9999;
+    `;
+    toast.innerHTML = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  };
+
   return (
     <Box
       sx={{
@@ -490,7 +481,6 @@ const DailyRoutine = ({ user }) => {
             mb: 6,
             textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
             animation: `${float} 3s ease-in-out infinite`,
-            fontSize: { xs: "1.5rem" },
           }}
         >
           <AccessTime sx={{ fontSize: 50, verticalAlign: "middle", mr: 2 }} />
@@ -498,51 +488,31 @@ const DailyRoutine = ({ user }) => {
         </Typography>
 
         <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid item xs={4} sm={4} md={4}>
+          <Grid item xs={4}>
             <StatCard
               title="Günlük Başarı"
               value={routines.filter((r) => r.checked).length}
               total={routines.length}
-              icon={<DoneAll sx={{ fontSize: { xs: "1.0rem", sm: "2rem" } }} />}
+              icon={<DoneAll sx={{ fontSize: 40 }} />}
               color="#4CAF50"
-              sx={{
-                fontSize: { xs: "0.4rem", sm: "1rem" },
-                p: { xs: 0.3, sm: 2 },
-              }}
             />
           </Grid>
-          <Grid item xs={4} sm={4} md={4}>
+          <Grid item xs={4}>
             <StatCard
               title="Haftalık Başarı"
               value={weeklyStats.completed}
               total={weeklyStats.total}
-              icon={
-                <CheckCircleOutline
-                  sx={{ fontSize: { xs: "1.0rem", sm: "2rem" } }}
-                />
-              }
+              icon={<CheckCircleOutline sx={{ fontSize: 40 }} />}
               color="#2196F3"
-              sx={{
-                fontSize: { xs: "0.4rem", sm: "1rem" },
-                p: { xs: 0.3, sm: 2 },
-              }}
             />
           </Grid>
-          <Grid item xs={4} sm={4} md={4}>
+          <Grid item xs={4}>
             <StatCard
               title="Aylık Başarı"
               value={monthlyStats.completed}
               total={monthlyStats.total}
-              icon={
-                <NotificationsActive
-                  sx={{ fontSize: { xs: "1.0rem", sm: "2rem" } }}
-                />
-              }
+              icon={<NotificationsActive sx={{ fontSize: 40 }} />}
               color="#9C27B0"
-              sx={{
-                fontSize: { xs: "0.4rem", sm: "1rem" },
-                p: { xs: 0.3, sm: 2 },
-              }}
             />
           </Grid>
         </Grid>
@@ -586,7 +556,7 @@ const DailyRoutine = ({ user }) => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                style={{ textAlign: "center", py: 4 }}
+                style={{ textAlign: "center", padding: "20px" }}
               >
                 <Typography
                   variant="body1"
@@ -612,7 +582,6 @@ const DailyRoutine = ({ user }) => {
                       mb: 2,
                       background: "rgba(255,255,255,0.1)",
                       borderRadius: 3,
-                      transition: "all 0.3s ease",
                       "&:hover": {
                         background: "rgba(255,255,255,0.15)",
                         transform: "translateX(10px)",
@@ -652,7 +621,6 @@ const DailyRoutine = ({ user }) => {
                     >
                       <EventNote fontSize="small" />
                     </IconButton>
-
                     <IconButton
                       onClick={() => handleNotificationChange(routine.id)}
                       sx={{
@@ -745,7 +713,7 @@ const DailyRoutine = ({ user }) => {
               startIcon={<HighlightOff />}
               sx={{
                 background:
-                  "linear-gradient(45deg,rgb(156,39, 136) 30%, #FFB74D 60%)",
+                  "linear-gradient(45deg, rgb(156,39,136) 30%, #FFB74D 60%)",
               }}
             >
               İşaretleri Kaldır

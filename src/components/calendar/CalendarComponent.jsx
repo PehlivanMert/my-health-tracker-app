@@ -7,7 +7,7 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import multiMonthPlugin from "@fullcalendar/multimonth";
 import rrulePlugin from "@fullcalendar/rrule";
-import { DateTime, Duration } from "luxon";
+import { DateTime } from "luxon";
 import {
   Paper,
   Box,
@@ -45,13 +45,8 @@ import "@fullcalendar/daygrid";
 import "@fullcalendar/timegrid";
 import "@fullcalendar/multimonth";
 
-// Bildirim işlevlerini içeren modül (kodun başındaki bildirim sınıfı)
-import {
-  requestNotificationPermission,
-  scheduleNotification,
-  cancelScheduledNotifications,
-  notificationIntervals,
-} from "../../utils/weather-theme-notify/NotificationManager";
+// Bildirim işlevlerinden yalnızca izin alma fonksiyonunu kullanıyoruz
+import { requestNotificationPermission } from "../../utils/weather-theme-notify/NotificationManager";
 
 // ----------------------------------------------------------------
 // Renk seçimi için ayrı bir Dialog
@@ -159,17 +154,66 @@ const CalendarComponent = ({ user }) => {
     notification: "none", // "none", "on-time", "15-minutes", "1-hour", "1-day"
     isRecurring: false,
     recurrenceType: "", // "daily", "weekly", "monthly", "yearly"
-    recurrenceUntil: DateTime.local().plus({ months: 1 }),
+    recurrenceUntil: now.plus({ months: 1 }),
   });
 
-  // Etkinlikleri Firestore'dan çek
+  // Push bildirimleri için yeni fonksiyonlar
+  const scheduleNewPushNotification = async (eventObj) => {
+    try {
+      // eventObj.start ve eventObj.recurrenceUntil; DateTime ya da Date olabilir
+      const startTime =
+        eventObj.start instanceof Date
+          ? DateTime.fromJSDate(eventObj.start)
+          : eventObj.start;
+      const formattedTime = startTime.toFormat("HH:mm");
+
+      let recurrenceUntilFormatted = null;
+      if (eventObj.isRecurring && eventObj.recurrenceUntil) {
+        recurrenceUntilFormatted =
+          eventObj.recurrenceUntil instanceof Date
+            ? DateTime.fromJSDate(eventObj.recurrenceUntil).toFormat(
+                "yyyy-MM-dd"
+              )
+            : eventObj.recurrenceUntil.toFormat("yyyy-MM-dd");
+      }
+
+      await fetch("/api/schedule-routine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: eventObj.id, // yeni oluşturulacak veya güncellenecek belge id'si
+          title: eventObj.title,
+          time: formattedTime,
+          isRecurring: eventObj.isRecurring,
+          recurrenceType: eventObj.isRecurring ? eventObj.recurrenceType : null,
+          recurrenceUntil: recurrenceUntilFormatted,
+          notification: eventObj.notification,
+        }),
+      });
+    } catch (error) {
+      console.error("Push bildirimi planlanamadı:", error);
+    }
+  };
+
+  const cancelPushNotification = async (eventId) => {
+    try {
+      await fetch("/api/delete-routine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: eventId }),
+      });
+    } catch (error) {
+      console.error("Push bildirimi iptal edilemedi:", error);
+    }
+  };
+
+  // Rutinleri Firestore'dan çek
   const fetchEvents = useCallback(async () => {
     if (!user) return;
     try {
       const eventsRef = collection(db, "users", user.uid, "calendarEvents");
       const q = query(eventsRef);
       const snapshot = await getDocs(q);
-      // fetchEvents fonksiyonundaki değişiklik
       const eventsData = snapshot.docs.map((docSnap) => {
         const data = docSnap.data();
         const colorValue = data.color || calendarColors.limon;
@@ -177,7 +221,7 @@ const CalendarComponent = ({ user }) => {
           id: docSnap.id,
           title: data.title,
           start: data.start.toDate(),
-          end: data.end.toDate(),
+          end: data.end ? data.end.toDate() : null,
           allDay: data.allDay,
           backgroundColor: colorValue,
           borderColor: colorValue,
@@ -216,8 +260,8 @@ const CalendarComponent = ({ user }) => {
             };
             let untilDate;
             if (data.recurrence.recurrenceUntil) {
-              untilDate = data.recurrence.recurrenceUntil.toDate();
-              // Ayarlama: Seçilen sonlanma tarihini gün sonuna çekiyoruz.
+              untilDate = data.recurrence.recurrenceUntil;
+              if (!(untilDate instanceof Date)) untilDate = new Date(untilDate);
               untilDate.setHours(23, 59, 59, 999);
               rruleObj.until = untilDate;
             } else {
@@ -234,12 +278,10 @@ const CalendarComponent = ({ user }) => {
               minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
               seconds: Math.floor((diff % (1000 * 60)) / 1000),
             };
-            // Tekrarlı etkinliklerde 'end' özelliğini kaldırıyoruz.
             delete baseEvent.end;
-            // extendedProps.recurrence bölümünü güncelliyoruz:
             baseEvent.extendedProps.recurrence = {
               recurrenceType: data.recurrence.recurrenceType,
-              recurrenceUntil: untilDate,
+              recurrenceUntil: rruleObj.until,
             };
           }
         }
@@ -254,7 +296,6 @@ const CalendarComponent = ({ user }) => {
 
   useEffect(() => {
     fetchEvents();
-    // Bildirim izni isteği
     requestNotificationPermission();
   }, [fetchEvents]);
 
@@ -267,18 +308,22 @@ const CalendarComponent = ({ user }) => {
     try {
       const batch = writeBatch(db);
       const eventsRef = collection(db, "users", user.uid, "calendarEvents");
-      // handleCreateEvent içindeki eventData oluşturma kısmı:
       const eventData = {
         title: newEvent.title,
-        start: Timestamp.fromDate(newEvent.start.toJSDate()),
-        end: Timestamp.fromDate(newEvent.end.toJSDate()),
+        start: Timestamp.fromDate(
+          newEvent.start instanceof Date
+            ? newEvent.start
+            : newEvent.start.toJSDate()
+        ),
+        end: Timestamp.fromDate(
+          newEvent.end instanceof Date ? newEvent.end : newEvent.end.toJSDate()
+        ),
         allDay: newEvent.allDay,
         color: newEvent.color,
         notification: newEvent.notification,
         recurrence: newEvent.isRecurring
           ? {
               recurrenceType: newEvent.recurrenceType,
-              // Burada recurrenceUntil'ı gün sonuna çekiyoruz:
               recurrenceUntil: newEvent.recurrenceUntil.endOf("day").toJSDate(),
             }
           : null,
@@ -288,21 +333,19 @@ const CalendarComponent = ({ user }) => {
       batch.set(docRef, eventData);
       await batch.commit();
 
-      // Bildirim zamanı ayarlıysa (tekrarlı etkinliklerde yalnızca ilk sefer için bildirim planlanabilir)
+      // Eğer bildirim ayarlıysa push bildirimi planla (tekrarlı etkinliklerde her seferinde bildirim gönderilecek)
       if (newEvent.notification && newEvent.notification !== "none") {
-        const notifId = await scheduleNotification(
-          newEvent.title,
-          newEvent.start.toJSDate(),
-          newEvent.notification
-        );
-        if (notifId) {
-          await updateDoc(
-            doc(db, "users", user.uid, "calendarEvents", docRef.id),
-            {
-              notificationId: notifId,
-            }
-          );
-        }
+        await scheduleNewPushNotification({
+          id: docRef.id,
+          title: newEvent.title,
+          start: newEvent.start,
+          isRecurring: newEvent.isRecurring,
+          recurrenceType: newEvent.isRecurring ? newEvent.recurrenceType : null,
+          recurrenceUntil: newEvent.isRecurring
+            ? newEvent.recurrenceUntil
+            : null,
+          notification: newEvent.notification,
+        });
       }
 
       await fetchEvents();
@@ -317,7 +360,7 @@ const CalendarComponent = ({ user }) => {
         notification: "none",
         isRecurring: false,
         recurrenceType: "",
-        recurrenceUntil: DateTime.local().plus({ months: 1 }),
+        recurrenceUntil: now.plus({ months: 1 }),
       });
       toast.success("Etkinlik başarıyla eklendi");
     } catch (error) {
@@ -329,7 +372,7 @@ const CalendarComponent = ({ user }) => {
   const handleDeleteEvent = async (eventId, notificationId) => {
     try {
       if (notificationId) {
-        await cancelScheduledNotifications(notificationId);
+        await cancelPushNotification(eventId);
       }
       await deleteDoc(doc(db, "users", user.uid, "calendarEvents", eventId));
       await fetchEvents();
@@ -343,16 +386,23 @@ const CalendarComponent = ({ user }) => {
   // Etkinlik güncelle
   const handleUpdateEvent = async () => {
     try {
-      // Önce eski bildirim varsa iptal edelim
       if (editEvent.notificationId) {
-        await cancelScheduledNotifications(editEvent.notificationId);
+        await cancelPushNotification(editEvent.id);
       }
       await updateDoc(
         doc(db, "users", user.uid, "calendarEvents", editEvent.id),
         {
           title: editEvent.title,
-          start: Timestamp.fromDate(editEvent.start.toJSDate()),
-          end: Timestamp.fromDate(editEvent.end.toJSDate()),
+          start: Timestamp.fromDate(
+            editEvent.start instanceof Date
+              ? editEvent.start
+              : editEvent.start.toJSDate()
+          ),
+          end: Timestamp.fromDate(
+            editEvent.end instanceof Date
+              ? editEvent.end
+              : editEvent.end.toJSDate()
+          ),
           allDay: editEvent.allDay,
           color: editEvent.color,
           notification: editEvent.notification,
@@ -364,25 +414,23 @@ const CalendarComponent = ({ user }) => {
             : null,
         }
       );
-      // Yeni bildirim zamanlandıysa
       if (editEvent.notification && editEvent.notification !== "none") {
-        const newNotifId = await scheduleNotification(
-          editEvent.title,
-          editEvent.start.toJSDate(),
-          editEvent.notification
-        );
-        if (newNotifId) {
-          await updateDoc(
-            doc(db, "users", user.uid, "calendarEvents", editEvent.id),
-            {
-              notificationId: newNotifId,
-            }
-          );
-        }
+        await scheduleNewPushNotification({
+          id: editEvent.id,
+          title: editEvent.title,
+          start: editEvent.start,
+          isRecurring: editEvent.isRecurring,
+          recurrenceType: editEvent.isRecurring
+            ? editEvent.recurrenceType
+            : null,
+          recurrenceUntil: editEvent.isRecurring
+            ? editEvent.recurrenceUntil
+            : null,
+          notification: editEvent.notification,
+        });
       }
       await fetchEvents();
       setOpenEditDialog(false);
-      setSelectedEvent;
       toast.success("Etkinlik güncellendi");
     } catch (error) {
       toast.error(`Güncelleme hatası: ${error.message}`);
@@ -390,7 +438,6 @@ const CalendarComponent = ({ user }) => {
   };
 
   // Tarih seçildiğinde yeni etkinlik diyalogunu aç
-
   const handleDateSelect = (selectInfo) => {
     const selectedDate = DateTime.fromJSDate(selectInfo.start);
     setNewEvent({
@@ -402,15 +449,12 @@ const CalendarComponent = ({ user }) => {
         millisecond: 0,
       }),
       end: selectedDate.set({ hour: 12, minute: 0, second: 0, millisecond: 0 }),
-      allDay: false, // her zaman false olarak ayarlandı
+      allDay: false,
       color: calendarColors.lavanta,
       notification: "none",
       isRecurring: false,
       recurrenceType: "",
-      // Seçilen tarihin sonuna kadar (23:59:59) olacak şekilde ayarlanıyor:
-      recurrenceUntil: DateTime.fromJSDate(selectInfo.start)
-        .plus({ months: 1 })
-        .endOf("day"),
+      recurrenceUntil: selectedDate.plus({ months: 1 }).endOf("day"),
     });
     setOpenDialog(true);
   };
@@ -461,7 +505,7 @@ const CalendarComponent = ({ user }) => {
   };
 
   // Tarih/saat seçimi
-  const handleDateTimeChange = (value, isStart, event, setEvent) => {
+  const handleDateTimeChange = (value, isStart, eventObj, setEvent) => {
     const dt = DateTime.fromISO(value);
     if (!dt.isValid) return;
     setEvent((prev) => {
@@ -494,6 +538,7 @@ const CalendarComponent = ({ user }) => {
     }
   };
 
+  // Recurrence ayarları için diyalog bileşeni
   const RecurrenceDialog = ({
     container,
     open,
@@ -580,6 +625,7 @@ const CalendarComponent = ({ user }) => {
     );
   };
 
+  // Bildirim ayarları için diyalog bileşeni
   const NotificationDialog = ({
     container,
     open,
@@ -713,23 +759,18 @@ const CalendarComponent = ({ user }) => {
           eventDrop={handleEventDrop}
           eventResize={handleEventResize}
           eventClick={(clickInfo) => {
-            // Başlangıç zamanını düzgün formatta alıyoruz
             const eventStart = DateTime.fromJSDate(
               clickInfo.event.start
             ).setZone("Europe/Istanbul");
-
-            // Bitiş zamanını düzgün hesaplıyoruz
             let eventEnd = null;
             if (clickInfo.event.end) {
               eventEnd = DateTime.fromJSDate(clickInfo.event.end).setZone(
                 "Europe/Istanbul"
               );
             } else if (clickInfo.event.extendedProps.recurrence) {
-              // Tekrarlanan etkinliklerde süreyi kullanarak bitiş zamanını hesaplıyoruz
               const duration = clickInfo.event.duration || { hours: 1 };
               eventEnd = eventStart.plus(duration);
             }
-
             const ev = {
               id: clickInfo.event.id,
               title: clickInfo.event.title,
@@ -855,16 +896,17 @@ const CalendarComponent = ({ user }) => {
 // Etkinliğin nasıl görüneceğini özelleştiren içerik fonksiyonu
 const renderEventContent = (eventInfo) => {
   const startStr = DateTime.fromJSDate(eventInfo.event.start).toFormat("HH:mm");
-  const endStr = DateTime.fromJSDate(eventInfo.event.end).toFormat("HH:mm");
+  const endStr = eventInfo.event.end
+    ? DateTime.fromJSDate(eventInfo.event.end).toFormat("HH:mm")
+    : "";
   const isAllDay = eventInfo.event.allDay;
   return (
     <Box
       sx={{
         backgroundColor: eventInfo.event.backgroundColor,
-        // Mobilde daha geniş padding, yuvarlatılmış kenarlar ve hafif gölge ile Apple Calendar benzeri görünüm
         padding: { xs: "8px 12px", md: "6px 10px" },
         borderRadius: "8px",
-        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+        boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
         lineHeight: 1.4,
         width: "100%",
         color: "#fff",
@@ -882,9 +924,8 @@ const renderEventContent = (eventInfo) => {
   );
 };
 
-// ----------------------------------------------------------------7
-
-// EventDialog: Etkinlik oluşturma/düzenleme diyaloğu (bildirim ve tekrarlı ayarlar eklendi)
+// ----------------------------------------------------------------
+// Etkinlik oluşturma/düzenleme diyaloğu (bildirim ve tekrarlı ayarlar eklendi)
 const EventDialog = ({
   container,
   open,
@@ -896,9 +937,7 @@ const EventDialog = ({
   colors,
   handleDateTimeChange,
 }) => {
-  // Eğer event null ise bileşeni hiç render etmeyelim
   if (!event) return null;
-
   const [openColorPicker, setOpenColorPicker] = useState(false);
 
   const handleAllDayChange = (e) => {
@@ -910,7 +949,6 @@ const EventDialog = ({
     }));
   };
 
-  // Bildirim seçenekleri
   const notificationOptions = [
     { value: "none", label: "Yok" },
     { value: "on-time", label: "Tam Zamanında" },
@@ -919,7 +957,6 @@ const EventDialog = ({
     { value: "1-day", label: "1 Gün Önce" },
   ];
 
-  // Tekrarlama seçenekleri
   const recurrenceOptions = [
     { value: "daily", label: "Her Gün" },
     { value: "weekly", label: "Her Hafta" },
@@ -1007,7 +1044,6 @@ const EventDialog = ({
             />
           </Box>
 
-          {/* Renk Seçimi */}
           <Typography variant="subtitle1" sx={{ mt: 2 }}>
             Seçili Renk
           </Typography>
@@ -1028,7 +1064,6 @@ const EventDialog = ({
             </Button>
           </Box>
 
-          {/* Bildirim Zamanı Seçimi */}
           <Typography variant="subtitle1" sx={{ mt: 2 }}>
             Bildirim Zamanı
           </Typography>
@@ -1045,7 +1080,7 @@ const EventDialog = ({
                 }
                 sx={{
                   width: "4cm",
-                  height: "0,7cm",
+                  height: "0.7cm",
                   backgroundColor:
                     (event.notification || "none") === option.value
                       ? "primary.main"
@@ -1057,7 +1092,6 @@ const EventDialog = ({
             ))}
           </Box>
 
-          {/* Tekrarlı Etkinlik Seçimi */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
             <FormControlLabel
               control={
@@ -1067,7 +1101,7 @@ const EventDialog = ({
                     setEvent((prev) => ({
                       ...(prev || {}),
                       isRecurring: e.target.checked,
-                      recurrenceType: "", // yeni seçim yapılması için sıfırla
+                      recurrenceType: "",
                     }))
                   }
                   sx={{ color: "#fff" }}
@@ -1095,7 +1129,7 @@ const EventDialog = ({
                     }
                     sx={{
                       width: "4cm",
-                      height: "0,7cm",
+                      height: "0.7cm",
                       backgroundColor:
                         event.recurrenceType === option.value
                           ? "primary.main"
@@ -1222,10 +1256,6 @@ const styles = {
         borderRadius: "8px",
         boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
         transition: "all 0.3s ease",
-        "@media (max-width:600px)": {
-          fontSize: "0.8rem",
-          padding: "4px 8px",
-        },
       },
       "& .fc-button:hover": {
         backgroundColor: "#A1E3F9",
@@ -1239,9 +1269,6 @@ const styles = {
         color: "#fff",
         fontSize: "1.5rem",
         fontWeight: "bold",
-        "@media (max-width:600px)": {
-          fontSize: "1.2rem",
-        },
       },
     },
   },

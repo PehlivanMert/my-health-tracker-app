@@ -64,3 +64,14 @@ export const showToast = (message, type = "info") => {
       toast.info(message);
   }
 };
+
+export const requestNotificationPermission = async () => {
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      console.warn("Bildirim izni alınamadı.");
+    }
+  } catch (error) {
+    console.error("Bildirim izni alınamadı:", error);
+  }
+};

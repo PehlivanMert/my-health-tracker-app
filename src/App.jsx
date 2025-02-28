@@ -59,19 +59,6 @@ import Lottie from "lottie-react";
 import welcomeAnimation from "./assets/welcomeAnimation.json";
 import HealthDashboard from "./components/health-dashboard/HealthDashboard";
 import { px } from "framer-motion";
-
-useEffect(() => {
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker
-      .register("/sw.js")
-      .then((registration) => {
-        console.log("Service Worker başarıyla kaydedildi:", registration);
-      })
-      .catch((error) => {
-        console.error("Service Worker kaydı başarısız:", error);
-      });
-  }
-}, []);
 // Animasyonlar
 const float = keyframes`
   0% { transform: translateY(0px); }
@@ -151,6 +138,18 @@ const availableAvatars = generateAvatars(200);
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
 function App() {
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((registration) => {
+          console.log("Service Worker başarıyla kaydedildi:", registration);
+        })
+        .catch((error) => {
+          console.error("Service Worker kaydı başarısız:", error);
+        });
+    }
+  }, []);
   // Temel state'ler
   const [isLoading, setIsLoading] = useState(true);
   const [transition, setTransition] = useState(false);

@@ -150,6 +150,11 @@ function App() {
         });
     }
   }, []);
+
+  useEffect(() => {
+    // Uygulama yüklendiğinde FCM token'ını alın
+    requestFcmToken();
+  }, []);
   // Temel state'ler
   const [isLoading, setIsLoading] = useState(true);
   const [transition, setTransition] = useState(false);

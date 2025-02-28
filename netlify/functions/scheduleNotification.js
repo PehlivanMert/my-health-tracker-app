@@ -30,10 +30,10 @@ exports.handler = async (event) => {
     }
 
     const targetDate = new Date(scheduledTime);
-    const now = new Date();
+    const nowUTC = new Date().toISOString();
 
     // Geçerlilik kontrolleri
-    if (targetDate < now) {
+    if (targetDate.getTime() < new Date(nowUTC).getTime()) {
       return {
         statusCode: 400,
         body: JSON.stringify({ error: "Geçmiş tarihli bildirim planlanamaz" }),
@@ -127,3 +127,9 @@ exports.handler = async (event) => {
     };
   }
 };
+
+// scheduleNotification.js içinde:
+console.log("Alınan scheduledTime:", scheduledTime);
+console.log("Hedef Tarih (UTC):", targetDate.toISOString());
+console.log("Şu anki Zaman (UTC):", new Date().toISOString());
+console.log("Fark (ms):", targetDate.getTime() - Date.now());

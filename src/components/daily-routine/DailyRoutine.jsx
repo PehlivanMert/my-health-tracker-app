@@ -244,11 +244,25 @@ const DailyRoutine = ({ user }) => {
   const handleSaveRoutine = () => {
     if (!newRoutine.title || !newRoutine.time) return;
 
+    // Saat ve dakikayı parçala
+    const [hours, minutes] = newRoutine.time.split(":");
+
+    // Yerel tarih objesi oluştur
+    const localDate = new Date();
+
+    // Yerel saat ve dakikayı ayarla (mevcut gün üzerinde)
+    localDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+    // UTC zamanını ISO formatında al
+    const utcISOTime = localDate.toISOString();
+
     let updatedRoutines;
 
     if (editRoutineId) {
       updatedRoutines = routines.map((r) =>
-        r.id === editRoutineId ? { ...newRoutine, id: r.id } : r
+        r.id === editRoutineId
+          ? { ...newRoutine, id: r.id, time: utcISOTime }
+          : r
       );
     } else {
       updatedRoutines = [
@@ -256,6 +270,7 @@ const DailyRoutine = ({ user }) => {
         {
           ...newRoutine,
           id: uuidv4(),
+          time: utcISOTime, // UTC zamanını kaydet
           createdAt: new Date().toISOString(),
           completionDate: null,
           checked: false,

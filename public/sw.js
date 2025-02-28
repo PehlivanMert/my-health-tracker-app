@@ -22,13 +22,13 @@ const ASSETS = [
 
 // Firebase konfigürasyon bilgilerini sabitlerle tanımlıyoruz.
 firebase.initializeApp({
-  apiKey: __FIREBASE_API_KEY__,
-  authDomain: __FIREBASE_AUTH_DOMAIN__,
-  projectId: __FIREBASE_PROJECT_ID__,
-  storageBucket: __FIREBASE_STORAGE_BUCKET__,
-  messagingSenderId: __FIREBASE_MESSAGING_SENDER_ID__,
-  appId: __FIREBASE_APP_ID__,
-  measurementId: __FIREBASE_MEASUREMENT_ID__,
+  apiKey: "AIzaSyD0y2-1t3l3v8jxjv6m4UoVlN8JXr7xJjM",
+  authDomain: "wellness-tracker-3b9e0.firebaseapp.com",
+  projectId: "wellness-tracker-3b9e0",
+  storageBucket: "wellness-tracker-3b9e0.appspot.com",
+  messagingSenderId: "1080066742840",
+  appId: "1:1080066742840:web:7b6f0e5f0b5b0b0b8c2d7a",
+  measurementId: "G-3L3V3Z0Z8Y",
 });
 
 const messaging = firebase.messaging();

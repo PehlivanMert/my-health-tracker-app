@@ -5,19 +5,3 @@
 [[edge_functions]]
   function = "qwen-proxy"
   pattern = "/api/qwen-proxy"
-
-[[edge_functions]]
-  function = "save-subscription"
-  pattern = "/api/save-subscription"
-
-[[edge_functions]]
-  function = "schedule-routine"
-  pattern = "/api/schedule-routine"
-
-[[edge_functions]]
-  function = "delete-routine"
-  pattern = "/api/delete-routine"
-
-[functions.scheduled-push]
-  path = "scheduled-push.js"
-  schedule = "8 14 * * *"

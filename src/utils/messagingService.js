@@ -1,5 +1,5 @@
 // messagingService.js
-import { messaging } from "../../my-health-tracker-app/src/components/auth/firebaseConfig";
+import { messaging } from "../components/auth/firebaseConfig";
 import { getToken, onMessage } from "firebase/messaging";
 
 // VAPID anahtarınızı .env dosyasından veya doğrudan buradan ekleyebilirsiniz.

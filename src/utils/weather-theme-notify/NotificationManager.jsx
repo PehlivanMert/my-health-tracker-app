@@ -1,33 +1,14 @@
-// NotificationManager.jsx
-import { format } from "date-fns";
-import { toast } from "react-toastify";
-
-// Bildirim izni alma (değişmeden kalabilir)
-export const requestNotificationPermission = async () => {
-  try {
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      console.warn("Bildirim izni alınamadı.");
-    }
-  } catch (error) {
-    console.error("Bildirim izni alınamadı:", error);
-  }
-};
-
-const apiUrl =
-  process.env.NODE_ENV === "production"
-    ? "https://stayhealthywith.me/api/scheduleNotification"
-    : "http://localhost:3001/api/scheduleNotification";
-
-// Artık yerel scheduleNotification fonksiyonunu kaldırıyoruz.
-// Bunun yerine, backend’e bildirim planlama isteği gönderen fonksiyon:
+const apiUrl = import.meta.env.PROD
+  ? "/.netlify/functions/scheduleNotification"
+  : "http://localhost:8888/.netlify/functions/scheduleNotification";
 
 export const schedulePushNotification = async (title, scheduledTime) => {
   const token = localStorage.getItem("fcmToken");
   if (!token) {
-    console.error("FCM token bulunamadı. Lütfen token alın.");
+    console.error("FCM token bulunamadı");
     return null;
   }
+
   try {
     const response = await fetch(apiUrl, {
       method: "POST",
@@ -37,52 +18,33 @@ export const schedulePushNotification = async (title, scheduledTime) => {
       body: JSON.stringify({
         token,
         title,
-        body: `⏰ ${title} için bildirim zamanı.`,
-        scheduledTime, // ISO string veya Date nesnesi
+        scheduledTime: new Date(scheduledTime).toISOString(),
       }),
     });
+
+    if (!response.ok) throw new Error("Bildirim planlanamadı");
+
     const data = await response.json();
-    console.log("Planlanan bildirim:", data);
     return data.notificationId;
   } catch (error) {
-    console.error("Bildirim planlanırken hata:", error);
+    console.error("Bildirim hatası:", error);
     return null;
   }
 };
 
-// Sunucuda planlanan bildirimi iptal etmek için:
 export const cancelPushNotification = async (notificationId) => {
   try {
-    const response = await fetch(
-      "http://localhost:3001/api/cancelNotification",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ notificationId }),
-      }
-    );
-    const data = await response.json();
-    console.log("İptal edilen bildirim:", data);
-    return data;
-  } catch (error) {
-    console.error("Bildirim iptali sırasında hata:", error);
-  }
-};
+    const response = await fetch("/.netlify/functions/cancelNotification", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ notificationId }),
+    });
 
-export const showToast = (message, type = "info") => {
-  switch (type) {
-    case "success":
-      toast.success(message);
-      break;
-    case "error":
-      toast.error(message);
-      break;
-    case "warning":
-      toast.warning(message);
-      break;
-    default:
-      toast.info(message);
+    return await response.json();
+  } catch (error) {
+    console.error("İptal hatası:", error);
+    return { success: false };
   }
 };

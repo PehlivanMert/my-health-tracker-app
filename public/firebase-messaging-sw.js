@@ -1,5 +1,3 @@
-// firebase-messaging-sw.js
-
 importScripts(
   "https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"
 );
@@ -7,40 +5,28 @@ importScripts(
   "https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js"
 );
 
-// İsteğe bağlı: CACHE_NAME, NOTIFICATION_DB ve ASSETS tanımlamaları
-const CACHE_NAME = "wellness-tracker-v4";
-const NOTIFICATION_DB = "scheduled-notifications";
-const ASSETS = [
-  "/",
-  "/index.html",
-  "/public/manifest.json",
-  "/public/logo4.jpeg",
-  "/offline.html",
-  // Bu dosyaları statik olarak önbelleğe almak istiyorsanız ekleyebilirsiniz.
-];
-
-// Firebase konfigürasyonunu hard-coded olarak tanımlıyoruz.
-// (FCM service worker'ında dinamik env kullanımı desteklenmez.)
-firebase.initializeApp({
+const firebaseConfig = {
   apiKey: "AIzaSyD64A3LlceBtvBH2Uphg5yTUP9MgK1EeBc",
   authDomain: "my-health-tracker-application.firebaseapp.com",
   projectId: "my-health-tracker-application",
   storageBucket: "my-health-tracker-application.firebasestorage.app",
   messagingSenderId: "905993574620",
   appId: "1:905993574620:web:987e4b6f320a8d6aa5bc19",
-  measurementId: "G-Y6V8X8JH7F",
-});
+};
 
+firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-// Arka plan mesajlarını dinleyelim:
-messaging.onBackgroundMessage(function (payload) {
-  console.log("Arka plan mesajı alındı:", payload);
+messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.notification.title;
   const notificationOptions = {
     body: payload.notification.body,
-    icon: payload.notification.icon || "/logo192.png",
+    icon: "/192.svg",
+    badge: "/192.svg",
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  return self.registration.showNotification(
+    notificationTitle,
+    notificationOptions
+  );
 });

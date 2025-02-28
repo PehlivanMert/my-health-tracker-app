@@ -325,37 +325,33 @@ const DailyRoutine = ({ user }) => {
   };
 
   // Yeni bildirim zamanla
-  const scheduleNewNotification = async (routine) => {
-    const [hours, minutes] = routine.time.split(":");
-    const targetTime = new Date();
-    targetTime.setHours(parseInt(hours));
-    targetTime.setMinutes(parseInt(minutes));
-    targetTime.setSeconds(0);
-    targetTime.setMilliseconds(0);
-
-    if (targetTime < new Date()) {
-      targetTime.setDate(targetTime.getDate() + 1);
+  // Firebase'e kaydetme işlemi
+  const saveNotificationIdToFirestore = async (routineId, notificationIds) => {
+    try {
+      const userDocRef = doc(db, "users", user.uid);
+      await updateDoc(userDocRef, {
+        [`notifications.${routineId}`]: notificationIds,
+      });
+    } catch (error) {
+      console.error("Bildirim ID kaydetme hatası:", error);
     }
-
-    const reminderTime = new Date(targetTime.getTime() - 15 * 60000);
-
-    const reminderId = await schedulePushNotification(
-      `Hatırlatma: ${routine.title}`,
-      reminderTime.toISOString()
-    );
-
-    const mainId = schedulePushNotification(
-      routine.title,
-      targetTime,
-      "on-time"
-    );
-
-    setScheduledNotifications((prev) => ({
-      ...prev,
-      [routine.id]: [reminderId, mainId],
-    }));
   };
 
+  // Bildirim oluştururken
+  const scheduleNewNotification = async (routine) => {
+    try {
+      const notificationIds = await Promise.all([
+        schedulePushNotification(`Hatırlatma: ${routine.title}`, reminderTime),
+        schedulePushNotification(routine.title, targetTime),
+      ]);
+
+      await saveNotificationIdToFirestore(routine.id, notificationIds);
+      return notificationIds;
+    } catch (error) {
+      console.error("Bildirim planlama hatası:", error);
+      return [];
+    }
+  };
   // Bildirim aç/kapa
   const handleNotificationChange = (routineId) => {
     const routine = routines.find((r) => r.id === routineId);

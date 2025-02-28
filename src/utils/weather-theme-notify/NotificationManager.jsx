@@ -4,34 +4,36 @@ const apiUrl = import.meta.env.PROD
   ? "/.netlify/functions/scheduleNotification"
   : "http://localhost:8888/.netlify/functions/scheduleNotification";
 
-export const schedulePushNotification = async (title, scheduledTime) => {
+// NotificationManager.jsx
+export const schedulePushNotification = async (
+  title,
+  scheduledTime,
+  userId
+) => {
   const token = localStorage.getItem("fcmToken");
-  if (!token) {
-    console.error("FCM token bulunamadı");
+  if (!token || !userId) {
+    console.error("Eksik parametreler:", { token, userId });
     return null;
   }
 
   try {
     const response = await fetch(apiUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         token,
         title,
         scheduledTime: new Date(scheduledTime).toISOString(),
-        userId,
+        userId, // Bu parametreyi eklediğinizden emin olun
       }),
     });
 
-    if (!response.ok) throw new Error("Bildirim planlanamadı");
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-    const data = await response.json();
-    return data.notificationId;
+    return await response.json();
   } catch (error) {
-    console.error("Bildirim hatası:", error);
-    return null;
+    console.error("Bildirim planlama hatası:", error);
+    throw error;
   }
 };
 

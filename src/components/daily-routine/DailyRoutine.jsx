@@ -343,64 +343,80 @@ const DailyRoutine = ({ user }) => {
     try {
       const [hours, minutes] = routine.time.split(":");
       const targetTime = new Date();
-      targetTime.setHours(parseInt(hours));
-      targetTime.setMinutes(parseInt(minutes));
-      targetTime.setSeconds(0);
+      targetTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
-      // ReminderTime hesaplamasını düzelt
-      const reminderTime = new Date(targetTime.getTime() - 15 * 60000); // 15 dakika önce
-
-      if (reminderTime < new Date()) {
-        reminderTime.setDate(reminderTime.getDate() + 1);
+      // Geçmiş saatler için ertesi güne ayarla
+      if (targetTime < new Date()) {
+        targetTime.setDate(targetTime.getDate() + 1);
       }
 
+      // 15 dakika öncesi için hatırlatıcı
+      const reminderTime = new Date(targetTime.getTime() - 15 * 60000);
+
+      // Kullanıcı ID ve token kontrolü
+      if (!user?.uid) throw new Error("Kullanıcı bilgisi eksik");
+      const token = localStorage.getItem("fcmToken");
+      if (!token) throw new Error("FCM Token bulunamadı");
+
+      // Bildirimleri planla
       const notificationIds = await Promise.all([
         schedulePushNotification(
           `Hatırlatma: ${routine.title}`,
-          reminderTime.toISOString()
+          reminderTime.toISOString(),
+          user.uid
         ),
-        schedulePushNotification(routine.title, targetTime.toISOString()),
+        schedulePushNotification(
+          routine.title,
+          targetTime.toISOString(),
+          user.uid
+        ),
       ]);
 
       return notificationIds;
     } catch (error) {
       console.error("Bildirim planlama hatası:", error);
-      return [];
+      throw error;
     }
   };
-
   // Bildirim aç/kapa
-  const handleNotificationChange = (routineId) => {
+  const handleNotificationChange = async (routineId) => {
     const routine = routines.find((r) => r.id === routineId);
-    if (!routine) return;
+    if (!routine || !user?.uid) return;
 
     const isEnabled = !notificationsEnabled[routineId];
-
-    // Toast bildirim ekle
     showToast(
       isEnabled ? "Bildirimler açıldı 🔔" : "Bildirimler kapatıldı 🔕",
       isEnabled ? "success" : "error"
     );
 
-    if (isEnabled) {
-      scheduleNewNotification(routine);
-    } else {
-      // Bildirimleri iptal et
-      const ids = scheduledNotifications[routineId];
-      if (ids) {
-        ids.forEach((id) => cancelScheduledNotifications(id));
-        setScheduledNotifications((prev) => {
-          const newState = { ...prev };
-          delete newState[routineId];
-          return newState;
+    try {
+      if (isEnabled) {
+        // Bildirimleri planla ve Firestore'a kaydet
+        const ids = await scheduleNewNotification(routine);
+        await updateDoc(doc(db, "users", user.uid), {
+          [`notifications.${routineId}`]: ids,
         });
+        setScheduledNotifications((prev) => ({ ...prev, [routineId]: ids }));
+      } else {
+        // Bildirimleri iptal et ve Firestore'dan sil
+        const ids = scheduledNotifications[routineId];
+        if (ids) {
+          await Promise.all([
+            deleteDoc(doc(db, "users", user.uid, "notifications", routineId)),
+            ...ids.map((id) => cancelPushNotification(id)),
+          ]);
+          setScheduledNotifications((prev) => {
+            const newState = { ...prev };
+            delete newState[routineId];
+            return newState;
+          });
+        }
       }
+      setNotificationsEnabled((prev) => ({ ...prev, [routineId]: isEnabled }));
+    } catch (error) {
+      console.error("Bildirim işlemi hatası:", error);
+      showToast("Bildirim işlemi başarısız oldu 🚨", "error");
     }
-
-    setNotificationsEnabled((prev) => ({
-      ...prev,
-      [routineId]: isEnabled,
-    }));
   };
 
   // Tüm bildirimleri aç/kapa

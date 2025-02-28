@@ -20,4 +20,4 @@
 
 [[functions]]
   path = "scheduled-push.js"
-  schedule = "2 14 * * *"   # Her gün Türkiye saatiyle 17:02'de tetiklenecek
+  schedule = "7 14 * * *"

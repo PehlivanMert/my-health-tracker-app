@@ -39,12 +39,8 @@ import {
 import { Card } from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
-import {
-  requestNotificationPermission,
-  scheduleNotification,
-  cancelScheduledNotifications,
-  showToast,
-} from "../../utils/weather-theme-notify/NotificationManager";
+import { showToast } from "../../utils/weather-theme-notify/NotificationManager";
+
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
 import { initialRoutines } from "../../utils/constant/ConstantData";
@@ -181,11 +177,6 @@ const DailyRoutine = ({ user }) => {
       date1.getMonth() === date2.getMonth()
     );
   };
-
-  // Bildirim izni iste
-  useEffect(() => {
-    requestNotificationPermission();
-  }, []);
 
   // Haftalık ve aylık istatistikleri güncelle
   useEffect(() => {
@@ -329,7 +320,7 @@ const DailyRoutine = ({ user }) => {
   };
 
   // Yeni bildirim zamanla
-  const scheduleNewNotification = (routine) => {
+  const scheduleNewNotification = async (routine) => {
     const [hours, minutes] = routine.time.split(":");
     const targetTime = new Date();
     targetTime.setHours(parseInt(hours));
@@ -343,10 +334,9 @@ const DailyRoutine = ({ user }) => {
 
     const reminderTime = new Date(targetTime.getTime() - 15 * 60000);
 
-    const reminderId = scheduleNotification(
+    const reminderId = await schedulePushNotification(
       `Hatırlatma: ${routine.title}`,
-      reminderTime,
-      "15-minutes"
+      reminderTime.toISOString()
     );
 
     const mainId = scheduleNotification(routine.title, targetTime, "on-time");

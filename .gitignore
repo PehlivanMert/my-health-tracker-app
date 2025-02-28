@@ -23,5 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .env
+serviceAccountKey.json
 # Local Netlify folder
 .netlify

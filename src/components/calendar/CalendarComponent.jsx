@@ -46,13 +46,6 @@ import "@fullcalendar/timegrid";
 import "@fullcalendar/multimonth";
 
 // Bildirim işlevlerini içeren modül (kodun başındaki bildirim sınıfı)
-import {
-  requestNotificationPermission,
-  scheduleNotification,
-  cancelScheduledNotifications,
-  notificationIntervals,
-} from "../../utils/weather-theme-notify/NotificationManager";
-
 // ----------------------------------------------------------------
 // Renk seçimi için ayrı bir Dialog
 const ColorPickerDialog = ({
@@ -289,20 +282,13 @@ const CalendarComponent = ({ user }) => {
       await batch.commit();
 
       // Bildirim zamanı ayarlıysa (tekrarlı etkinliklerde yalnızca ilk sefer için bildirim planlanabilir)
+      // Yeni etkinlik oluşturma sırasında:
       if (newEvent.notification && newEvent.notification !== "none") {
-        const notifId = await scheduleNotification(
+        const notifId = await schedulePushNotification(
           newEvent.title,
-          newEvent.start.toJSDate(),
-          newEvent.notification
+          newEvent.start.toJSDate().toISOString()
         );
-        if (notifId) {
-          await updateDoc(
-            doc(db, "users", user.uid, "calendarEvents", docRef.id),
-            {
-              notificationId: notifId,
-            }
-          );
-        }
+        // Bu notifId’yi Firestore’daki ilgili etkinlik belgesine kaydedin.
       }
 
       await fetchEvents();

@@ -344,7 +344,11 @@ const DailyRoutine = ({ user }) => {
       reminderTime.toISOString()
     );
 
-    const mainId = scheduleNotification(routine.title, targetTime, "on-time");
+    const mainId = schedulePushNotification(
+      routine.title,
+      targetTime,
+      "on-time"
+    );
 
     setScheduledNotifications((prev) => ({
       ...prev,

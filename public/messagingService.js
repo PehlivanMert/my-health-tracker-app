@@ -3,7 +3,9 @@ import { messaging } from "./firebaseConfig";
 import { getToken, onMessage } from "firebase/messaging";
 
 // VAPID anahtarınızı .env dosyasından veya doğrudan buradan ekleyebilirsiniz.
-const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+const vapidKey =
+  BAERVtP -
+  aq1O8XA5905JfPlUgPhx05at0wRTKO3uyZ9cF7kf8bYX74T_zvWvovpOLOFqU3wvgt8vs7rtr6x8BvA;
 
 export const requestFcmToken = async () => {
   try {

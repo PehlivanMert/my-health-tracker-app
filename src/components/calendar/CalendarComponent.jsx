@@ -358,7 +358,7 @@ const CalendarComponent = ({ user }) => {
       );
       // Yeni bildirim zamanlandıysa
       if (editEvent.notification && editEvent.notification !== "none") {
-        const newNotifId = await scheduleNotification(
+        const newNotifId = await schedulePushNotification(
           editEvent.title,
           editEvent.start.toJSDate(),
           editEvent.notification

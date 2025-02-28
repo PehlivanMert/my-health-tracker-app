@@ -17,9 +17,22 @@ const jobs = new Map();
 
 exports.handler = async (event) => {
   try {
+    // Request validation
+    if (!event.body) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Boş istek gövdesi" }),
+      };
+    }
+
     const { token, title, scheduledTime, userId } = JSON.parse(event.body);
 
-    // Zorunlu alan kontrolü
+    // Log incoming data
+    console.log("Alınan scheduledTime:", scheduledTime);
+    console.log("Kullanıcı ID:", userId);
+    console.log("Token:", token?.slice(0, 15) + "...");
+
+    // Field validation
     if (!token || !title || !scheduledTime || !userId) {
       return {
         statusCode: 400,
@@ -29,11 +42,22 @@ exports.handler = async (event) => {
       };
     }
 
+    // Date validation
     const targetDate = new Date(scheduledTime);
-    const nowUTC = new Date().toISOString();
+    const now = new Date();
 
-    // Geçerlilik kontrolleri
-    if (targetDate.getTime() < new Date(nowUTC).getTime()) {
+    console.log("Hedef Tarih (UTC):", targetDate.toISOString());
+    console.log("Şu anki Zaman (UTC):", now.toISOString());
+    console.log("Fark (ms):", targetDate.getTime() - now.getTime());
+
+    if (isNaN(targetDate.getTime())) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Geçersiz tarih formatı" }),
+      };
+    }
+
+    if (targetDate < now) {
       return {
         statusCode: 400,
         body: JSON.stringify({ error: "Geçmiş tarihli bildirim planlanamaz" }),
@@ -41,7 +65,7 @@ exports.handler = async (event) => {
     }
 
     if (targetDate - now > 30 * 24 * 60 * 60 * 1000) {
-      // 30 günden fazla
+      // 30 gün kontrolü
       return {
         statusCode: 400,
         body: JSON.stringify({
@@ -50,7 +74,7 @@ exports.handler = async (event) => {
       };
     }
 
-    // Firestore'a kaydet
+    // Firestore'a kayıt
     const notificationRef = await db
       .collection("users")
       .doc(userId)
@@ -60,34 +84,38 @@ exports.handler = async (event) => {
         scheduledTime: admin.firestore.Timestamp.fromDate(targetDate),
         status: "scheduled",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        token, // Debug için token'ı da kaydet
+        token,
       });
 
     // Zamanlayıcıyı ayarla
     const job = schedule.scheduleJob(targetDate, async () => {
       try {
-        const job = schedule.scheduleJob(targetDate, async () => {
-          // Token geçerlilik kontrolü ekleyin
-          const userDoc = await db.collection("users").doc(userId).get();
-          if (!userDoc.exists) {
-            console.log("Kullanıcı bulunamadı");
-            return;
-          }
+        const userDoc = await db.collection("users").doc(userId).get();
 
-          const currentToken = userDoc.data().fcmToken;
-          if (!currentToken) {
-            await notificationRef.update({
-              status: "failed",
-              error: "Token bulunamadı",
-            });
-            return;
-          }
-
-          // Bildirimi mevcut token ile gönder
-          await admin.messaging().send({
-            token: currentToken,
-            notification: { title, body: `⏰ ${title} zamanı geldi!` },
+        if (!userDoc.exists) {
+          await notificationRef.update({
+            status: "failed",
+            error: "Kullanıcı bulunamadı",
           });
+          return;
+        }
+
+        const currentToken = userDoc.data().fcmToken || token;
+        if (!currentToken) {
+          await notificationRef.update({
+            status: "failed",
+            error: "Geçerli FCM token yok",
+          });
+          return;
+        }
+
+        // Bildirimi gönder
+        await admin.messaging().send({
+          token: currentToken,
+          notification: {
+            title: title,
+            body: `⏰ ${title} zamanı geldi!`,
+          },
         });
 
         // Durumu güncelle
@@ -117,7 +145,12 @@ exports.handler = async (event) => {
       }),
     };
   } catch (error) {
-    console.error("Kritik hata:", error);
+    console.error("Kritik hata:", {
+      message: error.message,
+      stack: error.stack,
+      rawError: error,
+    });
+
     return {
       statusCode: 500,
       body: JSON.stringify({
@@ -127,9 +160,3 @@ exports.handler = async (event) => {
     };
   }
 };
-
-// scheduleNotification.js içinde:
-console.log("Alınan scheduledTime:", scheduledTime);
-console.log("Hedef Tarih (UTC):", targetDate.toISOString());
-console.log("Şu anki Zaman (UTC):", new Date().toISOString());
-console.log("Fark (ms):", targetDate.getTime() - Date.now());

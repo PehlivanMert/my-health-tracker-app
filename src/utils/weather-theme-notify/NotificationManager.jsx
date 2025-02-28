@@ -10,29 +10,25 @@ export const schedulePushNotification = async (
   scheduledTime,
   userId
 ) => {
-  const token = localStorage.getItem("fcmToken");
-  if (!token || !userId) {
-    console.error("Eksik parametreler:", { token, userId });
-    return null;
-  }
-
   try {
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        token,
+        token: localStorage.getItem("fcmToken"),
         title,
-        scheduledTime: new Date(scheduledTime).toISOString(),
-        userId, // Bu parametreyi eklediğinizden emin olun
+        scheduledTime: new Date(scheduledTime).toISOString(), // Tarihi ISO formatına çevir
+        userId,
       }),
     });
 
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Bildirim planlanamadı");
+    }
 
     return await response.json();
   } catch (error) {
-    console.error("Bildirim planlama hatası:", error);
     throw error;
   }
 };

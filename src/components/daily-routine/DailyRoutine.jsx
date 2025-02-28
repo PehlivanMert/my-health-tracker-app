@@ -39,7 +39,12 @@ import {
 import { Card } from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
-import { showToast } from "../../utils/weather-theme-notify/NotificationManager";
+import {
+  schedulePushNotification,
+  cancelPushNotification,
+  requestNotificationPermission,
+  showToast,
+} from "../../utils/weather-theme-notify/NotificationManager";
 
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";

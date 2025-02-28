@@ -59,6 +59,7 @@ import Lottie from "lottie-react";
 import welcomeAnimation from "./assets/welcomeAnimation.json";
 import HealthDashboard from "./components/health-dashboard/HealthDashboard";
 import { px } from "framer-motion";
+import { requestFcmToken } from "../public/messagingService";
 // Animasyonlar
 const float = keyframes`
   0% { transform: translateY(0px); }

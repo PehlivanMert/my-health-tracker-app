@@ -14,32 +14,33 @@ export const requestNotificationPermission = async () => {
   }
 };
 
+const apiUrl =
+  process.env.NODE_ENV === "production"
+    ? "https://stayhealthywith.me/api/scheduleNotification"
+    : "http://localhost:3001/api/scheduleNotification";
+
 // Artık yerel scheduleNotification fonksiyonunu kaldırıyoruz.
 // Bunun yerine, backend’e bildirim planlama isteği gönderen fonksiyon:
 
 export const schedulePushNotification = async (title, scheduledTime) => {
-  // scheduledTime: JavaScript Date nesnesi veya ISO string formatında olmalı.
   const token = localStorage.getItem("fcmToken");
   if (!token) {
     console.error("FCM token bulunamadı. Lütfen token alın.");
     return null;
   }
   try {
-    const response = await fetch(
-      "http://localhost:3001/api/scheduleNotification",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token,
-          title,
-          body: `⏰ ${title} için bildirim zamanı.`,
-          scheduledTime, // ISO string veya Date nesnesi
-        }),
-      }
-    );
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        token,
+        title,
+        body: `⏰ ${title} için bildirim zamanı.`,
+        scheduledTime, // ISO string veya Date nesnesi
+      }),
+    });
     const data = await response.json();
     console.log("Planlanan bildirim:", data);
     return data.notificationId;

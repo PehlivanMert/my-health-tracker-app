@@ -142,19 +142,16 @@ function App() {
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
-        .register("/sw.js")
+        .register("/firebase-messaging-sw.js")
         .then((registration) => {
           console.log("Service Worker başarıyla kaydedildi:", registration);
+          // Service worker kaydından sonra FCM token'ını alabilirsiniz.
+          requestFcmToken();
         })
         .catch((error) => {
           console.error("Service Worker kaydı başarısız:", error);
         });
     }
-  }, []);
-
-  useEffect(() => {
-    // Uygulama yüklendiğinde FCM token'ını alın
-    requestFcmToken();
   }, []);
   // Temel state'ler
   const [isLoading, setIsLoading] = useState(true);

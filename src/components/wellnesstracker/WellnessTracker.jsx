@@ -1170,7 +1170,7 @@ const SupplementConsumptionChart = ({ user }) => {
 
         {/* Grafik */}
         {filteredData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={285}>
             <BarChart
               data={filteredData}
               margin={{ top: 20, right: 30, left: 20, bottom: 5 }}

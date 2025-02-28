@@ -60,6 +60,17 @@ import welcomeAnimation from "./assets/welcomeAnimation.json";
 import HealthDashboard from "./components/health-dashboard/HealthDashboard";
 import { px } from "framer-motion";
 
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker
+    .register("/sw.js")
+    .then((registration) => {
+      console.log("Service Worker başarıyla kaydedildi:", registration);
+    })
+    .catch((error) => {
+      console.error("Service Worker kaydı başarısız:", error);
+    });
+}
+
 // Animasyonlar
 const float = keyframes`
   0% { transform: translateY(0px); }
@@ -204,16 +215,6 @@ function App() {
         : [...prev, { ...exercise, id: Date.now().toString() }]
     );
     setEditingExercise(null);
-  }, []);
-
-  // Service Worker Kaydı
-  useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then(() => console.log("SW registered"))
-        .catch((err) => console.log("SW registration failed", err));
-    }
   }, []);
 
   // Firestore’dan Kullanıcı Verilerini Yükleme

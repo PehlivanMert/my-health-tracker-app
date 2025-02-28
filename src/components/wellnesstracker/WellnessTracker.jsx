@@ -81,9 +81,11 @@ const ripple = keyframes`
 `;
 
 // Styled Components
-const GlowingCard = styled(Card)(({ theme, glowColor }) => ({
+const GlowingCard = styled(Card, {
+  shouldForwardProp: (prop) => prop !== "glowColor", // ⬅️ DOM'a iletilmesini engelliyoruz
+})(({ glowColor }) => ({
   position: "relative",
-  background: "rgba(33, 150, 243, 0.1)",
+  background: "rgba(255, 255, 255, 0.1)",
   backdropFilter: "blur(10px)",
   borderRadius: "24px",
   overflow: "hidden",

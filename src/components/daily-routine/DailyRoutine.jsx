@@ -63,20 +63,22 @@ const pulse = keyframes`
 `;
 
 // Stilize Bileşenler
-const GlowingCard = styled(Card)(({ theme, glowColor }) => ({
-  position: "relative",
-  background: "rgba(255, 255, 255, 0.1)",
-  backdropFilter: "blur(10px)",
-  borderRadius: "24px",
-  overflow: "hidden",
-  border: "1px solid rgba(33, 150, 243, 0.2)",
-  boxShadow: `0 0 20px ${glowColor || "#2196F322"}`,
-  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-  "&:hover": {
-    transform: "translateY(-5px)",
-    boxShadow: `0 0 40px ${glowColor || "#2196F344"}`,
-  },
-}));
+const GlowingCard = styled(({ glowColor, ...other }) => <Card {...other} />)(
+  ({ theme, glowColor }) => ({
+    position: "relative",
+    background: "rgba(255, 255, 255, 0.1)",
+    backdropFilter: "blur(10px)",
+    borderRadius: "24px",
+    overflow: "hidden",
+    border: "1px solid rgba(33, 150, 243, 0.2)",
+    boxShadow: `0 0 20px ${glowColor || "#2196F322"}`,
+    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+    "&:hover": {
+      transform: "translateY(-5px)",
+      boxShadow: `0 0 40px ${glowColor || "#2196F344"}`,
+    },
+  })
+);
 
 const AnimatedButton = styled(Button)(({ theme }) => ({
   background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",

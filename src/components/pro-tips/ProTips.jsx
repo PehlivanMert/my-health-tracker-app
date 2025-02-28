@@ -787,7 +787,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
         </Typography>
       </Box>
       <Accordion sx={accordionSx}>
-        <AccordionSummary expandIcon={<ExpandMore />}>
+        <AccordionSummary component="div" expandIcon={<ExpandMore />}>
           <Box
             display="flex"
             justifyContent="space-between"
@@ -851,7 +851,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
         </AccordionDetails>
       </Accordion>
       <Accordion sx={accordionSx}>
-        <AccordionSummary expandIcon={<ExpandMore />}>
+        <AccordionSummary component="div" expandIcon={<ExpandMore />}>
           <Box
             display="flex"
             justifyContent="space-between"
@@ -915,7 +915,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
         </AccordionDetails>
       </Accordion>
       <Accordion sx={accordionSx}>
-        <AccordionSummary expandIcon={<ExpandMore />}>
+        <AccordionSummary component="div" expandIcon={<ExpandMore />}>
           <Box
             display="flex"
             justifyContent="space-between"
@@ -948,6 +948,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
             </Box>
           </Box>
         </AccordionSummary>
+
         <AccordionDetails>
           <Box sx={{ mt: 2 }}>
             {(additionalInfo.recipes || []).map((recipe, index) => (
@@ -961,6 +962,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                 }}
               >
                 <AccordionSummary
+                  component="div"
                   expandIcon={<ExpandMore sx={{ color: "#fff" }} />}
                   sx={{
                     "&:hover": {
@@ -1130,8 +1132,8 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
                         >
                           <Accordion sx={accordionSx}>
                             <AccordionSummary
-                              expandIcon={<ExpandMore />}
                               component="div"
+                              expandIcon={<ExpandMore />}
                             >
                               <Box
                                 display="flex"
@@ -1399,7 +1401,7 @@ const ProTips = ({ additionalInfo, setAdditionalInfo, user }) => {
       </Accordion>
       {additionalInfo.supplementDetails?.importantNotes && (
         <Accordion sx={accordionSx}>
-          <AccordionSummary expandIcon={<ExpandMore />}>
+          <AccordionSummary component="div" expandIcon={<ExpandMore />}>
             <Box
               display="flex"
               justifyContent="space-between"

@@ -48,3 +48,19 @@ export const cancelPushNotification = async (notificationId) => {
     return { success: false };
   }
 };
+
+export const showToast = (message, type = "info") => {
+  switch (type) {
+    case "success":
+      toast.success(message);
+      break;
+    case "error":
+      toast.error(message);
+      break;
+    case "warning":
+      toast.warning(message);
+      break;
+    default:
+      toast.info(message);
+  }
+};

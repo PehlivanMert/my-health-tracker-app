@@ -1292,7 +1292,10 @@ const WellnessTracker = ({ user }) => {
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       const data = docSnap.data();
-      const today = new Date().toISOString().split("T")[0];
+      const today = new Date().toLocaleDateString("en-CA", {
+        timeZone: "Europe/Istanbul",
+      });
+
       setSupplementConsumptionToday(data[today] || {});
     }
   };
@@ -1329,7 +1332,10 @@ const WellnessTracker = ({ user }) => {
       await fetchSupplements();
 
       const suppName = supplement.name;
-      const today = new Date().toISOString().split("T")[0];
+      const today = new Date().toLocaleDateString("en-CA", {
+        timeZone: "Europe/Istanbul",
+      });
+
       const statsDocRef = doc(
         db,
         "users",

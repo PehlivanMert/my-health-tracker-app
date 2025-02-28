@@ -40,12 +40,11 @@ import { Card } from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import {
-  schedulePushNotification,
-  cancelPushNotification,
   requestNotificationPermission,
+  scheduleNotification,
+  cancelScheduledNotifications,
   showToast,
 } from "../../utils/weather-theme-notify/NotificationManager";
-
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
 import { initialRoutines } from "../../utils/constant/ConstantData";
@@ -183,6 +182,11 @@ const DailyRoutine = ({ user }) => {
     );
   };
 
+  // Bildirim izni iste
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
+
   // Haftalık ve aylık istatistikleri güncelle
   useEffect(() => {
     const now = new Date();
@@ -244,25 +248,11 @@ const DailyRoutine = ({ user }) => {
   const handleSaveRoutine = () => {
     if (!newRoutine.title || !newRoutine.time) return;
 
-    // Saat ve dakikayı parçala
-    const [hours, minutes] = newRoutine.time.split(":");
-
-    // Yerel tarih objesi oluştur
-    const localDate = new Date();
-
-    // Yerel saat ve dakikayı ayarla (mevcut gün üzerinde)
-    localDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-
-    // UTC zamanını ISO formatında al
-    const utcISOTime = localDate.toISOString();
-
     let updatedRoutines;
 
     if (editRoutineId) {
       updatedRoutines = routines.map((r) =>
-        r.id === editRoutineId
-          ? { ...newRoutine, id: r.id, time: utcISOTime }
-          : r
+        r.id === editRoutineId ? { ...newRoutine, id: r.id } : r
       );
     } else {
       updatedRoutines = [
@@ -270,7 +260,6 @@ const DailyRoutine = ({ user }) => {
         {
           ...newRoutine,
           id: uuidv4(),
-          time: utcISOTime, // UTC zamanını kaydet
           createdAt: new Date().toISOString(),
           completionDate: null,
           checked: false,
@@ -340,98 +329,66 @@ const DailyRoutine = ({ user }) => {
   };
 
   // Yeni bildirim zamanla
-  // Firebase'e kaydetme işlemi
-  const saveNotificationIdToFirestore = async (routineId, notificationIds) => {
-    try {
-      const userDocRef = doc(db, "users", user.uid);
-      await updateDoc(userDocRef, {
-        [`notifications.${routineId}`]: notificationIds,
-      });
-    } catch (error) {
-      console.error("Bildirim ID kaydetme hatası:", error);
+  const scheduleNewNotification = (routine) => {
+    const [hours, minutes] = routine.time.split(":");
+    const targetTime = new Date();
+    targetTime.setHours(parseInt(hours));
+    targetTime.setMinutes(parseInt(minutes));
+    targetTime.setSeconds(0);
+    targetTime.setMilliseconds(0);
+
+    if (targetTime < new Date()) {
+      targetTime.setDate(targetTime.getDate() + 1);
     }
+
+    const reminderTime = new Date(targetTime.getTime() - 15 * 60000);
+
+    const reminderId = scheduleNotification(
+      `Hatırlatma: ${routine.title}`,
+      reminderTime,
+      "15-minutes"
+    );
+
+    const mainId = scheduleNotification(routine.title, targetTime, "on-time");
+
+    setScheduledNotifications((prev) => ({
+      ...prev,
+      [routine.id]: [reminderId, mainId],
+    }));
   };
 
-  // Bildirim oluştururken
-  // DailyRoutine.jsx (bildirim planlama kısmı)
-  const scheduleNewNotification = async (routine) => {
-    try {
-      const [hours, minutes] = routine.time.split(":");
-      const targetTime = new Date();
-      targetTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-
-      // Geçmiş saatler için ertesi güne ayarla
-      if (targetTime < new Date()) {
-        targetTime.setDate(targetTime.getDate() + 1);
-      }
-
-      // 15 dakika öncesi için hatırlatıcı
-      const reminderTime = new Date(targetTime.getTime() - 15 * 60000);
-
-      // Kullanıcı ID ve token kontrolü
-      if (!user?.uid) throw new Error("Kullanıcı bilgisi eksik");
-      const token = localStorage.getItem("fcmToken");
-      if (!token) throw new Error("FCM Token bulunamadı");
-
-      // Bildirimleri planla
-      const notificationIds = await Promise.all([
-        schedulePushNotification(
-          `Hatırlatma: ${routine.title}`,
-          reminderTime.toISOString(),
-          user.uid
-        ),
-        schedulePushNotification(
-          routine.title,
-          targetTime.toISOString(),
-          user.uid
-        ),
-      ]);
-
-      return notificationIds;
-    } catch (error) {
-      console.error("Bildirim planlama hatası:", error);
-      throw error;
-    }
-  };
   // Bildirim aç/kapa
-  const handleNotificationChange = async (routineId) => {
+  const handleNotificationChange = (routineId) => {
     const routine = routines.find((r) => r.id === routineId);
-    if (!routine || !user?.uid) return;
+    if (!routine) return;
 
     const isEnabled = !notificationsEnabled[routineId];
+
+    // Toast bildirim ekle
     showToast(
       isEnabled ? "Bildirimler açıldı 🔔" : "Bildirimler kapatıldı 🔕",
       isEnabled ? "success" : "error"
     );
 
-    try {
-      if (isEnabled) {
-        // Bildirimleri planla ve Firestore'a kaydet
-        const ids = await scheduleNewNotification(routine);
-        await updateDoc(doc(db, "users", user.uid), {
-          [`notifications.${routineId}`]: ids,
+    if (isEnabled) {
+      scheduleNewNotification(routine);
+    } else {
+      // Bildirimleri iptal et
+      const ids = scheduledNotifications[routineId];
+      if (ids) {
+        ids.forEach((id) => cancelScheduledNotifications(id));
+        setScheduledNotifications((prev) => {
+          const newState = { ...prev };
+          delete newState[routineId];
+          return newState;
         });
-        setScheduledNotifications((prev) => ({ ...prev, [routineId]: ids }));
-      } else {
-        // Bildirimleri iptal et ve Firestore'dan sil
-        const ids = scheduledNotifications[routineId];
-        if (ids) {
-          await Promise.all([
-            deleteDoc(doc(db, "users", user.uid, "notifications", routineId)),
-            ...ids.map((id) => cancelPushNotification(id)),
-          ]);
-          setScheduledNotifications((prev) => {
-            const newState = { ...prev };
-            delete newState[routineId];
-            return newState;
-          });
-        }
       }
-      setNotificationsEnabled((prev) => ({ ...prev, [routineId]: isEnabled }));
-    } catch (error) {
-      console.error("Bildirim işlemi hatası:", error);
-      showToast("Bildirim işlemi başarısız oldu 🚨", "error");
     }
+
+    setNotificationsEnabled((prev) => ({
+      ...prev,
+      [routineId]: isEnabled,
+    }));
   };
 
   // Tüm bildirimleri aç/kapa

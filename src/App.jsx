@@ -59,7 +59,18 @@ import Lottie from "lottie-react";
 import welcomeAnimation from "./assets/welcomeAnimation.json";
 import HealthDashboard from "./components/health-dashboard/HealthDashboard";
 import { px } from "framer-motion";
-import { requestFcmToken } from "./utils/messagingService";
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker
+    .register("/sw.js")
+    .then((registration) => {
+      console.log("Service Worker başarıyla kaydedildi:", registration);
+    })
+    .catch((error) => {
+      console.error("Service Worker kaydı başarısız:", error);
+    });
+}
+
 // Animasyonlar
 const float = keyframes`
   0% { transform: translateY(0px); }
@@ -139,44 +150,6 @@ const availableAvatars = generateAvatars(200);
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
 function App() {
-  useEffect(() => {
-    const initializeApp = async () => {
-      // 1. Servis çalışanını kaydet
-      if ("serviceWorker" in navigator) {
-        try {
-          const registration = await navigator.serviceWorker.register(
-            "/firebase-messaging-sw.js",
-            { scope: "/" }
-          );
-          console.log("Service Worker kaydedildi:", registration);
-
-          // 2. FCM Token'ı al
-          const token = await requestFcmToken();
-          if (token) {
-            console.log("FCM Token:", token);
-            // Token'ı Firestore'a kaydet
-            await saveTokenToFirestore(token);
-          }
-        } catch (error) {
-          console.error("Servis çalışanı kaydı başarısız:", error);
-        }
-      }
-    };
-
-    initializeApp();
-  }, []);
-
-  const saveTokenToFirestore = async (token) => {
-    if (!user) return;
-    try {
-      await updateDoc(doc(db, "users", user.uid), {
-        fcmToken: token,
-      });
-    } catch (error) {
-      console.error("Token kaydetme hatası:", error);
-    }
-  };
-
   // Temel state'ler
   const [isLoading, setIsLoading] = useState(true);
   const [transition, setTransition] = useState(false);

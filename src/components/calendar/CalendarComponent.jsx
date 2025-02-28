@@ -38,12 +38,6 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
-import {
-  schedulePushNotification,
-  cancelPushNotification,
-  requestNotificationPermission,
-  showToast,
-} from "../../utils/weather-theme-notify/NotificationManager";
 
 // FullCalendar CSS
 import "@fullcalendar/core";
@@ -52,6 +46,13 @@ import "@fullcalendar/timegrid";
 import "@fullcalendar/multimonth";
 
 // Bildirim işlevlerini içeren modül (kodun başındaki bildirim sınıfı)
+import {
+  requestNotificationPermission,
+  scheduleNotification,
+  cancelScheduledNotifications,
+  notificationIntervals,
+} from "../../utils/weather-theme-notify/NotificationManager";
+
 // ----------------------------------------------------------------
 // Renk seçimi için ayrı bir Dialog
 const ColorPickerDialog = ({
@@ -288,13 +289,20 @@ const CalendarComponent = ({ user }) => {
       await batch.commit();
 
       // Bildirim zamanı ayarlıysa (tekrarlı etkinliklerde yalnızca ilk sefer için bildirim planlanabilir)
-      // Yeni etkinlik oluşturma sırasında:
       if (newEvent.notification && newEvent.notification !== "none") {
-        const notifId = await schedulePushNotification(
+        const notifId = await scheduleNotification(
           newEvent.title,
-          newEvent.start.toJSDate().toISOString()
+          newEvent.start.toJSDate(),
+          newEvent.notification
         );
-        // Bu notifId’yi Firestore’daki ilgili etkinlik belgesine kaydedin.
+        if (notifId) {
+          await updateDoc(
+            doc(db, "users", user.uid, "calendarEvents", docRef.id),
+            {
+              notificationId: notifId,
+            }
+          );
+        }
       }
 
       await fetchEvents();
@@ -358,7 +366,7 @@ const CalendarComponent = ({ user }) => {
       );
       // Yeni bildirim zamanlandıysa
       if (editEvent.notification && editEvent.notification !== "none") {
-        const newNotifId = await schedulePushNotification(
+        const newNotifId = await scheduleNotification(
           editEvent.title,
           editEvent.start.toJSDate(),
           editEvent.notification

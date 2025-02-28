@@ -1,19 +1,7 @@
 [build]
   command = "npm run build"
   publish = "dist"
-  functions = "netlify/functions"
 
 [[edge_functions]]
   function = "qwen-proxy"
   pattern = "/api/qwen-proxy"
-
-  [[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-
-[dev]
-  framework = "#custom"
-  command = "npm run dev"
-  targetPort = 5173
-  autoLaunch = false

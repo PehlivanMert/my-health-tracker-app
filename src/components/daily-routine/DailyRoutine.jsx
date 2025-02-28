@@ -338,20 +338,46 @@ const DailyRoutine = ({ user }) => {
   };
 
   // Bildirim oluştururken
+  // DailyRoutine.jsx (bildirim planlama kısmı)
   const scheduleNewNotification = async (routine) => {
-    try {
-      const notificationIds = await Promise.all([
-        schedulePushNotification(`Hatırlatma: ${routine.title}`, reminderTime),
-        schedulePushNotification(routine.title, targetTime),
-      ]);
+    // Saat bilgisini ayırın:
+    const [hours, minutes] = routine.time.split(":");
 
-      await saveNotificationIdToFirestore(routine.id, notificationIds);
-      return notificationIds;
-    } catch (error) {
-      console.error("Bildirim planlama hatası:", error);
-      return [];
+    // Hedef zamanı oluşturun:
+    const targetTime = new Date();
+    targetTime.setHours(parseInt(hours, 10));
+    targetTime.setMinutes(parseInt(minutes, 10));
+    targetTime.setSeconds(0);
+    targetTime.setMilliseconds(0);
+
+    // Eğer hedef zaman geçmişse, bir gün ileri alın:
+    if (targetTime < new Date()) {
+      targetTime.setDate(targetTime.getDate() + 1);
     }
+
+    // 15 dakika öncesi için reminderTime'ı tanımlayın:
+    const reminderTime = new Date(targetTime.getTime() - 15 * 60000);
+
+    // Öncelikle hatırlatma bildirimi gönderelim:
+    const reminderId = await schedulePushNotification(
+      `Hatırlatma: ${routine.title}`,
+      reminderTime.toISOString()
+    );
+
+    // Ana bildirim için de schedulePushNotification çağırın.
+    // Eğer "on-time" bildirimi için farklı bir mantık varsa, bu fonksiyonu da aynı şekilde kullanabilirsiniz.
+    const mainId = await schedulePushNotification(
+      routine.title,
+      targetTime.toISOString()
+    );
+
+    // Planlanan bildirim ID'lerini state'e kaydedin:
+    setScheduledNotifications((prev) => ({
+      ...prev,
+      [routine.id]: [reminderId, mainId],
+    }));
   };
+
   // Bildirim aç/kapa
   const handleNotificationChange = (routineId) => {
     const routine = routines.find((r) => r.id === routineId);

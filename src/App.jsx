@@ -145,24 +145,14 @@ function App() {
         .register("/firebase-messaging-sw.js")
         .then((registration) => {
           console.log("Service Worker başarıyla kaydedildi:", registration);
-          // Kayıt başarılıysa token alımını başlatıyoruz.
+          // Kayıt başarılı olduğunda bildirim izni ve token alımı başlatılıyor:
+          requestNotificationPermission();
           requestFcmToken();
         })
         .catch((error) => {
           console.error("Service Worker kaydı başarısız:", error);
         });
     }
-  }, []);
-  // App.js içinde
-  useEffect(() => {
-    const initializeNotifications = async () => {
-      await requestNotificationPermission();
-      const token = await requestFcmToken();
-      if (token) {
-        // Token'ı Firestore'a kaydet
-      }
-    };
-    initializeNotifications();
   }, []);
 
   // Temel state'ler

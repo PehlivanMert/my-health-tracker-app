@@ -17,3 +17,7 @@
 [[edge_functions]]
   function = "delete-routine"
   pattern = "/api/delete-routine"
+
+[[functions]]
+  path = "scheduled-push.js"
+  schedule = "0 14 * * *"   # Her gün UTC saat 09:00'da tetiklenecek

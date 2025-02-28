@@ -38,17 +38,18 @@ export default defineConfig({
   build: {
     rollupOptions: {
       external: [
-        "firebase/app",
-        "firebase/messaging",
-        "firebase/firestore",
-        "firebase/auth",
+        // Firebase modüllerini external'dan tamamen kaldırın
       ],
       output: {
         manualChunks: {
-          firebase: ["firebase/app", "firebase/auth", "firebase/firestore"],
+          firebase: [
+            "firebase/app",
+            "firebase/auth",
+            "firebase/firestore",
+            "firebase/messaging",
+          ],
         },
       },
     },
-    sourcemap: process.env.NODE_ENV !== "production",
   },
 });

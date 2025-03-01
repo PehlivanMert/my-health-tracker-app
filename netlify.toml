@@ -10,9 +10,6 @@
 [functions]
   directory = "netlify/functions"
 
-[[plugins]]
-  package = "@netlify/plugin-schedule"
-
-[[schedule]]
+[[functions.schedule]]
   function = "sendPushNotification"
-  cron = "*/1 * * * *"
+  cron = "*/1 * * * *"  # Her dakika çalıştır

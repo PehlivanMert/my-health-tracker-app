@@ -712,6 +712,14 @@ const CalendarComponent = ({ user }) => {
           select={handleDateSelect}
           eventDrop={handleEventDrop}
           eventResize={handleEventResize}
+          eventDragStart={(dragInfo) => {
+            // Sürükleme başladığında, öğeyi 10px yukarı kaydırıyoruz.
+            dragInfo.el.style.transform = "translateY(-50px)";
+          }}
+          eventDragStop={(dragInfo) => {
+            // Sürükleme bittiğinde öğeyi eski konumuna döndürüyoruz.
+            dragInfo.el.style.transform = "";
+          }}
           eventClick={(clickInfo) => {
             // Başlangıç zamanını düzgün formatta alıyoruz
             const eventStart = DateTime.fromJSDate(
@@ -1165,7 +1173,7 @@ const styles = {
     p: 3,
     borderRadius: 4,
     boxShadow: (theme) => theme.shadows[3],
-    overflow: "hidden",
+    overflow: "visible",
     display: "flex",
     flexDirection: "column",
     height: "95vh",
@@ -1188,19 +1196,21 @@ const styles = {
       fontFamily: "inherit",
       color: "rgba(0, 0, 0, 0.9)",
       height: "100%",
+
       "& th": {
         background:
           "linear-gradient(135deg, #1a2a6c, #2196F3 50%, #3F51B5 100%)",
         padding: "8px 4px",
+        //border: "1px solid rgba(255, 255, 255, 0.51) !important",
       },
       "& .fc-day-today": {
-        backgroundColor: "#98E4FF",
+        backgroundColor: "rgba(19, 89, 107, 0.25)",
       },
       "& .fc-daygrid-day.fc-day-today": {
-        backgroundColor: "#98E4FF",
+        backgroundColor: "rgba(19, 89, 107, 0.25)",
       },
       "& .fc-timegrid-col.fc-day-today": {
-        backgroundColor: "#98E4FF",
+        backgroundColor: "rgba(19, 89, 107, 0.25)",
       },
       "& .fc-event": {
         width: "100%",
@@ -1211,39 +1221,47 @@ const styles = {
         "&:hover": {
           boxShadow: "0px 4px 8px rgba(0,0,0,0.5)",
         },
-      },
-      "& .fc-now-indicator": {
-        borderColor: "#FF5252",
-      },
-      "& .fc-button": {
-        backgroundColor: "#3674B5",
-        color: "white",
-        border: "none",
-        borderRadius: "8px",
-        boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-        transition: "all 0.3s ease",
-        "@media (max-width:600px)": {
-          fontSize: "0.8rem",
-          padding: "4px 8px",
+
+        "& .fc-now-indicator": {
+          borderColor: "#FF5252",
         },
-      },
-      "& .fc-button:hover": {
-        backgroundColor: "#A1E3F9",
-        transform: "translateY(-2px)",
-      },
-      "& .fc-button-primary.fc-button-active": {
-        backgroundColor: "#98E4FF",
-        color: "black",
-      },
-      "& .fc-toolbar-title": {
-        color: "#fff",
-        fontSize: "1.5rem",
-        fontWeight: "bold",
-        "@media (max-width:600px)": {
-          fontSize: "1.2rem",
+        "& .fc-button": {
+          backgroundColor: "#3674B5",
+          color: "white",
+          border: "none",
+          borderRadius: "8px",
+          boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+          transition: "all 0.3s ease",
+          "@media (max-width:600px)": {
+            fontSize: "0.8rem",
+            padding: "4px 8px",
+          },
+        },
+        "& .fc-button:hover": {
+          backgroundColor: "#A1E3F9",
+          transform: "translateY(-2px)",
+        },
+        "& .fc-button-primary.fc-button-active": {
+          backgroundColor: "#98E4FF",
+          color: "black",
+        },
+        "& .fc-toolbar-title": {
+          color: "#fff",
+          fontSize: "1.5rem",
+          fontWeight: "bold",
+          "@media (max-width:600px)": {
+            fontSize: "1.2rem",
+          },
         },
       },
     },
+    "& .fc-theme-standard .fc-scrollgrid": {
+      borderColor: "rgba(255, 255, 255, 0.2) !important",
+    },
+    "& .fc-theme-standard .fc-scrollgrid td, & .fc-theme-standard .fc-scrollgrid th":
+      {
+        border: "1px solid rgba(255, 255, 255, 0.2) !important",
+      },
   },
   dialogContent: {
     py: 2,

@@ -10,16 +10,13 @@ import {
   Grid,
   useMediaQuery,
   useTheme,
-  InputAdornment,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Slide,
   Container,
   alpha,
-  styled,
-  keyframes,
+  Card,
 } from "@mui/material";
 import {
   DeleteForever,
@@ -36,115 +33,16 @@ import {
   NotificationsActive,
   NotificationsNone,
 } from "@mui/icons-material";
-import { Card } from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import {
   requestNotificationPermission,
-  scheduleNotification,
-  cancelScheduledNotifications,
   showToast,
 } from "../../utils/weather-theme-notify/NotificationManager";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
 import { initialRoutines } from "../../utils/constant/ConstantData";
-
-// Animasyonlar
-const float = keyframes`
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-20px); }
-  100% { transform: translateY(0px); }
-`;
-
-const pulse = keyframes`
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
-`;
-
-// Stilize Bileşenler
-const GlowingCard = styled(({ glowColor, ...other }) => <Card {...other} />)(
-  ({ theme, glowColor }) => ({
-    position: "relative",
-    background: "rgba(255, 255, 255, 0.1)",
-    backdropFilter: "blur(10px)",
-    borderRadius: "24px",
-    overflow: "hidden",
-    border: "1px solid rgba(33, 150, 243, 0.2)",
-    boxShadow: `0 0 20px ${glowColor || "#2196F322"}`,
-    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-    "&:hover": {
-      transform: "translateY(-5px)",
-      boxShadow: `0 0 40px ${glowColor || "#2196F344"}`,
-    },
-  })
-);
-
-const AnimatedButton = styled(Button)(({ theme }) => ({
-  background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
-  border: 0,
-  borderRadius: 25,
-  boxShadow: "0 3px 5px 2px rgba(33, 150, 243, .3)",
-  color: "white",
-  padding: "12px 30px",
-  transition: "all 0.3s ease",
-  "&:hover": {
-    transform: "scale(1.05)",
-    boxShadow: "0 5px 15px 3px rgba(33, 150, 243, .4)",
-  },
-}));
-
-const StatCard = ({ title, value, total, icon, color }) => {
-  const theme = useTheme();
-  const percentage = (value / total) * 100 || 0;
-
-  return (
-    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-      <GlowingCard glowColor={color}>
-        <Box sx={{ p: 3 }}>
-          <Box sx={{ textAlign: "center", mb: 2 }}>
-            <Box sx={{ fontSize: 40, color }}>{icon}</Box>
-          </Box>
-          <Typography variant="h6" sx={{ color: "#fff", textAlign: "center" }}>
-            {title}
-          </Typography>
-          <Typography
-            variant="h4"
-            sx={{
-              fontWeight: 700,
-              color: "#fff",
-              textAlign: "center",
-              my: 1,
-              textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
-            }}
-          >
-            {value}/{total}
-          </Typography>
-          <Box
-            sx={{
-              height: 6,
-              background: "rgba(255,255,255,0.1)",
-              borderRadius: 3,
-              overflow: "hidden",
-            }}
-          >
-            <Box
-              sx={{
-                width: `${percentage}%`,
-                height: "100%",
-                background: `linear-gradient(90deg, ${color}, ${alpha(
-                  color,
-                  0.7
-                )})`,
-                transition: "width 0.5s ease",
-              }}
-            />
-          </Box>
-        </Box>
-      </GlowingCard>
-    </motion.div>
-  );
-};
+import { keyframes } from "@mui/system";
 
 const DailyRoutine = ({ user }) => {
   const theme = useTheme();
@@ -156,7 +54,6 @@ const DailyRoutine = ({ user }) => {
   const [monthlyStats, setMonthlyStats] = useState({ completed: 0, total: 0 });
   const [modalOpen, setModalOpen] = useState(false);
   const [allNotifications, setAllNotifications] = useState(false);
-  const [scheduledNotifications, setScheduledNotifications] = useState({});
   const [routines, setRoutines] = useState([]);
   const isInitialLoad = useRef(true);
 
@@ -252,7 +149,13 @@ const DailyRoutine = ({ user }) => {
 
     if (editRoutineId) {
       updatedRoutines = routines.map((r) =>
-        r.id === editRoutineId ? { ...newRoutine, id: r.id } : r
+        r.id === editRoutineId
+          ? {
+              ...newRoutine,
+              id: r.id,
+              notificationEnabled: r.notificationEnabled || false,
+            }
+          : r
       );
     } else {
       updatedRoutines = [
@@ -263,6 +166,7 @@ const DailyRoutine = ({ user }) => {
           createdAt: new Date().toISOString(),
           completionDate: null,
           checked: false,
+          notificationEnabled: false, // Bildirim varsayılan kapalı
         },
       ];
     }
@@ -321,77 +225,28 @@ const DailyRoutine = ({ user }) => {
   // Tüm rutinleri sil
   const handleDeleteAll = () => {
     setRoutines([]);
-    // Tüm zamanlanmış bildirimleri iptal et
-    Object.values(scheduledNotifications).forEach((ids) => {
-      ids.forEach((id) => cancelScheduledNotifications(id));
-    });
-    setScheduledNotifications({});
   };
 
-  // Yeni bildirim zamanla
-  const scheduleNewNotification = (routine) => {
-    const [hours, minutes] = routine.time.split(":");
-    const targetTime = new Date();
-    targetTime.setHours(parseInt(hours));
-    targetTime.setMinutes(parseInt(minutes));
-    targetTime.setSeconds(0);
-    targetTime.setMilliseconds(0);
-
-    if (targetTime < new Date()) {
-      targetTime.setDate(targetTime.getDate() + 1);
-    }
-
-    const reminderTime = new Date(targetTime.getTime() - 15 * 60000);
-
-    const reminderId = scheduleNotification(
-      `Hatırlatma: ${routine.title}`,
-      reminderTime,
-      "15-minutes"
-    );
-
-    const mainId = scheduleNotification(routine.title, targetTime, "on-time");
-
-    setScheduledNotifications((prev) => ({
-      ...prev,
-      [routine.id]: [reminderId, mainId],
-    }));
-  };
-
-  // Bildirim aç/kapa
+  // Bildirim aç/kapa: Artık lokal zamanlama yapılmıyor, sadece
+  // her rutinin Firestore'da saklanan verisinde "notificationEnabled" alanını güncelliyoruz.
   const handleNotificationChange = (routineId) => {
     const routine = routines.find((r) => r.id === routineId);
     if (!routine) return;
 
-    const isEnabled = !notificationsEnabled[routineId];
+    const isEnabled = !routine.notificationEnabled;
 
-    // Toast bildirim ekle
     showToast(
       isEnabled ? "Bildirimler açıldı 🔔" : "Bildirimler kapatıldı 🔕",
       isEnabled ? "success" : "error"
     );
 
-    if (isEnabled) {
-      scheduleNewNotification(routine);
-    } else {
-      // Bildirimleri iptal et
-      const ids = scheduledNotifications[routineId];
-      if (ids) {
-        ids.forEach((id) => cancelScheduledNotifications(id));
-        setScheduledNotifications((prev) => {
-          const newState = { ...prev };
-          delete newState[routineId];
-          return newState;
-        });
-      }
-    }
-
-    setNotificationsEnabled((prev) => ({
-      ...prev,
-      [routineId]: isEnabled,
-    }));
+    const updatedRoutines = routines.map((r) =>
+      r.id === routineId ? { ...r, notificationEnabled: isEnabled } : r
+    );
+    setRoutines(updatedRoutines);
   };
 
-  // Tüm bildirimleri aç/kapa
+  // Tüm bildirimleri aç/kapa: Tüm rutinlerin "notificationEnabled" alanını güncelliyoruz.
   const toggleAllNotifications = () => {
     const newState = !allNotifications;
     showToast(
@@ -399,25 +254,15 @@ const DailyRoutine = ({ user }) => {
       newState ? "success" : "error"
     );
     setAllNotifications(newState);
+    const updatedRoutines = routines.map((r) => ({
+      ...r,
+      notificationEnabled: newState,
+    }));
+    setRoutines(updatedRoutines);
     const updatedNotifications = {};
-
-    routines.forEach((r) => {
+    updatedRoutines.forEach((r) => {
       updatedNotifications[r.id] = newState;
-      if (newState) {
-        scheduleNewNotification(r);
-      } else {
-        const ids = scheduledNotifications[r.id];
-        if (ids) {
-          ids.forEach((id) => cancelScheduledNotifications(id));
-          setScheduledNotifications((prev) => {
-            const newState = { ...prev };
-            delete newState[r.id];
-            return newState;
-          });
-        }
-      }
     });
-
     setNotificationsEnabled(updatedNotifications);
   };
 
@@ -428,7 +273,6 @@ const DailyRoutine = ({ user }) => {
   };
 
   // Firestore'dan rutinleri yükle
-
   useEffect(() => {
     const loadRoutines = async () => {
       if (!user) return;
@@ -444,12 +288,11 @@ const DailyRoutine = ({ user }) => {
           // Kullanıcıya ait belge yoksa, default rutinlerle yeni belge oluştur
           const initialData = {
             routines: initialRoutines,
-            // Diğer default alanlar eklenebilir
           };
           await setDoc(userDocRef, initialData);
           setRoutines(initialRoutines);
         }
-        isInitialLoad.current = false; // İlk yükleme tamamlandı
+        isInitialLoad.current = false;
       } catch (error) {
         console.error("Rutin yükleme hatası:", error);
       }
@@ -489,7 +332,11 @@ const DailyRoutine = ({ user }) => {
             fontWeight: 800,
             mb: 6,
             textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
-            animation: `${float} 3s ease-in-out infinite`,
+            animation: `${keyframes`
+              0% { transform: translateY(0px); }
+              50% { transform: translateY(-20px); }
+              100% { transform: translateY(0px); }
+            `} 3s ease-in-out infinite`,
             fontSize: { xs: "1.5rem" },
           }}
         >
@@ -499,55 +346,194 @@ const DailyRoutine = ({ user }) => {
 
         <Grid container spacing={2} sx={{ mb: 2 }}>
           <Grid item xs={4} sm={4} md={4}>
-            <StatCard
-              title="Günlük Başarı"
-              value={routines.filter((r) => r.checked).length}
-              total={routines.length}
-              icon={<DoneAll sx={{ fontSize: { xs: "1.0rem", sm: "2rem" } }} />}
-              color="#4CAF50"
+            <Card
               sx={{
-                fontSize: { xs: "0.4rem", sm: "1rem" },
-                p: { xs: 0.3, sm: 2 },
+                p: 3,
+                background: "rgba(255, 255, 255, 0.1)",
+                backdropFilter: "blur(10px)",
+                borderRadius: "24px",
+                boxShadow: "0 0 20px #2196F322",
               }}
-            />
+            >
+              <Box sx={{ textAlign: "center", mb: 2 }}>
+                <Box sx={{ fontSize: 40, color: "#4CAF50" }}>
+                  <DoneAll sx={{ fontSize: { xs: "1.0rem", sm: "2rem" } }} />
+                </Box>
+              </Box>
+              <Typography
+                variant="h6"
+                sx={{ color: "#fff", textAlign: "center" }}
+              >
+                Günlük Başarı
+              </Typography>
+              <Typography
+                variant="h4"
+                sx={{
+                  fontWeight: 700,
+                  color: "#fff",
+                  textAlign: "center",
+                  my: 1,
+                  textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
+                }}
+              >
+                {routines.filter((r) => r.checked).length}/{routines.length}
+              </Typography>
+              <Box
+                sx={{
+                  height: 6,
+                  background: "rgba(255,255,255,0.1)",
+                  borderRadius: 3,
+                  overflow: "hidden",
+                }}
+              >
+                <Box
+                  sx={{
+                    width: `${
+                      (routines.filter((r) => r.checked).length /
+                        routines.length) *
+                      100
+                    }%`,
+                    height: "100%",
+                    background: `linear-gradient(90deg, #4CAF50, ${alpha(
+                      "#4CAF50",
+                      0.7
+                    )})`,
+                    transition: "width 0.5s ease",
+                  }}
+                />
+              </Box>
+            </Card>
           </Grid>
           <Grid item xs={4} sm={4} md={4}>
-            <StatCard
-              title="Haftalık Başarı"
-              value={weeklyStats.completed}
-              total={weeklyStats.total}
-              icon={
-                <CheckCircleOutline
-                  sx={{ fontSize: { xs: "1.0rem", sm: "2rem" } }}
-                />
-              }
-              color="#2196F3"
+            <Card
               sx={{
-                fontSize: { xs: "0.4rem", sm: "1rem" },
-                p: { xs: 0.3, sm: 2 },
+                p: 3,
+                background: "rgba(255, 255, 255, 0.1)",
+                backdropFilter: "blur(10px)",
+                borderRadius: "24px",
+                boxShadow: "0 0 20px #2196F322",
               }}
-            />
+            >
+              <Box sx={{ textAlign: "center", mb: 2 }}>
+                <Box sx={{ fontSize: 40, color: "#2196F3" }}>
+                  <CheckCircleOutline
+                    sx={{ fontSize: { xs: "1.0rem", sm: "2rem" } }}
+                  />
+                </Box>
+              </Box>
+              <Typography
+                variant="h6"
+                sx={{ color: "#fff", textAlign: "center" }}
+              >
+                Haftalık Başarı
+              </Typography>
+              <Typography
+                variant="h4"
+                sx={{
+                  fontWeight: 700,
+                  color: "#fff",
+                  textAlign: "center",
+                  my: 1,
+                  textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
+                }}
+              >
+                {weeklyStats.completed}/{weeklyStats.total}
+              </Typography>
+              <Box
+                sx={{
+                  height: 6,
+                  background: "rgba(255,255,255,0.1)",
+                  borderRadius: 3,
+                  overflow: "hidden",
+                }}
+              >
+                <Box
+                  sx={{
+                    width: `${
+                      (weeklyStats.completed / weeklyStats.total) * 100
+                    }%`,
+                    height: "100%",
+                    background: `linear-gradient(90deg, #2196F3, ${alpha(
+                      "#2196F3",
+                      0.7
+                    )})`,
+                    transition: "width 0.5s ease",
+                  }}
+                />
+              </Box>
+            </Card>
           </Grid>
           <Grid item xs={4} sm={4} md={4}>
-            <StatCard
-              title="Aylık Başarı"
-              value={monthlyStats.completed}
-              total={monthlyStats.total}
-              icon={
-                <NotificationsActive
-                  sx={{ fontSize: { xs: "1.0rem", sm: "2rem" } }}
-                />
-              }
-              color="#9C27B0"
+            <Card
               sx={{
-                fontSize: { xs: "0.4rem", sm: "1rem" },
-                p: { xs: 0.3, sm: 2 },
+                p: 3,
+                background: "rgba(255, 255, 255, 0.1)",
+                backdropFilter: "blur(10px)",
+                borderRadius: "24px",
+                boxShadow: "0 0 20px #2196F322",
               }}
-            />
+            >
+              <Box sx={{ textAlign: "center", mb: 2 }}>
+                <Box sx={{ fontSize: 40, color: "#9C27B0" }}>
+                  <NotificationsActive
+                    sx={{ fontSize: { xs: "1.0rem", sm: "2rem" } }}
+                  />
+                </Box>
+              </Box>
+              <Typography
+                variant="h6"
+                sx={{ color: "#fff", textAlign: "center" }}
+              >
+                Aylık Başarı
+              </Typography>
+              <Typography
+                variant="h4"
+                sx={{
+                  fontWeight: 700,
+                  color: "#fff",
+                  textAlign: "center",
+                  my: 1,
+                  textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
+                }}
+              >
+                {monthlyStats.completed}/{monthlyStats.total}
+              </Typography>
+              <Box
+                sx={{
+                  height: 6,
+                  background: "rgba(255,255,255,0.1)",
+                  borderRadius: 3,
+                  overflow: "hidden",
+                }}
+              >
+                <Box
+                  sx={{
+                    width: `${
+                      (monthlyStats.completed / monthlyStats.total) * 100
+                    }%`,
+                    height: "100%",
+                    background: `linear-gradient(90deg, #9C27B0, ${alpha(
+                      "#9C27B0",
+                      0.7
+                    )})`,
+                    transition: "width 0.5s ease",
+                  }}
+                />
+              </Box>
+            </Card>
           </Grid>
         </Grid>
 
-        <GlowingCard glowColor="#2196F3" sx={{ mb: 4, p: 3 }}>
+        <Card
+          sx={{
+            p: 3,
+            background: "rgba(255, 255, 255, 0.1)",
+            backdropFilter: "blur(10px)",
+            borderRadius: "24px",
+            boxShadow: "0 0 20px #2196F322",
+            mb: 4,
+          }}
+        >
           <Box
             sx={{
               display: "flex",
@@ -571,14 +557,18 @@ const DailyRoutine = ({ user }) => {
             </IconButton>
           </Box>
 
-          <AnimatedButton
+          <Button
             fullWidth
             onClick={() => setModalOpen(true)}
             startIcon={<Add />}
-            sx={{ mb: 3 }}
+            sx={{
+              mb: 3,
+              background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
+              color: "#fff",
+            }}
           >
             Yeni Rutin Ekle
-          </AnimatedButton>
+          </Button>
 
           <AnimatePresence>
             {routines.length === 0 ? (
@@ -586,7 +576,7 @@ const DailyRoutine = ({ user }) => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                style={{ textAlign: "center", py: 4 }}
+                style={{ textAlign: "center", padding: "16px 0" }}
               >
                 <Typography
                   variant="body1"
@@ -608,8 +598,8 @@ const DailyRoutine = ({ user }) => {
                     sx={{
                       display: "flex",
                       alignItems: "center",
-                      p: 2,
-                      mb: 2,
+                      padding: 2,
+                      marginBottom: 2,
                       background: "rgba(255,255,255,0.1)",
                       borderRadius: 3,
                       transition: "all 0.3s ease",
@@ -627,7 +617,7 @@ const DailyRoutine = ({ user }) => {
                         <CheckCircleOutline sx={{ color: "#4CAF50" }} />
                       }
                     />
-                    <Box sx={{ flex: 1, ml: 2 }}>
+                    <Box sx={{ flex: 1, marginLeft: 2 }}>
                       <Typography
                         variant="body1"
                         sx={{
@@ -652,16 +642,13 @@ const DailyRoutine = ({ user }) => {
                     >
                       <EventNote fontSize="small" />
                     </IconButton>
-
                     <IconButton
                       onClick={() => handleNotificationChange(routine.id)}
                       sx={{
-                        color: notificationsEnabled[routine.id]
-                          ? "#FFA726"
-                          : "#fff",
+                        color: routine.notificationEnabled ? "#FFA726" : "#fff",
                       }}
                     >
-                      {notificationsEnabled[routine.id] ? (
+                      {routine.notificationEnabled ? (
                         <NotificationImportant />
                       ) : (
                         <NotificationsOff />
@@ -678,7 +665,7 @@ const DailyRoutine = ({ user }) => {
               ))
             )}
           </AnimatePresence>
-        </GlowingCard>
+        </Card>
 
         <Dialog
           open={modalOpen}
@@ -706,7 +693,7 @@ const DailyRoutine = ({ user }) => {
               onChange={(e) =>
                 setNewRoutine({ ...newRoutine, time: e.target.value })
               }
-              sx={{ mb: 2 }}
+              sx={{ marginBottom: 2 }}
             />
             <TextField
               fullWidth
@@ -719,15 +706,21 @@ const DailyRoutine = ({ user }) => {
             />
           </DialogContent>
           <DialogActions>
-            <AnimatedButton onClick={handleSaveRoutine}>
+            <Button
+              onClick={handleSaveRoutine}
+              sx={{
+                background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
+                color: "#fff",
+              }}
+            >
               {editRoutineId ? "Güncelle" : "Kaydet"}
-            </AnimatedButton>
+            </Button>
           </DialogActions>
         </Dialog>
 
-        <Grid container spacing={2} sx={{ mt: 2 }}>
+        <Grid container spacing={2} sx={{ marginTop: 2 }}>
           <Grid item xs={12} sm={4}>
-            <AnimatedButton
+            <Button
               fullWidth
               onClick={handleSelectAll}
               startIcon={<DoneAll />}
@@ -736,23 +729,23 @@ const DailyRoutine = ({ user }) => {
               }}
             >
               Tümünü İşaretle
-            </AnimatedButton>
+            </Button>
           </Grid>
           <Grid item xs={12} sm={4}>
-            <AnimatedButton
+            <Button
               fullWidth
               onClick={handleUnselectAll}
               startIcon={<HighlightOff />}
               sx={{
                 background:
-                  "linear-gradient(45deg,rgb(156,39, 136) 30%, #FFB74D 60%)",
+                  "linear-gradient(45deg, rgb(156,39,136) 30%, #FFB74D 60%)",
               }}
             >
               İşaretleri Kaldır
-            </AnimatedButton>
+            </Button>
           </Grid>
           <Grid item xs={12} sm={4}>
-            <AnimatedButton
+            <Button
               fullWidth
               onClick={handleDeleteAll}
               startIcon={<DeleteSweep />}
@@ -761,7 +754,7 @@ const DailyRoutine = ({ user }) => {
               }}
             >
               Tümünü Sil
-            </AnimatedButton>
+            </Button>
           </Grid>
         </Grid>
       </Container>

@@ -46,12 +46,7 @@ import "@fullcalendar/timegrid";
 import "@fullcalendar/multimonth";
 
 // Bildirim işlevlerini içeren modül (kodun başındaki bildirim sınıfı)
-import {
-  requestNotificationPermission,
-  scheduleNotification,
-  cancelScheduledNotifications,
-  notificationIntervals,
-} from "../../utils/weather-theme-notify/NotificationManager";
+import { requestNotificationPermission } from "../../utils/weather-theme-notify/NotificationManager";
 
 // ----------------------------------------------------------------
 // Renk seçimi için ayrı bir Dialog
@@ -288,23 +283,6 @@ const CalendarComponent = ({ user }) => {
       batch.set(docRef, eventData);
       await batch.commit();
 
-      // Bildirim zamanı ayarlıysa (tekrarlı etkinliklerde yalnızca ilk sefer için bildirim planlanabilir)
-      if (newEvent.notification && newEvent.notification !== "none") {
-        const notifId = await scheduleNotification(
-          newEvent.title,
-          newEvent.start.toJSDate(),
-          newEvent.notification
-        );
-        if (notifId) {
-          await updateDoc(
-            doc(db, "users", user.uid, "calendarEvents", docRef.id),
-            {
-              notificationId: notifId,
-            }
-          );
-        }
-      }
-
       await fetchEvents();
       setOpenDialog(false);
       const now = DateTime.local();
@@ -328,9 +306,6 @@ const CalendarComponent = ({ user }) => {
   // Etkinlik sil
   const handleDeleteEvent = async (eventId, notificationId) => {
     try {
-      if (notificationId) {
-        await cancelScheduledNotifications(notificationId);
-      }
       await deleteDoc(doc(db, "users", user.uid, "calendarEvents", eventId));
       await fetchEvents();
       toast.success("Etkinlik silindi");
@@ -343,10 +318,6 @@ const CalendarComponent = ({ user }) => {
   // Etkinlik güncelle
   const handleUpdateEvent = async () => {
     try {
-      // Önce eski bildirim varsa iptal edelim
-      if (editEvent.notificationId) {
-        await cancelScheduledNotifications(editEvent.notificationId);
-      }
       await updateDoc(
         doc(db, "users", user.uid, "calendarEvents", editEvent.id),
         {

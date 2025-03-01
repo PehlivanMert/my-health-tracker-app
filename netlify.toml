@@ -5,3 +5,14 @@
 [[edge_functions]]
   function = "qwen-proxy"
   pattern = "/api/qwen-proxy"
+
+
+[functions]
+  directory = "netlify/functions"
+
+[[plugins]]
+  package = "@netlify/plugin-schedule"
+
+[[schedule]]
+  function = "sendPushNotification"
+  cron = "*/1 * * * *"

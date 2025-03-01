@@ -40,6 +40,7 @@ import "./App.css";
 import UserAuth from "./components/auth/UserAuth";
 import WeatherWidget from "./utils/weather-theme-notify/WeatherWidget";
 import { requestNotificationPermission } from "./utils/weather-theme-notify/NotificationManager";
+import { requestNotificationPermissionAndSaveToken } from "./utils/notificationService";
 import {
   initialExercises,
   initialSupplements,
@@ -59,17 +60,6 @@ import Lottie from "lottie-react";
 import welcomeAnimation from "./assets/welcomeAnimation.json";
 import HealthDashboard from "./components/health-dashboard/HealthDashboard";
 import { px } from "framer-motion";
-
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker
-    .register("/sw.js")
-    .then((registration) => {
-      console.log("Service Worker başarıyla kaydedildi:", registration);
-    })
-    .catch((error) => {
-      console.error("Service Worker kaydı başarısız:", error);
-    });
-}
 
 // Animasyonlar
 const float = keyframes`
@@ -178,8 +168,21 @@ function App() {
 
   // Bildirim izni
   useEffect(() => {
-    requestNotificationPermission();
-  }, []);
+    if (user) {
+      requestNotificationPermissionAndSaveToken(user);
+    }
+  }, [user]);
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker
+      .register("/firebase-messaging-sw.js")
+      .then((registration) => {
+        console.log("Firebase messaging SW registered:", registration);
+      })
+      .catch((error) => {
+        console.error("SW kaydı başarısız:", error);
+      });
+  }
 
   // additionalInfo
   const [additionalInfo, setAdditionalInfo] = useState({

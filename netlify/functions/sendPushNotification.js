@@ -66,7 +66,6 @@ exports.handler = async function (event, context) {
             notification: {
               title: routine.title,
               body: `Şimdi ${routine.title} rutininin zamanı geldi!`,
-              icon: "/logo.jpeg",
             },
             data: {
               routineId: routine.id || "",

@@ -6,6 +6,19 @@ importScripts(
   "https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js"
 );
 
+const CACHE_NAME = "wellness-tracker-v4";
+const NOTIFICATION_DB = "scheduled-notifications";
+const ASSETS = [
+  "/",
+  "/index.html",
+  "/public/manifest.json",
+  "/public/logo4.jpeg",
+  "/offline.html",
+  "/src/App.jsx",
+  "/src/app.css",
+  "/src/main.jsx",
+];
+
 // Firebase konfigürasyon bilgilerini kopyalayın
 const firebaseConfig = {
   apiKey: "AIzaSyD64A3LlceBtvBH2Uphg5yTUP9MgK1EeBc",

@@ -138,6 +138,31 @@ const generateAvatars = (count) =>
 const availableAvatars = generateAvatars(200);
 
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
+// Bildirim izni
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistration().then((existingRegistration) => {
+    if (!existingRegistration) {
+      // Eğer SW kayıtlı değilse, kaydet
+      navigator.serviceWorker
+        .register("/firebase-messaging-sw.js")
+        .then((registration) => {
+          console.log(
+            "✅ Firebase Messaging SW başarıyla kaydedildi:",
+            registration
+          );
+        })
+        .catch((error) => {
+          console.error("❌ SW kaydı başarısız:", error);
+        });
+    } else {
+      console.log(
+        "🟢 Firebase Messaging SW zaten kayıtlı:",
+        existingRegistration
+      );
+    }
+  });
+}
 
 function App() {
   // Temel state'ler
@@ -166,23 +191,11 @@ function App() {
     setIsPWA(isInStandaloneMode());
   }, []);
 
-  // Bildirim izni
   useEffect(() => {
     if (user) {
       requestNotificationPermissionAndSaveToken(user);
     }
   }, [user]);
-
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker
-      .register("/firebase-messaging-sw.js")
-      .then((registration) => {
-        console.log("Firebase messaging SW registered:", registration);
-      })
-      .catch((error) => {
-        console.error("SW kaydı başarısız:", error);
-      });
-  }
 
   // additionalInfo
   const [additionalInfo, setAdditionalInfo] = useState({

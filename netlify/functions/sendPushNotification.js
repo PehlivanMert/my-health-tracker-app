@@ -14,6 +14,7 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 exports.handler = async function (event, context) {
+  console.log("sendPushNotification fonksiyonu tetiklendi.");
   try {
     // Sunucu tarafı zamanı UTC olarak alıyoruz.
     const now = new Date();

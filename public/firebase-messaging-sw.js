@@ -38,11 +38,14 @@ self.addEventListener("push", (event) => {
   try {
     pushData = event.data ? event.data.json() : {}; // JSON formatına çevir
   } catch (error) {
-    console.error("🔥 Push mesajı JSON formatında değil:", event.data.text());
-    pushData = { title: "Hata!", body: event.data.text() }; // Hata ayıklama için düz metin göster
+    console.error(
+      "🔥 Push mesajı JSON formatında değil, düz metin olarak işleniyor:",
+      event.data.text()
+    );
+    pushData = { title: "Bilinmeyen Bildirim", body: event.data.text() }; // JSON yerine düz metin kullan
   }
 
-  const notificationTitle = pushData.title || "Bilinmeyen Bildirim";
+  const notificationTitle = pushData.title || "Bildirim";
   const notificationOptions = {
     body: pushData.body || "İçerik bulunamadı",
     icon: pushData.icon || "/logo192.png",

@@ -3,14 +3,11 @@ const admin = require("firebase-admin");
 
 // Firebase Admin SDK'yı başlatın; environment değişkenlerinden alınan bilgileri kullanın.
 if (!admin.apps.length) {
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
   admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      // privateKey ortam değişkeninde \n karakterlerine dikkat edin!
-      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-    }),
-    databaseURL: process.env.FIREBASE_DATABASE_URL,
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL:
+      process.env.FIREBASE_DATABASE_URL || serviceAccount.databaseURL,
   });
 }
 

@@ -42,7 +42,7 @@ messaging.onBackgroundMessage((payload) => {
   const { title, body, icon } = payload.notification;
   self.registration.showNotification(title, {
     body,
-    icon: icon || "/logo192.svg",
+    icon: icon || "/logo.jpeg",
   });
 });
 
@@ -58,7 +58,7 @@ self.addEventListener("push", (event) => {
   const notificationTitle = pushData.title || "Bilinmeyen Bildirim";
   const notificationOptions = {
     body: pushData.body || "İçerik bulunamadı",
-    icon: pushData.icon || "/logo192.svg",
+    icon: pushData.icon || "/logo.jpeg",
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);

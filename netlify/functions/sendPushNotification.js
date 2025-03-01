@@ -56,8 +56,8 @@ exports.handler = async function (event, context) {
           currentMinute + currentHour * 60 - (utcHour * 60 + localMinute)
         );
 
-        // Eğer 1 dakika içinde ise bildirimi gönder
-        if (timeDiff < 1) {
+        // Eğer 2 dakika içinde ise bildirimi gönder
+        if (timeDiff < 2) {
           console.log(
             `📢 Kullanıcı ${userDoc.id} için ${routine.title} bildirimi gönderilecek.`
           );

@@ -35,12 +35,10 @@ exports.handler = async function (event, context) {
     const notifications = [];
 
     routinesSnapshot.forEach((doc) => {
+      const routine = doc.data();
       console.log(
         `📢 Kullanıcıya push bildirimi gönderilecek: ${routine.title}, Token: ${routine.fcmToken}`
       );
-
-      const routine = doc.data();
-      // Rutin saatini "HH:mm" formatında UTC olarak sakladığınızı varsayın
       const [hour, minute] = routine.time.split(":").map(Number);
       if (
         hour === currentHour &&

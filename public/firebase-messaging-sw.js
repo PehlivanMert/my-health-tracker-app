@@ -34,5 +34,19 @@ messaging.onBackgroundMessage((payload) => {
 });
 
 self.addEventListener("push", (event) => {
-  console.log("📢 Gelen Push Mesajı:", event.data.json());
+  let pushData = {};
+  try {
+    pushData = event.data ? event.data.json() : {}; // JSON formatına çevir
+  } catch (error) {
+    console.error("🔥 Push mesajı JSON formatında değil:", event.data.text());
+    pushData = { title: "Hata!", body: event.data.text() }; // Hata ayıklama için düz metin göster
+  }
+
+  const notificationTitle = pushData.title || "Bilinmeyen Bildirim";
+  const notificationOptions = {
+    body: pushData.body || "İçerik bulunamadı",
+    icon: pushData.icon || "/logo192.png",
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
 });

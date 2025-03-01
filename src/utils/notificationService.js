@@ -10,13 +10,12 @@ export const requestNotificationPermissionAndSaveToken = async (user) => {
         vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
       });
       if (fcmToken) {
-        // Kullanıcının Firestore belgesine FCM token’ı kaydedin
         const userDocRef = doc(db, "users", user.uid);
         await updateDoc(userDocRef, { fcmToken });
-        console.log("FCM Token kaydedildi:", fcmToken);
+        console.log("✅ FCM Token başarıyla kaydedildi:", fcmToken);
       }
     }
   } catch (error) {
-    console.error("FCM token alınamadı:", error);
+    console.error("❌ FCM token alınamadı:", error);
   }
 };

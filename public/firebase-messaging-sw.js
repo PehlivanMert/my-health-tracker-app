@@ -32,3 +32,7 @@ messaging.onBackgroundMessage((payload) => {
     icon: icon || "/logo192.svg",
   });
 });
+
+self.addEventListener("push", (event) => {
+  console.log("📢 Gelen Push Mesajı:", event.data.json());
+});

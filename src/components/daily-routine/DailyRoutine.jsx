@@ -337,38 +337,37 @@ const DailyRoutine = ({ user }) => {
     const updatedRoutines = routines.map((r) =>
       r.id === routineId ? { ...r, notificationEnabled: isEnabled } : r
     );
+
     setRoutines(updatedRoutines);
+    setNotificationsEnabled((prev) => ({
+      ...prev,
+      [routineId]: isEnabled,
+    }));
   };
 
   // Tüm bildirimleri aç/kapa
   const toggleAllNotifications = () => {
     const newState = !allNotifications;
+
     showToast(
       newState ? "Tüm bildirimler açıldı 🔔" : "Tüm bildirimler kapatıldı 🔕",
       newState ? "success" : "error"
     );
+
     setAllNotifications(newState);
+
+    // Tüm rutinleri güncelle
     const updatedRoutines = routines.map((r) => ({
       ...r,
       notificationEnabled: newState,
     }));
+
     setRoutines(updatedRoutines);
+
+    // notificationsEnabled state'ini de güncelle
     const updatedNotifications = {};
     updatedRoutines.forEach((r) => {
       updatedNotifications[r.id] = newState;
-      if (newState) {
-        scheduleNewNotification(r);
-      } else {
-        const ids = scheduledNotifications[r.id];
-        if (ids) {
-          ids.forEach((id) => cancelScheduledNotifications(id));
-          setScheduledNotifications((prev) => {
-            const newState = { ...prev };
-            delete newState[r.id];
-            return newState;
-          });
-        }
-      }
     });
 
     setNotificationsEnabled(updatedNotifications);

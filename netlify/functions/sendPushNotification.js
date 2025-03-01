@@ -43,7 +43,21 @@ exports.handler = async function (event, context) {
         const [localHour, localMinute] = routine.time.split(":").map(Number);
         const utcHour = (localHour - 3 + 24) % 24;
 
-        if (utcHour === currentHour && localMinute === currentMinute) {
+        // Debug logları
+        console.log(
+          `Fonksiyon tetiklendi: currentHour=${currentHour}, currentMinute=${currentMinute}`
+        );
+        console.log(
+          `Rutin zamanı: localHour=${localHour}, localMinute=${localMinute}, utcHour=${utcHour}`
+        );
+
+        // Zaman farkını hesapla
+        const timeDiff = Math.abs(
+          currentMinute + currentHour * 60 - (utcHour * 60 + localMinute)
+        );
+
+        // Eğer 1 dakika içinde ise bildirimi gönder
+        if (timeDiff < 1) {
           console.log(
             `📢 Kullanıcı ${userDoc.id} için ${routine.title} bildirimi gönderilecek.`
           );

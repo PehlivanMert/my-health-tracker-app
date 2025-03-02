@@ -97,27 +97,20 @@ exports.handler = async function (event, context) {
         const offsetMinutes = notificationOffsets[eventData.notification] || 0;
         const eventStart = eventData.start.toDate();
         // Bildirimin tetikleneceği zamanı hesaplayın: eventStart - offset
-        const triggerTime = new Date(
-          eventStart.getTime() - offsetMinutes * 60000
+
+        console.log(
+          `📢 Kullanıcı ${userDoc.id} için ${eventData.title} etkinliği bildirimi gönderilecek.`
         );
-        const timeDiff = Math.abs(now - triggerTime) / 60000; // dakika cinsinden
-        if (timeDiff < 1) {
-          console.log(
-            `📢 Kullanıcı ${userDoc.id} için ${eventData.title} etkinliği bildirimi gönderilecek.`
-          );
-          calendarNotifications.push({
-            token: fcmToken,
-            data: {
-              title: eventData.title,
-              body: `Etkinlik: ${eventData.title} ${
-                offsetMinutes > 0
-                  ? `(${offsetMinutes} dakika önce)`
-                  : "(tam zamanında)"
-              } başlayacak.`,
-              eventId: docSnap.id,
-            },
-          });
-        }
+        calendarNotifications.push({
+          token: fcmToken,
+          data: {
+            title: eventData.title,
+            body: `Etkinlik: ${eventData.title} ${
+              offsetMinutes > 0 ? `(${offsetMinutes} dakika sonra)` : "(şimdi)"
+            } başlayacak.`,
+            eventId: docSnap.id,
+          },
+        });
       });
     }
 

@@ -262,7 +262,6 @@ const CalendarComponent = ({ user }) => {
     try {
       const batch = writeBatch(db);
       const eventsRef = collection(db, "users", user.uid, "calendarEvents");
-      // handleCreateEvent içindeki eventData oluşturma kısmı:
       const eventData = {
         title: newEvent.title,
         start: Timestamp.fromDate(newEvent.start.toJSDate()),
@@ -273,7 +272,6 @@ const CalendarComponent = ({ user }) => {
         recurrence: newEvent.isRecurring
           ? {
               recurrenceType: newEvent.recurrenceType,
-              // Burada recurrenceUntil'ı gün sonuna çekiyoruz:
               recurrenceUntil: newEvent.recurrenceUntil.endOf("day").toJSDate(),
             }
           : null,
@@ -335,31 +333,15 @@ const CalendarComponent = ({ user }) => {
             : null,
         }
       );
-      // Yeni bildirim zamanlandıysa
-      if (editEvent.notification && editEvent.notification !== "none") {
-        const newNotifId = await scheduleNotification(
-          editEvent.title,
-          editEvent.start.toJSDate(),
-          editEvent.notification
-        );
-        if (newNotifId) {
-          await updateDoc(
-            doc(db, "users", user.uid, "calendarEvents", editEvent.id),
-            {
-              notificationId: newNotifId,
-            }
-          );
-        }
-      }
+      // scheduleNotification çağrısı kaldırıldı.
       await fetchEvents();
       setOpenEditDialog(false);
-      setSelectedEvent;
+      setSelectedEvent(null);
       toast.success("Etkinlik güncellendi");
     } catch (error) {
       toast.error(`Güncelleme hatası: ${error.message}`);
     }
   };
-
   // Tarih seçildiğinde yeni etkinlik diyalogunu aç
 
   const handleDateSelect = (selectInfo) => {

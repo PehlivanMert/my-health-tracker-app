@@ -39,7 +39,7 @@ import "tippy.js/dist/tippy.css";
 import "./App.css";
 import UserAuth from "./components/auth/UserAuth";
 import WeatherWidget from "./utils/weather-theme-notify/WeatherWidget";
-import { requestNotificationPermission } from "./utils/weather-theme-notify/NotificationManager";
+import { requestNotificationPermissionAndSaveToken } from "./utils/notificationService";
 import {
   initialExercises,
   initialSupplements,
@@ -59,17 +59,6 @@ import Lottie from "lottie-react";
 import welcomeAnimation from "./assets/welcomeAnimation.json";
 import HealthDashboard from "./components/health-dashboard/HealthDashboard";
 import { px } from "framer-motion";
-
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker
-    .register("/sw.js")
-    .then((registration) => {
-      console.log("Service Worker başarıyla kaydedildi:", registration);
-    })
-    .catch((error) => {
-      console.error("Service Worker kaydı başarısız:", error);
-    });
-}
 
 // Animasyonlar
 const float = keyframes`
@@ -148,6 +137,31 @@ const generateAvatars = (count) =>
 const availableAvatars = generateAvatars(200);
 
 ChartJS.register(ArcElement, Tooltip, Legend, Title);
+// Bildirim izni
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistration().then((existingRegistration) => {
+    if (!existingRegistration) {
+      // Eğer SW kayıtlı değilse, kaydet
+      navigator.serviceWorker
+        .register("/firebase-messaging-sw.js")
+        .then((registration) => {
+          console.log(
+            "✅ Firebase Messaging SW başarıyla kaydedildi:",
+            registration
+          );
+        })
+        .catch((error) => {
+          console.error("❌ SW kaydı başarısız:", error);
+        });
+    } else {
+      console.log(
+        "🟢 Firebase Messaging SW zaten kayıtlı:",
+        existingRegistration
+      );
+    }
+  });
+}
 
 function App() {
   // Temel state'ler
@@ -176,10 +190,11 @@ function App() {
     setIsPWA(isInStandaloneMode());
   }, []);
 
-  // Bildirim izni
   useEffect(() => {
-    requestNotificationPermission();
-  }, []);
+    if (user) {
+      requestNotificationPermissionAndSaveToken(user);
+    }
+  }, [user]);
 
   // additionalInfo
   const [additionalInfo, setAdditionalInfo] = useState({
@@ -886,7 +901,7 @@ function App() {
                   },
                 }}
                 label="Rutin"
-                icon={<HomeIcon sx={{ color: "white" }} />}
+                icon={<HomeIcon sx={{ color: "white", mt: "-4px" }} />}
               />
               <BottomNavigationAction
                 sx={{
@@ -898,7 +913,7 @@ function App() {
                   },
                 }}
                 label="Yaşam"
-                icon={<FavoriteIcon sx={{ color: "white" }} />}
+                icon={<FavoriteIcon sx={{ color: "white", mt: "-4px" }} />}
               />
               <BottomNavigationAction
                 sx={{
@@ -910,7 +925,7 @@ function App() {
                   },
                 }}
                 label="Sağlık"
-                icon={<DashboardIcon sx={{ color: "white" }} />}
+                icon={<DashboardIcon sx={{ color: "white", mt: "-4px" }} />}
               />
               <BottomNavigationAction
                 sx={{
@@ -922,7 +937,7 @@ function App() {
                   },
                 }}
                 label="İpuçları"
-                icon={<LightbulbIcon sx={{ color: "white" }} />}
+                icon={<LightbulbIcon sx={{ color: "white", mt: "-4px" }} />}
               />
               <BottomNavigationAction
                 sx={{
@@ -934,7 +949,7 @@ function App() {
                   },
                 }}
                 label="Egzersiz"
-                icon={<FitnessCenterIcon sx={{ color: "white" }} />}
+                icon={<FitnessCenterIcon sx={{ color: "white", mt: "-4px" }} />}
               />
               <BottomNavigationAction
                 sx={{
@@ -946,7 +961,7 @@ function App() {
                   },
                 }}
                 label="Takvim"
-                icon={<CalendarMonthIcon sx={{ color: "white" }} />}
+                icon={<CalendarMonthIcon sx={{ color: "white", mt: "-4px" }} />}
               />
             </BottomNavigation>
           </React.Fragment>

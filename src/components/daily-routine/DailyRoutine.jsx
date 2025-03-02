@@ -10,12 +10,10 @@ import {
   Grid,
   useMediaQuery,
   useTheme,
-  InputAdornment,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Slide,
   Container,
   alpha,
   styled,
@@ -36,15 +34,9 @@ import {
   NotificationsActive,
   NotificationsNone,
 } from "@mui/icons-material";
-import { Card } from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
-import {
-  requestNotificationPermission,
-  scheduleNotification,
-  cancelScheduledNotifications,
-  showToast,
-} from "../../utils/weather-theme-notify/NotificationManager";
+import { showToast } from "../../utils/weather-theme-notify/NotificationManager";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
 import { initialRoutines } from "../../utils/constant/ConstantData";
@@ -63,7 +55,7 @@ const pulse = keyframes`
 `;
 
 // Stilize Bileşenler
-const GlowingCard = styled(({ glowColor, ...other }) => <Card {...other} />)(
+const GlowingCard = styled(({ glowColor, ...other }) => <Box {...other} />)(
   ({ theme, glowColor }) => ({
     position: "relative",
     background: "rgba(255, 255, 255, 0.1)",
@@ -96,50 +88,47 @@ const AnimatedButton = styled(Button)(({ theme }) => ({
 
 const StatCard = ({ title, value, total, icon, color }) => {
   const theme = useTheme();
-  const percentage = (value / total) * 100 || 0;
-
+  const percentage = total ? (value / total) * 100 : 0;
   return (
     <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-      <GlowingCard glowColor={color}>
-        <Box sx={{ p: 3 }}>
-          <Box sx={{ textAlign: "center", mb: 2 }}>
-            <Box sx={{ fontSize: 40, color }}>{icon}</Box>
-          </Box>
-          <Typography variant="h6" sx={{ color: "#fff", textAlign: "center" }}>
-            {title}
-          </Typography>
-          <Typography
-            variant="h4"
-            sx={{
-              fontWeight: 700,
-              color: "#fff",
-              textAlign: "center",
-              my: 1,
-              textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
-            }}
-          >
-            {value}/{total}
-          </Typography>
+      <GlowingCard glowColor={color} sx={{ p: 2 }}>
+        <Box sx={{ textAlign: "center", mb: 2 }}>
+          <Box sx={{ fontSize: 40, color }}>{icon}</Box>
+        </Box>
+        <Typography variant="h6" sx={{ color: "#fff", textAlign: "center" }}>
+          {title}
+        </Typography>
+        <Typography
+          variant="h4"
+          sx={{
+            fontWeight: 700,
+            color: "#fff",
+            textAlign: "center",
+            my: 1,
+            textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
+          }}
+        >
+          {value}/{total}
+        </Typography>
+        <Box
+          sx={{
+            height: 6,
+            background: "rgba(255,255,255,0.1)",
+            borderRadius: 3,
+            overflow: "hidden",
+          }}
+        >
           <Box
             sx={{
-              height: 6,
-              background: "rgba(255,255,255,0.1)",
-              borderRadius: 3,
-              overflow: "hidden",
+              width: `${percentage}%`,
+              height: "100%",
+              background: `linear-gradient(90deg, ${color}, ${alpha(
+                color,
+                0.7
+              )})`,
+              transition: "width 0.5s ease",
             }}
-          >
-            <Box
-              sx={{
-                width: `${percentage}%`,
-                height: "100%",
-                background: `linear-gradient(90deg, ${color}, ${alpha(
-                  color,
-                  0.7
-                )})`,
-                transition: "width 0.5s ease",
-              }}
-            />
-          </Box>
+          />
         </Box>
       </GlowingCard>
     </motion.div>
@@ -156,9 +145,16 @@ const DailyRoutine = ({ user }) => {
   const [monthlyStats, setMonthlyStats] = useState({ completed: 0, total: 0 });
   const [modalOpen, setModalOpen] = useState(false);
   const [allNotifications, setAllNotifications] = useState(false);
-  const [scheduledNotifications, setScheduledNotifications] = useState({});
   const [routines, setRoutines] = useState([]);
   const isInitialLoad = useRef(true);
+
+  useEffect(() => {
+    const initialNotifications = {};
+    routines.forEach((r) => {
+      initialNotifications[r.id] = r.notificationEnabled;
+    });
+    setNotificationsEnabled(initialNotifications);
+  }, [routines]);
 
   // Rutinleri saate göre sırala
   const sortRoutinesByTime = (routines) => {
@@ -181,11 +177,6 @@ const DailyRoutine = ({ user }) => {
       date1.getMonth() === date2.getMonth()
     );
   };
-
-  // Bildirim izni iste
-  useEffect(() => {
-    requestNotificationPermission();
-  }, []);
 
   // Haftalık ve aylık istatistikleri güncelle
   useEffect(() => {
@@ -252,7 +243,13 @@ const DailyRoutine = ({ user }) => {
 
     if (editRoutineId) {
       updatedRoutines = routines.map((r) =>
-        r.id === editRoutineId ? { ...newRoutine, id: r.id } : r
+        r.id === editRoutineId
+          ? {
+              ...newRoutine,
+              id: r.id,
+              notificationEnabled: r.notificationEnabled || false,
+            }
+          : r
       );
     } else {
       updatedRoutines = [
@@ -263,6 +260,7 @@ const DailyRoutine = ({ user }) => {
           createdAt: new Date().toISOString(),
           completionDate: null,
           checked: false,
+          notificationEnabled: false, // Bildirim varsayılan kapalı
         },
       ];
     }
@@ -321,70 +319,27 @@ const DailyRoutine = ({ user }) => {
   // Tüm rutinleri sil
   const handleDeleteAll = () => {
     setRoutines([]);
-    // Tüm zamanlanmış bildirimleri iptal et
-    Object.values(scheduledNotifications).forEach((ids) => {
-      ids.forEach((id) => cancelScheduledNotifications(id));
-    });
-    setScheduledNotifications({});
   };
 
-  // Yeni bildirim zamanla
-  const scheduleNewNotification = (routine) => {
-    const [hours, minutes] = routine.time.split(":");
-    const targetTime = new Date();
-    targetTime.setHours(parseInt(hours));
-    targetTime.setMinutes(parseInt(minutes));
-    targetTime.setSeconds(0);
-    targetTime.setMilliseconds(0);
-
-    if (targetTime < new Date()) {
-      targetTime.setDate(targetTime.getDate() + 1);
-    }
-
-    const reminderTime = new Date(targetTime.getTime() - 15 * 60000);
-
-    const reminderId = scheduleNotification(
-      `Hatırlatma: ${routine.title}`,
-      reminderTime,
-      "15-minutes"
-    );
-
-    const mainId = scheduleNotification(routine.title, targetTime, "on-time");
-
-    setScheduledNotifications((prev) => ({
-      ...prev,
-      [routine.id]: [reminderId, mainId],
-    }));
-  };
-
-  // Bildirim aç/kapa
+  // her rutinin Firestore'da saklanan verisinde "notificationEnabled" alanını güncelliyoruz.
   const handleNotificationChange = (routineId) => {
     const routine = routines.find((r) => r.id === routineId);
     if (!routine) return;
 
-    const isEnabled = !notificationsEnabled[routineId];
+    const isEnabled = !routine.notificationEnabled;
 
-    // Toast bildirim ekle
     showToast(
       isEnabled ? "Bildirimler açıldı 🔔" : "Bildirimler kapatıldı 🔕",
       isEnabled ? "success" : "error"
     );
 
-    if (isEnabled) {
-      scheduleNewNotification(routine);
-    } else {
-      // Bildirimleri iptal et
-      const ids = scheduledNotifications[routineId];
-      if (ids) {
-        ids.forEach((id) => cancelScheduledNotifications(id));
-        setScheduledNotifications((prev) => {
-          const newState = { ...prev };
-          delete newState[routineId];
-          return newState;
-        });
-      }
-    }
+    // Rutin objesindeki notificationEnabled değeri güncellensin
+    const updatedRoutines = routines.map((r) =>
+      r.id === routineId ? { ...r, notificationEnabled: isEnabled } : r
+    );
+    setRoutines(updatedRoutines);
 
+    // notificationsEnabled state'ini de güncelleyin
     setNotificationsEnabled((prev) => ({
       ...prev,
       [routineId]: isEnabled,
@@ -394,28 +349,26 @@ const DailyRoutine = ({ user }) => {
   // Tüm bildirimleri aç/kapa
   const toggleAllNotifications = () => {
     const newState = !allNotifications;
+
     showToast(
       newState ? "Tüm bildirimler açıldı 🔔" : "Tüm bildirimler kapatıldı 🔕",
       newState ? "success" : "error"
     );
-    setAllNotifications(newState);
-    const updatedNotifications = {};
 
-    routines.forEach((r) => {
+    setAllNotifications(newState);
+
+    // Tüm rutinleri güncelle
+    const updatedRoutines = routines.map((r) => ({
+      ...r,
+      notificationEnabled: newState,
+    }));
+
+    setRoutines(updatedRoutines);
+
+    // notificationsEnabled state'ini de güncelle
+    const updatedNotifications = {};
+    updatedRoutines.forEach((r) => {
       updatedNotifications[r.id] = newState;
-      if (newState) {
-        scheduleNewNotification(r);
-      } else {
-        const ids = scheduledNotifications[r.id];
-        if (ids) {
-          ids.forEach((id) => cancelScheduledNotifications(id));
-          setScheduledNotifications((prev) => {
-            const newState = { ...prev };
-            delete newState[r.id];
-            return newState;
-          });
-        }
-      }
     });
 
     setNotificationsEnabled(updatedNotifications);
@@ -428,7 +381,6 @@ const DailyRoutine = ({ user }) => {
   };
 
   // Firestore'dan rutinleri yükle
-
   useEffect(() => {
     const loadRoutines = async () => {
       if (!user) return;
@@ -444,12 +396,11 @@ const DailyRoutine = ({ user }) => {
           // Kullanıcıya ait belge yoksa, default rutinlerle yeni belge oluştur
           const initialData = {
             routines: initialRoutines,
-            // Diğer default alanlar eklenebilir
           };
           await setDoc(userDocRef, initialData);
           setRoutines(initialRoutines);
         }
-        isInitialLoad.current = false; // İlk yükleme tamamlandı
+        isInitialLoad.current = false;
       } catch (error) {
         console.error("Rutin yükleme hatası:", error);
       }
@@ -505,10 +456,6 @@ const DailyRoutine = ({ user }) => {
               total={routines.length}
               icon={<DoneAll sx={{ fontSize: { xs: "1.0rem", sm: "2rem" } }} />}
               color="#4CAF50"
-              sx={{
-                fontSize: { xs: "0.4rem", sm: "1rem" },
-                p: { xs: 0.3, sm: 2 },
-              }}
             />
           </Grid>
           <Grid item xs={4} sm={4} md={4}>
@@ -522,10 +469,6 @@ const DailyRoutine = ({ user }) => {
                 />
               }
               color="#2196F3"
-              sx={{
-                fontSize: { xs: "0.4rem", sm: "1rem" },
-                p: { xs: 0.3, sm: 2 },
-              }}
             />
           </Grid>
           <Grid item xs={4} sm={4} md={4}>
@@ -539,10 +482,6 @@ const DailyRoutine = ({ user }) => {
                 />
               }
               color="#9C27B0"
-              sx={{
-                fontSize: { xs: "0.4rem", sm: "1rem" },
-                p: { xs: 0.3, sm: 2 },
-              }}
             />
           </Grid>
         </Grid>
@@ -652,7 +591,6 @@ const DailyRoutine = ({ user }) => {
                     >
                       <EventNote fontSize="small" />
                     </IconButton>
-
                     <IconButton
                       onClick={() => handleNotificationChange(routine.id)}
                       sx={{
@@ -662,7 +600,7 @@ const DailyRoutine = ({ user }) => {
                       }}
                     >
                       {notificationsEnabled[routine.id] ? (
-                        <NotificationImportant />
+                        <NotificationsActive />
                       ) : (
                         <NotificationsOff />
                       )}
@@ -745,7 +683,7 @@ const DailyRoutine = ({ user }) => {
               startIcon={<HighlightOff />}
               sx={{
                 background:
-                  "linear-gradient(45deg,rgb(156,39, 136) 30%, #FFB74D 60%)",
+                  "linear-gradient(45deg, rgb(156,39,136) 30%, #FFB74D 60%)",
               }}
             >
               İşaretleri Kaldır

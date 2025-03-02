@@ -46,12 +46,7 @@ import "@fullcalendar/timegrid";
 import "@fullcalendar/multimonth";
 
 // Bildirim işlevlerini içeren modül (kodun başındaki bildirim sınıfı)
-import {
-  requestNotificationPermission,
-  scheduleNotification,
-  cancelScheduledNotifications,
-  notificationIntervals,
-} from "../../utils/weather-theme-notify/NotificationManager";
+import { requestNotificationPermission } from "../../utils/weather-theme-notify/NotificationManager";
 
 // ----------------------------------------------------------------
 // Renk seçimi için ayrı bir Dialog
@@ -267,7 +262,6 @@ const CalendarComponent = ({ user }) => {
     try {
       const batch = writeBatch(db);
       const eventsRef = collection(db, "users", user.uid, "calendarEvents");
-      // handleCreateEvent içindeki eventData oluşturma kısmı:
       const eventData = {
         title: newEvent.title,
         start: Timestamp.fromDate(newEvent.start.toJSDate()),
@@ -278,7 +272,6 @@ const CalendarComponent = ({ user }) => {
         recurrence: newEvent.isRecurring
           ? {
               recurrenceType: newEvent.recurrenceType,
-              // Burada recurrenceUntil'ı gün sonuna çekiyoruz:
               recurrenceUntil: newEvent.recurrenceUntil.endOf("day").toJSDate(),
             }
           : null,
@@ -287,23 +280,6 @@ const CalendarComponent = ({ user }) => {
       const docRef = doc(eventsRef);
       batch.set(docRef, eventData);
       await batch.commit();
-
-      // Bildirim zamanı ayarlıysa (tekrarlı etkinliklerde yalnızca ilk sefer için bildirim planlanabilir)
-      if (newEvent.notification && newEvent.notification !== "none") {
-        const notifId = await scheduleNotification(
-          newEvent.title,
-          newEvent.start.toJSDate(),
-          newEvent.notification
-        );
-        if (notifId) {
-          await updateDoc(
-            doc(db, "users", user.uid, "calendarEvents", docRef.id),
-            {
-              notificationId: notifId,
-            }
-          );
-        }
-      }
 
       await fetchEvents();
       setOpenDialog(false);
@@ -328,9 +304,6 @@ const CalendarComponent = ({ user }) => {
   // Etkinlik sil
   const handleDeleteEvent = async (eventId, notificationId) => {
     try {
-      if (notificationId) {
-        await cancelScheduledNotifications(notificationId);
-      }
       await deleteDoc(doc(db, "users", user.uid, "calendarEvents", eventId));
       await fetchEvents();
       toast.success("Etkinlik silindi");
@@ -343,10 +316,6 @@ const CalendarComponent = ({ user }) => {
   // Etkinlik güncelle
   const handleUpdateEvent = async () => {
     try {
-      // Önce eski bildirim varsa iptal edelim
-      if (editEvent.notificationId) {
-        await cancelScheduledNotifications(editEvent.notificationId);
-      }
       await updateDoc(
         doc(db, "users", user.uid, "calendarEvents", editEvent.id),
         {
@@ -364,31 +333,15 @@ const CalendarComponent = ({ user }) => {
             : null,
         }
       );
-      // Yeni bildirim zamanlandıysa
-      if (editEvent.notification && editEvent.notification !== "none") {
-        const newNotifId = await scheduleNotification(
-          editEvent.title,
-          editEvent.start.toJSDate(),
-          editEvent.notification
-        );
-        if (newNotifId) {
-          await updateDoc(
-            doc(db, "users", user.uid, "calendarEvents", editEvent.id),
-            {
-              notificationId: newNotifId,
-            }
-          );
-        }
-      }
+      // scheduleNotification çağrısı kaldırıldı.
       await fetchEvents();
       setOpenEditDialog(false);
-      setSelectedEvent;
+      setSelectedEvent(null);
       toast.success("Etkinlik güncellendi");
     } catch (error) {
       toast.error(`Güncelleme hatası: ${error.message}`);
     }
   };
-
   // Tarih seçildiğinde yeni etkinlik diyalogunu aç
 
   const handleDateSelect = (selectInfo) => {

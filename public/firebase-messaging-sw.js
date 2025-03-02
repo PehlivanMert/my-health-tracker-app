@@ -116,20 +116,26 @@ messaging.onBackgroundMessage((payload) => {
 });
 
 self.addEventListener("push", (event) => {
+  if (event.data) {
+    const data = event.data.json();
+    if (data["firebase-messaging-msg-data"]) {
+      // Bu mesaj FCM tarafından yönetilecek; hiçbir şey yapmayın.
+      return;
+    }
+  }
+  // Eğer FCM'ye ait değilse, kendi fallback bildirim mekanizmanızı çalıştırın.
   let pushData = {};
   try {
-    pushData = event.data ? event.data.json() : {}; // JSON formatına çevir
+    pushData = event.data ? event.data.json() : {};
   } catch (error) {
     console.error("🔥 Push mesajı JSON formatında değil:", event.data.text());
-    pushData = { title: "Hata!", body: event.data.text() }; // Hata ayıklama için düz metin göster
+    pushData = { title: "Hata!", body: event.data.text() };
   }
-
   const notificationTitle = pushData.title || "Bilinmeyen Bildirim";
   const notificationOptions = {
     body: pushData.body || "İçerik bulunamadı",
     icon: pushData.icon || "/logo.jpeg",
   };
-
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 

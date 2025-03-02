@@ -38,7 +38,19 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log("[Service Worker] Precaching assets");
-      return cache.addAll(ASSETS);
+      const cachePromises = ASSETS.map((url) =>
+        fetch(url)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(`Failed to fetch ${url}`);
+            }
+            return cache.put(url, response);
+          })
+          .catch((error) => {
+            console.error(`Caching failed for ${url}:`, error);
+          })
+      );
+      return Promise.allSettled(cachePromises);
     })
   );
   self.skipWaiting();

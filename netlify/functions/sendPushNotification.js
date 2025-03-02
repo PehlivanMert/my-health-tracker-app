@@ -1,4 +1,3 @@
-// sendPushNotification.js
 const admin = require("firebase-admin");
 
 if (!admin.apps.length) {
@@ -44,25 +43,21 @@ exports.handler = async function (event, context) {
         const [localHour, localMinute] = routine.time.split(":").map(Number);
         const utcHour = (localHour - 3 + 24) % 24;
 
+        // Debug logları
+        console.log(
+          `Fonksiyon tetiklendi: currentHour=${currentHour}, currentMinute=${currentMinute}`
+        );
+        console.log(
+          `Rutin zamanı: localHour=${localHour}, localMinute=${localMinute}, utcHour=${utcHour}`
+        );
+
         // Zaman farkını hesapla
-        const routineTimeInMinutes = utcHour * 60 + localMinute;
-        const currentTimeInMinutes = currentHour * 60 + currentMinute;
-        const timeDiff = Math.abs(currentTimeInMinutes - routineTimeInMinutes);
+        const timeDiff = Math.abs(
+          currentMinute + currentHour * 60 - (utcHour * 60 + localMinute)
+        );
 
         // Eğer 2 dakika içinde ise bildirimi gönder
-        if (timeDiff < 2) {
-          // Ek kontrol: eğer yakın zamanda bildirim gönderilmişse atla
-          const nowTimestamp = Date.now();
-          const lastNotified = routine.lastNotifiedAt
-            ? new Date(routine.lastNotifiedAt).getTime()
-            : 0;
-          if (nowTimestamp - lastNotified < 2 * 60 * 1000) {
-            console.log(
-              `Kullanıcı ${userDoc.id} için ${routine.title} bildirimi zaten gönderilmiş.`
-            );
-            return;
-          }
-
+        if (timeDiff < 1) {
           console.log(
             `📢 Kullanıcı ${userDoc.id} için ${routine.title} bildirimi gönderilecek.`
           );
@@ -76,9 +71,6 @@ exports.handler = async function (event, context) {
               routineId: routine.id || "",
             },
           });
-
-          // Bu rutin için son bildirim zamanını güncelle
-          routine.lastNotifiedAt = new Date().toISOString();
         }
       });
     });

@@ -63,11 +63,9 @@ exports.handler = async function (event, context) {
           );
           notifications.push({
             token: fcmToken,
-            notification: {
+            data: {
               title: routine.title,
               body: `Şimdi ${routine.title} rutininin zamanı geldi!`,
-            },
-            data: {
               routineId: routine.id || "",
             },
           });

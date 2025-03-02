@@ -38,6 +38,7 @@ exports.handler = async function (event, context) {
 
       routines.forEach((routine) => {
         if (!routine.notificationEnabled) return; // Bildirim kapalıysa atla
+        if (routine.checked) return; // Rutin tamamlandıysa bildirim gönderme
 
         // Lokal zamanı UTC'ye çevirme (Türkiye için UTC+3)
         const [localHour, localMinute] = routine.time.split(":").map(Number);
@@ -56,7 +57,7 @@ exports.handler = async function (event, context) {
           currentMinute + currentHour * 60 - (utcHour * 60 + localMinute)
         );
 
-        // Eğer 2 dakika içinde ise bildirimi gönder
+        // Eğer 1 dakika içinde ise bildirimi gönder
         if (timeDiff < 1) {
           console.log(
             `📢 Kullanıcı ${userDoc.id} için ${routine.title} bildirimi gönderilecek.`

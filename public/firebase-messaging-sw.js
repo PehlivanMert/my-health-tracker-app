@@ -114,3 +114,21 @@ messaging.onBackgroundMessage((payload) => {
     icon: icon || "/logo4.jpeg",
   });
 });
+
+self.addEventListener("push", (event) => {
+  let pushData = {};
+  try {
+    pushData = event.data ? event.data.json() : {}; // JSON formatına çevir
+  } catch (error) {
+    console.error("🔥 Push mesajı JSON formatında değil:", event.data.text());
+    pushData = { title: "Hata!", body: event.data.text() }; // Hata ayıklama için düz metin göster
+  }
+
+  const notificationTitle = pushData.title || "Bilinmeyen Bildirim";
+  const notificationOptions = {
+    body: pushData.body || "İçerik bulunamadı",
+    icon: pushData.icon || "/logo.jpeg",
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
+});

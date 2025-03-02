@@ -1,4 +1,4 @@
-// CombinedNotifications.js
+// sendPushNotifications.js
 
 const admin = require("firebase-admin");
 

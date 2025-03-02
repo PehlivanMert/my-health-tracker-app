@@ -105,38 +105,30 @@ self.addEventListener("fetch", (event) => {
 // Background mesajları dinle
 messaging.onBackgroundMessage((payload) => {
   console.log(
-    "[firebase-messaging-sw.js] Received background message ",
+    "[firebase-messaging-sw.js] Received background message",
     payload
   );
-  const { title, body, icon } = payload.notification;
-  self.registration.showNotification(title, {
-    body,
-    icon: icon || "/logo4.jpeg",
-  });
+  // Eğer gönderdiğiniz mesaj yalnızca data içeriyorsa, bu callback belki hiç tetiklenmeyebilir.
+  // Bu durumda push event listener devreye girer.
 });
 
+// Fallback: push event listener yalnızca data-only mesajlar için çalışır
 self.addEventListener("push", (event) => {
-  if (event.data) {
-    const data = event.data.json();
-    if (data["firebase-messaging-msg-data"]) {
-      // Bu mesaj FCM tarafından yönetilecek; hiçbir şey yapmayın.
-      return;
-    }
-  }
-  // Eğer FCM'ye ait değilse, kendi fallback bildirim mekanizmanızı çalıştırın.
-  let pushData = {};
+  if (!event.data) return;
+
+  let data;
   try {
-    pushData = event.data ? event.data.json() : {};
-  } catch (error) {
-    console.error("🔥 Push mesajı JSON formatında değil:", event.data.text());
-    pushData = { title: "Hata!", body: event.data.text() };
+    data = event.data.json();
+  } catch (e) {
+    console.error("Push event verisi JSON formatında değil:", e);
+    return;
   }
-  const notificationTitle = pushData.title || "Bilinmeyen Bildirim";
-  const notificationOptions = {
-    body: pushData.body || "İçerik bulunamadı",
-    icon: pushData.icon || "/logo.jpeg",
-  };
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  // Data-only mesajlarda artık notification alanı yok,
+  // bu yüzden data üzerinden title ve body okumalıyız.
+  const title = data.title || "Bilinmeyen Bildirim";
+  const body = data.body || "İçerik bulunamadı";
+  const icon = data.icon || "/logo4.jpeg";
+  self.registration.showNotification(title, { body, icon });
 });
 
 //ctrl+ k + c

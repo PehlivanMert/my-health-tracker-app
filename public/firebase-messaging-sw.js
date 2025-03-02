@@ -105,26 +105,30 @@ self.addEventListener("fetch", (event) => {
 // Background mesajları dinle
 messaging.onBackgroundMessage((payload) => {
   console.log(
-    "[firebase-messaging-sw.js] Received background message",
+    "[firebase-messaging-sw.js] Received background message ",
     payload
   );
-  // Eğer gönderdiğiniz mesaj yalnızca data içeriyorsa, bu callback belki hiç tetiklenmeyebilir.
-  // Bu durumda push event listener devreye girer.
+  const { title, body, icon } = payload.notification;
+  self.registration.showNotification(title, {
+    body,
+    icon: icon || "/logo4.jpeg",
+  });
 });
 
-// Fallback: push event listener yalnızca data-only mesajlar için çalışır
 self.addEventListener("push", (event) => {
   if (!event.data) return;
-
   let data;
   try {
     data = event.data.json();
+    console.log("Push event verisi:", data);
   } catch (e) {
     console.error("Push event verisi JSON formatında değil:", e);
     return;
   }
-  // Data-only mesajlarda artık notification alanı yok,
-  // bu yüzden data üzerinden title ve body okumalıyız.
+  // Eğer veri, iç içe bir data objesi içeriyorsa, bunu kullanın.
+  if (data.data) {
+    data = data.data;
+  }
   const title = data.title || "Bilinmeyen Bildirim";
   const body = data.body || "İçerik bulunamadı";
   const icon = data.icon || "/logo4.jpeg";

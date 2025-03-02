@@ -1,23 +1,6 @@
 import { format } from "date-fns";
 
 /**
- * Bildirim izni isteme fonksiyonu.
- * Bu fonksiyon, FCM token alma süreci (notificationService.js içerisinde) öncesinde çağrılabilir.
- */
-export const requestNotificationPermission = async () => {
-  try {
-    const permission = await Notification.requestPermission();
-    if (permission === "granted") {
-      console.log("Bildirim izni verildi.");
-    } else {
-      console.warn("Bildirim izni reddedildi.");
-    }
-  } catch (error) {
-    console.error("Bildirim izni alınamadı:", error);
-  }
-};
-
-/**
  * Kullanıcıya toast mesajı gösterme fonksiyonu.
  * Bu fonksiyon, bildirim aç/kapat gibi işlemlerin geri bildirimini sağlamak amacıyla kullanılabilir.
  */
@@ -62,10 +45,3 @@ export const showToast = (message, type = "info") => {
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
 };
-
-/*
- * NOT:
- * Eski lokal bildirim zamanlama fonksiyonları (scheduleNotification, cancelScheduledNotifications,
- * clearAllNotifications, triggerNotification) tamamen kaldırıldı.
- * Artık push bildirim gönderimi Netlify Scheduled Functions ve Firebase Messaging üzerinden yapılacak.
- */

@@ -39,7 +39,6 @@ import "tippy.js/dist/tippy.css";
 import "./App.css";
 import UserAuth from "./components/auth/UserAuth";
 import WeatherWidget from "./utils/weather-theme-notify/WeatherWidget";
-import { requestNotificationPermission } from "./utils/weather-theme-notify/NotificationManager";
 import { requestNotificationPermissionAndSaveToken } from "./utils/notificationService";
 import {
   initialExercises,
@@ -902,7 +901,7 @@ function App() {
                   },
                 }}
                 label="Rutin"
-                icon={<HomeIcon sx={{ color: "white" }} />}
+                icon={<HomeIcon sx={{ color: "white", mt: "-4px" }} />}
               />
               <BottomNavigationAction
                 sx={{
@@ -914,7 +913,7 @@ function App() {
                   },
                 }}
                 label="Yaşam"
-                icon={<FavoriteIcon sx={{ color: "white" }} />}
+                icon={<FavoriteIcon sx={{ color: "white", mt: "-4px" }} />}
               />
               <BottomNavigationAction
                 sx={{
@@ -926,7 +925,7 @@ function App() {
                   },
                 }}
                 label="Sağlık"
-                icon={<DashboardIcon sx={{ color: "white" }} />}
+                icon={<DashboardIcon sx={{ color: "white", mt: "-4px" }} />}
               />
               <BottomNavigationAction
                 sx={{
@@ -938,7 +937,7 @@ function App() {
                   },
                 }}
                 label="İpuçları"
-                icon={<LightbulbIcon sx={{ color: "white" }} />}
+                icon={<LightbulbIcon sx={{ color: "white", mt: "-4px" }} />}
               />
               <BottomNavigationAction
                 sx={{
@@ -950,7 +949,7 @@ function App() {
                   },
                 }}
                 label="Egzersiz"
-                icon={<FitnessCenterIcon sx={{ color: "white" }} />}
+                icon={<FitnessCenterIcon sx={{ color: "white", mt: "-4px" }} />}
               />
               <BottomNavigationAction
                 sx={{
@@ -962,7 +961,7 @@ function App() {
                   },
                 }}
                 label="Takvim"
-                icon={<CalendarMonthIcon sx={{ color: "white" }} />}
+                icon={<CalendarMonthIcon sx={{ color: "white", mt: "-4px" }} />}
               />
             </BottomNavigation>
           </React.Fragment>

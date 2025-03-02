@@ -36,10 +36,7 @@ import {
 } from "@mui/icons-material";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
-import {
-  requestNotificationPermission,
-  showToast,
-} from "../../utils/weather-theme-notify/NotificationManager";
+import { showToast } from "../../utils/weather-theme-notify/NotificationManager";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
 import { initialRoutines } from "../../utils/constant/ConstantData";
@@ -151,6 +148,14 @@ const DailyRoutine = ({ user }) => {
   const [routines, setRoutines] = useState([]);
   const isInitialLoad = useRef(true);
 
+  useEffect(() => {
+    const initialNotifications = {};
+    routines.forEach((r) => {
+      initialNotifications[r.id] = r.notificationEnabled;
+    });
+    setNotificationsEnabled(initialNotifications);
+  }, [routines]);
+
   // Rutinleri saate göre sırala
   const sortRoutinesByTime = (routines) => {
     return routines.sort((a, b) => a.time.localeCompare(b.time));
@@ -172,11 +177,6 @@ const DailyRoutine = ({ user }) => {
       date1.getMonth() === date2.getMonth()
     );
   };
-
-  // Bildirim izni iste
-  useEffect(() => {
-    requestNotificationPermission();
-  }, []);
 
   // Haftalık ve aylık istatistikleri güncelle
   useEffect(() => {
@@ -321,7 +321,6 @@ const DailyRoutine = ({ user }) => {
     setRoutines([]);
   };
 
-  // Bildirim aç/kapa: Artık lokal zamanlama yapılmıyor, sadece
   // her rutinin Firestore'da saklanan verisinde "notificationEnabled" alanını güncelliyoruz.
   const handleNotificationChange = (routineId) => {
     const routine = routines.find((r) => r.id === routineId);
@@ -334,11 +333,13 @@ const DailyRoutine = ({ user }) => {
       isEnabled ? "success" : "error"
     );
 
+    // Rutin objesindeki notificationEnabled değeri güncellensin
     const updatedRoutines = routines.map((r) =>
       r.id === routineId ? { ...r, notificationEnabled: isEnabled } : r
     );
-
     setRoutines(updatedRoutines);
+
+    // notificationsEnabled state'ini de güncelleyin
     setNotificationsEnabled((prev) => ({
       ...prev,
       [routineId]: isEnabled,
@@ -599,7 +600,7 @@ const DailyRoutine = ({ user }) => {
                       }}
                     >
                       {notificationsEnabled[routine.id] ? (
-                        <NotificationImportant />
+                        <NotificationsActive />
                       ) : (
                         <NotificationsOff />
                       )}

@@ -3,13 +3,13 @@
   "name": "Sağlık ve Rutin Takip Uygulaması",
   "icons": [
     {
-      "src": "/public/logo4.jpeg",
+      "src": "/logo4.jpeg",
       "type": "image/jpeg",
       "sizes": "192x192",
       "purpose": "any maskable"
     },
     {
-      "src": "/public/logo4.jpeg",
+      "src": "/logo4.jpeg",
       "type": "image/jpeg",
       "sizes": "512x512",
       "purpose": "any maskable"

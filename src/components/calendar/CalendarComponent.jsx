@@ -45,9 +45,6 @@ import "@fullcalendar/daygrid";
 import "@fullcalendar/timegrid";
 import "@fullcalendar/multimonth";
 
-// Bildirim işlevlerini içeren modül (kodun başındaki bildirim sınıfı)
-import { requestNotificationPermission } from "../../utils/weather-theme-notify/NotificationManager";
-
 // ----------------------------------------------------------------
 // Renk seçimi için ayrı bir Dialog
 const ColorPickerDialog = ({
@@ -246,12 +243,6 @@ const CalendarComponent = ({ user }) => {
       toast.error(`Etkinlikler yüklenemedi: ${error.message}`);
     }
   }, [user, calendarColors.limon]);
-
-  useEffect(() => {
-    fetchEvents();
-    // Bildirim izni isteği
-    requestNotificationPermission();
-  }, [fetchEvents]);
 
   // Yeni etkinlik oluştur
   const handleCreateEvent = async () => {

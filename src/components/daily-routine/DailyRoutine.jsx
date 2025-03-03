@@ -40,6 +40,7 @@ import { showToast } from "../../utils/weather-theme-notify/NotificationManager"
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
 import { initialRoutines } from "../../utils/constant/ConstantData";
+import CircularProgress from "@mui/material/CircularProgress";
 
 // Animasyonlar
 const float = keyframes`
@@ -448,42 +449,173 @@ const DailyRoutine = ({ user }) => {
           Günlük Rutinler
         </Typography>
 
-        <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid item xs={4} sm={4} md={4}>
-            <StatCard
-              title="Günlük Başarı"
-              value={routines.filter((r) => r.checked).length}
-              total={routines.length}
-              icon={<DoneAll sx={{ fontSize: { xs: "1.0rem", sm: "2rem" } }} />}
-              color="#4CAF50"
-            />
-          </Grid>
-          <Grid item xs={4} sm={4} md={4}>
-            <StatCard
-              title="Haftalık Başarı"
-              value={weeklyStats.completed}
-              total={weeklyStats.total}
-              icon={
-                <CheckCircleOutline
-                  sx={{ fontSize: { xs: "1.0rem", sm: "2rem" } }}
+        <Grid container spacing={3} sx={{ mb: 3 }}>
+          {[
+            {
+              title: "Günlük Başarı",
+              value: routines.filter((r) => r.checked).length,
+              total: routines.length,
+              icon: <DoneAll />,
+              color: "#4CAF50",
+            },
+            {
+              title: "Haftalık Başarı",
+              value: weeklyStats.completed,
+              total: weeklyStats.total,
+              icon: <CheckCircleOutline />,
+              color: "#2196F3",
+            },
+            {
+              title: "Aylık Başarı",
+              value: monthlyStats.completed,
+              total: monthlyStats.total,
+              icon: <NotificationsActive />,
+              color: "#9C27B0",
+            },
+          ].map((stat, index) => (
+            <Grid item xs={12} sm={4} md={4} key={index}>
+              <Box
+                sx={{
+                  position: "relative",
+                  height: "100%",
+                  borderRadius: "16px",
+                  background: `linear-gradient(135deg, ${stat.color}40 0%, ${stat.color}20 100%)`,
+                  backdropFilter: "blur(8px)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
+                  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                  overflow: "hidden",
+                  "&:hover": {
+                    transform: "translateY(-5px)",
+                    boxShadow: `0 12px 40px ${stat.color}40`,
+                  },
+                }}
+              >
+                {/* Dalga Efekti */}
+                <Box
+                  sx={{
+                    position: "absolute",
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: "30%",
+                    background: `linear-gradient(transparent 20%, ${stat.color}20)`,
+                    maskImage:
+                      "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 100 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 15 Q25 5 50 15 T100 15 L100 20 L0 20 Z' fill='white'/%3E%3C/svg%3E\")",
+                    animation: "wave 8s linear infinite",
+                    opacity: 0.6,
+                  }}
                 />
-              }
-              color="#2196F3"
-            />
-          </Grid>
-          <Grid item xs={4} sm={4} md={4}>
-            <StatCard
-              title="Aylık Başarı"
-              value={monthlyStats.completed}
-              total={monthlyStats.total}
-              icon={
-                <NotificationsActive
-                  sx={{ fontSize: { xs: "1.0rem", sm: "2rem" } }}
-                />
-              }
-              color="#9C27B0"
-            />
-          </Grid>
+
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    p: 3,
+                    position: "relative",
+                    zIndex: 1,
+                  }}
+                >
+                  {/* İkon ve Progress Çemberi */}
+                  <Box
+                    sx={{
+                      position: "relative",
+                      mr: 2,
+                      width: { xs: 70, sm: 80 },
+                      height: { xs: 70, sm: 80 },
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <CircularProgress
+                      variant="determinate"
+                      value={(stat.value / stat.total) * 100}
+                      thickness={6}
+                      size="100%"
+                      sx={{
+                        position: "absolute",
+                        color: `${stat.color}30`,
+                        "& .MuiCircularProgress-circle": {
+                          strokeLinecap: "round",
+                          stroke: stat.color,
+                        },
+                      }}
+                    />
+                    <Box
+                      sx={{
+                        width: "60%",
+                        height: "60%",
+                        borderRadius: "50%",
+                        background: `linear-gradient(45deg, ${stat.color} 0%, ${stat.color}80 100%)`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow: `0 4px 20px ${stat.color}40`,
+                        position: "relative",
+                      }}
+                    >
+                      {React.cloneElement(stat.icon, {
+                        sx: {
+                          fontSize: { xs: "1.5rem", sm: "2rem" },
+                          color: "white",
+                          filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))",
+                        },
+                      })}
+                    </Box>
+                  </Box>
+
+                  {/* İstatistik Bilgileri */}
+                  <Box>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        color: "text.secondary",
+                        fontWeight: 600,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                      }}
+                    >
+                      {stat.title}
+                    </Typography>
+                    <Typography
+                      variant="h4"
+                      sx={{
+                        fontWeight: 800,
+                        lineHeight: 1.2,
+                        background: `linear-gradient(45deg, ${stat.color} 0%, ${stat.color}cc 100%)`,
+                        WebkitBackgroundClip: "text",
+                        WebkitTextFillColor: "transparent",
+                      }}
+                    >
+                      {stat.value}
+                      <Typography
+                        component="span"
+                        variant="body1"
+                        sx={{
+                          color: "text.secondary",
+                          ml: 0.5,
+                          fontWeight: 500,
+                        }}
+                      >
+                        / {stat.total}
+                      </Typography>
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        display: "block",
+                        color: "text.secondary",
+                        mt: 0.5,
+                      }}
+                    >
+                      {((stat.value / stat.total) * 100).toFixed(1)}% Tamamlandı
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+            </Grid>
+          ))}
         </Grid>
 
         <GlowingCard glowColor="#2196F3" sx={{ mb: 4, p: 3 }}>

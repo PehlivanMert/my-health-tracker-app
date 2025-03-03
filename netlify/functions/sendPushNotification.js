@@ -51,7 +51,7 @@ const isWithinNotificationWindow = (user) => {
 // Kullanıcının konumuna göre güncel sıcaklığı getirir
 const getUserWeather = async (lat, lon) => {
   try {
-    const url = `${process.env.OPEN_METEO_API_URL}?latitude=${lat}&longitude=${lon}&current_weather=true`;
+    const url = `${process.env.VITE_OPEN_METEO_API_URL}?latitude=${lat}&longitude=${lon}&current_weather=true`;
     const response = await fetch(url);
     const data = await response.json();
     if (data.current_weather) {
@@ -205,8 +205,8 @@ exports.handler = async function (event, context) {
                   title: eventData.title,
                   body: `Etkinlik: ${eventData.title} ${
                     offsetMinutes > 0
-                      ? `(${offsetMinutes} dakika önce)`
-                      : "(tam zamanında)"
+                      ? `(${offsetMinutes} dakika sonra)`
+                      : "(şimdi)"
                   } başlayacak.`,
                   eventId: docSnap.id,
                 },

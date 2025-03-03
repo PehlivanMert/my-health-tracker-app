@@ -504,13 +504,15 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           </Box>
         </Box>
       </WaterContainer>
+
       {/* "Dün içilen su" kartı */}
-      <Box sx={{ mt: 3, position: "relative", perspective: "2000px" }}>
+      <Box sx={{ mt: 3, position: "relative", perspective: "500px" }}>
         <Card
           sx={{
+            maxHeight: 300,
             borderRadius: "24px",
             padding: 3,
-            maxWidth: "450px",
+            maxWidth: "400px",
             margin: "0 auto",
             background:
               "linear-gradient(135deg, rgba(12,84,196,0.5) 0%, rgba(42,145,255,0.4) 100%)",
@@ -670,7 +672,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
                   variant="h6"
                   sx={{ color: "#21CBF3", fontWeight: 700 }}
                 >
-                  {waterData.dailyGoal} ml {/* Düzeltildi */}
+                  {waterData.dailyWaterTarget} ml {/* Düzeltildi */}
                 </Typography>
               </Box>
               <Box sx={{ textAlign: "center" }}>
@@ -722,6 +724,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           </CardContent>
         </Card>
       </Box>
+
       <Box sx={{ mt: 2, maxWidth: 400, mx: "auto" }}>
         <Grid container spacing={2}>
           <Grid item xs={6}>

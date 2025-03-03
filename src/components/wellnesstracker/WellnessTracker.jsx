@@ -34,11 +34,11 @@ import {
   collection,
   addDoc,
   getDocs,
+  getDoc,
   doc,
   updateDoc,
   deleteDoc,
   setDoc,
-  getDoc,
 } from "firebase/firestore";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
@@ -63,26 +63,193 @@ import {
 } from "recharts";
 import styles from "./waterAnimation.module.css";
 
-// Achievement Component: Konfeti ve mesaj yalnızca su hedefi ilk kez aşıldığında gösterilecek.
-const Achievement = ({ message }) => (
-  <Box
-    sx={{
-      position: "fixed",
-      top: "20%",
-      left: "50%",
-      transform: "translate(-50%, -50%)",
-      backgroundColor: "rgba(0,0,0,0.7)",
-      color: "#fff",
-      padding: "20px",
-      borderRadius: "10px",
-      zIndex: 9999,
-    }}
-  >
-    <Typography variant="h4">{message}</Typography>
-  </Box>
-);
+// ---------------------
+// Utility Functions
+// ---------------------
 
-// Animated keyframes
+// Returns the current Turkey time
+const getTurkeyTime = () =>
+  new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+
+// Fetches the user’s environmental context (temperature, activity level, time context) – mimicking the sendPushNotification.js logic :contentReference[oaicite:2]{index=2}
+const getUserEnvironmentalContext = async (user) => {
+  const context = {
+    temperature: 22,
+    activityLevel: "normal",
+    timeContext: "day",
+  };
+  try {
+    if (user.location && user.location.lat && user.location.lon) {
+      const url = `${process.env.REACT_APP_OPEN_METEO_API_URL}?latitude=${user.location.lat}&longitude=${user.location.lon}&current_weather=true`;
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.current_weather) {
+        context.temperature = data.current_weather.temperature;
+        const weatherCode = data.current_weather.weathercode;
+        if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(weatherCode)) {
+          context.activityLevel = "low";
+        } else if (context.temperature > 30) {
+          context.activityLevel = "low";
+        } else if (
+          context.temperature > 18 &&
+          context.temperature < 28 &&
+          [0, 1, 2, 3].includes(weatherCode)
+        ) {
+          context.activityLevel = "high";
+        }
+      }
+    }
+    const nowTurkey = getTurkeyTime();
+    const hour = nowTurkey.getHours();
+    if (hour >= 6 && hour < 9) {
+      context.timeContext = "morning";
+    } else if (hour >= 12 && hour < 14) {
+      context.timeContext = "lunch";
+    } else if (hour >= 17 && hour < 20) {
+      context.timeContext = "evening";
+    } else if (hour >= 22 || hour < 6) {
+      context.timeContext = "night";
+      context.activityLevel = "low";
+    }
+  } catch (error) {
+    console.error("Error getting environmental context:", error);
+  }
+  return context;
+};
+
+// Analyzes water consumption history to determine peak drinking hours :contentReference[oaicite:3]{index=3}
+const analyzeWaterHabits = (waterHistory = []) => {
+  if (!waterHistory || waterHistory.length < 5) return null;
+  const hourlyDistribution = Array(24).fill(0);
+  let totalEntries = 0;
+  const recentHistory = waterHistory.slice(-14);
+  recentHistory.forEach((entry) => {
+    if (entry.timestamp) {
+      const entryTime = entry.timestamp.toDate
+        ? entry.timestamp.toDate()
+        : new Date(entry.timestamp);
+      const entryHour = entryTime.getHours();
+      hourlyDistribution[entryHour]++;
+      totalEntries++;
+    }
+  });
+  if (totalEntries === 0) return null;
+  const normalizedDistribution = hourlyDistribution.map(
+    (count) => count / totalEntries
+  );
+  const peakHours = normalizedDistribution
+    .map((val, idx) => ({ hour: idx, value: val }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 3)
+    .filter((peak) => peak.value > 0);
+  return {
+    peakHours,
+    hourlyDistribution: normalizedDistribution,
+  };
+};
+
+// Computes a dynamic water reminder interval based on user profile, current weather, time of day and water history – following sendPushNotification.js :contentReference[oaicite:4]{index=4}, :contentReference[oaicite:5]{index=5}
+const computeDynamicWaterInterval = async (user, waterData) => {
+  if (
+    waterData.waterNotificationOption === "custom" &&
+    waterData.customNotificationInterval
+  ) {
+    return Number(waterData.customNotificationInterval) * 60;
+  } else if (waterData.waterNotificationOption === "smart") {
+    let intervalMinutes = 120;
+    const envContext = await getUserEnvironmentalContext(user);
+    let weight = user.profile && user.profile.weight ? user.profile.weight : 70;
+    let age = user.profile && user.profile.age ? user.profile.age : 30;
+    let height =
+      user.profile && user.profile.height ? user.profile.height : 170;
+    let baseRate = 0.55 * weight; // ml/dakika
+    const activityMultiplier = { low: 0.8, normal: 1.0, high: 1.3 };
+    baseRate *= activityMultiplier[envContext.activityLevel] || 1.0;
+    if (envContext.temperature > 30) {
+      baseRate *= 1.4;
+    } else if (envContext.temperature > 25) {
+      baseRate *= 1.2;
+    } else if (envContext.temperature < 10) {
+      baseRate *= 0.9;
+    }
+    const nowTurkey = getTurkeyTime();
+    const hour = nowTurkey.getHours();
+    if (hour >= 6 && hour < 10) {
+      baseRate *= 1.3;
+    } else if (hour >= 22 || hour < 6) {
+      baseRate *= 0.5;
+    }
+    if (age > 50) {
+      baseRate *= 0.9;
+    } else if (age < 18) {
+      baseRate *= 1.1;
+    }
+    const bmi = weight / Math.pow(height / 100, 2);
+    if (bmi > 25) {
+      baseRate *= 1.1;
+    } else if (bmi < 18.5) {
+      baseRate *= 0.9;
+    }
+    let glassSize = waterData.glassSize || 250;
+    let computedInterval = Math.round(glassSize / baseRate);
+    const habits = waterData.history
+      ? analyzeWaterHabits(waterData.history)
+      : null;
+    if (habits && habits.peakHours.length > 0) {
+      const currentHour = nowTurkey.getHours();
+      const isNearPeakHour = habits.peakHours.some(
+        (peak) => Math.abs(peak.hour - currentHour) <= 1 && peak.value > 0.15
+      );
+      if (isNearPeakHour) {
+        computedInterval = Math.round(computedInterval * 0.8);
+      }
+    }
+    intervalMinutes = Math.max(5, Math.min(computedInterval, 120));
+    const percentCompleted =
+      (waterData.waterIntake / waterData.dailyWaterTarget) * 100;
+    if (percentCompleted < 30 && envContext.timeContext === "evening") {
+      intervalMinutes = Math.round(intervalMinutes * 0.7);
+    } else if (percentCompleted > 80) {
+      intervalMinutes = Math.round(intervalMinutes * 1.3);
+    }
+    return intervalMinutes;
+  }
+  return 120;
+};
+
+// Computes water reminder times based on the global notification window and dynamic interval :contentReference[oaicite:6]{index=6}
+const computeReminderTimes = async (user, waterData) => {
+  if (!waterData.notificationWindow && !user.notificationWindow) return [];
+  const nowTurkey = getTurkeyTime();
+  const todayStr = nowTurkey.toLocaleDateString("en-CA");
+  const windowStartStr = user.notificationWindow?.start || "08:00";
+  const windowEndStr = user.notificationWindow?.end || "22:00";
+  const windowStart = new Date(`${todayStr}T${windowStartStr}:00`);
+  const windowEnd = new Date(`${todayStr}T${windowEndStr}:00`);
+  const dynamicInterval = await computeDynamicWaterInterval(user, waterData);
+  const reminderTimes = [];
+  let t = Math.max(windowStart.getTime(), nowTurkey.getTime());
+  while (t <= windowEnd.getTime()) {
+    reminderTimes.push(new Date(t));
+    t += dynamicInterval * 60000;
+  }
+  return reminderTimes;
+};
+
+// Gets the next water reminder time
+const getNextReminderTime = async (user, waterData) => {
+  const reminderTimes = await computeReminderTimes(user, waterData);
+  const now = new Date();
+  for (const time of reminderTimes) {
+    if (time > now) return time;
+  }
+  return null;
+};
+
+// ---------------------
+// Styled Components & Animations
+// ---------------------
+
 const float = keyframes`
   0% { transform: translateY(0px); }
   50% { transform: translateY(-20px); }
@@ -99,7 +266,6 @@ const ripple = keyframes`
   100% { transform: scale(0.95); opacity: 0.7; }
 `;
 
-// Styled Components
 const GlowingCard = styled(Card, {
   shouldForwardProp: (prop) => prop !== "glowColor",
 })(({ glowColor }) => ({
@@ -207,116 +373,32 @@ const StyledAccordionSummary = styled(AccordionSummary)(({ theme }) => ({
   },
 }));
 
-// VitaminCard: Takviye kartı bileşeni
-const VitaminCard = ({
-  supplement,
-  onConsume,
-  onDelete,
-  consumedToday = 0,
-}) => {
-  const remainingPercentage =
-    (supplement.quantity / supplement.initialQuantity) * 100;
-  const cardColor =
-    remainingPercentage > 66
-      ? "#2196F3"
-      : remainingPercentage > 33
-      ? "#00BCD4"
-      : "#3F51B5";
-  const remainingForToday = Math.max(0, supplement.dailyUsage - consumedToday);
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 50 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -50 }}
-      transition={{ duration: 0.5 }}
-    >
-      <GlowingCard glowColor={cardColor}>
-        <CardContent sx={{ p: 4 }}>
-          <Box
-            display="flex"
-            justifyContent="space-between"
-            alignItems="center"
-          >
-            <Typography variant="h5" sx={{ fontWeight: 700, color: "#fff" }}>
-              {supplement.name}
-            </Typography>
-            <IconButton
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(supplement.id);
-              }}
-              sx={{
-                color: "#fff",
-                transition: "all 0.3s ease",
-                "&:hover": { transform: "rotate(90deg)", color: "#FF5252" },
-              }}
-            >
-              <DeleteIcon />
-            </IconButton>
-          </Box>
-          <Box sx={{ mt: 3, mb: 3 }}>
-            <Typography
-              variant="body1"
-              sx={{ color: "#fff", opacity: 0.9, mb: 1 }}
-            >
-              Kalan: {supplement.quantity} / {supplement.initialQuantity}
-            </Typography>
-            <Typography variant="body1" sx={{ color: "#fff", opacity: 0.9 }}>
-              Tahmini Kalan Gün:{" "}
-              {Math.floor(supplement.quantity / supplement.dailyUsage)}
-            </Typography>
-            <Typography
-              variant="body1"
-              sx={{ color: "#fff", opacity: 0.9, mt: 1 }}
-            >
-              Bugün: Tüketilen {consumedToday} / Kalan {remainingForToday}
-            </Typography>
-          </Box>
-          <AnimatedButton
-            fullWidth
-            onClick={() => onConsume(supplement.id)}
-            disabled={supplement.quantity <= 0}
-            startIcon={<EmojiEventsIcon />}
-          >
-            Günlük Dozu Al
-          </AnimatedButton>
-        </CardContent>
-      </GlowingCard>
-    </motion.div>
-  );
-};
+// ---------------------
+// Components
+// ---------------------
 
-const YesterdayWaterCard = ({ amount }) => (
-  <motion.div
-    initial={{ opacity: 0, scale: 0.9 }}
-    animate={{ opacity: 1, scale: 1 }}
-    transition={{ duration: 0.5, ease: "easeOut" }}
+// Achievement Component – displays a congratulatory message and confetti when a goal is reached.
+const Achievement = ({ message }) => (
+  <Box
+    sx={{
+      position: "fixed",
+      top: "20%",
+      left: "50%",
+      transform: "translate(-50%, -50%)",
+      backgroundColor: "rgba(0,0,0,0.7)",
+      color: "#fff",
+      padding: "20px",
+      borderRadius: "10px",
+      zIndex: 9999,
+    }}
   >
-    <Card
-      sx={{
-        borderRadius: "16px",
-        padding: 1,
-        maxWidth: "250px",
-        margin: "0 auto",
-        background: "rgba(0,0,0,0.3)",
-        border: "1px solid rgba(255,255,255,0.3)",
-      }}
-    >
-      <CardContent sx={{ padding: "8px" }}>
-        <Typography
-          variant="subtitle1"
-          sx={{ color: "#fff", textAlign: "center", fontWeight: "bold" }}
-        >
-          Dün {amount} ml su içtin! Harika!
-        </Typography>
-      </CardContent>
-    </Card>
-  </motion.div>
+    <Typography variant="h4">{message}</Typography>
+  </Box>
 );
 
+// Weather Widget Component
 const WeatherWidget = ({ userLocation }) => {
   const [temperature, setTemperature] = useState(null);
-  const [loading, setLoading] = useState(true);
   useEffect(() => {
     const fetchWeather = async () => {
       if (userLocation && userLocation.lat && userLocation.lon) {
@@ -332,15 +414,12 @@ const WeatherWidget = ({ userLocation }) => {
           console.error("Hava durumu alınamadı:", error);
         }
       }
-      setLoading(false);
     };
     fetchWeather();
   }, [userLocation]);
   return (
     <Box sx={{ color: "#fff", mt: 2 }}>
-      {loading ? (
-        <Typography variant="body2">Hava durumu yükleniyor...</Typography>
-      ) : temperature !== null ? (
+      {temperature !== null ? (
         <Typography variant="body2">
           Şu anki sıcaklık: {temperature}°C
         </Typography>
@@ -351,6 +430,7 @@ const WeatherWidget = ({ userLocation }) => {
   );
 };
 
+// Global Notification Settings Dialog
 const NotificationSettingsDialog = ({ open, onClose, user, onSave }) => {
   const [start, setStart] = useState(user.notificationWindow?.start || "08:00");
   const [end, setEnd] = useState(user.notificationWindow?.end || "22:00");
@@ -389,6 +469,7 @@ const NotificationSettingsDialog = ({ open, onClose, user, onSave }) => {
   );
 };
 
+// Water Notification Settings Dialog
 const WaterNotificationSettingsDialog = ({
   open,
   onClose,
@@ -446,6 +527,7 @@ const WaterNotificationSettingsDialog = ({
   );
 };
 
+// Supplement Notification Settings Dialog
 const SupplementNotificationSettingsDialog = ({
   open,
   onClose,
@@ -526,6 +608,8 @@ const SupplementNotificationSettingsDialog = ({
   );
 };
 
+// WaterTracker Component – handles water intake, resetting daily values, and displaying water reminders.
+// The computeReminderTimes function has been updated to use the dynamic interval from sendPushNotification.js :contentReference[oaicite:7]{index=7}.
 const WaterTracker = ({ user, onWaterDataChange }) => {
   const [waterData, setWaterData] = useState({
     waterIntake: 0,
@@ -536,6 +620,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     lastResetDate: null,
     waterNotificationOption: "smart", // "none", "smart", "custom"
     customNotificationInterval: 1,
+    notificationWindow: { start: "08:00", end: "22:00" },
   });
   const [currentTemperature, setCurrentTemperature] = useState(null);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -547,9 +632,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   const getWaterDocRef = () => doc(db, "users", user.uid, "water", "current");
 
   const checkIfResetNeeded = async (data) => {
-    const nowTurkey = new Date(
-      new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
-    );
+    const nowTurkey = getTurkeyTime();
     const todayStr = nowTurkey.toLocaleDateString("en-CA");
     if (data.lastResetDate !== todayStr) {
       await resetDailyWaterIntake();
@@ -583,9 +666,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
 
   const resetDailyWaterIntake = async () => {
     try {
-      const nowTurkey = new Date(
-        new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
-      );
+      const nowTurkey = getTurkeyTime();
       const yesterday = new Date(nowTurkey);
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStr = yesterday.toLocaleDateString("en-CA");
@@ -711,66 +792,21 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     }
   };
 
-  const fillPercentage = Math.min(
-    (waterData.waterIntake / waterData.dailyWaterTarget) * 100,
-    100
-  );
-  const getNowTurkeyTime = () =>
-    new Date(
-      new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
-    );
-
-  const computeReminderTimes = async () => {
-    if (!waterData.notificationWindow && !user.notificationWindow) return [];
-    const nowTurkey = getNowTurkeyTime();
-    const todayStr = nowTurkey.toLocaleDateString("en-CA");
-    const windowStart = new Date(
-      todayStr + "T" + (user.notificationWindow?.start || "08:00") + ":00"
-    );
-    const windowEnd = new Date(
-      todayStr + "T" + (user.notificationWindow?.end || "22:00") + ":00"
-    );
-    let intervalMinutes = 120;
-    if (
-      waterData.waterNotificationOption === "custom" &&
-      waterData.customNotificationInterval
-    ) {
-      intervalMinutes = Number(waterData.customNotificationInterval) * 60;
-    } else if (waterData.waterNotificationOption === "smart") {
-      if (currentTemperature && currentTemperature > 25) {
-        intervalMinutes = 90;
-      }
-    }
-    const reminderTimes = [];
-    for (
-      let t = windowStart.getTime();
-      t <= windowEnd.getTime();
-      t += intervalMinutes * 60000
-    ) {
-      reminderTimes.push(new Date(t));
-    }
-    return reminderTimes;
-  };
-
-  const getNextReminderTime = async () => {
-    const reminderTimes = await computeReminderTimes();
-    const now = new Date();
-    for (const time of reminderTimes) {
-      if (time > now) return time;
-    }
-    return null;
-  };
-
   const [nextReminder, setNextReminder] = useState(null);
   useEffect(() => {
     const updateNextReminder = async () => {
-      const next = await getNextReminderTime();
+      const next = await getNextReminderTime(user, waterData);
       setNextReminder(next);
     };
     updateNextReminder();
     const interval = setInterval(updateNextReminder, 60000);
     return () => clearInterval(interval);
-  }, [waterData, currentTemperature, user]);
+  }, [waterData, user]);
+
+  const fillPercentage = Math.min(
+    (waterData.waterIntake / waterData.dailyWaterTarget) * 100,
+    100
+  );
 
   return (
     <Box sx={{ textAlign: "center", mb: 6 }}>
@@ -960,7 +996,25 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         </Grid>
       </Box>
       <Box sx={{ mt: 2 }}>
-        <YesterdayWaterCard amount={waterData.yesterdayWaterIntake} />
+        <Card
+          sx={{
+            borderRadius: "16px",
+            padding: 1,
+            maxWidth: "250px",
+            margin: "0 auto",
+            background: "rgba(0,0,0,0.3)",
+            border: "1px solid rgba(255,255,255,0.3)",
+          }}
+        >
+          <CardContent sx={{ padding: "8px" }}>
+            <Typography
+              variant="subtitle1"
+              sx={{ color: "#fff", textAlign: "center", fontWeight: "bold" }}
+            >
+              Dün {waterData.yesterdayWaterIntake} ml su içtin! Harika!
+            </Typography>
+          </CardContent>
+        </Card>
       </Box>
       <WaterNotificationSettingsDialog
         open={waterNotifDialogOpen}
@@ -981,6 +1035,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   );
 };
 
+// Water Consumption Chart Component
 const WaterConsumptionChart = ({ waterHistory }) => {
   const [timeRange, setTimeRange] = useState("month");
   const [displayType, setDisplayType] = useState("area");
@@ -1020,234 +1075,226 @@ const WaterConsumptionChart = ({ waterHistory }) => {
         ).toFixed(1)
       : 0;
   return (
-    <div>
-      <GlowingCard glowColor="#3F51B522">
-        <CardContent>
-          <Typography
-            variant="h6"
-            sx={{ fontWeight: 700, color: "#fff", mb: 2, textAlign: "center" }}
-          >
-            Su Tüketimi
-          </Typography>
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              mb: 2,
-              flexWrap: "wrap",
-              gap: 1,
-            }}
-          >
-            <FormControl size="small" sx={{ minWidth: 120 }}>
-              <InputLabel
-                id="water-time-range-label"
-                sx={{ color: "#fff", fontSize: "0.75rem" }}
-              >
-                Zaman Aralığı
-              </InputLabel>
-              <Select
-                labelId="water-time-range-label"
-                value={timeRange}
-                label="Zaman Aralığı"
-                onChange={(e) => setTimeRange(e.target.value)}
-                size="small"
-                sx={{
-                  color: "#fff",
-                  fontSize: "0.75rem",
-                  "& .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "rgba(255,255,255,0.3)",
-                  },
-                  "&:hover .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "rgba(255,255,255,0.5)",
-                  },
-                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#3F51B5",
-                  },
-                }}
-              >
-                <MenuItem value="year">1 Yıllık</MenuItem>
-                <MenuItem value="month">1 Aylık</MenuItem>
-                <MenuItem value="week">1 Haftalık</MenuItem>
-                <MenuItem value="current">Bu Ay</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: 120 }}>
-              <InputLabel
-                id="water-display-type-label"
-                sx={{ color: "#fff", fontSize: "0.75rem" }}
-              >
-                Görüntüleme Tipi
-              </InputLabel>
-              <Select
-                labelId="water-display-type-label"
-                value={displayType}
-                label="Görüntüleme Tipi"
-                onChange={(e) => setDisplayType(e.target.value)}
-                size="small"
-                sx={{
-                  color: "#fff",
-                  fontSize: "0.75rem",
-                  "& .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "rgba(255,255,255,0.3)",
-                  },
-                  "&:hover .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "rgba(255,255,255,0.5)",
-                  },
-                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#3F51B5",
-                  },
-                }}
-              >
-                <MenuItem value="area">Alan Grafiği</MenuItem>
-                <MenuItem value="bar">Çubuk Grafiği</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-          {filteredData.length > 0 && (
-            <Box sx={{ mb: 2, textAlign: "center" }}>
-              <Typography
-                variant="body2"
-                sx={{ color: "rgba(255,255,255,0.7)" }}
-              >
-                Ortalama günlük su tüketimi:
-                <Typography
-                  component="span"
-                  variant="body2"
-                  sx={{
-                    ml: 1,
-                    color: "rgba(255,255,255,0.7)",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {averageWaterIntake} mL
-                </Typography>
-              </Typography>
-            </Box>
-          )}
-          {filteredData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
-              {displayType === "area" ? (
-                <AreaChart data={filteredData}>
-                  <defs>
-                    <linearGradient id="waterColor" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#fff" stopOpacity={0.8} />
-                      <stop
-                        offset="95%"
-                        stopColor="#3F51B5"
-                        stopOpacity={0.1}
-                      />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="rgba(255,255,255,0.2)"
-                  />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fill: "#fff", fontSize: 12 }}
-                    stroke="rgba(255,255,255,0.5)"
-                  />
-                  <YAxis
-                    tick={{ fill: "#fff", fontSize: 12 }}
-                    stroke="rgba(255,255,255,0.5)"
-                  />
-                  <RechartsTooltip
-                    contentStyle={{
-                      backgroundColor: "rgba(0, 10, 50, 0.8)",
-                      border: "none",
-                      borderRadius: "10px",
-                      color: "#fff",
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="intake"
-                    stroke="#5c6bc0"
-                    fillOpacity={1}
-                    fill="url(#waterColor)"
-                    strokeWidth={3}
-                    name="Su Tüketimi (mL)"
-                  />
-                </AreaChart>
-              ) : (
-                <BarChart
-                  data={filteredData}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="rgba(255,255,255,0.2)"
-                  />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fill: "#fff", fontSize: 12 }}
-                    stroke="rgba(255,255,255,0.5)"
-                  />
-                  <YAxis
-                    tick={{ fill: "#fff", fontSize: 12 }}
-                    stroke="rgba(255,255,255,0.5)"
-                  />
-                  <RechartsTooltip
-                    contentStyle={{
-                      backgroundColor: "rgba(0, 10, 50, 0.8)",
-                      border: "none",
-                      borderRadius: "10px",
-                      color: "#fff",
-                    }}
-                  />
-                  <Legend
-                    wrapperStyle={{ color: "#fff" }}
-                    formatter={(value) => (
-                      <span style={{ color: "#fff" }}>{value}</span>
-                    )}
-                  />
-                  <Bar
-                    dataKey="intake"
-                    fill="#3F51B5"
-                    name="Su Tüketimi (mL)"
-                    radius={[4, 4, 0, 0]}
-                    animationDuration={1500}
-                    animationEasing="ease-out"
-                  />
-                </BarChart>
-              )}
-            </ResponsiveContainer>
-          ) : (
-            <Box
+    <GlowingCard glowColor="#3F51B522">
+      <CardContent>
+        <Typography
+          variant="h6"
+          sx={{ fontWeight: 700, color: "#fff", mb: 2, textAlign: "center" }}
+        >
+          Su Tüketimi
+        </Typography>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            mb: 2,
+            flexWrap: "wrap",
+            gap: 1,
+          }}
+        >
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel
+              id="water-time-range-label"
+              sx={{ color: "#fff", fontSize: "0.75rem" }}
+            >
+              Zaman Aralığı
+            </InputLabel>
+            <Select
+              labelId="water-time-range-label"
+              value={timeRange}
+              label="Zaman Aralığı"
+              onChange={(e) => setTimeRange(e.target.value)}
+              size="small"
               sx={{
-                height: 250,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexDirection: "column",
-                bgcolor: "rgba(255, 255, 255, 0.1)",
-                borderRadius: 2,
-                p: 2,
+                color: "#fff",
+                fontSize: "0.75rem",
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "rgba(255,255,255,0.3)",
+                },
+                "&:hover .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "rgba(255,255,255,0.5)",
+                },
+                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "#3F51B5",
+                },
               }}
             >
-              <WaterDropIcon
-                sx={{ fontSize: 60, color: "rgba(255,255,255,0.7)", mb: 2 }}
-              />
-              <Typography variant="body1" color="#fff" align="center">
-                Henüz su tüketim verisi bulunmamaktadır
-              </Typography>
+              <MenuItem value="year">1 Yıllık</MenuItem>
+              <MenuItem value="month">1 Aylık</MenuItem>
+              <MenuItem value="week">1 Haftalık</MenuItem>
+              <MenuItem value="current">Bu Ay</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel
+              id="water-display-type-label"
+              sx={{ color: "#fff", fontSize: "0.75rem" }}
+            >
+              Görüntüleme Tipi
+            </InputLabel>
+            <Select
+              labelId="water-display-type-label"
+              value={displayType}
+              label="Görüntüleme Tipi"
+              onChange={(e) => setDisplayType(e.target.value)}
+              size="small"
+              sx={{
+                color: "#fff",
+                fontSize: "0.75rem",
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "rgba(255,255,255,0.3)",
+                },
+                "&:hover .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "rgba(255,255,255,0.5)",
+                },
+                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "#3F51B5",
+                },
+              }}
+            >
+              <MenuItem value="area">Alan Grafiği</MenuItem>
+              <MenuItem value="bar">Çubuk Grafiği</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+        {filteredData.length > 0 && (
+          <Box sx={{ mb: 2, textAlign: "center" }}>
+            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.7)" }}>
+              Ortalama günlük su tüketimi:
               <Typography
+                component="span"
                 variant="body2"
-                color="rgba(255,255,255,0.7)"
-                mt={1}
-                textAlign="center"
+                sx={{
+                  ml: 1,
+                  color: "rgba(255,255,255,0.7)",
+                  fontWeight: "bold",
+                }}
               >
-                Su tüketimlerinizi girdiğinizde istatistikleriniz burada
-                görünecektir
+                {averageWaterIntake} mL
               </Typography>
-            </Box>
-          )}
-        </CardContent>
-      </GlowingCard>
-    </div>
+            </Typography>
+          </Box>
+        )}
+        {filteredData.length > 0 ? (
+          <ResponsiveContainer width="100%" height={250}>
+            {displayType === "area" ? (
+              <AreaChart data={filteredData}>
+                <defs>
+                  <linearGradient id="waterColor" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#fff" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#3F51B5" stopOpacity={0.1} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="rgba(255,255,255,0.2)"
+                />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: "#fff", fontSize: 12 }}
+                  stroke="rgba(255,255,255,0.5)"
+                />
+                <YAxis
+                  tick={{ fill: "#fff", fontSize: 12 }}
+                  stroke="rgba(255,255,255,0.5)"
+                />
+                <RechartsTooltip
+                  contentStyle={{
+                    backgroundColor: "rgba(0, 10, 50, 0.8)",
+                    border: "none",
+                    borderRadius: "10px",
+                    color: "#fff",
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="intake"
+                  stroke="#5c6bc0"
+                  fillOpacity={1}
+                  fill="url(#waterColor)"
+                  strokeWidth={3}
+                  name="Su Tüketimi (mL)"
+                />
+              </AreaChart>
+            ) : (
+              <BarChart
+                data={filteredData}
+                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="rgba(255,255,255,0.2)"
+                />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: "#fff", fontSize: 12 }}
+                  stroke="rgba(255,255,255,0.5)"
+                />
+                <YAxis
+                  tick={{ fill: "#fff", fontSize: 12 }}
+                  stroke="rgba(255,255,255,0.5)"
+                />
+                <RechartsTooltip
+                  contentStyle={{
+                    backgroundColor: "rgba(0, 10, 50, 0.8)",
+                    border: "none",
+                    borderRadius: "10px",
+                    color: "#fff",
+                  }}
+                />
+                <Legend
+                  wrapperStyle={{ color: "#fff" }}
+                  formatter={(value) => (
+                    <span style={{ color: "#fff" }}>{value}</span>
+                  )}
+                />
+                <Bar
+                  dataKey="intake"
+                  fill="#3F51B5"
+                  name="Su Tüketimi (mL)"
+                  radius={[4, 4, 0, 0]}
+                  animationDuration={1500}
+                  animationEasing="ease-out"
+                />
+              </BarChart>
+            )}
+          </ResponsiveContainer>
+        ) : (
+          <Box
+            sx={{
+              height: 250,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "column",
+              bgcolor: "rgba(255, 255, 255, 0.1)",
+              borderRadius: 2,
+              p: 2,
+            }}
+          >
+            <WaterDropIcon
+              sx={{ fontSize: 60, color: "rgba(255,255,255,0.7)", mb: 2 }}
+            />
+            <Typography variant="body1" color="#fff" align="center">
+              Henüz su tüketim verisi bulunmamaktadır
+            </Typography>
+            <Typography
+              variant="body2"
+              color="rgba(255,255,255,0.7)"
+              mt={1}
+              textAlign="center"
+            >
+              Su tüketimlerinizi girdiğinizde istatistikleriniz burada
+              görünecektir
+            </Typography>
+          </Box>
+        )}
+      </CardContent>
+    </GlowingCard>
   );
 };
 
+// Supplement Consumption Chart Component
 const SupplementConsumptionChart = ({
   user,
   supplements,
@@ -1282,8 +1329,7 @@ const SupplementConsumptionChart = ({
             fullDate: date,
           };
           allSuppNames.forEach((suppName) => {
-            const count = dayStats[suppName] || 0;
-            dayData[suppName] = count;
+            dayData[suppName] = dayStats[suppName] || 0;
           });
           return dayData;
         });
@@ -1510,6 +1556,7 @@ const SupplementConsumptionChart = ({
   );
 };
 
+// Main WellnessTracker Component
 const WellnessTracker = ({ user }) => {
   if (!user) return <div>Lütfen giriş yapın</div>;
 
@@ -1744,14 +1791,90 @@ const WellnessTracker = ({ user }) => {
               <AnimatePresence>
                 {supplements.map((supplement) => (
                   <Grid item xs={12} sm={6} md={4} key={supplement.id}>
-                    <VitaminCard
-                      supplement={supplement}
-                      onConsume={handleConsume}
-                      onDelete={handleDelete}
-                      consumedToday={
-                        supplementConsumptionToday[supplement.name] || 0
+                    <GlowingCard
+                      glowColor={
+                        (supplement.quantity / supplement.initialQuantity) *
+                          100 >
+                        66
+                          ? "#2196F3"
+                          : (supplement.quantity / supplement.initialQuantity) *
+                              100 >
+                            33
+                          ? "#00BCD4"
+                          : "#3F51B5"
                       }
-                    />
+                    >
+                      <CardContent sx={{ p: 4 }}>
+                        <Box
+                          display="flex"
+                          justifyContent="space-between"
+                          alignItems="center"
+                        >
+                          <Typography
+                            variant="h5"
+                            sx={{ fontWeight: 700, color: "#fff" }}
+                          >
+                            {supplement.name}
+                          </Typography>
+                          <IconButton
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(supplement.id);
+                            }}
+                            sx={{
+                              color: "#fff",
+                              transition: "all 0.3s ease",
+                              "&:hover": {
+                                transform: "rotate(90deg)",
+                                color: "#FF5252",
+                              },
+                            }}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Box>
+                        <Box sx={{ mt: 3, mb: 3 }}>
+                          <Typography
+                            variant="body1"
+                            sx={{ color: "#fff", opacity: 0.9, mb: 1 }}
+                          >
+                            Kalan: {supplement.quantity} /{" "}
+                            {supplement.initialQuantity}
+                          </Typography>
+                          <Typography
+                            variant="body1"
+                            sx={{ color: "#fff", opacity: 0.9 }}
+                          >
+                            Tahmini Kalan Gün:{" "}
+                            {Math.floor(
+                              supplement.quantity / supplement.dailyUsage
+                            )}
+                          </Typography>
+                          <Typography
+                            variant="body1"
+                            sx={{ color: "#fff", opacity: 0.9, mt: 1 }}
+                          >
+                            Bugün: Tüketilen{" "}
+                            {supplementConsumptionToday[supplement.name] || 0} /
+                            Kalan{" "}
+                            {Math.max(
+                              0,
+                              supplement.dailyUsage -
+                                (supplementConsumptionToday[supplement.name] ||
+                                  0)
+                            )}
+                          </Typography>
+                        </Box>
+                        <AnimatedButton
+                          fullWidth
+                          onClick={() => handleConsume(supplement.id)}
+                          disabled={supplement.quantity <= 0}
+                          startIcon={<EmojiEventsIcon />}
+                        >
+                          Günlük Dozu Al
+                        </AnimatedButton>
+                      </CardContent>
+                    </GlowingCard>
                   </Grid>
                 ))}
               </AnimatePresence>

@@ -504,6 +504,224 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           </Box>
         </Box>
       </WaterContainer>
+      {/* "Dün içilen su" kartı */}
+      <Box sx={{ mt: 3, position: "relative", perspective: "2000px" }}>
+        <Card
+          sx={{
+            borderRadius: "24px",
+            padding: 3,
+            maxWidth: "450px",
+            margin: "0 auto",
+            background:
+              "linear-gradient(135deg, rgba(12,84,196,0.5) 0%, rgba(42,145,255,0.4) 100%)",
+            border: "1px solid rgba(255,255,255,0.6)",
+            boxShadow: `0 8px 32px 0 rgba(31, 38, 135, 0.37),
+                   inset 0 4px 12px rgba(255,255,255,0.15)`,
+            backdropFilter: "blur(8px) saturate(180%)",
+            transformStyle: "preserve-3d",
+            transition: "all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
+            cursor: "pointer",
+            "&:hover": {
+              transform: "rotateY(10deg) rotateX(5deg) translateY(-10px)",
+              boxShadow: "0 15px 45px rgba(33,203,243,0.4)",
+            },
+          }}
+        >
+          {/* Arkaplan Dalga Efekti */}
+          <Box
+            sx={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: "40%",
+              background: `linear-gradient(transparent 25%, rgba(33,203,243,0.15))`,
+              maskImage:
+                "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 100 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 15 Q25 5 50 15 T100 15 L100 20 L0 20 Z' fill='white'/%3E%3C/svg%3E\")`",
+              animation: "wave 12s infinite linear",
+              opacity: 0.6,
+              "@keyframes wave": {
+                "0%": { backgroundPositionX: "0px" },
+                "100%": { backgroundPositionX: "1000px" },
+              },
+            }}
+          />
+
+          {/* Parlamalar */}
+          <Box
+            sx={{
+              position: "absolute",
+              top: "-20%",
+              right: "-10%",
+              width: "120px",
+              height: "120px",
+              background:
+                "radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 60%)",
+              filter: "blur(15px)",
+              transform: "rotate(45deg)",
+            }}
+          />
+
+          <CardContent sx={{ position: "relative", zIndex: 1, padding: 3 }}>
+            {/* Animasyonlu Su Damlası */}
+            <Box
+              sx={{
+                width: 80,
+                height: 80,
+                background: "linear-gradient(45deg, #2196F3 0%, #21CBF3 100%)",
+                borderRadius: "30% 70% 70% 30% / 30% 30% 70% 70%",
+                margin: "-50px auto 25px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 8px 32px rgba(33,203,243,0.4)",
+                animation: "waterDrop 3s infinite",
+                transformStyle: "preserve-3d",
+                "@keyframes waterDrop": {
+                  "0%, 100%": {
+                    transform: "scale(1) rotate(0deg)",
+                    borderRadius: "30% 70% 70% 30% / 30% 30% 70% 70%",
+                  },
+                  "50%": {
+                    transform: "scale(0.95) rotate(10deg)",
+                    borderRadius: "50% 50% 70% 30% / 60% 50% 50% 40%",
+                  },
+                },
+              }}
+            >
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="white">
+                <path d="M12 2.67c-1.15-2.67-4.67-4-4.67-4S3.33 4 3.33 6.67c0 2.67 4 6 8.67 11.33 4.67-5.33 8.67-8.66 8.67-11.33C20.67 4 18.85 0 16.67 0s-4.52 1.33-4.67 2.67z" />
+              </svg>
+            </Box>
+
+            {/* İçerik */}
+            <Typography
+              variant="h5"
+              sx={{
+                color: "#fff",
+                fontWeight: 800,
+                mb: 1,
+                textAlign: "center",
+                textTransform: "uppercase",
+                letterSpacing: "2px",
+                textShadow: "0 2px 8px rgba(33,203,243,0.5)",
+              }}
+            >
+              🌟 SU HEDEFİNE ULAŞTIN!
+            </Typography>
+
+            {/* Dinamik İlerleme Çubuğu */}
+            <Box
+              sx={{
+                width: "100%",
+                height: "12px",
+                background: "rgba(255,255,255,0.15)",
+                borderRadius: 20,
+                mt: 3,
+                mb: 2,
+                overflow: "hidden",
+                position: "relative",
+              }}
+            >
+              <Box
+                sx={{
+                  width: `${Math.min(
+                    (waterData.yesterdayWaterIntake / waterData.dailyGoal) *
+                      100, // Düzeltildi
+                    100
+                  )}%`,
+                  height: "100%",
+                  background:
+                    "linear-gradient(90deg, #2196F3 0%, #21CBF3 100%)",
+                  borderRadius: 20,
+                  transition: "width 1s ease-out",
+                  position: "relative",
+                  "&::after": {
+                    content: '""',
+                    position: "absolute",
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: "20px",
+                    background:
+                      "linear-gradient(to right, transparent, rgba(255,255,255,0.3))",
+                  },
+                }}
+              />
+            </Box>
+
+            {/* Detaylar */}
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                mt: 2,
+                padding: "0 15px",
+              }}
+            >
+              <Box sx={{ textAlign: "center" }}>
+                <Typography
+                  variant="body2"
+                  sx={{ color: "rgba(255,255,255,0.8)" }}
+                >
+                  Hedef
+                </Typography>
+                <Typography
+                  variant="h6"
+                  sx={{ color: "#21CBF3", fontWeight: 700 }}
+                >
+                  {waterData.dailyGoal} ml {/* Düzeltildi */}
+                </Typography>
+              </Box>
+              <Box sx={{ textAlign: "center" }}>
+                <Typography
+                  variant="body2"
+                  sx={{ color: "rgba(255,255,255,0.8)" }}
+                >
+                  İçilen
+                </Typography>
+                <Typography
+                  variant="h6"
+                  sx={{ color: "#fff", fontWeight: 700 }}
+                >
+                  {waterData.yesterdayWaterIntake} ml
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Konfeti Efekti */}
+            {waterData.yesterdayWaterIntake >= waterData.dailyGoal && ( // Düzeltildi
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  pointerEvents: "none",
+                  animation: "confetti 4s infinite",
+                  "@keyframes confetti": {
+                    "0%": { backgroundPosition: "0% 50%" },
+                    "100%": { backgroundPosition: "100% 50%" },
+                  },
+                  "&::before": {
+                    content: '""',
+                    position: "absolute",
+                    inset: 0,
+                    background: `radial-gradient(circle at 50% 50%, 
+          rgba(255,223,0,0.5) 0%,
+          rgba(255,61,0,0.4) 20%,
+          rgba(0,255,163,0.3) 40%,
+          transparent 70%)`,
+                    mixBlendMode: "screen",
+                    filter: "blur(20px)",
+                  },
+                }}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </Box>
       <Box sx={{ mt: 2, maxWidth: 400, mx: "auto" }}>
         <Grid container spacing={2}>
           <Grid item xs={6}>

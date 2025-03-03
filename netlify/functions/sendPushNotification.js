@@ -1,12 +1,4 @@
 // sendPushNotification.js
-// Bu dosya, Cloud Functions ortamında çalışır ve
-// rutin, takvim, su ve takviye bildirimlerini gönderir.
-// İyileştirmeler:
-// • Firestore okuma işlemleri paralel hale getirilerek maliyet optimize edildi.
-// • Su bildirimlerinde, geçmiş veriye göre dinamik (insan anatomisine uygun) aralık hesaplanarak periyodik bildirimler gönderilir.
-// • Takviye bildirimlerinde, planlanmış bildirimler yalnızca ±1 dakika hassasiyetiyle kontrol edilir.
-// • Global bildirim penceresi, kullanıcının ayarladığı saat değerlerini doğru şekilde uygular.
-
 const admin = require("firebase-admin");
 const fetch = require("node-fetch");
 
@@ -73,7 +65,6 @@ const getUserWeather = async (lat, lon) => {
 
 // Su bildirimlerinde kullanılacak dinamik aralık hesaplaması
 const computeDynamicWaterInterval = async (user, waterData) => {
-  // Varsayılan: 120 dakika
   let intervalMinutes = 120;
   if (
     waterData.waterNotificationOption === "custom" &&
@@ -125,7 +116,6 @@ const computeWaterReminderTimes = async (user, waterData) => {
   const windowEnd = new Date(`${todayStr}T${user.notificationWindow.end}:00`);
   const dynamicInterval = await computeDynamicWaterInterval(user, waterData);
   const reminderTimes = [];
-  // Bildirimler, pencere başlangıcı ile şimdiki zaman arasından başlatılır
   let t = Math.max(windowStart.getTime(), nowTurkey.getTime());
   while (t <= windowEnd.getTime()) {
     reminderTimes.push(new Date(t));
@@ -159,20 +149,19 @@ exports.handler = async function (event, context) {
     const currentMinute = now.getUTCMinutes();
     const notificationsToSend = [];
 
-    // Tüm kullanıcıları getir (optimizasyon için filtreleme yapılabilir)
+    // Tüm kullanıcıları getir
     const usersSnapshot = await db.collection("users").get();
 
     await Promise.all(
       usersSnapshot.docs.map(async (userDoc) => {
         const userData = userDoc.data();
         const fcmToken = userData.fcmToken;
-        if (!fcmToken) return; // FCM token yoksa atla
+        if (!fcmToken) return;
 
         // Rutin Bildirimleri (global ayardan bağımsız)
         if (userData.routines && Array.isArray(userData.routines)) {
           userData.routines.forEach((routine) => {
             if (!routine.notificationEnabled || routine.checked) return;
-            // Rutin zamanı, Türkiye saat dilimine göre UTC'ye dönüştürülür (+3 fark varsayılır)
             const [localHour, localMinute] = routine.time
               .split(":")
               .map(Number);
@@ -239,7 +228,8 @@ exports.handler = async function (event, context) {
             .collection("water")
             .doc("current");
           const waterDoc = await waterRef.get();
-          if (waterDoc.exists()) {
+          if (waterDoc.exists) {
+            // Admin SDK'da exists bir property
             const waterData = waterDoc.data();
             if (
               waterData.waterNotificationOption !== "none" &&
@@ -294,7 +284,6 @@ exports.handler = async function (event, context) {
             const suppData = docSnap.data();
             if (!suppData.notification || suppData.notification === "none")
               return;
-            // Eğer planlanmış bildirim saatleri varsa, yalnızca şu an (±1 dakika) o saatte gönder
             if (
               suppData.notificationSchedule &&
               Array.isArray(suppData.notificationSchedule) &&
@@ -321,7 +310,6 @@ exports.handler = async function (event, context) {
                 }
               });
             } else if (suppData.dailyUsage > 0) {
-              // Planlanmış zaman yoksa, kalan gün eşiğine göre bildirim gönder
               const estimatedRemainingDays =
                 suppData.quantity / suppData.dailyUsage;
               const thresholds = [14, 7, 3, 1];
@@ -352,7 +340,6 @@ exports.handler = async function (event, context) {
               pendingSupplements.push(suppData.name);
             }
           });
-          // Eğer global bildirim penceresinin bitimine 15 dakika kalmışsa, toplu takviye hatırlatma gönder
           if (userData.notificationWindow) {
             const nowTurkey = getTurkeyTime();
             const [nowH, nowM] = nowTurkey
@@ -393,7 +380,6 @@ exports.handler = async function (event, context) {
       })
     );
 
-    // Tüm bildirimleri paralel olarak gönder
     const sendResults = await Promise.all(
       notificationsToSend.map((msg) => admin.messaging().send(msg))
     );

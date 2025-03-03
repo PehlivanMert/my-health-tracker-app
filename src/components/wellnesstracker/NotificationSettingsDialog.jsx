@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -7,12 +7,49 @@ import {
   DialogActions,
   Button,
 } from "@mui/material";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../auth/firebaseConfig";
 
 const NotificationSettingsDialog = ({ open, onClose, user, onSave }) => {
-  const [start, setStart] = useState(user.notificationWindow?.start || "08:00");
-  const [end, setEnd] = useState(user.notificationWindow?.end || "22:00");
+  const [start, setStart] = useState("08:00");
+  const [end, setEnd] = useState("22:00");
+
+  useEffect(() => {
+    if (open && user && user.uid) {
+      const fetchData = async () => {
+        try {
+          const userRef = doc(db, "users", user.uid);
+          const userDoc = await getDoc(userRef);
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+
+            // Veriler string türünde olduğu için doğrudan state'e atıyoruz
+            setStart(data.notificationWindow?.start || "08:00");
+            setEnd(data.notificationWindow?.end || "22:00");
+            console.log("State'e atanan değerler:", {
+              start: data.notificationWindow?.start || "08:00",
+              end: data.notificationWindow?.end || "22:00",
+            });
+          } else {
+            setStart("08:00");
+            setEnd("22:00");
+          }
+        } catch (error) {
+          console.error(
+            "NotificationSettingsDialog - Veri çekme hatası:",
+            error
+          );
+          setStart("08:00");
+          setEnd("22:00");
+        }
+      };
+
+      fetchData();
+    }
+  }, [open, user?.uid]);
 
   const handleSave = () => {
+    console.log("Kaydedilecek değerler:", { start, end });
     onSave({ start, end });
     onClose();
   };

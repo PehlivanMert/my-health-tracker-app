@@ -41,8 +41,6 @@ import WaterConsumptionChart from "./WaterConsumptionChart";
 import SupplementConsumptionChart from "./SupplementConsumptionChart";
 import SupplementNotificationSettingsDialog from "./SupplementNotificationSettingsDialog";
 
-// WeatherWidget projenizde mevcut, dolayısıyla burada import edilmiyor.
-
 const float = keyframes`
   0% { transform: translateY(0px); }
   50% { transform: translateY(-20px); }

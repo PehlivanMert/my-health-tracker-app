@@ -56,7 +56,9 @@ const isIOS = () =>
   typeof navigator !== "undefined" &&
   /iPad|iPhone|iPod/.test(navigator.userAgent);
 
-const GlowingCard = styled(Box)(({ theme, glowColor }) => {
+const GlowingCard = styled(Box, {
+  shouldForwardProp: (prop) => prop !== "$glowColor",
+})(({ theme, $glowColor }) => {
   const ios = isIOS();
   return {
     background: ios ? "rgba(255,255,255,0.1)" : "rgba(255, 255, 255, 0.1)",
@@ -64,11 +66,11 @@ const GlowingCard = styled(Box)(({ theme, glowColor }) => {
     borderRadius: "24px",
     WebkitBackdropFilter: ios ? "none" : "blur(10px)",
     backdropFilter: ios ? "none" : "blur(10px)",
-    boxShadow: `0 0 20px ${glowColor || "#2196F322"}`,
+    boxShadow: `0 0 20px ${$glowColor || "#2196F322"}`,
     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
     "&:hover": {
       transform: "translateY(-5px)",
-      boxShadow: `0 0 40px ${glowColor || "#2196F344"}`,
+      boxShadow: `0 0 40px ${$glowColor || "#2196F344"}`,
     },
   };
 });
@@ -194,7 +196,7 @@ const Exercises = ({ exercises, setExercises }) => {
 
   const renderExerciseCard = (exercise, isInModal = true) => (
     <GlowingCard
-      glowColor="#4CAF50"
+      $glowColor="#4CAF50"
       sx={{
         p: 3,
         height: "100%",
@@ -395,7 +397,7 @@ const Exercises = ({ exercises, setExercises }) => {
           Egzersiz Yönetimi
         </Typography>
 
-        <GlowingCard glowColor="#2196F3" sx={{ p: 4, mb: 4 }}>
+        <GlowingCard $glowColor="#2196F3" sx={{ p: 4, mb: 4 }}>
           <Box
             sx={{
               display: "flex",
@@ -666,7 +668,7 @@ const Exercises = ({ exercises, setExercises }) => {
               {exercises.map((exercise) => (
                 <Grid item xs={12} md={6} lg={4} key={exercise.id}>
                   <GlowingCard
-                    glowColor="#A6F6FF"
+                    $glowColor="#A6F6FF"
                     sx={{
                       flex: 1,
                       display: "flex",

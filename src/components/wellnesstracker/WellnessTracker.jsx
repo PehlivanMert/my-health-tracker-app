@@ -34,6 +34,15 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
+import {
+  Medication,
+  LocalPharmacy,
+  Spa,
+  FitnessCenter,
+  Opacity,
+  HealthAndSafety,
+  Vaccines,
+} from "@mui/icons-material";
 
 import NotificationSettingsDialog from "./NotificationSettingsDialog";
 import WaterTracker from "./WaterTracker";
@@ -46,6 +55,64 @@ const float = keyframes`
   50% { transform: translateY(-20px); }
   100% { transform: translateY(0px); }
 `;
+
+const supplementColors = [
+  "#00E676", // Vitamin yeşili
+  "#00B0FF", // Mineral mavisi
+  "#FF9100", // Protein turuncusu
+  "#651FFF", // Omega moru
+  "#FF4081", // Özel pembe
+  "#00BFA5", // Yeşil-mavi
+  "#FFD600", // Altın sarısı
+];
+
+const supplementIcons = [
+  <LocalPharmacy sx={{ color: "#fff", fontSize: "1.4rem" }} />,
+  <Spa sx={{ color: "#fff", fontSize: "1.4rem" }} />,
+  <FitnessCenter sx={{ color: "#fff", fontSize: "1.4rem" }} />,
+  <Opacity sx={{ color: "#fff", fontSize: "1.4rem" }} />,
+  <HealthAndSafety sx={{ color: "#fff", fontSize: "1.4rem" }} />,
+  <Vaccines sx={{ color: "#fff", fontSize: "1.4rem" }} />,
+];
+
+const getSupplementColor = (name) => {
+  if (!name || typeof name !== "string") return "#2196F3"; // Varsayılan renk
+  const lowerName = name.toLowerCase();
+
+  // Anahtar kelime kontrolü
+  if (lowerName.includes("vitamin")) return "#00E676";
+  if (lowerName.includes("mineral")) return "#00B0FF";
+  if (lowerName.includes("protein")) return "#FF9100";
+  if (lowerName.includes("omega")) return "#651FFF";
+
+  // Hash tabanlı renk
+  const hash = name
+    .split("")
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return supplementColors[hash % supplementColors.length];
+};
+
+const getSupplementIcon = (name) => {
+  if (!name || typeof name !== "string")
+    return <Medication sx={{ color: "#fff", fontSize: "1.4rem" }} />;
+  const lowerName = name.toLowerCase();
+
+  // Anahtar kelime kontrolü
+  if (lowerName.includes("vitamin"))
+    return <LocalPharmacy sx={{ color: "#fff", fontSize: "1.4rem" }} />;
+  if (lowerName.includes("mineral"))
+    return <Spa sx={{ color: "#fff", fontSize: "1.4rem" }} />;
+  if (lowerName.includes("protein"))
+    return <FitnessCenter sx={{ color: "#fff", fontSize: "1.4rem" }} />;
+  if (lowerName.includes("omega 3"))
+    return <Opacity sx={{ color: "#fff", fontSize: "1.4rem" }} />;
+
+  // Hash tabanlı ikon
+  const hash = name
+    .split("")
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return supplementIcons[hash % supplementIcons.length];
+};
 
 const StyledAccordionSummary = styled(AccordionSummary)(({ theme }) => ({
   background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
@@ -249,14 +316,20 @@ const WellnessTracker = ({ user }) => {
             <Tooltip title="Global Bildirim Ayarları">
               <IconButton
                 onClick={() => setNotificationDialogOpen(true)}
-                sx={{ color: "#fff" }}
+                sx={{
+                  color: "#fff",
+                  "&:hover": {
+                    color: "#FFD700",
+                    transform: "scale(1.1)",
+                  },
+                }}
               >
                 <NotificationsIcon />
               </IconButton>
             </Tooltip>
           </Box>
         </Box>
-        {/* WeatherWidget projede mevcut olduğu için burada render edilmedi */}
+
         <WaterTracker user={user} onWaterDataChange={setWaterData} />
         <Box sx={{ mt: 4, textAlign: "center" }}>
           <AnimatedButton
@@ -290,11 +363,19 @@ const WellnessTracker = ({ user }) => {
               </Typography>
               <Tooltip title="Takviye Bildirim Ayarları">
                 <IconButton
+                  component="span"
                   onClick={(e) => {
                     e.stopPropagation();
                     setSupplementNotificationDialogOpen(true);
                   }}
-                  sx={{ color: "#fff" }}
+                  sx={{
+                    color: "#fff",
+                    transition: "all 0.3s ease-in-out",
+                    "&:hover": {
+                      color: "#FFD700",
+                      transform: "scale(1.1)",
+                    },
+                  }}
                 >
                   <NotificationsIcon />
                 </IconButton>
@@ -302,94 +383,238 @@ const WellnessTracker = ({ user }) => {
             </Box>
           </StyledAccordionSummary>
           <AccordionDetails>
-            <Grid container spacing={4} sx={{ mt: 2 }}>
+            <Grid container spacing={3} sx={{ mt: 1 }}>
               <AnimatePresence>
-                {supplements.map((supplement) => (
-                  <Grid item xs={12} sm={6} md={4} key={supplement.id}>
-                    <Box
-                      sx={{
-                        background: "rgba(255,255,255,0.1)",
-                        borderRadius: "24px",
-                        padding: 2,
-                        boxShadow: "0 0 20px rgba(33,150,243,0.3)",
-                        transition: "all 0.5s",
-                        "&:hover": {
-                          transform: "translateY(-10px) scale(1.02)",
-                        },
-                      }}
-                    >
+                {(supplements || []).map((supplement) => {
+                  // supplements undefined olma ihtimaline karşı
+                  const name = supplement?.name || "Unknown"; // Güvenli name erişimi
+                  const progress =
+                    (supplement.quantity / supplement.initialQuantity) * 100;
+                  const daysLeft = Math.floor(
+                    supplement.quantity / supplement.dailyUsage
+                  );
+                  const consumedToday =
+                    supplementConsumptionToday[supplement.name] || 0;
+                  const remainingToday = Math.max(
+                    0,
+                    supplement.dailyUsage - consumedToday
+                  );
+
+                  return (
+                    <Grid item xs={12} sm={6} md={4} key={supplement.id}>
                       <Box
                         sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
+                          background: `linear-gradient(135deg, ${getSupplementColor(
+                            name
+                          )} 0%, rgba(255,255,255,0.1) 100%)`,
+                          borderRadius: "20px",
+                          p: 3,
+                          boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
+                          backdropFilter: "blur(8px)",
+                          border: "1px solid rgba(255,255,255,0.2)",
+                          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                          "&:hover": {
+                            transform: "translateY(-5px)",
+                            boxShadow: "0 12px 40px rgba(33,150,243,0.2)",
+                          },
                         }}
                       >
-                        <Typography
-                          variant="h5"
-                          sx={{ fontWeight: 700, color: "#fff" }}
-                        >
-                          {supplement.name}
-                        </Typography>
-                        <IconButton
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(supplement.id);
-                          }}
+                        {/* Üst Bilgi */}
+                        <Box
                           sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1.5,
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                bgcolor: "rgba(255,255,255,0.15)",
+                                p: 1.2,
+                                borderRadius: "12px",
+                                display: "flex",
+                              }}
+                            >
+                              {getSupplementIcon(name)}
+                            </Box>
+                            <Typography
+                              variant="h6"
+                              sx={{
+                                fontWeight: 700,
+                                color: "#fff",
+                                textTransform: "capitalize",
+                              }}
+                            >
+                              {supplement.name}
+                            </Typography>
+                          </Box>
+                          <IconButton
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(supplement.id);
+                            }}
+                            sx={{
+                              color: "rgba(255,255,255,0.7)",
+                              transition: "all 0.3s",
+                              "&:hover": {
+                                color: "#ff5252",
+                                transform: "rotate(90deg)",
+                              },
+                            }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
+
+                        {/* İlerleme Çubuğu */}
+                        <Box sx={{ mt: 2, mb: 2 }}>
+                          <Box
+                            sx={{
+                              height: 6,
+                              bgcolor: "rgba(255,255,255,0.15)",
+                              borderRadius: 3,
+                              overflow: "hidden",
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                width: `${progress}%`,
+                                height: "100%",
+                                bgcolor: getSupplementColor(name),
+                                transition: "width 0.5s ease",
+                              }}
+                            />
+                          </Box>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              mt: 1,
+                              color: "rgba(255,255,255,0.8)",
+                              fontSize: "0.85rem",
+                            }}
+                          >
+                            <span>{supplement.quantity} adet</span>
+                            <span>{daysLeft}gün kaldı</span>
+                          </Box>
+                        </Box>
+
+                        {/* Günlük Tüketim */}
+                        <Box
+                          sx={{
+                            bgcolor: "rgba(255,255,255,0.1)",
+                            borderRadius: "14px",
+                            p: 2,
+                            mt: 2,
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              mb: 1,
+                            }}
+                          >
+                            <Typography
+                              variant="body2"
+                              sx={{ color: "rgba(255,255,255,0.8)" }}
+                            >
+                              Günlük Tüketim
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                color: getSupplementColor(name),
+                                fontWeight: 600,
+                              }}
+                            >
+                              {supplement.dailyUsage} adet
+                            </Typography>
+                          </Box>
+
+                          <Box
+                            sx={{
+                              display: "flex",
+                              gap: 1,
+                              alignItems: "center",
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                width: 30,
+                                height: 30,
+                                bgcolor: "rgba(255,255,255,0.15)",
+                                borderRadius: "8px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                color: "#fff",
+                              }}
+                            >
+                              {consumedToday}
+                            </Box>
+                            <Typography
+                              variant="body2"
+                              sx={{ color: "rgba(255,255,255,0.6)" }}
+                            >
+                              Tüketilen
+                            </Typography>
+                            <Box sx={{ flex: 1, textAlign: "right" }}>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  color: getSupplementColor(name),
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {remainingToday} adet kaldı
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+
+                        {/* Aksiyon Butonu */}
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          onClick={() => handleConsume(supplement.id)}
+                          disabled={supplement.quantity <= 0}
+                          sx={{
+                            mt: 2,
+                            bgcolor: "rgba(255,255,255,0.15)",
                             color: "#fff",
-                            transition: "all 0.3s",
+                            borderRadius: "12px",
+                            py: 1.5,
+                            textTransform: "none",
+                            fontWeight: 600,
+                            backdropFilter: "blur(4px)",
                             "&:hover": {
-                              transform: "rotate(90deg)",
-                              color: "#FF5252",
+                              bgcolor: getSupplementColor(name),
+                            },
+                            "&:disabled": {
+                              bgcolor: "rgba(255,255,255,0.05)",
                             },
                           }}
+                          startIcon={
+                            <EmojiEventsIcon
+                              sx={{ color: "rgba(255,255,255,0.8)" }}
+                            />
+                          }
                         >
-                          <DeleteIcon />
-                        </IconButton>
+                          Dozu Tamamla
+                        </Button>
                       </Box>
-                      <Box sx={{ mt: 3, mb: 3 }}>
-                        <Typography
-                          variant="body1"
-                          sx={{ color: "#fff", opacity: 0.9, mb: 1 }}
-                        >
-                          Kalan: {supplement.quantity} /{" "}
-                          {supplement.initialQuantity}
-                        </Typography>
-                        <Typography
-                          variant="body1"
-                          sx={{ color: "#fff", opacity: 0.9 }}
-                        >
-                          Tahmini Kalan Gün:{" "}
-                          {Math.floor(
-                            supplement.quantity / supplement.dailyUsage
-                          )}
-                        </Typography>
-                        <Typography
-                          variant="body1"
-                          sx={{ color: "#fff", opacity: 0.9, mt: 1 }}
-                        >
-                          Bugün: Tüketilen{" "}
-                          {supplementConsumptionToday[supplement.name] || 0} /
-                          Kalan{" "}
-                          {Math.max(
-                            0,
-                            supplement.dailyUsage -
-                              (supplementConsumptionToday[supplement.name] || 0)
-                          )}
-                        </Typography>
-                      </Box>
-                      <AnimatedButton
-                        fullWidth
-                        onClick={() => handleConsume(supplement.id)}
-                        disabled={supplement.quantity <= 0}
-                        startIcon={<EmojiEventsIcon />}
-                      >
-                        Günlük Dozu Al
-                      </AnimatedButton>
-                    </Box>
-                  </Grid>
-                ))}
+                    </Grid>
+                  );
+                })}
               </AnimatePresence>
             </Grid>
           </AccordionDetails>

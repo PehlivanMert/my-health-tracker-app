@@ -454,7 +454,13 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
             <Tooltip title="Su Bildirim Ayarları">
               <IconButton
                 onClick={() => setWaterNotifDialogOpen(true)}
-                sx={{ color: "#fff" }}
+                sx={{
+                  color: "#fff",
+                  "&:hover": {
+                    color: "#FFD700",
+                    transform: "scale(1.1)",
+                  },
+                }}
               >
                 {waterData.waterNotificationOption === "none" ? (
                   <NotificationsOffIcon />
@@ -601,7 +607,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
               variant="h5"
               sx={{
                 color: "#fff",
-                fontWeight: 800,
+                fontWeight: 600,
                 mb: 1,
                 textAlign: "center",
                 textTransform: "uppercase",
@@ -609,7 +615,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
                 textShadow: "0 2px 8px rgba(33,203,243,0.5)",
               }}
             >
-              🌟 SU HEDEFİNE ULAŞTIN!
+              🌟 DÜN SU HEDEFİNE ULAŞTIN!
             </Typography>
 
             {/* Dinamik İlerleme Çubuğu */}

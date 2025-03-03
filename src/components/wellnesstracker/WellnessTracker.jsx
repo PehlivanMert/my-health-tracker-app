@@ -45,6 +45,8 @@ import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import WaterDropIcon from "@mui/icons-material/WaterDrop";
+import NotificationsIcon from "@mui/icons-material/Notifications";
+import NotificationsOffIcon from "@mui/icons-material/NotificationsOff";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -67,13 +69,11 @@ const float = keyframes`
   50% { transform: translateY(-20px); }
   100% { transform: translateY(0px); }
 `;
-
 const pulse = keyframes`
   0% { transform: scale(1); }
   50% { transform: scale(1.05); }
   100% { transform: scale(1); }
 `;
-
 const ripple = keyframes`
   0% { transform: scale(0.95); opacity: 0.7; }
   50% { transform: scale(1.05); opacity: 0.4; }
@@ -82,7 +82,7 @@ const ripple = keyframes`
 
 // Styled Components
 const GlowingCard = styled(Card, {
-  shouldForwardProp: (prop) => prop !== "glowColor", // ⬅️ DOM'a iletilmesini engelliyoruz
+  shouldForwardProp: (prop) => prop !== "glowColor",
 })(({ glowColor }) => ({
   position: "relative",
   background: "rgba(255, 255, 255, 0.1)",
@@ -110,9 +110,7 @@ const GlowingCard = styled(Card, {
     opacity: 0,
     transition: "opacity 0.3s ease",
   },
-  "&:hover::before": {
-    opacity: 1,
-  },
+  "&:hover::before": { opacity: 1 },
 }));
 
 const AnimatedButton = styled(Button)(({ theme }) => ({
@@ -153,7 +151,6 @@ const WaterContainer = styled(Box)(({ theme }) => ({
   boxShadow: "inset 0 0 50px rgba(0, 0, 0, 0.2)",
 }));
 
-// Özel StyledAccordionSummary: Accordion kapalıyken AnimatedButton benzeri görünsün
 const StyledAccordionSummary = styled(AccordionSummary)(({ theme }) => ({
   background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
   borderRadius: 25,
@@ -164,6 +161,9 @@ const StyledAccordionSummary = styled(AccordionSummary)(({ theme }) => ({
   position: "relative",
   overflow: "hidden",
   cursor: "pointer",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
   "&:hover": {
     transform: "scale(1.05)",
     boxShadow: "0 5px 15px 3px rgba(33, 150, 243, 0.4)",
@@ -180,49 +180,15 @@ const StyledAccordionSummary = styled(AccordionSummary)(({ theme }) => ({
     transform: "rotate(45deg)",
     animation: `${ripple} 2s infinite`,
   },
-  // Accordion açıldığında (expanded) header sadeleşsin
   "&.Mui-expanded": {
     background: "transparent",
     boxShadow: "none",
     transform: "none",
-    "&::after": {
-      display: "none",
-    },
+    "&::after": { display: "none" },
   },
 }));
 
-// Color utility
-const getVitaminColor = (remainingPercentage) => {
-  if (remainingPercentage > 66) return "#2196F3";
-  if (remainingPercentage > 33) return "#00BCD4";
-  return "#3F51B5";
-};
-
-// Achievement Component
-const Achievement = ({ message }) => (
-  <Slide direction="down" in={true}>
-    <Box
-      sx={{
-        position: "fixed",
-        top: "10%",
-        left: "50%",
-        transform: "translateX(-50%)",
-        zIndex: 2000,
-        background: "linear-gradient(45deg, #00E676 30%, #1DE9B6 90%)",
-        borderRadius: "20px",
-        padding: "20px 40px",
-        boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
-        animation: `${pulse} 1s infinite`,
-      }}
-    >
-      <Typography variant="h5" sx={{ color: "white", textAlign: "center" }}>
-        🎉 Tebrikler! 🎉
-      </Typography>
-    </Box>
-  </Slide>
-);
-
-// VitaminCard Component
+// VitaminCard bileşeni: Takviye kartı için kullanılan UI bileşeni.
 const VitaminCard = ({
   supplement,
   onConsume,
@@ -231,9 +197,13 @@ const VitaminCard = ({
 }) => {
   const remainingPercentage =
     (supplement.quantity / supplement.initialQuantity) * 100;
-  const cardColor = getVitaminColor(remainingPercentage);
+  const cardColor =
+    remainingPercentage > 66
+      ? "#2196F3"
+      : remainingPercentage > 33
+      ? "#00BCD4"
+      : "#3F51B5";
   const remainingForToday = Math.max(0, supplement.dailyUsage - consumedToday);
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 50 }}
@@ -256,16 +226,12 @@ const VitaminCard = ({
               sx={{
                 color: "#fff",
                 transition: "all 0.3s ease",
-                "&:hover": {
-                  transform: "rotate(90deg)",
-                  color: "#FF5252",
-                },
+                "&:hover": { transform: "rotate(90deg)", color: "#FF5252" },
               }}
             >
               <DeleteIcon />
             </IconButton>
           </Box>
-
           <Box sx={{ mt: 3, mb: 3 }}>
             <Typography
               variant="body1"
@@ -284,7 +250,6 @@ const VitaminCard = ({
               Bugün: Tüketilen {consumedToday} / Kalan {remainingForToday}
             </Typography>
           </Box>
-
           <AnimatedButton
             fullWidth
             onClick={() => onConsume(supplement.id)}
@@ -299,7 +264,6 @@ const VitaminCard = ({
   );
 };
 
-// YesterdayWaterCard Component
 const YesterdayWaterCard = ({ amount }) => (
   <motion.div
     initial={{ opacity: 0, scale: 0.9 }}
@@ -328,7 +292,218 @@ const YesterdayWaterCard = ({ amount }) => (
   </motion.div>
 );
 
-// WaterTracker Component
+const WeatherWidget = ({ userLocation }) => {
+  const [temperature, setTemperature] = useState(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const fetchWeather = async () => {
+      if (userLocation && userLocation.lat && userLocation.lon) {
+        try {
+          const response = await fetch(
+            `${process.env.REACT_APP_OPEN_METEO_API_URL}?latitude=${userLocation.lat}&longitude=${userLocation.lon}&current_weather=true`
+          );
+          const data = await response.json();
+          if (data.current_weather) {
+            setTemperature(data.current_weather.temperature);
+          }
+        } catch (error) {
+          console.error("Hava durumu alınamadı:", error);
+        }
+      }
+      setLoading(false);
+    };
+    fetchWeather();
+  }, [userLocation]);
+  return (
+    <Box sx={{ color: "#fff", mt: 2 }}>
+      {loading ? (
+        <Typography variant="body2">Hava durumu yükleniyor...</Typography>
+      ) : temperature !== null ? (
+        <Typography variant="body2">
+          Şu anki sıcaklık: {temperature}°C
+        </Typography>
+      ) : (
+        <Typography variant="body2">Hava durumu alınamadı.</Typography>
+      )}
+    </Box>
+  );
+};
+
+const NotificationSettingsDialog = ({ open, onClose, user, onSave }) => {
+  const [start, setStart] = useState(user.notificationWindow?.start || "08:00");
+  const [end, setEnd] = useState(user.notificationWindow?.end || "22:00");
+  const handleSave = () => {
+    onSave({ start, end });
+    onClose();
+  };
+  return (
+    <Dialog open={open} onClose={onClose}>
+      <DialogTitle>Global Bildirim Ayarları</DialogTitle>
+      <DialogContent>
+        <TextField
+          label="Başlangıç Saati"
+          type="time"
+          value={start}
+          onChange={(e) => setStart(e.target.value)}
+          fullWidth
+          InputLabelProps={{ shrink: true }}
+          sx={{ mt: 2 }}
+        />
+        <TextField
+          label="Bitiş Saati"
+          type="time"
+          value={end}
+          onChange={(e) => setEnd(e.target.value)}
+          fullWidth
+          InputLabelProps={{ shrink: true }}
+          sx={{ mt: 2 }}
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>İptal</Button>
+        <Button onClick={handleSave}>Kaydet</Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+const WaterNotificationSettingsDialog = ({
+  open,
+  onClose,
+  waterSettings,
+  onSave,
+}) => {
+  const [notificationOption, setNotificationOption] = useState(
+    waterSettings.waterNotificationOption || "smart"
+  );
+  const [customInterval, setCustomInterval] = useState(
+    waterSettings.customNotificationInterval || 1
+  );
+  const handleSave = () => {
+    onSave({
+      waterNotificationOption: notificationOption,
+      customNotificationInterval: customInterval,
+    });
+    onClose();
+  };
+  return (
+    <Dialog open={open} onClose={onClose}>
+      <DialogTitle>Su Bildirim Ayarları</DialogTitle>
+      <DialogContent>
+        <FormControl fullWidth sx={{ mt: 2 }}>
+          <InputLabel>Mod Seçimi</InputLabel>
+          <Select
+            value={notificationOption}
+            label="Mod Seçimi"
+            onChange={(e) => setNotificationOption(e.target.value)}
+          >
+            <MenuItem value="none">Kapalı</MenuItem>
+            <MenuItem value="smart">
+              Akıllı (Hava & Geçmiş Veriye Göre)
+            </MenuItem>
+            <MenuItem value="custom">Özel (Kaç saatte bir)</MenuItem>
+          </Select>
+        </FormControl>
+        {notificationOption === "custom" && (
+          <TextField
+            label="Bildirim Aralığı (saat)"
+            type="number"
+            fullWidth
+            value={customInterval}
+            onChange={(e) => setCustomInterval(Number(e.target.value))}
+            InputLabelProps={{ shrink: true }}
+            sx={{ mt: 2 }}
+          />
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>İptal</Button>
+        <Button onClick={handleSave}>Kaydet</Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+const SupplementNotificationSettingsDialog = ({
+  open,
+  onClose,
+  supplements,
+  onSave,
+}) => {
+  const [localSupps, setLocalSupps] = useState([]);
+  useEffect(() => {
+    if (open) {
+      setLocalSupps(
+        supplements.map((supp) => ({
+          id: supp.id,
+          name: supp.name,
+          notificationSchedule: supp.notificationSchedule
+            ? supp.notificationSchedule.join(", ")
+            : "",
+          estimatedRemainingDays:
+            supp.quantity && supp.dailyUsage
+              ? (supp.quantity / supp.dailyUsage).toFixed(1)
+              : "N/A",
+        }))
+      );
+    }
+  }, [open, supplements]);
+  const handleChange = (id, field, value) => {
+    setLocalSupps((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, [field]: value } : s))
+    );
+  };
+  const handleSave = () => {
+    const updatedSupps = localSupps.map((s) => ({
+      id: s.id,
+      notificationSchedule: s.notificationSchedule
+        ? s.notificationSchedule.split(",").map((time) => time.trim())
+        : [],
+    }));
+    onSave(updatedSupps);
+    onClose();
+  };
+  return (
+    <Dialog open={open} onClose={onClose}>
+      <DialogTitle>Takviye Bildirim Ayarları</DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" sx={{ mb: 2, color: "#555" }}>
+          Lütfen, takviyeleriniz için bildirim gönderilmesini istediğiniz
+          saatleri virgülle ayırarak giriniz (örn: "08:00, 14:00"). Eğer
+          planlanmış zaman eklemezseniz, sistem kalan miktar ve günlük kullanım
+          miktarınıza göre otomatik olarak hatırlatma yapar.
+        </Typography>
+        {localSupps.map((supp) => (
+          <Box
+            key={supp.id}
+            sx={{ mb: 2, borderBottom: "1px solid rgba(0,0,0,0.1)", pb: 1 }}
+          >
+            <Typography variant="subtitle1">{supp.name}</Typography>
+            <TextField
+              label="Planlanmış Bildirim Zamanları"
+              fullWidth
+              value={supp.notificationSchedule}
+              onChange={(e) =>
+                handleChange(supp.id, "notificationSchedule", e.target.value)
+              }
+              helperText="Örn: 08:00, 14:00"
+              sx={{ mb: 1 }}
+            />
+            <Typography variant="caption" sx={{ color: "#555" }}>
+              Otomatik hesaplama (takviyeniz ne kadar gün kalacak):{" "}
+              {supp.estimatedRemainingDays} gün
+            </Typography>
+          </Box>
+        ))}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>İptal</Button>
+        <Button onClick={handleSave}>Kaydet</Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
 const WaterTracker = ({ user, onWaterDataChange }) => {
   const [waterData, setWaterData] = useState({
     waterIntake: 0,
@@ -336,26 +511,26 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     glassSize: 250,
     history: [],
     yesterdayWaterIntake: 0,
-    lastResetDate: null, // Son sıfırlama tarihi tutulacak
+    lastResetDate: null,
+    waterNotificationOption: "smart", // "none", "smart", "custom"
+    customNotificationInterval: 1,
   });
+  const [currentTemperature, setCurrentTemperature] = useState(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [achievement, setAchievement] = useState(null);
+  const [waterNotifDialogOpen, setWaterNotifDialogOpen] = useState(false);
+  const [nextReminderTime, setNextReminderTime] = useState(null);
   const theme = useTheme();
   const timerRef = useRef(null);
 
-  const getWaterDocRef = () => {
-    return doc(db, "users", user.uid, "water", "current");
-  };
+  const getWaterDocRef = () => doc(db, "users", user.uid, "water", "current");
 
-  // Reset kontrolünü her zaman 00:00 için yapıyoruz.
   const checkIfResetNeeded = async (data) => {
     const nowTurkey = getNowTurkeyTime();
     const todayStr = nowTurkey.toLocaleDateString("en-CA", {
       timeZone: "Europe/Istanbul",
     });
-
     if (data.lastResetDate !== todayStr) {
-      console.log("Reset gerekli, resetDailyWaterIntake çağrılıyor");
       await resetDailyWaterIntake();
     }
   };
@@ -374,40 +549,35 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           : [],
         yesterdayWaterIntake: data.yesterdayWaterIntake || 0,
         lastResetDate: data.lastResetDate || null,
+        waterNotificationOption: data.waterNotificationOption || "smart",
+        customNotificationInterval: data.customNotificationInterval || 1,
       });
-
-      // Uygulama başlangıcında reset kontrolü
       await checkIfResetNeeded(data);
     }
   };
 
-  // Günlük su tüketimini sıfırlayan fonksiyon, reset saat ayarı kaldırıldı.
   const resetDailyWaterIntake = async () => {
     try {
       const nowTurkey = getNowTurkeyTime();
       const yesterday = new Date(nowTurkey);
       yesterday.setDate(yesterday.getDate() - 1);
-
       const yesterdayStr = yesterday.toLocaleDateString("en-CA", {
         timeZone: "Europe/Istanbul",
       });
       const todayStr = nowTurkey.toLocaleDateString("en-CA", {
         timeZone: "Europe/Istanbul",
       });
-
       const ref = getWaterDocRef();
       const docSnap = await getDoc(ref);
       let updatedHistory = [];
       if (docSnap.exists()) {
         const currentData = docSnap.data();
         const currentHistory = currentData.history || [];
-        // Filtre: Son 1 yıldan eski verileri at
         const oneYearAgo = new Date(nowTurkey);
         oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
         const filteredHistory = currentHistory.filter(
           (entry) => new Date(entry.date + "T00:00:00") >= oneYearAgo
         );
-        // Bugünkü veriyi eklemeden önce, dünden alınan değeri ekliyoruz
         updatedHistory = [
           ...filteredHistory.filter(
             (entry) => entry.date !== yesterdayStr && entry.date !== todayStr
@@ -437,16 +607,27 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     }
   };
 
-  useEffect(() => {
-    // Eğer user yoksa hiçbir hook çalıştırılmasın
-    if (!user) return;
-
-    fetchWaterData();
-
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
+  const fetchTemperature = async () => {
+    if (user.location && user.location.lat && user.location.lon) {
+      try {
+        const url = `${process.env.REACT_APP_OPEN_METEO_API_URL}?latitude=${user.location.lat}&longitude=${user.location.lon}&current_weather=true`;
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.current_weather) {
+          setCurrentTemperature(data.current_weather.temperature);
+        }
+      } catch (error) {
+        console.error("Hava durumu alınamadı:", error);
       }
+    }
+  };
+
+  useEffect(() => {
+    if (!user) return;
+    fetchWaterData();
+    fetchTemperature();
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [user]);
 
@@ -459,7 +640,6 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     const isGoalAchieved =
       newIntake >= waterData.dailyWaterTarget &&
       waterData.waterIntake < waterData.dailyWaterTarget;
-
     const ref = getWaterDocRef();
     try {
       await setDoc(
@@ -468,6 +648,8 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           waterIntake: newIntake,
           dailyWaterTarget: waterData.dailyWaterTarget,
           glassSize: waterData.glassSize,
+          waterNotificationOption: waterData.waterNotificationOption,
+          customNotificationInterval: waterData.customNotificationInterval,
         },
         { merge: true }
       );
@@ -475,7 +657,6 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     } catch (error) {
       console.error("Error updating water intake:", error);
     }
-
     if (isGoalAchieved) {
       setShowConfetti(true);
       setAchievement("Tebrikler!");
@@ -500,7 +681,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   const handleWaterSettingChange = async (field, value) => {
     const ref = getWaterDocRef();
     try {
-      await setDoc(ref, { [field]: Number(value) }, { merge: true });
+      await setDoc(ref, { [field]: value }, { merge: true });
       await fetchWaterData();
     } catch (error) {
       console.error("Error updating water settings:", error);
@@ -511,19 +692,67 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     (waterData.waterIntake / waterData.dailyWaterTarget) * 100,
     100
   );
-
-  const getNowTurkeyTime = () => {
-    const now = new Date();
-    return new Date(
-      now.toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
+  const getNowTurkeyTime = () =>
+    new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
     );
+
+  const computeReminderTimes = async () => {
+    if (!user.notificationWindow) return [];
+    const nowTurkey = getNowTurkeyTime();
+    const todayStr = nowTurkey.toLocaleDateString("en-CA");
+    const windowStart = new Date(
+      todayStr + "T" + user.notificationWindow.start + ":00"
+    );
+    const windowEnd = new Date(
+      todayStr + "T" + user.notificationWindow.end + ":00"
+    );
+    let intervalMinutes = 120; // varsayılan 2 saat
+    if (
+      waterData.waterNotificationOption === "custom" &&
+      waterData.customNotificationInterval
+    ) {
+      intervalMinutes = Number(waterData.customNotificationInterval) * 60;
+    } else if (waterData.waterNotificationOption === "smart") {
+      if (currentTemperature && currentTemperature > 25) {
+        intervalMinutes = 90;
+      }
+    }
+    const reminderTimes = [];
+    for (
+      let t = windowStart.getTime();
+      t <= windowEnd.getTime();
+      t += intervalMinutes * 60000
+    ) {
+      reminderTimes.push(new Date(t));
+    }
+    return reminderTimes;
   };
+
+  const getNextReminderTime = async () => {
+    const reminderTimes = await computeReminderTimes();
+    const now = new Date();
+    for (const time of reminderTimes) {
+      if (time > now) return time;
+    }
+    return null;
+  };
+
+  const [nextReminder, setNextReminder] = useState(null);
+  useEffect(() => {
+    const updateNextReminder = async () => {
+      const next = await getNextReminderTime();
+      setNextReminder(next);
+    };
+    updateNextReminder();
+    const interval = setInterval(updateNextReminder, 60000);
+    return () => clearInterval(interval);
+  }, [waterData, currentTemperature, user]);
 
   return (
     <Box sx={{ textAlign: "center", mb: 6 }}>
       {showConfetti && <Confetti recycle={false} numberOfPieces={400} />}
       {achievement && <Achievement message={achievement} />}
-
       <Typography
         variant="h4"
         sx={{
@@ -535,7 +764,6 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
       >
         Su Takibi
       </Typography>
-
       <WaterContainer>
         <Box
           sx={{
@@ -556,7 +784,6 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
             className={styles.lottieContainer}
           />
         </Box>
-
         <Box
           sx={{
             position: "absolute",
@@ -582,9 +809,38 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
             {waterData.waterIntake} / {waterData.dailyWaterTarget} ml
           </Typography>
           <Box
+            sx={{
+              mt: 2,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <Tooltip title="Su Bildirim Ayarları">
+              <IconButton
+                onClick={() => setWaterNotifDialogOpen(true)}
+                sx={{ color: "#fff" }}
+              >
+                {waterData.waterNotificationOption === "none" ? (
+                  <NotificationsOffIcon />
+                ) : (
+                  <NotificationsIcon />
+                )}
+              </IconButton>
+            </Tooltip>
+            {waterData.waterNotificationOption !== "none" && nextReminder && (
+              <Typography variant="caption" sx={{ color: "#fff", mt: 1 }}>
+                {nextReminder.toLocaleTimeString("tr-TR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </Typography>
+            )}
+          </Box>
+          <Box
             sx={{ display: "flex", justifyContent: "center", gap: 3, mt: 2 }}
           >
-            <Tooltip title="Remove Water" placement="left">
+            <Tooltip title="Su Eksilt" placement="left">
               <IconButton
                 onClick={handleRemoveWater}
                 sx={{
@@ -601,7 +857,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
                 <RemoveIcon sx={{ fontSize: 35, color: "#fff" }} />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Add Water" placement="right">
+            <Tooltip title="Su Ekle" placement="right">
               <IconButton
                 onClick={handleAddWater}
                 sx={{
@@ -621,7 +877,6 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           </Box>
         </Box>
       </WaterContainer>
-
       <Box sx={{ mt: 2, maxWidth: 400, mx: "auto" }}>
         <Grid container spacing={2}>
           <Grid item xs={6}>
@@ -630,7 +885,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
               type="number"
               value={waterData.glassSize}
               onChange={(e) =>
-                handleWaterSettingChange("glassSize", e.target.value)
+                handleWaterSettingChange("glassSize", Number(e.target.value))
               }
               variant="outlined"
               fullWidth
@@ -656,7 +911,10 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
               type="number"
               value={waterData.dailyWaterTarget}
               onChange={(e) =>
-                handleWaterSettingChange("dailyWaterTarget", e.target.value)
+                handleWaterSettingChange(
+                  "dailyWaterTarget",
+                  Number(e.target.value)
+                )
               }
               variant="outlined"
               fullWidth
@@ -678,23 +936,35 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           </Grid>
         </Grid>
       </Box>
-
       <Box sx={{ mt: 2 }}>
         <YesterdayWaterCard amount={waterData.yesterdayWaterIntake} />
       </Box>
+      <WaterNotificationSettingsDialog
+        open={waterNotifDialogOpen}
+        onClose={() => setWaterNotifDialogOpen(false)}
+        waterSettings={waterData}
+        onSave={(newSettings) => {
+          handleWaterSettingChange(
+            "waterNotificationOption",
+            newSettings.waterNotificationOption
+          );
+          handleWaterSettingChange(
+            "customNotificationInterval",
+            newSettings.customNotificationInterval
+          );
+        }}
+      />
     </Box>
   );
 };
 
 const WaterConsumptionChart = ({ waterHistory }) => {
-  const [timeRange, setTimeRange] = useState("month"); // "year", "month", "week", "current"
-  const [displayType, setDisplayType] = useState("area"); // "area", "bar"
+  const [timeRange, setTimeRange] = useState("month");
+  const [displayType, setDisplayType] = useState("area");
   const now = new Date();
-
   const filteredData = waterHistory
     .filter((entry) => {
       const entryDate = new Date(entry.date + "T00:00:00");
-
       if (timeRange === "year") {
         const oneYearAgo = new Date();
         oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
@@ -719,8 +989,6 @@ const WaterConsumptionChart = ({ waterHistory }) => {
       ...entry,
       date: new Date(entry.date + "T00:00:00").toLocaleDateString("tr-TR"),
     }));
-
-  // Ortalama su tüketimini hesapla
   const averageWaterIntake =
     filteredData.length > 0
       ? (
@@ -728,23 +996,16 @@ const WaterConsumptionChart = ({ waterHistory }) => {
           filteredData.length
         ).toFixed(1)
       : 0;
-
   return (
     <div>
       <GlowingCard glowColor="#3F51B522">
         <CardContent>
           <Typography
             variant="h6"
-            sx={{
-              fontWeight: 700,
-              color: "#fff",
-              mb: 2,
-              textAlign: "center",
-            }}
+            sx={{ fontWeight: 700, color: "#fff", mb: 2, textAlign: "center" }}
           >
             Su Tüketimi
           </Typography>
-
           <Box
             sx={{
               display: "flex",
@@ -754,7 +1015,6 @@ const WaterConsumptionChart = ({ waterHistory }) => {
               gap: 1,
             }}
           >
-            {/* Zaman Aralığı Seçimi */}
             <FormControl size="small" sx={{ minWidth: 120 }}>
               <InputLabel
                 id="water-time-range-label"
@@ -788,8 +1048,6 @@ const WaterConsumptionChart = ({ waterHistory }) => {
                 <MenuItem value="current">Bu Ay</MenuItem>
               </Select>
             </FormControl>
-
-            {/* Görüntüleme Tipi Seçimi */}
             <FormControl size="small" sx={{ minWidth: 120 }}>
               <InputLabel
                 id="water-display-type-label"
@@ -822,8 +1080,6 @@ const WaterConsumptionChart = ({ waterHistory }) => {
               </Select>
             </FormControl>
           </Box>
-
-          {/* Ortalama su tüketimi bilgisi */}
           {filteredData.length > 0 && (
             <Box sx={{ mb: 2, textAlign: "center" }}>
               <Typography
@@ -845,7 +1101,6 @@ const WaterConsumptionChart = ({ waterHistory }) => {
               </Typography>
             </Box>
           )}
-
           {filteredData.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               {displayType === "area" ? (
@@ -920,7 +1175,7 @@ const WaterConsumptionChart = ({ waterHistory }) => {
                   <Legend
                     wrapperStyle={{ color: "#fff" }}
                     formatter={(value) => (
-                      <span style={{ color: "#fff" }}>Su Tüketimi (mL)</span>
+                      <span style={{ color: "#fff" }}>{value}</span>
                     )}
                   />
                   <Bar
@@ -955,7 +1210,7 @@ const WaterConsumptionChart = ({ waterHistory }) => {
               </Typography>
               <Typography
                 variant="body2"
-                color="rgba(255, 255, 255, 0.7)"
+                color="rgba(255,255,255,0.7)"
                 mt={1}
                 textAlign="center"
               >
@@ -969,18 +1224,19 @@ const WaterConsumptionChart = ({ waterHistory }) => {
     </div>
   );
 };
-// SupplementConsumptionChart Component
-const SupplementConsumptionChart = ({ user }) => {
+
+const SupplementConsumptionChart = ({
+  user,
+  supplements,
+  onOpenSupplementNotificationSettings,
+}) => {
   const [consumptionData, setConsumptionData] = useState([]);
-  const [timeRange, setTimeRange] = useState("month"); // "year", "month", "week", "current"
-  const [displayType, setDisplayType] = useState("bar"); // "bar", "stacked"
+  const [timeRange, setTimeRange] = useState("month");
+  const [displayType, setDisplayType] = useState("bar");
   const theme = useTheme();
   const now = new Date();
-
-  const getConsumptionDocRef = () => {
-    return doc(db, "users", user.uid, "stats", "supplementConsumption");
-  };
-
+  const getConsumptionDocRef = () =>
+    doc(db, "users", user.uid, "stats", "supplementConsumption");
   const fetchConsumptionData = async () => {
     const ref = getConsumptionDocRef();
     try {
@@ -990,44 +1246,36 @@ const SupplementConsumptionChart = ({ user }) => {
         const sortedDates = Object.keys(data).sort(
           (a, b) => new Date(a + "T00:00:00") - new Date(b + "T00:00:00")
         );
-
         const allSuppNames = new Set();
         sortedDates.forEach((date) => {
           Object.keys(data[date]).forEach((suppName) => {
             if (suppName !== "total") allSuppNames.add(suppName);
           });
         });
-
         const chartData = sortedDates.map((date) => {
           const dayStats = data[date];
           const dayData = {
             date: new Date(date + "T00:00:00").toLocaleDateString("tr-TR"),
-            fullDate: date, // Store original date for filtering
+            fullDate: date,
           };
-
           allSuppNames.forEach((suppName) => {
             const count = dayStats[suppName] || 0;
             dayData[suppName] = count;
           });
-
           return dayData;
         });
-
         setConsumptionData(chartData);
       }
     } catch (error) {
       console.error("Error fetching supplement consumption data:", error);
     }
   };
-
   useEffect(() => {
     if (user) fetchConsumptionData();
   }, [user]);
-
   const getFilteredData = () => {
     return consumptionData.filter((entry) => {
       const entryDate = new Date(entry.fullDate + "T00:00:00");
-
       if (timeRange === "year") {
         const oneYearAgo = new Date();
         oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
@@ -1049,18 +1297,16 @@ const SupplementConsumptionChart = ({ user }) => {
       return true;
     });
   };
-
   const colors = [
-    "#4CAF50", // Yeşil
-    "#FF9800", // Turuncu
-    "#F44336", // Kırmızı
-    "#2196F3", // Mavi
-    "#9C27B0", // Mor
-    "#00BCD4", // Camgöbeği
-    "#FFEB3B", // Sarı
-    "#795548", // Kahverengi
+    "#4CAF50",
+    "#FF9800",
+    "#F44336",
+    "#2196F3",
+    "#9C27B0",
+    "#00BCD4",
+    "#FFEB3B",
+    "#795548",
   ];
-
   const filteredData = getFilteredData();
   const suppKeys =
     filteredData.length > 0
@@ -1074,21 +1320,17 @@ const SupplementConsumptionChart = ({ user }) => {
           )
         )
       : [];
-
   return (
     <GlowingCard glowColor="#3F51B522">
       <CardContent>
-        <Typography
-          variant="h6"
-          sx={{
-            fontWeight: 700,
-            color: "#fff",
-            mb: 2,
-            textAlign: "center",
-          }}
-        >
-          Takviye Kullanım İstatistikleri
-        </Typography>
+        <Box sx={{ textAlign: "center", width: "100%" }}>
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: 700, color: "#fff", mb: 2 }}
+          >
+            Takviye İstatistikleri
+          </Typography>
+        </Box>
 
         <Box
           sx={{
@@ -1099,7 +1341,6 @@ const SupplementConsumptionChart = ({ user }) => {
             gap: 1,
           }}
         >
-          {/* Zaman Aralığı Seçimi */}
           <FormControl size="small" sx={{ minWidth: 120 }}>
             <InputLabel
               id="supp-time-range-label"
@@ -1133,8 +1374,6 @@ const SupplementConsumptionChart = ({ user }) => {
               <MenuItem value="current">Bu Ay</MenuItem>
             </Select>
           </FormControl>
-
-          {/* Görüntüleme Tipi Seçimi */}
           <FormControl size="small" sx={{ minWidth: 120 }}>
             <InputLabel
               id="display-type-label"
@@ -1167,8 +1406,6 @@ const SupplementConsumptionChart = ({ user }) => {
             </Select>
           </FormControl>
         </Box>
-
-        {/* Grafik */}
         {filteredData.length > 0 ? (
           <ResponsiveContainer width="100%" height={285}>
             <BarChart
@@ -1195,7 +1432,6 @@ const SupplementConsumptionChart = ({ user }) => {
                   borderRadius: "10px",
                   color: "#fff",
                 }}
-                itemStyle={{ color: "#fff" }}
               />
               <Legend
                 wrapperStyle={{ color: "#fff" }}
@@ -1203,7 +1439,6 @@ const SupplementConsumptionChart = ({ user }) => {
                   <span style={{ color: "#fff" }}>{value}</span>
                 )}
               />
-
               {suppKeys.map((key, index) => (
                 <Bar
                   key={key}
@@ -1239,11 +1474,11 @@ const SupplementConsumptionChart = ({ user }) => {
             </Typography>
             <Typography
               variant="body2"
-              color="rgba(255, 255, 255, 0.7)"
+              color="rgba(255,255,255,0.7)"
               mt={1}
               textAlign="center"
             >
-              Takviyeleri kullanmaya başladığınızda burada istatistikleriniz
+              Takviyeleri kullanmaya başladığınızda istatistikleriniz
               görünecektir
             </Typography>
           </Box>
@@ -1252,9 +1487,8 @@ const SupplementConsumptionChart = ({ user }) => {
     </GlowingCard>
   );
 };
-// Main WellnessTracker Component
+
 const WellnessTracker = ({ user }) => {
-  // Eğer user yoksa, bileşenin hiç render edilmemesi için erken dönüş yapıyoruz.
   if (!user) return <div>Lütfen giriş yapın</div>;
 
   const [supplements, setSupplements] = useState([]);
@@ -1268,10 +1502,15 @@ const WellnessTracker = ({ user }) => {
   const [supplementConsumptionToday, setSupplementConsumptionToday] = useState(
     {}
   );
+  const [notificationDialogOpen, setNotificationDialogOpen] = useState(false);
+  const [
+    supplementNotificationDialogOpen,
+    setSupplementNotificationDialogOpen,
+  ] = useState(false);
+  const [waterNotifDialogOpen, setWaterNotifDialogOpen] = useState(false);
 
-  const getSupplementsRef = () => {
-    return collection(db, "users", user.uid, "supplements");
-  };
+  const getSupplementsRef = () =>
+    collection(db, "users", user.uid, "supplements");
 
   const fetchSupplements = async () => {
     const ref = getSupplementsRef();
@@ -1295,7 +1534,6 @@ const WellnessTracker = ({ user }) => {
       const today = new Date().toLocaleDateString("en-CA", {
         timeZone: "Europe/Istanbul",
       });
-
       setSupplementConsumptionToday(data[today] || {});
     }
   };
@@ -1330,12 +1568,10 @@ const WellnessTracker = ({ user }) => {
       const supplementRef = doc(ref, id);
       await updateDoc(supplementRef, { quantity: newQuantity });
       await fetchSupplements();
-
       const suppName = supplement.name;
       const today = new Date().toLocaleDateString("en-CA", {
         timeZone: "Europe/Istanbul",
       });
-
       const statsDocRef = doc(
         db,
         "users",
@@ -1344,12 +1580,10 @@ const WellnessTracker = ({ user }) => {
         "supplementConsumption"
       );
       const statsDocSnap = await getDoc(statsDocRef);
-
       let updatedStats = statsDocSnap.exists() ? statsDocSnap.data() : {};
       if (!updatedStats[today]) updatedStats[today] = {};
       updatedStats[today][suppName] = (updatedStats[today][suppName] || 0) + 1;
       updatedStats[today].total = (updatedStats[today].total || 0) + 1;
-
       await setDoc(statsDocRef, updatedStats);
       await fetchSupplementConsumptionToday();
     } catch (error) {
@@ -1368,6 +1602,30 @@ const WellnessTracker = ({ user }) => {
     }
   };
 
+  const handleSaveNotificationWindow = async (window) => {
+    const userRef = doc(db, "users", user.uid);
+    try {
+      await setDoc(userRef, { notificationWindow: window }, { merge: true });
+    } catch (error) {
+      console.error("Bildirim ayarları güncelleme hatası:", error);
+    }
+  };
+
+  const handleSaveSupplementNotifications = async (updatedSupplements) => {
+    const ref = getSupplementsRef();
+    try {
+      for (const supp of updatedSupplements) {
+        const suppRef = doc(ref, supp.id);
+        await updateDoc(suppRef, {
+          notificationSchedule: supp.notificationSchedule,
+        });
+      }
+      await fetchSupplements();
+    } catch (error) {
+      console.error("Takviye bildirim ayarları güncelleme hatası:", error);
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -1378,33 +1636,48 @@ const WellnessTracker = ({ user }) => {
       }}
     >
       <Container maxWidth="lg">
-        <Typography
-          variant="h2"
+        <Box
           sx={{
-            textAlign: "center",
-            color: "#fff",
-            fontWeight: 800,
-            mb: { xs: 0, md: 6 },
-            ml: { xs: -1, md: 7 },
-            mt: { xs: 4, md: 6 },
-            textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
-            animation: `${float} 3s ease-in-out infinite`,
-            fontSize: { xs: "2rem", md: "3rem" },
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: { xs: 2, md: 4 },
           }}
         >
-          <WaterDropIcon
+          <Typography
+            variant="h2"
             sx={{
-              fontSize: { xs: 30, md: 50 },
-              color: "lightblue",
-              mr: { xs: -3, md: -15 },
-              mb: { xs: -7, md: -13 },
+              textAlign: "center",
+              color: "#fff",
+              fontWeight: 800,
+              mt: { xs: 4, md: 6 },
+              textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
+              animation: `${float} 3s ease-in-out infinite`,
+              fontSize: { xs: "2rem", md: "3rem" },
             }}
-          />
-          Takviye Takibi
-        </Typography>
-
+          >
+            <WaterDropIcon
+              sx={{
+                fontSize: { xs: 30, md: 50 },
+                color: "lightblue",
+                mr: 2,
+              }}
+            />
+            Sağlıklı Alışkanlık Takibi
+          </Typography>
+          <Box>
+            <Tooltip title="Global Bildirim Ayarları">
+              <IconButton
+                onClick={() => setNotificationDialogOpen(true)}
+                sx={{ color: "#fff" }}
+              >
+                <NotificationsIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </Box>
+        {user.location && <WeatherWidget userLocation={user.location} />}
         <WaterTracker user={user} onWaterDataChange={setWaterData} />
-
         <Box sx={{ mt: 4, textAlign: "center" }}>
           <AnimatedButton
             onClick={() => setOpenDialog(true)}
@@ -1414,7 +1687,6 @@ const WellnessTracker = ({ user }) => {
             Yeni Takviye Ekle
           </AnimatedButton>
         </Box>
-
         <Accordion
           defaultExpanded={false}
           sx={{
@@ -1424,12 +1696,30 @@ const WellnessTracker = ({ user }) => {
             mt: 4,
           }}
         >
-          <StyledAccordionSummary
-            expandIcon={<ExpandMoreIcon sx={{ color: "#fff" }} />}
-          >
-            <Typography variant="h5" sx={{ fontWeight: 700, color: "#fff" }}>
-              Takviyeler
-            </Typography>
+          <StyledAccordionSummary>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                width: "100%",
+                justifyContent: "space-between",
+              }}
+            >
+              <Typography variant="h5" sx={{ fontWeight: 700, color: "#fff" }}>
+                Takviyeler
+              </Typography>
+              <Tooltip title="Takviye Bildirim Ayarları">
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSupplementNotificationDialogOpen(true);
+                  }}
+                  sx={{ color: "#fff" }}
+                >
+                  <NotificationsIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
           </StyledAccordionSummary>
           <AccordionDetails>
             <Grid container spacing={4} sx={{ mt: 2 }}>
@@ -1450,7 +1740,6 @@ const WellnessTracker = ({ user }) => {
             </Grid>
           </AccordionDetails>
         </Accordion>
-
         <Accordion
           defaultExpanded={false}
           sx={{
@@ -1460,9 +1749,7 @@ const WellnessTracker = ({ user }) => {
             mt: 4,
           }}
         >
-          <StyledAccordionSummary
-            expandIcon={<ExpandMoreIcon sx={{ color: "#fff" }} />}
-          >
+          <StyledAccordionSummary>
             <Typography variant="h5" sx={{ fontWeight: 700, color: "#fff" }}>
               İstatistikler
             </Typography>
@@ -1473,12 +1760,17 @@ const WellnessTracker = ({ user }) => {
                 <WaterConsumptionChart waterHistory={waterData.history} />
               </Grid>
               <Grid item xs={12} md={6}>
-                <SupplementConsumptionChart user={user} />
+                <SupplementConsumptionChart
+                  user={user}
+                  supplements={supplements}
+                  onOpenSupplementNotificationSettings={() =>
+                    setSupplementNotificationDialogOpen(true)
+                  }
+                />
               </Grid>
             </Grid>
           </AccordionDetails>
         </Accordion>
-
         <Dialog
           open={openDialog}
           onClose={() => setOpenDialog(false)}
@@ -1488,7 +1780,7 @@ const WellnessTracker = ({ user }) => {
               backdropFilter: "blur(10px)",
               borderRadius: "24px",
               padding: 2,
-              border: "1px solid rgba(33, 150, 243, 0.2)",
+              border: "1px solid rgba(33,150,243,0.2)",
             },
           }}
         >
@@ -1534,11 +1826,38 @@ const WellnessTracker = ({ user }) => {
             />
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-            <Button onClick={handleAddSupplement}>Add</Button>
+            <Button onClick={() => setOpenDialog(false)}>İptal</Button>
+            <Button onClick={handleAddSupplement}>Ekle</Button>
           </DialogActions>
         </Dialog>
+        <NotificationSettingsDialog
+          open={notificationDialogOpen}
+          onClose={() => setNotificationDialogOpen(false)}
+          user={user}
+          onSave={handleSaveNotificationWindow}
+        />
+        <SupplementNotificationSettingsDialog
+          open={supplementNotificationDialogOpen}
+          onClose={() => setSupplementNotificationDialogOpen(false)}
+          supplements={supplements}
+          onSave={handleSaveSupplementNotifications}
+        />
       </Container>
+      <WaterNotificationSettingsDialog
+        open={waterNotifDialogOpen}
+        onClose={() => setWaterNotifDialogOpen(false)}
+        waterSettings={waterData}
+        onSave={(newSettings) => {
+          handleWaterSettingChange(
+            "waterNotificationOption",
+            newSettings.waterNotificationOption
+          );
+          handleWaterSettingChange(
+            "customNotificationInterval",
+            newSettings.customNotificationInterval
+          );
+        }}
+      />
     </Box>
   );
 };

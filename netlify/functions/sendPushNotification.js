@@ -110,10 +110,7 @@ const analyzeWaterHabits = (waterHistory = []) => {
     .sort((a, b) => b.value - a.value)
     .slice(0, 3)
     .filter((peak) => peak.value > 0);
-  return {
-    peakHours,
-    hourlyDistribution: normalizedDistribution,
-  };
+  return { peakHours, hourlyDistribution: normalizedDistribution };
 };
 
 // Biyolojik uyumlu hidrasyon algoritması; kullanıcının profil bilgileri, sıcaklık, günün saati ve aktivite bilgilerine göre su içme aralığını hesaplar.
@@ -217,6 +214,10 @@ const getNextWaterReminderTime = async (user, waterData) => {
 
 // Kullanıcının meşgul olup olmadığını kontrol eder.
 const isUserBusy = async (userId, checkTime = null) => {
+  if (!userId || typeof userId !== "string" || userId.trim() === "") {
+    console.error("Invalid userId provided to isUserBusy");
+    return false;
+  }
   try {
     const now = checkTime || getTurkeyTime();
     const startOfHour = new Date(now);
@@ -321,13 +322,19 @@ exports.handler = async function (event, context) {
           });
         }
 
-        // Takvim bildirimleri – yalnızca gelecek (upcoming) etkinlikleri getir.
+        // Takvim bildirimleri – yalnızca şu an ile 5 dakika içindeki etkinlikleri getir.
         try {
+          const fiveMinutesLater = new Date(now.getTime() + 5 * 60 * 1000);
           const eventsSnapshot = await db
             .collection("users")
             .doc(userId)
             .collection("calendarEvents")
             .where("start", ">=", admin.firestore.Timestamp.fromDate(now))
+            .where(
+              "start",
+              "<=",
+              admin.firestore.Timestamp.fromDate(fiveMinutesLater)
+            )
             .get();
           eventsSnapshot.forEach((docSnap) => {
             const eventData = docSnap.data();
@@ -388,7 +395,10 @@ exports.handler = async function (event, context) {
                 messageDetail = nextReminder
                   ? `Sonraki hatırlatma: ${nextReminder.toLocaleTimeString(
                       "tr-TR",
-                      { hour: "2-digit", minute: "2-digit" }
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }
                     )}`
                   : "";
               }
@@ -492,6 +502,5 @@ exports.handler = async function (event, context) {
 const shouldSendWaterReminder = async (user, waterData, now) => {
   const busy = await isUserBusy(user.id || user.uid);
   if (busy) return false;
-  // Ek kontrol mantığı eklenebilir.
   return true;
 };

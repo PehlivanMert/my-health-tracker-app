@@ -63,6 +63,25 @@ import {
 } from "recharts";
 import styles from "./waterAnimation.module.css";
 
+// Achievement Component: Konfeti ve mesaj yalnızca su hedefi ilk kez aşıldığında gösterilecek.
+const Achievement = ({ message }) => (
+  <Box
+    sx={{
+      position: "fixed",
+      top: "20%",
+      left: "50%",
+      transform: "translate(-50%, -50%)",
+      backgroundColor: "rgba(0,0,0,0.7)",
+      color: "#fff",
+      padding: "20px",
+      borderRadius: "10px",
+      zIndex: 9999,
+    }}
+  >
+    <Typography variant="h4">{message}</Typography>
+  </Box>
+);
+
 // Animated keyframes
 const float = keyframes`
   0% { transform: translateY(0px); }
@@ -188,7 +207,7 @@ const StyledAccordionSummary = styled(AccordionSummary)(({ theme }) => ({
   },
 }));
 
-// VitaminCard bileşeni: Takviye kartı için kullanılan UI bileşeni.
+// VitaminCard: Takviye kartı bileşeni
 const VitaminCard = ({
   supplement,
   onConsume,
@@ -222,7 +241,10 @@ const VitaminCard = ({
               {supplement.name}
             </Typography>
             <IconButton
-              onClick={() => onDelete(supplement.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(supplement.id);
+              }}
               sx={{
                 color: "#fff",
                 transition: "all 0.3s ease",
@@ -519,17 +541,16 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [achievement, setAchievement] = useState(null);
   const [waterNotifDialogOpen, setWaterNotifDialogOpen] = useState(false);
-  const [nextReminderTime, setNextReminderTime] = useState(null);
   const theme = useTheme();
   const timerRef = useRef(null);
 
   const getWaterDocRef = () => doc(db, "users", user.uid, "water", "current");
 
   const checkIfResetNeeded = async (data) => {
-    const nowTurkey = getNowTurkeyTime();
-    const todayStr = nowTurkey.toLocaleDateString("en-CA", {
-      timeZone: "Europe/Istanbul",
-    });
+    const nowTurkey = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
+    );
+    const todayStr = nowTurkey.toLocaleDateString("en-CA");
     if (data.lastResetDate !== todayStr) {
       await resetDailyWaterIntake();
     }
@@ -551,6 +572,10 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         lastResetDate: data.lastResetDate || null,
         waterNotificationOption: data.waterNotificationOption || "smart",
         customNotificationInterval: data.customNotificationInterval || 1,
+        notificationWindow: data.notificationWindow || {
+          start: "08:00",
+          end: "22:00",
+        },
       });
       await checkIfResetNeeded(data);
     }
@@ -558,15 +583,13 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
 
   const resetDailyWaterIntake = async () => {
     try {
-      const nowTurkey = getNowTurkeyTime();
+      const nowTurkey = new Date(
+        new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
+      );
       const yesterday = new Date(nowTurkey);
       yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toLocaleDateString("en-CA", {
-        timeZone: "Europe/Istanbul",
-      });
-      const todayStr = nowTurkey.toLocaleDateString("en-CA", {
-        timeZone: "Europe/Istanbul",
-      });
+      const yesterdayStr = yesterday.toLocaleDateString("en-CA");
+      const todayStr = nowTurkey.toLocaleDateString("en-CA");
       const ref = getWaterDocRef();
       const docSnap = await getDoc(ref);
       let updatedHistory = [];
@@ -698,16 +721,16 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     );
 
   const computeReminderTimes = async () => {
-    if (!user.notificationWindow) return [];
+    if (!waterData.notificationWindow && !user.notificationWindow) return [];
     const nowTurkey = getNowTurkeyTime();
     const todayStr = nowTurkey.toLocaleDateString("en-CA");
     const windowStart = new Date(
-      todayStr + "T" + user.notificationWindow.start + ":00"
+      todayStr + "T" + (user.notificationWindow?.start || "08:00") + ":00"
     );
     const windowEnd = new Date(
-      todayStr + "T" + user.notificationWindow.end + ":00"
+      todayStr + "T" + (user.notificationWindow?.end || "22:00") + ":00"
     );
-    let intervalMinutes = 120; // varsayılan 2 saat
+    let intervalMinutes = 120;
     if (
       waterData.waterNotificationOption === "custom" &&
       waterData.customNotificationInterval
@@ -1331,7 +1354,6 @@ const SupplementConsumptionChart = ({
             Takviye İstatistikleri
           </Typography>
         </Box>
-
         <Box
           sx={{
             display: "flex",
@@ -1657,13 +1679,9 @@ const WellnessTracker = ({ user }) => {
             }}
           >
             <WaterDropIcon
-              sx={{
-                fontSize: { xs: 30, md: 50 },
-                color: "lightblue",
-                mr: 2,
-              }}
+              sx={{ fontSize: { xs: 30, md: 50 }, color: "lightblue", mr: 2 }}
             />
-            Sağlıklı Alışkanlık Takibi
+            Takviye Takibi
           </Typography>
           <Box>
             <Tooltip title="Global Bildirim Ayarları">

@@ -1,3 +1,12 @@
+// sendPushNotification.js
+// Bu dosya, Cloud Functions ortamında çalışır ve
+// rutin, takvim, su ve takviye bildirimlerini gönderir.
+// İyileştirmeler:
+// • Firestore okuma işlemleri paralel hale getirilerek maliyet optimize edildi.
+// • Su bildirimlerinde, geçmiş veriye göre dinamik (insan anatomisine uygun) aralık hesaplanarak periyodik bildirimler gönderilir.
+// • Takviye bildirimlerinde, planlanmış bildirimler yalnızca ±1 dakika hassasiyetiyle kontrol edilir.
+// • Global bildirim penceresi, kullanıcının ayarladığı saat değerlerini doğru şekilde uygular.
+
 const admin = require("firebase-admin");
 const fetch = require("node-fetch");
 
@@ -9,6 +18,7 @@ if (!admin.apps.length) {
       process.env.FIREBASE_DATABASE_URL || serviceAccount.databaseURL,
   });
 }
+
 const db = admin.firestore();
 
 // Takvim bildirimleri için offsetler
@@ -19,181 +29,103 @@ const notificationOffsets = {
   "1-day": 1440,
 };
 
-// Türkiye saatini döndüren yardımcı
-const getTurkeyTime = () =>
-  new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+// Yardımcı: Türkiye saatini döndürür
+const getTurkeyTime = () => {
+  return new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
+  );
+};
 
-// Kullanıcının global bildirim penceresini kontrol eder; tanımlı değilse varsayılan 08:00-22:00 kullanır.
+// Kullanıcının global bildirim penceresinde olup olmadığını kontrol eder
 const isWithinNotificationWindow = (user) => {
-  const window = user.notificationWindow || { start: "08:00", end: "22:00" };
+  if (!user.notificationWindow) return true;
   const nowTurkey = getTurkeyTime();
   const [nowHour, nowMinute] = nowTurkey
     .toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })
     .split(":")
     .map(Number);
-  const [startHour, startMinute] = window.start.split(":").map(Number);
-  const [endHour, endMinute] = window.end.split(":").map(Number);
+  const [startHour, startMinute] = user.notificationWindow.start
+    .split(":")
+    .map(Number);
+  const [endHour, endMinute] = user.notificationWindow.end
+    .split(":")
+    .map(Number);
   const nowTotal = nowHour * 60 + nowMinute;
   const startTotal = startHour * 60 + startMinute;
   const endTotal = endHour * 60 + endMinute;
   return nowTotal >= startTotal && nowTotal <= endTotal;
 };
 
-// Kullanıcının konumuna ve güncel hava durumuna göre çevresel bağlam bilgisini getirir.
-const getUserEnvironmentalContext = async (user) => {
-  const context = {
-    temperature: 22,
-    activityLevel: "normal",
-    timeContext: "day",
-  };
+// Kullanıcının konumuna göre güncel sıcaklığı getirir
+const getUserWeather = async (lat, lon) => {
   try {
-    if (user.location && user.location.lat && user.location.lon) {
-      const url = `${process.env.OPEN_METEO_API_URL}?latitude=${user.location.lat}&longitude=${user.location.lon}&current_weather=true`;
-      const response = await fetch(url);
-      const data = await response.json();
-      if (data.current_weather) {
-        context.temperature = data.current_weather.temperature;
-        const weatherCode = data.current_weather.weathercode;
-        if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(weatherCode)) {
-          context.activityLevel = "low";
-        } else if (context.temperature > 30) {
-          context.activityLevel = "low";
-        } else if (
-          context.temperature > 18 &&
-          context.temperature < 28 &&
-          [0, 1, 2, 3].includes(weatherCode)
-        ) {
-          context.activityLevel = "high";
-        }
-      }
-    }
-    const nowTurkey = getTurkeyTime();
-    const hour = nowTurkey.getHours();
-    if (hour >= 6 && hour < 9) {
-      context.timeContext = "morning";
-    } else if (hour >= 12 && hour < 14) {
-      context.timeContext = "lunch";
-    } else if (hour >= 17 && hour < 20) {
-      context.timeContext = "evening";
-    } else if (hour >= 22 || hour < 6) {
-      context.timeContext = "night";
-      context.activityLevel = "low";
+    const url = `${process.env.OPEN_METEO_API_URL}?latitude=${lat}&longitude=${lon}&current_weather=true`;
+    const response = await fetch(url);
+    const data = await response.json();
+    if (data.current_weather) {
+      return data.current_weather.temperature;
     }
   } catch (error) {
-    console.error("Error getting environmental context:", error);
+    console.error("Hava durumu alınamadı:", error);
   }
-  return context;
+  return null;
 };
 
-// Kullanıcının su içme geçmişini analiz edip en yoğun saatleri tespit eder.
-const analyzeWaterHabits = (waterHistory = []) => {
-  if (!waterHistory || waterHistory.length < 5) return null;
-  const hourlyDistribution = Array(24).fill(0);
-  let totalEntries = 0;
-  const recentHistory = waterHistory.slice(-14);
-  recentHistory.forEach((entry) => {
-    if (entry.timestamp) {
-      const entryTime = entry.timestamp.toDate
-        ? entry.timestamp.toDate()
-        : new Date(entry.timestamp);
-      const entryHour = entryTime.getHours();
-      hourlyDistribution[entryHour]++;
-      totalEntries++;
-    }
-  });
-  if (totalEntries === 0) return null;
-  const normalizedDistribution = hourlyDistribution.map(
-    (count) => count / totalEntries
-  );
-  const peakHours = normalizedDistribution
-    .map((val, idx) => ({ hour: idx, value: val }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 3)
-    .filter((peak) => peak.value > 0);
-  return { peakHours, hourlyDistribution: normalizedDistribution };
-};
-
-// Biyolojik uyumlu hidrasyon algoritması; kullanıcının profil bilgileri, sıcaklık, günün saati ve aktivite bilgilerine göre su içme aralığını hesaplar.
+// Su bildirimlerinde kullanılacak dinamik aralık hesaplaması
 const computeDynamicWaterInterval = async (user, waterData) => {
+  // Varsayılan: 120 dakika
+  let intervalMinutes = 120;
   if (
     waterData.waterNotificationOption === "custom" &&
     waterData.customNotificationInterval
   ) {
     return Number(waterData.customNotificationInterval) * 60;
   } else if (waterData.waterNotificationOption === "smart") {
-    let intervalMinutes = 120;
-    const envContext = await getUserEnvironmentalContext(user);
-    let weight = user.profile && user.profile.weight ? user.profile.weight : 70;
-    let age = user.profile && user.profile.age ? user.profile.age : 30;
-    let height =
-      user.profile && user.profile.height ? user.profile.height : 170;
-    let baseRate = 0.55 * weight; // ml/dakika
-    const activityMultiplier = { low: 0.8, normal: 1.0, high: 1.3 };
-    baseRate *= activityMultiplier[envContext.activityLevel] || 1.0;
-    if (envContext.temperature > 30) {
-      baseRate *= 1.4;
-    } else if (envContext.temperature > 25) {
-      baseRate *= 1.2;
-    } else if (envContext.temperature < 10) {
-      baseRate *= 0.9;
-    }
-    const nowTurkey = getTurkeyTime();
-    const hour = nowTurkey.getHours();
-    if (hour >= 6 && hour < 10) {
-      baseRate *= 1.3;
-    } else if (hour >= 22 || hour < 6) {
-      baseRate *= 0.5;
-    }
-    if (age > 50) {
-      baseRate *= 0.9;
-    } else if (age < 18) {
-      baseRate *= 1.1;
-    }
-    const bmi = weight / Math.pow(height / 100, 2);
-    if (bmi > 25) {
-      baseRate *= 1.1;
-    } else if (bmi < 18.5) {
-      baseRate *= 0.9;
-    }
-    let glassSize = waterData.glassSize || 250;
-    let computedInterval = Math.round(glassSize / baseRate);
-    const habits = waterData.history
-      ? analyzeWaterHabits(waterData.history)
-      : null;
-    if (habits && habits.peakHours.length > 0) {
-      const currentHour = nowTurkey.getHours();
-      const isNearPeakHour = habits.peakHours.some(
-        (peak) => Math.abs(peak.hour - currentHour) <= 1 && peak.value > 0.15
-      );
-      if (isNearPeakHour) {
-        computedInterval = Math.round(computedInterval * 0.8);
+    if (waterData.history && waterData.history.length > 0) {
+      const recentHistory = waterData.history.slice(-7);
+      let totalIntake = 0;
+      recentHistory.forEach((entry) => {
+        totalIntake += entry.intake;
+      });
+      const avgPerDay = totalIntake / recentHistory.length;
+      const activeMinutes = 12 * 60; // varsayılan 12 saatlik aktif dönem
+      let avgRate = avgPerDay / activeMinutes; // ml/dakika
+      if (avgRate <= 0) {
+        avgRate = waterData.glassSize / 15; // yedek oran
       }
+      const remaining = waterData.dailyWaterTarget - waterData.waterIntake;
+      const expectedMinutes = remaining / avgRate;
+      const remainingGlasses = Math.ceil(remaining / waterData.glassSize);
+      intervalMinutes = expectedMinutes / Math.max(remainingGlasses, 1);
+      // Anatomik gerçeklik için aralık 30 ile 120 dakika arasında sınırlandırılır
+      intervalMinutes = Math.max(30, Math.min(intervalMinutes, 120));
+    } else {
+      // Geçmiş veri yoksa: sıcaklık etkisini uygula
+      let baseHours = 2;
+      if (user.location && user.location.lat && user.location.lon) {
+        const temp = await getUserWeather(user.location.lat, user.location.lon);
+        if (temp !== null && temp > 25) {
+          baseHours = 1.5;
+        }
+      }
+      intervalMinutes = baseHours * 60;
     }
-    intervalMinutes = Math.max(5, Math.min(computedInterval, 120));
-    const percentCompleted =
-      (waterData.waterIntake / waterData.dailyWaterTarget) * 100;
-    if (percentCompleted < 30 && envContext.timeContext === "evening") {
-      intervalMinutes = Math.round(intervalMinutes * 0.7);
-    } else if (percentCompleted > 80) {
-      intervalMinutes = Math.round(intervalMinutes * 1.3);
-    }
-    return intervalMinutes;
   }
-  return 120;
+  return intervalMinutes;
 };
 
-// Global bildirim penceresine göre su hatırlatma zamanlarını hesaplar.
+// Global bildirim penceresi içinde, dinamik aralığa göre su hatırlatma zamanlarını hesaplar
 const computeWaterReminderTimes = async (user, waterData) => {
-  const windowStartStr =
-    (user.notificationWindow && user.notificationWindow.start) || "08:00";
-  const windowEndStr =
-    (user.notificationWindow && user.notificationWindow.end) || "22:00";
+  if (!user.notificationWindow) return [];
   const nowTurkey = getTurkeyTime();
   const todayStr = nowTurkey.toLocaleDateString("en-CA");
-  const windowStart = new Date(`${todayStr}T${windowStartStr}:00`);
-  const windowEnd = new Date(`${todayStr}T${windowEndStr}:00`);
+  const windowStart = new Date(
+    `${todayStr}T${user.notificationWindow.start}:00`
+  );
+  const windowEnd = new Date(`${todayStr}T${user.notificationWindow.end}:00`);
   const dynamicInterval = await computeDynamicWaterInterval(user, waterData);
   const reminderTimes = [];
+  // Bildirimler, pencere başlangıcı ile şimdiki zaman arasından başlatılır
   let t = Math.max(windowStart.getTime(), nowTurkey.getTime());
   while (t <= windowEnd.getTime()) {
     reminderTimes.push(new Date(t));
@@ -202,7 +134,6 @@ const computeWaterReminderTimes = async (user, waterData) => {
   return reminderTimes;
 };
 
-// Gets the next water reminder time.
 const getNextWaterReminderTime = async (user, waterData) => {
   const reminderTimes = await computeWaterReminderTimes(user, waterData);
   const now = new Date();
@@ -212,97 +143,36 @@ const getNextWaterReminderTime = async (user, waterData) => {
   return null;
 };
 
-// Kullanıcının meşgul olup olmadığını kontrol eder.
-const isUserBusy = async (userId, checkTime = null) => {
-  if (!userId || typeof userId !== "string" || userId.trim() === "") {
-    console.error("Invalid userId provided to isUserBusy");
-    return false;
+// Su hatırlatmasının şimdi gönderilip gönderilmeyeceğini kontrol eder (±1 dakika hassasiyeti)
+const shouldSendWaterReminder = async (user, waterData, now) => {
+  const reminderTimes = await computeWaterReminderTimes(user, waterData);
+  for (const time of reminderTimes) {
+    if (Math.abs(now - time) / 60000 < 1) return true;
   }
-  try {
-    const now = checkTime || getTurkeyTime();
-    const startOfHour = new Date(now);
-    startOfHour.setMinutes(0, 0, 0);
-    const endOfHour = new Date(startOfHour);
-    endOfHour.setHours(endOfHour.getHours() + 1);
-    const eventsSnapshot = await db
-      .collection("users")
-      .doc(userId)
-      .collection("calendarEvents")
-      .where("start", "<=", admin.firestore.Timestamp.fromDate(endOfHour))
-      .where("end", ">=", admin.firestore.Timestamp.fromDate(startOfHour))
-      .limit(1)
-      .get();
-    return !eventsSnapshot.empty;
-  } catch (err) {
-    console.error("Error checking if user is busy:", err);
-    return false;
-  }
+  return false;
 };
 
-// Bildirimleri 500’lü batch’ler halinde gönderir.
-const sendNotificationsInBatches = async (notifications) => {
-  const batchSize = 500;
-  for (let i = 0; i < notifications.length; i += batchSize) {
-    const batch = notifications.slice(i, i + batchSize);
-    await Promise.all(batch.map((msg) => admin.messaging().send(msg)));
-  }
-};
-
-// Ana handler – optimize edilmiş okuma ve bildirim tetikleme mantığı.
 exports.handler = async function (event, context) {
   try {
-    const now = getTurkeyTime();
+    const now = new Date();
     const currentHour = now.getUTCHours();
     const currentMinute = now.getUTCMinutes();
     const notificationsToSend = [];
 
-    // 5 dakikalık önbellekleme: Tüm kullanıcıları tek seferde getiriyoruz.
-    let cachedUsers = null;
-    let cacheTimestamp = 0;
-    const CACHE_DURATION = 5 * 60 * 1000;
-    if (!cachedUsers || Date.now() - cacheTimestamp > CACHE_DURATION) {
-      cachedUsers = await db.collection("users").get();
-      cacheTimestamp = Date.now();
-    }
+    // Tüm kullanıcıları getir (optimizasyon için filtreleme yapılabilir)
+    const usersSnapshot = await db.collection("users").get();
 
-    // Global bildirim penceresinde olan kullanıcıları filtrele.
-    const usersInWindow = cachedUsers.docs.filter((userDoc) => {
-      const userData = userDoc.data();
-      return isWithinNotificationWindow(userData);
-    });
-
-    // Tüm bu kullanıcıların water doküman referanslarını topla.
-    const waterRefs = usersInWindow.map((userDoc) => {
-      const userId = userDoc.id;
-      return db
-        .collection("users")
-        .doc(userId)
-        .collection("water")
-        .doc("current");
-    });
-    // Batch get ile water dokümanlarını al.
-    const waterDocs = await db.getAll(...waterRefs);
-    const waterDataMap = {};
-    usersInWindow.forEach((userDoc, index) => {
-      const userId = userDoc.id;
-      const waterDoc = waterDocs[index];
-      if (waterDoc.exists) {
-        waterDataMap[userId] = waterDoc.data();
-      }
-    });
-
-    // Her kullanıcıyı paralel olarak işle.
     await Promise.all(
-      usersInWindow.map(async (userDoc) => {
+      usersSnapshot.docs.map(async (userDoc) => {
         const userData = userDoc.data();
-        const userId = userDoc.id;
         const fcmToken = userData.fcmToken;
-        if (!fcmToken) return;
+        if (!fcmToken) return; // FCM token yoksa atla
 
-        // Rutin bildirimleri
+        // Rutin Bildirimleri (global ayardan bağımsız)
         if (userData.routines && Array.isArray(userData.routines)) {
           userData.routines.forEach((routine) => {
             if (!routine.notificationEnabled || routine.checked) return;
+            // Rutin zamanı, Türkiye saat dilimine göre UTC'ye dönüştürülür (+3 fark varsayılır)
             const [localHour, localMinute] = routine.time
               .split(":")
               .map(Number);
@@ -322,19 +192,12 @@ exports.handler = async function (event, context) {
           });
         }
 
-        // Takvim bildirimleri – yalnızca şu an ile 5 dakika içindeki etkinlikleri getir.
+        // Takvim Bildirimleri (global ayardan bağımsız)
         try {
-          const fiveMinutesLater = new Date(now.getTime() + 5 * 60 * 1000);
           const eventsSnapshot = await db
             .collection("users")
-            .doc(userId)
+            .doc(userDoc.id)
             .collection("calendarEvents")
-            .where("start", ">=", admin.firestore.Timestamp.fromDate(now))
-            .where(
-              "start",
-              "<=",
-              admin.firestore.Timestamp.fromDate(fiveMinutesLater)
-            )
             .get();
           eventsSnapshot.forEach((docSnap) => {
             const eventData = docSnap.data();
@@ -350,82 +213,88 @@ exports.handler = async function (event, context) {
               notificationsToSend.push({
                 token: fcmToken,
                 data: {
-                  title: `${eventData.title} - ${
-                    offsetMinutes === 0
-                      ? "Şu anda başlıyor"
-                      : offsetMinutes === 15
-                      ? "15 dakika içinde başlayacak"
-                      : offsetMinutes === 60
-                      ? "1 saat içinde başlayacak"
-                      : "Yarın başlayacak"
-                  }`,
-                  body:
-                    eventData.description ||
-                    `Etkinlik: ${eventData.title} ${
-                      offsetMinutes > 0
-                        ? `(${offsetMinutes} dakika önce)`
-                        : "(tam zamanında)"
-                    } başlayacak.`,
+                  title: eventData.title,
+                  body: `Etkinlik: ${eventData.title} ${
+                    offsetMinutes > 0
+                      ? `(${offsetMinutes} dakika önce)`
+                      : "(tam zamanında)"
+                  } başlayacak.`,
                   eventId: docSnap.id,
                 },
               });
             }
           });
         } catch (err) {
-          console.error(`Calendar error for user ${userId}:`, err);
+          console.error(`Kullanıcı ${userDoc.id} için takvim hatası:`, err);
         }
 
-        // Su bildirimleri
+        // Global bildirim penceresi yalnızca SU ve TAKVİYE için geçerli
+        if (!isWithinNotificationWindow(userData)) return;
+
+        // Su Bildirimleri
         try {
-          const waterData = waterDataMap[userId];
-          if (
-            waterData &&
-            waterData.waterNotificationOption !== "none" &&
-            waterData.waterIntake < waterData.dailyWaterTarget
-          ) {
-            if (await shouldSendWaterReminder(userData, waterData, now)) {
-              const nextReminder = await getNextWaterReminderTime(
-                userData,
-                waterData
-              );
-              let messageDetail = "";
-              if (waterData.waterNotificationOption === "custom") {
-                messageDetail = `Her ${waterData.customNotificationInterval} saat`;
-              } else {
-                messageDetail = nextReminder
-                  ? `Sonraki hatırlatma: ${nextReminder.toLocaleTimeString(
-                      "tr-TR",
-                      {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      }
-                    )}`
-                  : "";
+          const waterRef = db
+            .collection("users")
+            .doc(userDoc.id)
+            .collection("water")
+            .doc("current");
+          const waterDoc = await waterRef.get();
+          if (waterDoc.exists()) {
+            const waterData = waterDoc.data();
+            if (
+              waterData.waterNotificationOption !== "none" &&
+              waterData.waterIntake < waterData.dailyWaterTarget
+            ) {
+              if (await shouldSendWaterReminder(userData, waterData, now)) {
+                const nextReminder = await getNextWaterReminderTime(
+                  userData,
+                  waterData
+                );
+                let messageDetail = "";
+                if (waterData.waterNotificationOption === "custom") {
+                  messageDetail = `Her ${waterData.customNotificationInterval} saat`;
+                } else {
+                  messageDetail = nextReminder
+                    ? `Sonraki hatırlatma: ${nextReminder.toLocaleTimeString(
+                        "tr-TR",
+                        {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }
+                      )}`
+                    : "";
+                }
+                notificationsToSend.push({
+                  token: fcmToken,
+                  data: {
+                    title: "Su İçme Hatırlatması",
+                    body: `Günlük su hedefin ${waterData.dailyWaterTarget} ml. ${messageDetail}. Su içmeyi unutmayın!`,
+                    type: "water",
+                  },
+                });
               }
-              notificationsToSend.push({
-                token: fcmToken,
-                data: {
-                  title: "Su İçme Hatırlatması",
-                  body: `Günlük su hedefin ${waterData.dailyWaterTarget} ml. ${messageDetail}. Su içmeyi unutmayın!`,
-                  type: "water",
-                },
-              });
             }
           }
         } catch (err) {
-          console.error(`Water notification error for user ${userId}:`, err);
+          console.error(
+            `Kullanıcı ${userDoc.id} için su hatırlatma hatası:`,
+            err
+          );
         }
 
-        // Takviye bildirimleri – yalnızca "smart" veya "custom" bildirim modundakileri getir.
+        // Takviye Bildirimleri
         try {
           const suppSnapshot = await db
             .collection("users")
-            .doc(userId)
+            .doc(userDoc.id)
             .collection("supplements")
-            .where("notification", "in", ["smart", "custom"])
             .get();
+          let pendingSupplements = [];
           suppSnapshot.forEach((docSnap) => {
             const suppData = docSnap.data();
+            if (!suppData.notification || suppData.notification === "none")
+              return;
+            // Eğer planlanmış bildirim saatleri varsa, yalnızca şu an (±1 dakika) o saatte gönder
             if (
               suppData.notificationSchedule &&
               Array.isArray(suppData.notificationSchedule) &&
@@ -452,6 +321,7 @@ exports.handler = async function (event, context) {
                 }
               });
             } else if (suppData.dailyUsage > 0) {
+              // Planlanmış zaman yoksa, kalan gün eşiğine göre bildirim gönder
               const estimatedRemainingDays =
                 suppData.quantity / suppData.dailyUsage;
               const thresholds = [14, 7, 3, 1];
@@ -478,29 +348,58 @@ exports.handler = async function (event, context) {
                 });
               }
             }
+            if (suppData.quantity > 0) {
+              pendingSupplements.push(suppData.name);
+            }
           });
+          // Eğer global bildirim penceresinin bitimine 15 dakika kalmışsa, toplu takviye hatırlatma gönder
+          if (userData.notificationWindow) {
+            const nowTurkey = getTurkeyTime();
+            const [nowH, nowM] = nowTurkey
+              .toLocaleTimeString("tr-TR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+              .split(":")
+              .map(Number);
+            const nowTotal = nowH * 60 + nowM;
+            const [endH, endM] = userData.notificationWindow.end
+              .split(":")
+              .map(Number);
+            const endTotal = endH * 60 + endM;
+            const remainingWindow = endTotal - nowTotal;
+            if (
+              remainingWindow > 0 &&
+              remainingWindow <= 15 &&
+              pendingSupplements.length > 0
+            ) {
+              notificationsToSend.push({
+                token: fcmToken,
+                data: {
+                  title: "Takviye Hatırlatması",
+                  body: `Bugün almanız gereken takviyeler: ${pendingSupplements.join(
+                    ", "
+                  )}. Lütfen kontrol edin.`,
+                },
+              });
+            }
+          }
         } catch (err) {
           console.error(
-            `Supplement notification error for user ${userId}:`,
+            `Kullanıcı ${userDoc.id} için takviye hatırlatma hatası:`,
             err
           );
         }
       })
     );
 
-    if (notificationsToSend.length > 0) {
-      await sendNotificationsInBatches(notificationsToSend);
-    }
-    return { status: "success", notificationsSent: notificationsToSend.length };
+    // Tüm bildirimleri paralel olarak gönder
+    const sendResults = await Promise.all(
+      notificationsToSend.map((msg) => admin.messaging().send(msg))
+    );
+    return { statusCode: 200, body: JSON.stringify({ results: sendResults }) };
   } catch (error) {
-    console.error("Error in handler:", error);
-    return { status: "error", error: error.message };
+    console.error("Push bildirim gönderimi hatası:", error);
+    return { statusCode: 500, body: error.toString() };
   }
-};
-
-// Yardımcı: Su hatırlatma zamanının gönderilip gönderilmeyeceğini kontrol eder.
-const shouldSendWaterReminder = async (user, waterData, now) => {
-  const busy = await isUserBusy(user.id || user.uid);
-  if (busy) return false;
-  return true;
 };

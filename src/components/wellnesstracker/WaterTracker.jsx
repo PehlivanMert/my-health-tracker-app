@@ -25,6 +25,7 @@ import NotificationsIcon from "@mui/icons-material/Notifications";
 import NotificationsOffIcon from "@mui/icons-material/NotificationsOff";
 import WaterNotificationSettingsDialog from "./WaterNotificationSettingsDialog";
 import styles from "./waterAnimation.module.css";
+import { saveNextWaterReminderTime } from "../notify/NotificationScheduler";
 
 // Yeni Animasyonlar
 
@@ -223,6 +224,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   });
   const [showConfetti, setShowConfetti] = useState(false);
   const [achievement, setAchievement] = useState(null);
+  const [nextReminder, setNextReminder] = useState(null);
   const [waterNotifDialogOpen, setWaterNotifDialogOpen] = useState(false);
   const timerRef = useRef(null);
 
@@ -259,12 +261,26 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           start: "08:00",
           end: "22:00",
         },
+        nextWaterReminderTime: data.nextWaterReminderTime || null,
       });
       await checkIfResetNeeded(data);
       if (onWaterDataChange) onWaterDataChange(data);
     }
   };
 
+  useEffect(() => {
+    if (!user) return;
+    fetchWaterData();
+  }, [user]);
+
+  // Su verileri güncellendikçe, sonraki bildirim zamanını hesapla ve kaydet
+  useEffect(() => {
+    if (user && waterData) {
+      saveNextWaterReminderTime(user, waterData).then((next) => {
+        setNextReminder(next);
+      });
+    }
+  }, [waterData, user]);
   const resetDailyWaterIntake = async () => {
     try {
       const nowTurkey = getTurkeyTime();
@@ -507,6 +523,16 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
                 <AddIcon sx={{ fontSize: 35, color: "#fff" }} />
               </IconButton>
             </Tooltip>
+            {/* Sonraki bildirim zamanı gösterimi */}
+            {nextReminder && (
+              <Typography variant="subtitle1" sx={{ color: "#785E", mt: 2 }}>
+                Sonraki bildirim:{" "}
+                {new Date(nextReminder).toLocaleTimeString("tr-TR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </Typography>
+            )}
           </Box>
         </Box>
       </WaterContainer>
@@ -634,7 +660,8 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
               <Box
                 sx={{
                   width: `${Math.min(
-                    (waterData.yesterdayWaterIntake / waterData.dailyGoal) *
+                    (waterData.yesterdayWaterIntake /
+                      waterData.dailyWaterTarget) *
                       100, // Düzeltildi
                     100
                   )}%`,
@@ -698,7 +725,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
             </Box>
 
             {/* Konfeti Efekti */}
-            {waterData.yesterdayWaterIntake >= waterData.dailyGoal && ( // Düzeltildi
+            {waterData.yesterdayWaterIntake >= waterData.dailyWaterTarget && ( // Düzeltildi
               <Box
                 sx={{
                   position: "absolute",

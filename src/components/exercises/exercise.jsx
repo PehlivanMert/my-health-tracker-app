@@ -674,34 +674,58 @@ const Exercises = ({ exercises, setExercises }) => {
                       display: "flex",
                       flexDirection: "column",
                       color: "aliceblue",
-                      p: 3,
+                      p: 0,
                       transition: "transform 0.3s, box-shadow 0.3s",
+                      background:
+                        "linear-gradient(135deg, rgba(166,246,255,0.1) 0%, rgba(33,150,243,0.15) 100%)",
+                      border: "none",
+                      overflow: "hidden",
                       "&:hover": {
                         transform: "translateY(-5px)",
+                        boxShadow: "0 8px 24px rgba(166,246,255,0.25)",
                       },
                     }}
                   >
+                    {/* Başlık ve Aksiyon Butonları */}
                     <Box
-                      sx={{ display: "flex", justifyContent: "space-between" }}
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        p: 2,
+                        background:
+                          "linear-gradient(45deg, rgba(33,150,243,0.4) 0%, rgba(166,246,255,0.3) 100%)",
+                        borderBottom: "1px solid rgba(255,255,255,0.1)",
+                        cursor: "pointer",
+                        minHeight: 100,
+                      }}
+                      onClick={() =>
+                        setExpandedId(
+                          expandedId === exercise.id ? null : exercise.id
+                        )
+                      }
                     >
                       <Typography
                         variant="h6"
-                        onClick={() =>
-                          setExpandedId(
-                            expandedId === exercise.id ? null : exercise.id
-                          )
-                        }
                         sx={{
                           color: "#fff",
-                          cursor: "pointer",
                           flexGrow: 1,
                           fontWeight: 600,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          pr: 1,
                         }}
                       >
+                        <FitnessCenter
+                          sx={{ fontSize: 20, color: "#4CAF50" }}
+                        />
                         {exercise.title}
                       </Typography>
-                      <Box>
+
+                      <Box sx={{ display: "flex", gap: 0.5 }}>
                         <IconButton
+                          size="small"
                           onClick={(e) => {
                             e.stopPropagation();
                             const instructions = exercise.content
@@ -724,56 +748,174 @@ const Exercises = ({ exercises, setExercises }) => {
                             setModalType("custom");
                             setOpenModal(true);
                           }}
-                          sx={{ color: "#fff" }}
+                          sx={{
+                            color: "#fff",
+                            "&:hover": {
+                              background: "rgba(76,175,80,0.2)",
+                              transform: "scale(1.1)",
+                            },
+                            transition: "all 0.2s",
+                          }}
                         >
-                          <Edit />
+                          <Edit fontSize="small" />
                         </IconButton>
                         <IconButton
+                          size="small"
                           onClick={(e) => {
                             e.stopPropagation();
                             setExercises(
                               exercises.filter((e) => e.id !== exercise.id)
                             );
                           }}
-                          sx={{ color: "#FF5252" }}
+                          sx={{
+                            color: "#FF5252",
+                            "&:hover": {
+                              background: "rgba(255,82,82,0.2)",
+                              transform: "scale(1.1)",
+                            },
+                            transition: "all 0.2s",
+                          }}
                         >
-                          <Delete />
+                          <Delete fontSize="small" />
                         </IconButton>
                       </Box>
                     </Box>
 
                     <Collapse in={expandedId === exercise.id}>
-                      <Box sx={{ mt: 2 }}>
-                        <Typography
+                      <Box sx={{ p: 2.5 }}>
+                        {/* Bilgi Grid'i */}
+                        <Grid container spacing={1.5} sx={{ mb: 2 }}>
+                          <Grid item xs={6}>
+                            <Box
+                              sx={{
+                                background: "rgba(255,255,255,0.08)",
+                                borderRadius: 1,
+                                p: 1,
+                                textAlign: "center",
+                              }}
+                            >
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: "#81D4FA",
+                                  fontWeight: 500,
+                                  display: "block",
+                                }}
+                              >
+                                Hedef Bölge
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  color: "#fff",
+                                  mt: 0.5,
+                                  fontWeight: 500,
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}
+                              >
+                                {exercise.content.match(/Hedef: (.*)/)?.[1] ||
+                                  "-"}
+                              </Typography>
+                            </Box>
+                          </Grid>
+
+                          <Grid item xs={6}>
+                            <Box
+                              sx={{
+                                background: "rgba(255,255,255,0.08)",
+                                borderRadius: 1,
+                                p: 1,
+                                textAlign: "center",
+                              }}
+                            >
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: "#81D4FA",
+                                  fontWeight: 500,
+                                  display: "block",
+                                }}
+                              >
+                                Ekipman
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  color: "#fff",
+                                  mt: 0.5,
+                                  fontWeight: 500,
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}
+                              >
+                                {exercise.content.match(/Ekipman: (.*)/)?.[1] ||
+                                  "-"}
+                              </Typography>
+                            </Box>
+                          </Grid>
+                        </Grid>
+
+                        {/* Talimatlar */}
+                        <Box
                           sx={{
-                            whiteSpace: "pre-line",
-                            color: "#fff",
-                            opacity: 0.9,
+                            background: "rgba(0,0,0,0.12)",
+                            borderRadius: 1.5,
+                            p: 2,
+                            mb: 2,
                           }}
                         >
-                          {exercise.content.split("\n").map((line, i) => (
-                            <span key={i} style={{ display: "block" }}>
-                              {line.startsWith("Hedef:") ||
-                              line.startsWith("Ekipman:") ||
-                              line.startsWith("Talimatlar:") ? (
-                                <strong>{line}</strong>
-                              ) : (
-                                line
-                              )}
-                            </span>
-                          ))}
-                        </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: "#81D4FA",
+                              fontWeight: 500,
+                              mb: 1,
+                            }}
+                          >
+                            Talimatlar:
+                          </Typography>
+                          {exercise.content.split("\n").map(
+                            (line, i) =>
+                              !line.startsWith("Hedef:") &&
+                              !line.startsWith("Ekipman:") &&
+                              !line.startsWith("Talimatlar:") && (
+                                <Typography
+                                  key={i}
+                                  variant="body2"
+                                  sx={{
+                                    color: "#fff",
+                                    fontSize: "0.85rem",
+                                    position: "relative",
+                                    pl: 2.5,
+                                    mb: 1,
+                                    "&:before": {
+                                      content: '"•"',
+                                      position: "absolute",
+                                      left: 0,
+                                      top: 0,
+                                      color: "#4CAF50",
+                                      fontWeight: "bold",
+                                    },
+                                  }}
+                                >
+                                  {line.replace(/^\d+\.\s*/, "")}
+                                </Typography>
+                              )
+                          )}
+                        </Box>
 
-                        {/* GIF Görseli Eklendi */}
+                        {/* GIF Görseli */}
                         {exercise.gifUrl && (
                           <Box
                             sx={{
                               position: "relative",
-                              paddingTop: "56.25%", // 16:9 aspect ratio
+                              paddingTop: "56.25%",
                               borderRadius: "12px",
                               overflow: "hidden",
-                              mt: 2,
-                              border: "2px solid rgba(255,255,255,0.1)",
+                              border: "1px solid rgba(255,255,255,0.12)",
                             }}
                           >
                             <img
@@ -793,6 +935,18 @@ const Exercises = ({ exercises, setExercises }) => {
                         )}
                       </Box>
                     </Collapse>
+
+                    {/* Kapalı durumda alt çizgi */}
+                    {expandedId !== exercise.id && (
+                      <Box
+                        sx={{
+                          height: 4,
+                          background:
+                            "linear-gradient(90deg, rgba(33,150,243,0.6) 0%, rgba(166,246,255,0.4) 100%)",
+                          opacity: 0.4,
+                        }}
+                      />
+                    )}
                   </GlowingCard>
                 </Grid>
               ))}

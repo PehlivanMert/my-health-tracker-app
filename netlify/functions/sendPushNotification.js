@@ -353,7 +353,7 @@ exports.handler = async function (event, context) {
             .collection("water")
             .doc("current");
           const waterDoc = await waterRef.get();
-          if (waterDoc.exists()) {
+          if (waterDoc.exists) {
             const waterData = waterDoc.data();
             if (
               waterData.waterNotificationOption !== "none" &&

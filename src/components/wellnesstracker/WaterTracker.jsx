@@ -268,19 +268,6 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     }
   };
 
-  useEffect(() => {
-    if (!user) return;
-    fetchWaterData();
-  }, [user]);
-
-  // Su verileri güncellendikçe, sonraki bildirim zamanını hesapla ve kaydet
-  useEffect(() => {
-    if (user && waterData) {
-      saveNextWaterReminderTime(user, waterData).then((next) => {
-        setNextReminder(next);
-      });
-    }
-  }, [waterData, user]);
   const resetDailyWaterIntake = async () => {
     try {
       const nowTurkey = getTurkeyTime();
@@ -395,6 +382,20 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     (waterData.waterIntake / waterData.dailyWaterTarget) * 100,
     100
   );
+
+  useEffect(() => {
+    if (!user) return;
+    fetchWaterData();
+  }, [user]);
+
+  useEffect(() => {
+    if (user && waterData) {
+      // saveNextWaterReminderTime fonksiyonunu çağırarak veritabanına kaydet
+      saveNextWaterReminderTime(user, waterData).then((next) => {
+        setNextReminder(next);
+      });
+    }
+  }, [waterData, user]);
 
   return (
     <Box sx={{ textAlign: "center", mb: 6 }}>
@@ -523,17 +524,16 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
                 <AddIcon sx={{ fontSize: 35, color: "#fff" }} />
               </IconButton>
             </Tooltip>
-            {/* Sonraki bildirim zamanı gösterimi */}
-            {nextReminder && (
-              <Typography variant="subtitle1" sx={{ color: "#785E", mt: 2 }}>
-                Sonraki bildirim:{" "}
-                {new Date(nextReminder).toLocaleTimeString("tr-TR", {
+          </Box>
+          <Typography variant="subtitle1" sx={{ color: "#785E", mt: 2 }}>
+            Sonraki bildirim:{" "}
+            {nextReminder
+              ? new Date(nextReminder).toLocaleTimeString("tr-TR", {
                   hour: "2-digit",
                   minute: "2-digit",
-                })}
-              </Typography>
-            )}
-          </Box>
+                })
+              : "Belirlenmedi"}
+          </Typography>
         </Box>
       </WaterContainer>
 

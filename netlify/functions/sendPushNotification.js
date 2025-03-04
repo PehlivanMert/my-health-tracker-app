@@ -42,14 +42,13 @@ exports.handler = async function (event, context) {
         const fcmToken = userData.fcmToken;
         if (!fcmToken) return;
 
-        // Rutin Bildirimleri (global ayardan bağımsız)
+        // ---------- Rutin Bildirimleri ----------
         if (userData.routines && Array.isArray(userData.routines)) {
           userData.routines.forEach((routine) => {
             if (!routine.notificationEnabled || routine.checked) return;
             const [routineHour, routineMinute] = routine.time
               .split(":")
               .map(Number);
-            // Türkiye zamanına göre bugünün rutin zamanını oluştur
             const routineTime = new Date(now);
             routineTime.setHours(routineHour, routineMinute, 0, 0);
             if (Math.abs(now - routineTime) / 60000 < 1) {
@@ -65,7 +64,7 @@ exports.handler = async function (event, context) {
           });
         }
 
-        // Takvim Bildirimleri (global ayardan bağımsız)
+        // ---------- Takvim Bildirimleri ----------
         try {
           const eventsSnapshot = await db
             .collection("users")
@@ -78,7 +77,6 @@ exports.handler = async function (event, context) {
               return;
             const offsetMinutes =
               notificationOffsets[eventData.notification] || 0;
-            // Etkinlik başlangıç zamanını Türkiye saatine çevir
             const eventStart = eventData.start.toDate();
             const eventStartTurkey = new Date(
               eventStart.toLocaleString("en-US", {
@@ -107,7 +105,7 @@ exports.handler = async function (event, context) {
           console.error(`Kullanıcı ${userDoc.id} için takvim hatası:`, err);
         }
 
-        // Global bildirim penceresi yalnızca su ve takviye için geçerli
+        // ---------- Global Bildirim Penceresi Kontrolü ----------
         if (userData.notificationWindow) {
           const [nowHour, nowMinute] = now
             .toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })
@@ -125,7 +123,7 @@ exports.handler = async function (event, context) {
           if (!(nowTotal >= startTotal && nowTotal <= endTotal)) return;
         }
 
-        // Su Bildirimleri: Veritabanına kaydedilmiş nextWaterReminderTime kullanılacak
+        // ---------- Su Bildirimleri ----------
         try {
           const waterRef = db
             .collection("users")
@@ -133,30 +131,21 @@ exports.handler = async function (event, context) {
             .collection("water")
             .doc("current");
           const waterDoc = await waterRef.get();
-          if (waterDoc.exists) {
-            const waterData = waterDoc.data();
-            if (
-              waterData.waterNotificationOption !== "none" &&
-              waterData.waterIntake < waterData.dailyWaterTarget &&
-              waterData.nextWaterReminderTime
-            ) {
-              const nextReminder = new Date(waterData.nextWaterReminderTime);
-              // nextWaterReminderTime'i Türkiye saatine dönüştür
-              const nextReminderTurkey = new Date(
-                nextReminder.toLocaleString("en-US", {
-                  timeZone: "Europe/Istanbul",
-                })
-              );
-              if (Math.abs(now - nextReminderTurkey) / 60000 < 1) {
-                notificationsToSend.push({
-                  token: fcmToken,
-                  data: {
-                    title: "Su İçme Hatırlatması",
-                    body: `Günlük su hedefin ${waterData.dailyWaterTarget} ml. Su içmeyi unutma!`,
-                    type: "water",
-                  },
-                });
-              }
+          if (waterDoc.exists && waterDoc.data().nextWaterReminderTime) {
+            const nextReminder = new Date(
+              waterDoc.data().nextWaterReminderTime
+            );
+            if (Math.abs(now - nextReminder) / 60000 < 1) {
+              notificationsToSend.push({
+                token: fcmToken,
+                data: {
+                  title: "Su İçme Hatırlatması",
+                  body: `Günlük su hedefin ${
+                    waterDoc.data().dailyWaterTarget
+                  } ml. Su içmeyi unutma!`,
+                  type: "water",
+                },
+              });
             }
           }
         } catch (err) {
@@ -166,7 +155,7 @@ exports.handler = async function (event, context) {
           );
         }
 
-        // Takviye Bildirimleri: Her supplement için, veritabanına kaydedilmiş nextSupplementReminderTime kullanılacak
+        // ---------- Takviye Bildirimleri ----------
         try {
           const suppSnapshot = await db
             .collection("users")
@@ -183,7 +172,6 @@ exports.handler = async function (event, context) {
               const nextReminder = new Date(
                 suppData.nextSupplementReminderTime
               );
-              // nextSupplementReminderTime'i Türkiye saatine dönüştür
               const nextReminderTurkey = new Date(
                 nextReminder.toLocaleString("en-US", {
                   timeZone: "Europe/Istanbul",
@@ -216,6 +204,7 @@ exports.handler = async function (event, context) {
       })
     );
 
+    // Bildirim gönderimi
     const sendResults = await Promise.all(
       notificationsToSend.map((msg) => admin.messaging().send(msg))
     );

@@ -21,7 +21,7 @@ const notificationOffsets = {
   "1-day": 1440,
 };
 
-// Yardımcı: Türkiye saatini döndürür
+// Türkiye saatini döndürür
 const getTurkeyTime = () => {
   return new Date(
     new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
@@ -135,6 +135,10 @@ exports.handler = async function (event, context) {
             const nextReminder = new Date(
               waterDoc.data().nextWaterReminderTime
             );
+            console.log(
+              `sendPushNotification - Kullanıcı ${userDoc.id} için su bildirimi zamanı:`,
+              nextReminder
+            );
             if (Math.abs(now - nextReminder) / 60000 < 1) {
               notificationsToSend.push({
                 token: fcmToken,
@@ -177,6 +181,10 @@ exports.handler = async function (event, context) {
                   timeZone: "Europe/Istanbul",
                 })
               );
+              console.log(
+                `sendPushNotification - Kullanıcı ${userDoc.id} için takviye bildirimi zamanı (${suppData.name}):`,
+                nextReminderTurkey
+              );
               if (Math.abs(now - nextReminderTurkey) / 60000 < 1) {
                 notificationsToSend.push({
                   token: fcmToken,
@@ -184,10 +192,7 @@ exports.handler = async function (event, context) {
                     title: `${suppData.name} Takviyesini Almayı Unuttunuz!`,
                     body: `Belirlenen saatte (${nextReminderTurkey.toLocaleTimeString(
                       "tr-TR",
-                      {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      }
+                      { hour: "2-digit", minute: "2-digit" }
                     )}) almanız gereken takviyeyi henüz almadınız.`,
                     supplementId: docSnap.id,
                   },
@@ -204,13 +209,19 @@ exports.handler = async function (event, context) {
       })
     );
 
-    // Bildirim gönderimi
     const sendResults = await Promise.all(
       notificationsToSend.map((msg) => admin.messaging().send(msg))
     );
+    console.log(
+      "sendPushNotification - Gönderilen bildirim sonuçları:",
+      sendResults
+    );
     return { statusCode: 200, body: JSON.stringify({ results: sendResults }) };
   } catch (error) {
-    console.error("Push bildirim gönderimi hatası:", error);
+    console.error(
+      "sendPushNotification - Push bildirim gönderimi hatası:",
+      error
+    );
     return { statusCode: 500, body: error.toString() };
   }
 };

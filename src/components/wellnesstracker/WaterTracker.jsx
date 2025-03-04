@@ -390,10 +390,14 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
 
   useEffect(() => {
     if (user && waterData) {
-      // saveNextWaterReminderTime fonksiyonunu çağırarak veritabanına kaydet
-      saveNextWaterReminderTime(user, waterData).then((next) => {
-        setNextReminder(next);
-      });
+      saveNextWaterReminderTime(user)
+        .then((next) => {
+          console.log("WaterTracker - nextReminder hesaplandı:", next);
+          setNextReminder(next);
+        })
+        .catch((err) =>
+          console.error("WaterTracker - saveNextWaterReminderTime hatası:", err)
+        );
     }
   }, [waterData, user]);
 

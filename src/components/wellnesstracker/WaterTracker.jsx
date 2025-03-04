@@ -26,6 +26,8 @@ import NotificationsOffIcon from "@mui/icons-material/NotificationsOff";
 import WaterNotificationSettingsDialog from "./WaterNotificationSettingsDialog";
 import styles from "./waterAnimation.module.css";
 import { saveNextWaterReminderTime } from "../notify/NotificationScheduler";
+import CircularProgress from "@mui/material/CircularProgress";
+import FitnessCenter from "@mui/icons-material/FitnessCenter";
 
 // Yeni Animasyonlar
 
@@ -540,6 +542,8 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           </Typography>
         </Box>
       </WaterContainer>
+
+      {/* "Dün içilen su" kartı */}
 
       {/* "Dün içilen su" kartı */}
       <Box sx={{ mt: 3, position: "relative", perspective: "500px" }}>

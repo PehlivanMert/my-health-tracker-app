@@ -9,6 +9,18 @@ export const getTurkeyTime = () => {
   );
 };
 
+export const fetchUserNotificationWindow = async (user) => {
+  if (!user || !user.uid) return null;
+  try {
+    const userRef = doc(db, "users", user.uid);
+    const userDoc = await getDoc(userRef);
+    return userDoc.exists() ? userDoc.data().notificationWindow : null;
+  } catch (error) {
+    console.error("fetchUserNotificationWindow hatası:", error);
+    return null;
+  }
+};
+
 // Su verisini Firestore'dan çeker
 export const fetchWaterData = async (user) => {
   if (!user || !user.uid) return null;
@@ -59,7 +71,10 @@ export const computeDynamicWaterInterval = async (user) => {
 // Su bildirim zamanlarını hesaplar (notificationWindow'e göre)
 export const computeWaterReminderTimes = async (user) => {
   const waterData = await fetchWaterData(user);
-  if (!waterData || !user.notificationWindow) {
+  // Eğer user.notificationWindow yoksa, ana kullanıcı dokümanından çekelim.
+  const notificationWindow =
+    user.notificationWindow || (await fetchUserNotificationWindow(user));
+  if (!waterData || !notificationWindow) {
     console.warn(
       "computeWaterReminderTimes - Eksik veri (waterData veya notificationWindow)"
     );
@@ -67,10 +82,8 @@ export const computeWaterReminderTimes = async (user) => {
   }
   const nowTurkey = getTurkeyTime();
   const todayStr = nowTurkey.toLocaleDateString("en-CA");
-  const windowStart = new Date(
-    `${todayStr}T${user.notificationWindow.start}:00`
-  );
-  const windowEnd = new Date(`${todayStr}T${user.notificationWindow.end}:00`);
+  const windowStart = new Date(`${todayStr}T${notificationWindow.start}:00`);
+  const windowEnd = new Date(`${todayStr}T${notificationWindow.end}:00`);
   const dynamicInterval = await computeDynamicWaterInterval(user);
   console.log(
     "computeWaterReminderTimes - Hesaplanan dinamik aralık:",

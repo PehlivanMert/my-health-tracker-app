@@ -18,6 +18,7 @@ import {
   alpha,
   styled,
   keyframes,
+  CircularProgress,
 } from "@mui/material";
 import {
   DeleteForever,
@@ -40,7 +41,6 @@ import { showToast } from "../../utils/weather-theme-notify/NotificationManager"
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
 import { initialRoutines } from "../../utils/constant/ConstantData";
-import CircularProgress from "@mui/material/CircularProgress";
 
 // Animasyonlar
 const float = keyframes`

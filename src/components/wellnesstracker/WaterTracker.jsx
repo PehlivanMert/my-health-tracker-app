@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   Box,
   Card,
-  CardContent,
   Typography,
   Button,
   Grid,
@@ -16,7 +15,7 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import Confetti from "react-confetti";
 import Lottie from "lottie-react";
 import waterAnimation from "../../assets/waterAnimation.json";
-import sparkleAnimation from "../../assets/sparkleAnimation.json"; // Sparkle animasyon dosyasını ekleyin
+import sparkleAnimation from "../../assets/sparkleAnimation.json"; // Sparkle animasyon dosyası
 import { db } from "../auth/firebaseConfig";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import AddIcon from "@mui/icons-material/Add";
@@ -31,8 +30,11 @@ import CircularProgress from "@mui/material/CircularProgress";
 import InputAdornment from "@mui/material/InputAdornment";
 import { SportsBar } from "@mui/icons-material";
 
-// Yeni Animasyonlar
+// ============================================================
+// Animasyonlar & Styled Components
+// ============================================================
 
+// Keyframes tanımlamaları
 const wave = keyframes`
   0% { background-position-x: 0; }
   100% { background-position-x: 1000px; }
@@ -72,7 +74,7 @@ const shine = keyframes`
   100% { transform: translateX(100%); }
 `;
 
-// Yeni Styled Components
+// Achievement animasyon stil bileşenleri
 const AchievementOverlay = styled(Box)({
   position: "fixed",
   top: 0,
@@ -113,7 +115,7 @@ const AchievementText = styled(Typography)({
   },
 });
 
-// Başarı animasyonu bileşeni
+// Başarı animasyon bileşeni
 const AchievementAnimation = ({ message, onComplete }) => {
   return (
     <AchievementOverlay>
@@ -146,7 +148,7 @@ const AchievementAnimation = ({ message, onComplete }) => {
   );
 };
 
-// Utility: Returns current Turkey time
+// Utility: Türkiye saatini döndürür
 const getTurkeyTime = () =>
   new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
 
@@ -207,7 +209,6 @@ const WaterContainer = styled(Box)(({ theme }) => ({
   overflow: "hidden",
   background: "rgba(0, 0, 0, 0.2)",
   boxShadow: "inset 0 0 50px rgba(0, 0, 0, 0.2)",
-  // Hedefe ulaşıldığında ek efekt
   "&.goal-achieved": {
     "&::after": {
       content: '""',
@@ -224,7 +225,9 @@ const WaterContainer = styled(Box)(({ theme }) => ({
   },
 }));
 
+// ============================================================
 // WaterTracker Component
+// ============================================================
 const WaterTracker = ({ user, onWaterDataChange }) => {
   const [waterData, setWaterData] = useState({
     waterIntake: 0,
@@ -248,6 +251,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
 
   const getWaterDocRef = () => doc(db, "users", user.uid, "water", "current");
 
+  // Eğer gün değiştiyse günlük içim sıfırlama işlemini tetikler
   const checkIfResetNeeded = async (data) => {
     const nowTurkey = getTurkeyTime();
     const todayStr = nowTurkey.toLocaleDateString("en-CA");
@@ -256,6 +260,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     }
   };
 
+  // Firestore'dan su verilerini getirir
   const fetchWaterData = async () => {
     const ref = getWaterDocRef();
     const docSnap = await getDoc(ref);
@@ -283,6 +288,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     }
   };
 
+  // Günlük su içim geçmişini günceller; dünden bugüne taşıma ve eski verileri filtreleme
   const resetDailyWaterIntake = async () => {
     try {
       const nowTurkey = getTurkeyTime();
@@ -338,6 +344,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     };
   }, [user]);
 
+  // Su ekleme işlemi; hedefe ulaşıldığında başarı animasyonu tetiklenir
   const handleAddWater = async () => {
     const newIntake = waterData.waterIntake + waterData.glassSize;
     const isGoalAchieved =
@@ -372,6 +379,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     }
   };
 
+  // Su eksiltme işlemi
   const handleRemoveWater = async () => {
     const newIntake = Math.max(0, waterData.waterIntake - waterData.glassSize);
     const ref = getWaterDocRef();
@@ -383,6 +391,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     }
   };
 
+  // Su ayarlarında değişiklik yapıldığında Firestore güncellenir
   const handleWaterSettingChange = async (field, value) => {
     const ref = getWaterDocRef();
     try {
@@ -403,6 +412,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     fetchWaterData();
   }, [user]);
 
+  // Bildirim zamanlaması: saveNextWaterReminderTime fonksiyonu ile Firestore'daki sonraki su bildirim zamanı güncellenir
   useEffect(() => {
     if (user && waterData) {
       saveNextWaterReminderTime(user)
@@ -424,6 +434,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           onComplete={() => setAchievement(null)}
         />
       )}
+      {showConfetti && <Confetti recycle={false} numberOfPieces={800} />}
       <Typography
         variant="h4"
         sx={{
@@ -556,238 +567,6 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         </Box>
       </WaterContainer>
 
-      {/* "Dün içilen su" kartı */}
-
-      <Box
-        sx={{
-          maxWidth: 400,
-          mx: "auto",
-          mt: 3,
-          position: "relative",
-          perspective: "1000px",
-          transition: "all 0.3s ease",
-          "&:hover": {
-            transform: "translateY(-5px)",
-          },
-        }}
-      >
-        <GlowingCard
-          glowColor="#21CBF3"
-          sx={{
-            background:
-              "linear-gradient(145deg, rgba(33,150,243,0.15) 0%, rgba(33,203,243,0.2) 100%)",
-            backdropFilter: "blur(12px)",
-            borderRadius: "24px",
-            p: 3,
-            border: "1px solid rgba(255,255,255,0.2)",
-            boxShadow: "0 8px 32px rgba(33,150,243,0.1)",
-          }}
-        >
-          {/* Su Dalga Efekti */}
-          <Box
-            sx={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: "30%",
-              background:
-                "linear-gradient(transparent 30%, rgba(33,203,243,0.1))",
-              maskImage: "url('data:image/svg+xml,...')",
-              animation: `${wave} 12s linear infinite`,
-              opacity: 0.4,
-            }}
-          />
-
-          {/* İçerik */}
-          <Box
-            sx={{
-              position: "relative",
-              zIndex: 1,
-              textAlign: "center",
-            }}
-          >
-            <Typography
-              variant="h6"
-              sx={{
-                color: "#fff",
-                mb: 2,
-                fontWeight: 600,
-                letterSpacing: "1px",
-                textTransform: "uppercase",
-                fontFamily: '"Montserrat", sans-serif',
-              }}
-            >
-              🎯 Dünkü Hedef Performansı
-            </Typography>
-
-            {/* Dairesel İlerleme */}
-            <Box
-              sx={{
-                position: "relative",
-                width: 150,
-                height: 150,
-                mx: "auto",
-                mb: 3,
-                animation: `${bubble} 3s ease-in-out infinite`,
-              }}
-            >
-              <CircularProgress
-                variant="determinate"
-                value={Math.min(
-                  (waterData.yesterdayWaterIntake /
-                    waterData.dailyWaterTarget) *
-                    100,
-                  100
-                )}
-                size="100%"
-                thickness={4}
-                sx={{
-                  color: "rgba(255,255,255,0.1)",
-                  position: "absolute",
-                  "& .MuiCircularProgress-circle": {
-                    strokeLinecap: "round",
-                  },
-                }}
-              />
-              <CircularProgress
-                variant="determinate"
-                value={Math.min(
-                  (waterData.yesterdayWaterIntake /
-                    waterData.dailyWaterTarget) *
-                    100,
-                  100
-                )}
-                size="100%"
-                thickness={4}
-                sx={{
-                  color: "#21CBF3",
-                  "& .MuiCircularProgress-circle": {
-                    strokeLinecap: "round",
-                  },
-                }}
-              />
-              <Box
-                sx={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  transform: "translate(-50%, -50%)",
-                  textAlign: "center",
-                }}
-              >
-                <Typography
-                  variant="h4"
-                  sx={{
-                    color: "#fff",
-                    fontWeight: 800,
-                    textShadow: "0 2px 8px rgba(33,203,243,0.5)",
-                  }}
-                >
-                  {Math.round(
-                    (waterData.yesterdayWaterIntake /
-                      waterData.dailyWaterTarget) *
-                      100
-                  )}
-                  %
-                </Typography>
-              </Box>
-            </Box>
-
-            {/* İstatistik Grid */}
-            <Grid container spacing={2} sx={{ mb: 2 }}>
-              <Grid item xs={6}>
-                <Box
-                  sx={{
-                    bgcolor: "rgba(255,255,255,0.1)",
-                    borderRadius: 2,
-                    p: 2,
-                    boxShadow: "0 2px 8px rgba(33,150,243,0.1)",
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: "#21CBF3",
-                      fontWeight: 500,
-                      mb: 0.5,
-                    }}
-                  >
-                    Hedef
-                  </Typography>
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      color: "#fff",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {waterData.dailyWaterTarget} ml
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={6}>
-                <Box
-                  sx={{
-                    bgcolor: "rgba(255,255,255,0.1)",
-                    borderRadius: 2,
-                    p: 2,
-                    boxShadow: "0 2px 8px rgba(33,150,243,0.1)",
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: "#21CBF3",
-                      fontWeight: 500,
-                      mb: 0.5,
-                    }}
-                  >
-                    İçilen
-                  </Typography>
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      color: "#fff",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {waterData.yesterdayWaterIntake} ml
-                  </Typography>
-                </Box>
-              </Grid>
-            </Grid>
-
-            {/* Başarı Rozeti */}
-            {waterData.yesterdayWaterIntake >= waterData.dailyWaterTarget && (
-              <Box
-                sx={{
-                  position: "absolute",
-                  top: 16,
-                  right: 16,
-                  width: 40,
-                  height: 40,
-                  bgcolor: "#4CAF50",
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 4px 12px rgba(76,175,80,0.3)",
-                  animation: `${pulse} 2s infinite`,
-                }}
-              >
-                <CheckCircle
-                  sx={{
-                    fontSize: 24,
-                    color: "#fff",
-                  }}
-                />
-              </Box>
-            )}
-          </Box>
-        </GlowingCard>
-      </Box>
-
       <Box sx={{ mt: 3, maxWidth: 500, mx: "auto" }}>
         <Grid container spacing={2}>
           <Grid item xs={12} md={6}>
@@ -894,6 +673,171 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           </Grid>
         </Grid>
       </Box>
+
+      {/* "Dün içilen su" kartı */}
+      <Box
+        sx={{
+          maxWidth: 300,
+          mx: "auto",
+          mt: 2,
+          position: "relative",
+          perspective: "800px",
+          transition: "all 0.3s ease",
+          "&:hover": {
+            transform: "translateY(-3px)",
+          },
+        }}
+      >
+        <GlowingCard
+          glowColor="#21CBF3"
+          sx={{
+            background:
+              "linear-gradient(145deg, rgba(33,150,243,0.15) 0%, rgba(33,203,243,0.2) 100%)",
+            backdropFilter: "blur(10px)",
+            borderRadius: "16px",
+            p: 2,
+            border: "1px solid rgba(255,255,255,0.2)",
+            boxShadow: "0 6px 24px rgba(33,150,243,0.1)",
+          }}
+        >
+          <Box sx={{ position: "relative", zIndex: 1, textAlign: "center" }}>
+            <Typography
+              variant="h6"
+              sx={{
+                color: "#fff",
+                mb: 1,
+                fontWeight: 600,
+                letterSpacing: "0.5px",
+                textTransform: "uppercase",
+                fontFamily: '"Montserrat", sans-serif',
+              }}
+            >
+              🎯 Dünkü Hedef
+            </Typography>
+            <Box
+              sx={{
+                position: "relative",
+                width: 120,
+                height: 120,
+                mx: "auto",
+                mb: 2,
+              }}
+            >
+              <CircularProgress
+                variant="determinate"
+                value={Math.min(
+                  (waterData.yesterdayWaterIntake /
+                    waterData.dailyWaterTarget) *
+                    100,
+                  100
+                )}
+                size="100%"
+                thickness={4}
+                sx={{ color: "rgba(255,255,255,0.1)", position: "absolute" }}
+              />
+              <CircularProgress
+                variant="determinate"
+                value={Math.min(
+                  (waterData.yesterdayWaterIntake /
+                    waterData.dailyWaterTarget) *
+                    100,
+                  100
+                )}
+                size="100%"
+                thickness={4}
+                sx={{ color: "#21CBF3" }}
+              />
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                }}
+              >
+                <Typography
+                  variant="h5"
+                  sx={{ color: "#fff", fontWeight: 800 }}
+                >
+                  {Math.round(
+                    (waterData.yesterdayWaterIntake /
+                      waterData.dailyWaterTarget) *
+                      100
+                  )}
+                  %
+                </Typography>
+              </Box>
+            </Box>
+            <Grid container spacing={1} sx={{ mb: 1 }}>
+              <Grid item xs={6}>
+                <Box
+                  sx={{
+                    bgcolor: "rgba(255,255,255,0.1)",
+                    borderRadius: 1.5,
+                    p: 1.5,
+                    boxShadow: "0 2px 6px rgba(33,150,243,0.1)",
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{ color: "#21CBF3", mb: 0.5 }}
+                  >
+                    Hedef
+                  </Typography>
+                  <Typography
+                    variant="h6"
+                    sx={{ color: "#fff", fontWeight: 600 }}
+                  >
+                    {waterData.dailyWaterTarget} ml
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={6}>
+                <Box
+                  sx={{
+                    bgcolor: "rgba(255,255,255,0.1)",
+                    borderRadius: 1.5,
+                    p: 1.5,
+                    boxShadow: "0 2px 6px rgba(33,150,243,0.1)",
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{ color: "#21CBF3", mb: 0.5 }}
+                  >
+                    İçilen
+                  </Typography>
+                  <Typography
+                    variant="h6"
+                    sx={{ color: "#fff", fontWeight: 600 }}
+                  >
+                    {waterData.yesterdayWaterIntake} ml
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
+            {waterData.yesterdayWaterIntake >= waterData.dailyWaterTarget && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: 12,
+                  right: 12,
+                  width: 30,
+                  height: 30,
+                  bgcolor: "#4CAF50",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <CheckCircle sx={{ fontSize: 18, color: "#fff" }} />
+              </Box>
+            )}
+          </Box>
+        </GlowingCard>
+      </Box>
+
       <WaterNotificationSettingsDialog
         open={waterNotifDialogOpen}
         onClose={() => setWaterNotifDialogOpen(false)}

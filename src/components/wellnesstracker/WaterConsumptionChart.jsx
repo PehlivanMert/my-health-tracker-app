@@ -23,6 +23,10 @@ import {
 } from "recharts";
 import WaterDropIcon from "@mui/icons-material/WaterDrop";
 
+// Bu bileşen, kullanıcının su tüketim verilerini görselleştirir.
+// Ek olarak, Firestore'da NotificationScheduler.js tarafından hesaplanan
+// nextWaterReminderTime bilgisi varsa, ekranda gösterilebilir.
+
 const GlowingCard = styled("div")(({ glowColor }) => ({
   background: "rgba(255, 255, 255, 0.1)",
   borderRadius: "24px",
@@ -30,7 +34,7 @@ const GlowingCard = styled("div")(({ glowColor }) => ({
   boxShadow: `0 0 20px ${glowColor || "#2196F322"}`,
 }));
 
-const WaterConsumptionChart = ({ waterHistory }) => {
+const WaterConsumptionChart = ({ waterHistory, nextReminder }) => {
   const [timeRange, setTimeRange] = useState("month");
   const [displayType, setDisplayType] = useState("area");
   const now = new Date();
@@ -68,6 +72,7 @@ const WaterConsumptionChart = ({ waterHistory }) => {
           filteredData.length
         ).toFixed(1)
       : 0;
+
   return (
     <GlowingCard glowColor="#3F51B522">
       <CardContent>
@@ -282,6 +287,17 @@ const WaterConsumptionChart = ({ waterHistory }) => {
             >
               Su tüketimlerinizi girdiğinizde istatistikleriniz burada
               görünecektir
+            </Typography>
+          </Box>
+        )}
+        {nextReminder && (
+          <Box sx={{ mt: 2, textAlign: "center" }}>
+            <Typography variant="body2" sx={{ color: "#fff" }}>
+              Sonraki Su Hatırlatma:{" "}
+              {new Date(nextReminder).toLocaleTimeString("tr-TR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </Typography>
           </Box>
         )}

@@ -12,11 +12,17 @@ import {
   Button,
 } from "@mui/material";
 
+// Bu bileşen, NotificationScheduler.js’deki dinamik su hatırlatma mantığı ile uyumlu ayarları yönetir.
+// Ayarlar kaydedildikten sonra, opsiyonel updateWaterSchedule callback’i aracılığıyla
+// backend’deki saveNextWaterReminderTime fonksiyonunu tetikleyebilirsiniz.
+
 const WaterNotificationSettingsDialog = ({
   open,
   onClose,
   waterSettings,
   onSave,
+  // İsteğe bağlı: Su hatırlatma zamanını güncellemek için bir callback
+  updateWaterSchedule,
 }) => {
   const [notificationOption, setNotificationOption] = useState(
     waterSettings.waterNotificationOption || "smart"
@@ -25,11 +31,17 @@ const WaterNotificationSettingsDialog = ({
     waterSettings.customNotificationInterval || 1
   );
 
-  const handleSave = () => {
-    onSave({
+  const handleSave = async () => {
+    const newSettings = {
       waterNotificationOption: notificationOption,
       customNotificationInterval: customInterval,
-    });
+    };
+    await onSave(newSettings);
+
+    // Ayarlar kaydedildikten sonra, backend’deki dinamik hesaplamaların tetiklenmesi için çağrı yapabilirsiniz.
+    if (updateWaterSchedule) {
+      await updateWaterSchedule(newSettings);
+    }
     onClose();
   };
 

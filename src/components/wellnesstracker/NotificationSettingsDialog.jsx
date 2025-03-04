@@ -10,6 +10,9 @@ import {
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
 
+// Bu bileşen, kullanıcıya global bildirim penceresi ayarlarını (notificationWindow) sunar.
+// Backend’deki NotificationScheduler.js ve SupplementNotificationScheduler.js, bu pencereyi referans alır.
+
 const NotificationSettingsDialog = ({ open, onClose, user, onSave }) => {
   const [start, setStart] = useState("08:00");
   const [end, setEnd] = useState("22:00");
@@ -22,8 +25,6 @@ const NotificationSettingsDialog = ({ open, onClose, user, onSave }) => {
           const userDoc = await getDoc(userRef);
           if (userDoc.exists()) {
             const data = userDoc.data();
-
-            // Veriler string türünde olduğu için doğrudan state'e atıyoruz
             setStart(data.notificationWindow?.start || "08:00");
             setEnd(data.notificationWindow?.end || "22:00");
             console.log("State'e atanan değerler:", {

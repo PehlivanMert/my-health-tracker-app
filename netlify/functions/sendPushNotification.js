@@ -46,14 +46,13 @@ exports.handler = async function (event, context) {
         if (userData.routines && Array.isArray(userData.routines)) {
           userData.routines.forEach((routine) => {
             if (!routine.notificationEnabled || routine.checked) return;
-            const [localHour, localMinute] = routine.time
+            const [routineHour, routineMinute] = routine.time
               .split(":")
               .map(Number);
-            const utcHour = (localHour - 3 + 24) % 24;
-            const routineTimeInMinutes = utcHour * 60 + localMinute;
-            const currentTimeInMinutes =
-              now.getUTCHours() * 60 + now.getUTCMinutes();
-            if (Math.abs(currentTimeInMinutes - routineTimeInMinutes) < 1) {
+            // Türkiye zamanına göre bugünün rutin zamanını oluştur
+            const routineTime = new Date(now);
+            routineTime.setHours(routineHour, routineMinute, 0, 0);
+            if (Math.abs(now - routineTime) / 60000 < 1) {
               notificationsToSend.push({
                 token: fcmToken,
                 data: {
@@ -79,9 +78,15 @@ exports.handler = async function (event, context) {
               return;
             const offsetMinutes =
               notificationOffsets[eventData.notification] || 0;
+            // Etkinlik başlangıç zamanını Türkiye saatine çevir
             const eventStart = eventData.start.toDate();
+            const eventStartTurkey = new Date(
+              eventStart.toLocaleString("en-US", {
+                timeZone: "Europe/Istanbul",
+              })
+            );
             const triggerTime = new Date(
-              eventStart.getTime() - offsetMinutes * 60000
+              eventStartTurkey.getTime() - offsetMinutes * 60000
             );
             if (Math.abs(now - triggerTime) / 60000 < 1) {
               notificationsToSend.push({
@@ -136,7 +141,13 @@ exports.handler = async function (event, context) {
               waterData.nextWaterReminderTime
             ) {
               const nextReminder = new Date(waterData.nextWaterReminderTime);
-              if (Math.abs(now - nextReminder) / 60000 < 1) {
+              // nextWaterReminderTime'i Türkiye saatine dönüştür
+              const nextReminderTurkey = new Date(
+                nextReminder.toLocaleString("en-US", {
+                  timeZone: "Europe/Istanbul",
+                })
+              );
+              if (Math.abs(now - nextReminderTurkey) / 60000 < 1) {
                 notificationsToSend.push({
                   token: fcmToken,
                   data: {
@@ -172,12 +183,18 @@ exports.handler = async function (event, context) {
               const nextReminder = new Date(
                 suppData.nextSupplementReminderTime
               );
-              if (Math.abs(now - nextReminder) / 60000 < 1) {
+              // nextSupplementReminderTime'i Türkiye saatine dönüştür
+              const nextReminderTurkey = new Date(
+                nextReminder.toLocaleString("en-US", {
+                  timeZone: "Europe/Istanbul",
+                })
+              );
+              if (Math.abs(now - nextReminderTurkey) / 60000 < 1) {
                 notificationsToSend.push({
                   token: fcmToken,
                   data: {
                     title: `${suppData.name} Takviyesini Almayı Unuttunuz!`,
-                    body: `Belirlenen saatte (${nextReminder.toLocaleTimeString(
+                    body: `Belirlenen saatte (${nextReminderTurkey.toLocaleTimeString(
                       "tr-TR",
                       {
                         hour: "2-digit",

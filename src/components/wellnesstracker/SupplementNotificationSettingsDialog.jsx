@@ -10,11 +10,18 @@ import {
   Button,
 } from "@mui/material";
 
+// Bu bileşen, SupplementNotificationScheduler.js’deki hesaplama mantığına uygun şekilde
+// takviyeler için bildirim zamanlarını ayarlamanızı sağlar.
+// Ayarlar kaydedildikten sonra, opsiyonel updateSupplementSchedule callback’i ile
+// her takviye için backend’deki saveNextSupplementReminderTime fonksiyonu çağrılabilir.
+
 const SupplementNotificationSettingsDialog = ({
   open,
   onClose,
   supplements,
   onSave,
+  // İsteğe bağlı: Takviye bildirim zamanlarını güncellemek için callback
+  updateSupplementSchedule,
 }) => {
   const [localSupps, setLocalSupps] = useState([]);
 
@@ -42,14 +49,21 @@ const SupplementNotificationSettingsDialog = ({
     );
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const updatedSupps = localSupps.map((s) => ({
       id: s.id,
       notificationSchedule: s.notificationSchedule
         ? s.notificationSchedule.split(",").map((time) => time.trim())
         : [],
     }));
-    onSave(updatedSupps);
+    await onSave(updatedSupps);
+
+    // Her takviye için backend’deki hatırlatma zamanını güncelleme çağrısı (örneğin saveNextSupplementReminderTime)
+    if (updateSupplementSchedule) {
+      updatedSupps.forEach(async (supp) => {
+        await updateSupplementSchedule(supp);
+      });
+    }
     onClose();
   };
 

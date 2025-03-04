@@ -56,14 +56,40 @@ export const computeDynamicWaterInterval = async (user) => {
     );
     return Number(waterData.customNotificationInterval) * 60;
   } else if (waterData.waterNotificationOption === "smart") {
-    const remaining = waterData.dailyWaterTarget - waterData.waterIntake;
-    const avgRate = remaining / (12 * 60);
-    intervalMinutes = Math.max(30, Math.min(remaining / avgRate, 120));
+    let remaining = waterData.dailyWaterTarget - waterData.waterIntake;
+    let numGlassesRemaining = Math.ceil(remaining / waterData.glassSize);
+    const nowTurkey = getTurkeyTime();
+    const todayStr = nowTurkey.toLocaleDateString("en-CA");
+    let windowEnd;
+    if (waterData.notificationWindow && waterData.notificationWindow.end) {
+      windowEnd = new Date(
+        `${todayStr}T${waterData.notificationWindow.end}:00`
+      );
+      if (nowTurkey > windowEnd) {
+        windowEnd.setDate(windowEnd.getDate() + 1);
+      }
+    } else {
+      windowEnd = new Date(`${todayStr}T22:00:00`);
+      if (nowTurkey > windowEnd) {
+        windowEnd.setDate(windowEnd.getDate() + 1);
+      }
+    }
+    const remainingWindowMinutes = (windowEnd - nowTurkey) / 60000;
+    if (numGlassesRemaining > 0) {
+      intervalMinutes = Math.floor(
+        remainingWindowMinutes / numGlassesRemaining
+      );
+      intervalMinutes = Math.max(15, intervalMinutes); // Minimum 15 dakika
+    } else {
+      intervalMinutes = 60; // Varsayılan
+    }
     console.log("computeDynamicWaterInterval - Smart mod hesaplaması:", {
       remaining,
-      avgRate,
+      numGlassesRemaining,
+      remainingWindowMinutes,
       intervalMinutes,
     });
+    return intervalMinutes;
   }
   return intervalMinutes;
 };
@@ -73,7 +99,9 @@ export const computeWaterReminderTimes = async (user) => {
   const waterData = await fetchWaterData(user);
   // Eğer user.notificationWindow yoksa, ana kullanıcı dokümanından çekelim.
   const notificationWindow =
-    user.notificationWindow || (await fetchUserNotificationWindow(user));
+    waterData && waterData.notificationWindow
+      ? waterData.notificationWindow
+      : await fetchUserNotificationWindow(user);
   if (!waterData || !notificationWindow) {
     console.warn(
       "computeWaterReminderTimes - Eksik veri (waterData veya notificationWindow)"

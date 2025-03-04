@@ -49,6 +49,7 @@ import WaterTracker from "./WaterTracker";
 import WaterConsumptionChart from "./WaterConsumptionChart";
 import SupplementConsumptionChart from "./SupplementConsumptionChart";
 import SupplementNotificationSettingsDialog from "./SupplementNotificationSettingsDialog";
+import { saveNextSupplementReminderTime } from "../notify/SupplementNotificationScheduler";
 
 const float = keyframes`
   0% { transform: translateY(0px); }
@@ -263,15 +264,29 @@ const WellnessTracker = ({ user }) => {
   };
 
   const handleSaveSupplementNotifications = async (updatedSupplements) => {
-    const ref = getSupplementsRef();
+    const ref = getSupplementsRef(); // Firestore'daki supplements koleksiyonuna erişim sağlayan fonksiyon
     try {
-      for (const supp of updatedSupplements) {
-        const suppRef = doc(ref, supp.id);
+      for (const updatedSupp of updatedSupplements) {
+        // Mevcut supplement verisini supplements dizisinden bul
+        const supp = supplements.find((s) => s.id === updatedSupp.id);
+        if (!supp) continue;
+
+        // Yeni notificationSchedule değerini supplement nesnesine ekle
+        const newSupp = {
+          ...supp,
+          notificationSchedule: updatedSupp.notificationSchedule,
+        };
+
+        // Firestore'da notificationSchedule alanını güncelle
+        const suppRef = doc(ref, newSupp.id);
         await updateDoc(suppRef, {
-          notificationSchedule: supp.notificationSchedule,
+          notificationSchedule: newSupp.notificationSchedule,
         });
+
+        // nextSupplementReminderTime'ı hesapla ve kaydet
+        await saveNextSupplementReminderTime(user, newSupp);
       }
-      await fetchSupplements();
+      await fetchSupplements(); // Güncel veriyi çekmek için
     } catch (error) {
       console.error("Takviye bildirim ayarları güncelleme hatası:", error);
     }

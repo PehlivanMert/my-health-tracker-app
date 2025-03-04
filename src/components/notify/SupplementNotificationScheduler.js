@@ -21,63 +21,65 @@ export const computeSupplementReminderTimes = (suppData, user) => {
     todayStr
   );
 
-  // Manuel bildirim zamanı varsa
+  // (1) Manuel bildirim zamanı varsa (günlük kullanım hatırlatması için)
   if (
     suppData.notificationSchedule &&
     suppData.notificationSchedule.length > 0
   ) {
     suppData.notificationSchedule.forEach((timeStr) => {
-      const scheduled = new Date(`${todayStr}T${timeStr}:00`);
+      let scheduled = new Date(`${todayStr}T${timeStr}:00`);
+      // Eğer hesaplanan zaman geçmişse, ertesi güne al
+      if (scheduled < now) {
+        scheduled.setDate(scheduled.getDate() + 1);
+      }
       times.push(scheduled);
-      console.log(
-        "computeSupplementReminderTimes - Manuel olarak hesaplanan zaman:",
-        scheduled
-      );
+      console.log("Manuel olarak hesaplanan bildirim zamanı:", scheduled);
     });
   }
-  // Otomatik hesaplama: Günlük kullanım tanımlıysa
+  // (2) Manuel zaman yoksa ve günlük kullanım tanımlıysa, varsayılan hatırlatma zamanı
   else if (suppData.dailyUsage > 0) {
-    const estimatedRemainingDays = suppData.quantity / suppData.dailyUsage;
-    console.log(
-      "computeSupplementReminderTimes - estimatedRemainingDays:",
-      estimatedRemainingDays
-    );
-    if (estimatedRemainingDays <= 1) {
-      const autoTime = new Date(now.getTime() + 1 * 60000);
-      times.push(autoTime);
-      console.log(
-        "computeSupplementReminderTimes - Kritik durum, 1 dakika sonrası hesaplanan zaman:",
-        autoTime
-      );
+    let defaultTime;
+    if (user.notificationWindow && user.notificationWindow.end) {
+      defaultTime = new Date(`${todayStr}T${user.notificationWindow.end}:00`);
+      if (defaultTime < now) {
+        defaultTime.setDate(defaultTime.getDate() + 1);
+      }
     } else {
-      if (user.notificationWindow && user.notificationWindow.end) {
-        const windowEnd = new Date(
-          `${todayStr}T${user.notificationWindow.end}:00`
-        );
-        times.push(windowEnd);
+      defaultTime = new Date(now.getTime() + 60 * 60000);
+    }
+    times.push(defaultTime);
+    console.log("Varsayılan günlük hatırlatma zamanı:", defaultTime);
+  }
+
+  // (3) Ek düşük miktar (expiration) bildirimleri: kalan gün 14, 7, 3 veya 1 olduğunda uyarı gönder
+  if (suppData.dailyUsage > 0) {
+    const remainingDays = suppData.quantity / suppData.dailyUsage;
+    const thresholds = [14, 7, 3, 1];
+    thresholds.forEach((threshold) => {
+      if (Math.floor(remainingDays) === threshold) {
+        // Bildirimi, notificationWindow başlangıcına veya yoksa 5 dakika sonrasına ayarla
+        let lowQtyTime;
+        if (user.notificationWindow && user.notificationWindow.start) {
+          lowQtyTime = new Date(
+            `${todayStr}T${user.notificationWindow.start}:00`
+          );
+          if (lowQtyTime < now) {
+            lowQtyTime.setDate(lowQtyTime.getDate() + 1);
+          }
+        } else {
+          lowQtyTime = new Date(now.getTime() + 5 * 60000);
+        }
+        times.push(lowQtyTime);
         console.log(
-          "computeSupplementReminderTimes - Bildirim penceresi kullanılarak hesaplanan zaman:",
-          windowEnd
-        );
-      } else {
-        const autoTime = new Date(now.getTime() + 60 * 60000);
-        times.push(autoTime);
-        console.log(
-          "computeSupplementReminderTimes - Varsayılan 1 saat sonrası hesaplanan zaman:",
-          autoTime
+          `Düşük miktar uyarısı için (${threshold} gün kaldı) hesaplanan zaman:`,
+          lowQtyTime
         );
       }
-    }
-  } else {
-    console.warn(
-      "computeSupplementReminderTimes - Hiçbir bildirim zamanı hesaplanamadı: dailyUsage yok veya 0"
-    );
+    });
   }
+
   times.sort((a, b) => a - b);
-  console.log(
-    "computeSupplementReminderTimes - Sıralanmış bildirim zamanları:",
-    times
-  );
+  console.log("Tüm hesaplanan takviye bildirim zamanları:", times);
   return times;
 };
 
@@ -94,7 +96,7 @@ export const getNextSupplementReminderTime = (suppData, user) => {
       return time;
     }
   }
-  // Eğer bugünkü tüm bildirim saatleri geçmişse, yarının ilk bildirim zamanını ayarla
+  // Bugünkü tüm bildirim saatleri geçmişse, yarın ilk zamanı ayarla
   if (reminderTimes.length > 0) {
     const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);

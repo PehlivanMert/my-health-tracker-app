@@ -176,6 +176,7 @@ exports.handler = async function (event, context) {
               const nextReminder = new Date(
                 suppData.nextSupplementReminderTime
               );
+              // Türkiye saatine göre ayarlanmış zaman
               const nextReminderTurkey = new Date(
                 nextReminder.toLocaleString("en-US", {
                   timeZone: "Europe/Istanbul",

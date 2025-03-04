@@ -449,7 +449,7 @@ const DailyRoutine = ({ user }) => {
           Günlük Rutinler
         </Typography>
 
-        <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid container spacing={{ xs: 1, sm: 3 }} sx={{ mb: 3 }}>
           {[
             {
               title: "Günlük Başarı",
@@ -473,7 +473,7 @@ const DailyRoutine = ({ user }) => {
               color: "#9C27B0",
             },
           ].map((stat, index) => (
-            <Grid item xs={12} sm={4} md={4} key={index}>
+            <Grid item xs={4} sm={4} md={4} key={index}>
               <Box
                 sx={{
                   position: "relative",
@@ -486,8 +486,11 @@ const DailyRoutine = ({ user }) => {
                   transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                   overflow: "hidden",
                   "&:hover": {
-                    transform: "translateY(-5px)",
-                    boxShadow: `0 12px 40px ${stat.color}40`,
+                    transform: { xs: "none", sm: "translateY(-5px)" },
+                    boxShadow: {
+                      xs: "0 8px 32px rgba(0,0,0,0.1)",
+                      sm: `0 12px 40px ${stat.color}40`,
+                    },
                   },
                 }}
               >
@@ -503,7 +506,7 @@ const DailyRoutine = ({ user }) => {
                     maskImage:
                       "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 100 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 15 Q25 5 50 15 T100 15 L100 20 L0 20 Z' fill='white'/%3E%3C/svg%3E\")",
                     animation: "wave 8s linear infinite",
-                    opacity: 0.6,
+                    opacity: { xs: 0.3, sm: 0.6 },
                   }}
                 />
 
@@ -511,7 +514,7 @@ const DailyRoutine = ({ user }) => {
                   sx={{
                     display: "flex",
                     alignItems: "center",
-                    p: 3,
+                    p: { xs: 2, sm: 3 },
                     position: "relative",
                     zIndex: 1,
                   }}
@@ -520,9 +523,9 @@ const DailyRoutine = ({ user }) => {
                   <Box
                     sx={{
                       position: "relative",
-                      mr: 2,
-                      width: { xs: 70, sm: 80 },
-                      height: { xs: 70, sm: 80 },
+                      mr: { xs: 1, sm: 2 },
+                      width: { xs: 50, sm: 80 },
+                      height: { xs: 50, sm: 80 },
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -557,7 +560,7 @@ const DailyRoutine = ({ user }) => {
                     >
                       {React.cloneElement(stat.icon, {
                         sx: {
-                          fontSize: { xs: "1.5rem", sm: "2rem" },
+                          fontSize: { xs: "1.2rem", sm: "2rem" },
                           color: "white",
                           filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))",
                         },
@@ -574,6 +577,7 @@ const DailyRoutine = ({ user }) => {
                         fontWeight: 600,
                         textTransform: "uppercase",
                         letterSpacing: "0.5px",
+                        fontSize: { xs: "0.7rem", sm: "0.875rem" },
                       }}
                     >
                       {stat.title}
@@ -586,6 +590,7 @@ const DailyRoutine = ({ user }) => {
                         background: `linear-gradient(45deg, ${stat.color} 0%, ${stat.color}cc 100%)`,
                         WebkitBackgroundClip: "text",
                         WebkitTextFillColor: "transparent",
+                        fontSize: { xs: "1.5rem", sm: "2.125rem" },
                       }}
                     >
                       {stat.value}
@@ -596,6 +601,7 @@ const DailyRoutine = ({ user }) => {
                           color: "text.secondary",
                           ml: 0.5,
                           fontWeight: 500,
+                          fontSize: { xs: "0.8rem", sm: "1rem" },
                         }}
                       >
                         / {stat.total}
@@ -607,6 +613,7 @@ const DailyRoutine = ({ user }) => {
                         display: "block",
                         color: "text.secondary",
                         mt: 0.5,
+                        fontSize: { xs: "0.7rem", sm: "0.875rem" },
                       }}
                     >
                       {((stat.value / stat.total) * 100).toFixed(1)}% Tamamlandı

@@ -26,10 +26,23 @@ import NotificationsOffIcon from "@mui/icons-material/NotificationsOff";
 import WaterNotificationSettingsDialog from "./WaterNotificationSettingsDialog";
 import styles from "./waterAnimation.module.css";
 import { saveNextWaterReminderTime } from "../notify/NotificationScheduler";
+import CheckCircle from "@mui/icons-material/CheckCircle";
 import CircularProgress from "@mui/material/CircularProgress";
-import FitnessCenter from "@mui/icons-material/FitnessCenter";
+import InputAdornment from "@mui/material/InputAdornment";
+import { SportsBar } from "@mui/icons-material";
 
 // Yeni Animasyonlar
+
+const wave = keyframes`
+  0% { background-position-x: 0; }
+  100% { background-position-x: 1000px; }
+`;
+
+const bubble = keyframes`
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+`;
 
 const pulse = keyframes`
   0% { transform: scale(1); }
@@ -545,258 +558,292 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
 
       {/* "Dün içilen su" kartı */}
 
-      {/* "Dün içilen su" kartı */}
-      <Box sx={{ mt: 3, position: "relative", perspective: "500px" }}>
-        <Card
+      <Box
+        sx={{
+          maxWidth: 400,
+          mx: "auto",
+          mt: 3,
+          position: "relative",
+          perspective: "1000px",
+          transition: "all 0.3s ease",
+          "&:hover": {
+            transform: "translateY(-5px)",
+          },
+        }}
+      >
+        <GlowingCard
+          glowColor="#21CBF3"
           sx={{
-            maxHeight: 300,
-            borderRadius: "24px",
-            padding: 3,
-            maxWidth: "400px",
-            margin: "0 auto",
             background:
-              "linear-gradient(135deg, rgba(12,84,196,0.5) 0%, rgba(42,145,255,0.4) 100%)",
-            border: "1px solid rgba(255,255,255,0.6)",
-            boxShadow: `0 8px 32px 0 rgba(31, 38, 135, 0.37),
-                   inset 0 4px 12px rgba(255,255,255,0.15)`,
-            backdropFilter: "blur(8px) saturate(180%)",
-            transformStyle: "preserve-3d",
-            transition: "all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
-            cursor: "pointer",
-            "&:hover": {
-              transform: "rotateY(10deg) rotateX(5deg) translateY(-10px)",
-              boxShadow: "0 15px 45px rgba(33,203,243,0.4)",
-            },
+              "linear-gradient(145deg, rgba(33,150,243,0.15) 0%, rgba(33,203,243,0.2) 100%)",
+            backdropFilter: "blur(12px)",
+            borderRadius: "24px",
+            p: 3,
+            border: "1px solid rgba(255,255,255,0.2)",
+            boxShadow: "0 8px 32px rgba(33,150,243,0.1)",
           }}
         >
-          {/* Arkaplan Dalga Efekti */}
+          {/* Su Dalga Efekti */}
           <Box
             sx={{
               position: "absolute",
               bottom: 0,
               left: 0,
               right: 0,
-              height: "40%",
-              background: `linear-gradient(transparent 25%, rgba(33,203,243,0.15))`,
-              maskImage:
-                "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 100 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 15 Q25 5 50 15 T100 15 L100 20 L0 20 Z' fill='white'/%3E%3C/svg%3E\")`",
-              animation: "wave 12s infinite linear",
-              opacity: 0.6,
-              "@keyframes wave": {
-                "0%": { backgroundPositionX: "0px" },
-                "100%": { backgroundPositionX: "1000px" },
-              },
+              height: "30%",
+              background:
+                "linear-gradient(transparent 30%, rgba(33,203,243,0.1))",
+              maskImage: "url('data:image/svg+xml,...')",
+              animation: `${wave} 12s linear infinite`,
+              opacity: 0.4,
             }}
           />
 
-          {/* Parlamalar */}
+          {/* İçerik */}
           <Box
             sx={{
-              position: "absolute",
-              top: "-20%",
-              right: "-10%",
-              width: "120px",
-              height: "120px",
-              background:
-                "radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 60%)",
-              filter: "blur(15px)",
-              transform: "rotate(45deg)",
+              position: "relative",
+              zIndex: 1,
+              textAlign: "center",
             }}
-          />
-
-          <CardContent sx={{ position: "relative", zIndex: 1, padding: 3 }}>
-            {/* Animasyonlu Su Damlası */}
-            <Box
-              sx={{
-                width: 80,
-                height: 80,
-                background: "linear-gradient(45deg, #2196F3 0%, #21CBF3 100%)",
-                borderRadius: "30% 70% 70% 30% / 30% 30% 70% 70%",
-                margin: "-50px auto 25px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 8px 32px rgba(33,203,243,0.4)",
-                animation: "waterDrop 3s infinite",
-                transformStyle: "preserve-3d",
-                "@keyframes waterDrop": {
-                  "0%, 100%": {
-                    transform: "scale(1) rotate(0deg)",
-                    borderRadius: "30% 70% 70% 30% / 30% 30% 70% 70%",
-                  },
-                  "50%": {
-                    transform: "scale(0.95) rotate(10deg)",
-                    borderRadius: "50% 50% 70% 30% / 60% 50% 50% 40%",
-                  },
-                },
-              }}
-            >
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="white">
-                <path d="M12 2.67c-1.15-2.67-4.67-4-4.67-4S3.33 4 3.33 6.67c0 2.67 4 6 8.67 11.33 4.67-5.33 8.67-8.66 8.67-11.33C20.67 4 18.85 0 16.67 0s-4.52 1.33-4.67 2.67z" />
-              </svg>
-            </Box>
-
-            {/* İçerik */}
+          >
             <Typography
-              variant="h5"
+              variant="h6"
               sx={{
                 color: "#fff",
+                mb: 2,
                 fontWeight: 600,
-                mb: 1,
-                textAlign: "center",
+                letterSpacing: "1px",
                 textTransform: "uppercase",
-                letterSpacing: "2px",
-                textShadow: "0 2px 8px rgba(33,203,243,0.5)",
+                fontFamily: '"Montserrat", sans-serif',
               }}
             >
-              🌟 DÜN SU HEDEFİNE ULAŞTIN!
+              🎯 Dünkü Hedef Performansı
             </Typography>
 
-            {/* Dinamik İlerleme Çubuğu */}
+            {/* Dairesel İlerleme */}
             <Box
               sx={{
-                width: "100%",
-                height: "12px",
-                background: "rgba(255,255,255,0.15)",
-                borderRadius: 20,
-                mt: 3,
-                mb: 2,
-                overflow: "hidden",
                 position: "relative",
+                width: 150,
+                height: 150,
+                mx: "auto",
+                mb: 3,
+                animation: `${bubble} 3s ease-in-out infinite`,
               }}
             >
-              <Box
+              <CircularProgress
+                variant="determinate"
+                value={Math.min(
+                  (waterData.yesterdayWaterIntake /
+                    waterData.dailyWaterTarget) *
+                    100,
+                  100
+                )}
+                size="100%"
+                thickness={4}
                 sx={{
-                  width: `${Math.min(
-                    (waterData.yesterdayWaterIntake /
-                      waterData.dailyWaterTarget) *
-                      100, // Düzeltildi
-                    100
-                  )}%`,
-                  height: "100%",
-                  background:
-                    "linear-gradient(90deg, #2196F3 0%, #21CBF3 100%)",
-                  borderRadius: 20,
-                  transition: "width 1s ease-out",
-                  position: "relative",
-                  "&::after": {
-                    content: '""',
-                    position: "absolute",
-                    right: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: "20px",
-                    background:
-                      "linear-gradient(to right, transparent, rgba(255,255,255,0.3))",
+                  color: "rgba(255,255,255,0.1)",
+                  position: "absolute",
+                  "& .MuiCircularProgress-circle": {
+                    strokeLinecap: "round",
                   },
                 }}
               />
-            </Box>
-
-            {/* Detaylar */}
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                mt: 2,
-                padding: "0 15px",
-              }}
-            >
-              <Box sx={{ textAlign: "center" }}>
-                <Typography
-                  variant="body2"
-                  sx={{ color: "rgba(255,255,255,0.8)" }}
-                >
-                  Hedef
-                </Typography>
-                <Typography
-                  variant="h6"
-                  sx={{ color: "#21CBF3", fontWeight: 700 }}
-                >
-                  {waterData.dailyWaterTarget} ml {/* Düzeltildi */}
-                </Typography>
-              </Box>
-              <Box sx={{ textAlign: "center" }}>
-                <Typography
-                  variant="body2"
-                  sx={{ color: "rgba(255,255,255,0.8)" }}
-                >
-                  İçilen
-                </Typography>
-                <Typography
-                  variant="h6"
-                  sx={{ color: "#fff", fontWeight: 700 }}
-                >
-                  {waterData.yesterdayWaterIntake} ml
-                </Typography>
-              </Box>
-            </Box>
-
-            {/* Konfeti Efekti */}
-            {waterData.yesterdayWaterIntake >= waterData.dailyWaterTarget && ( // Düzeltildi
+              <CircularProgress
+                variant="determinate"
+                value={Math.min(
+                  (waterData.yesterdayWaterIntake /
+                    waterData.dailyWaterTarget) *
+                    100,
+                  100
+                )}
+                size="100%"
+                thickness={4}
+                sx={{
+                  color: "#21CBF3",
+                  "& .MuiCircularProgress-circle": {
+                    strokeLinecap: "round",
+                  },
+                }}
+              />
               <Box
                 sx={{
                   position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  pointerEvents: "none",
-                  animation: "confetti 4s infinite",
-                  "@keyframes confetti": {
-                    "0%": { backgroundPosition: "0% 50%" },
-                    "100%": { backgroundPosition: "100% 50%" },
-                  },
-                  "&::before": {
-                    content: '""',
-                    position: "absolute",
-                    inset: 0,
-                    background: `radial-gradient(circle at 50% 50%, 
-          rgba(255,223,0,0.5) 0%,
-          rgba(255,61,0,0.4) 20%,
-          rgba(0,255,163,0.3) 40%,
-          transparent 70%)`,
-                    mixBlendMode: "screen",
-                    filter: "blur(20px)",
-                  },
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  textAlign: "center",
                 }}
-              />
+              >
+                <Typography
+                  variant="h4"
+                  sx={{
+                    color: "#fff",
+                    fontWeight: 800,
+                    textShadow: "0 2px 8px rgba(33,203,243,0.5)",
+                  }}
+                >
+                  {Math.round(
+                    (waterData.yesterdayWaterIntake /
+                      waterData.dailyWaterTarget) *
+                      100
+                  )}
+                  %
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* İstatistik Grid */}
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid item xs={6}>
+                <Box
+                  sx={{
+                    bgcolor: "rgba(255,255,255,0.1)",
+                    borderRadius: 2,
+                    p: 2,
+                    boxShadow: "0 2px 8px rgba(33,150,243,0.1)",
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "#21CBF3",
+                      fontWeight: 500,
+                      mb: 0.5,
+                    }}
+                  >
+                    Hedef
+                  </Typography>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      color: "#fff",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {waterData.dailyWaterTarget} ml
+                  </Typography>
+                </Box>
+              </Grid>
+              <Grid item xs={6}>
+                <Box
+                  sx={{
+                    bgcolor: "rgba(255,255,255,0.1)",
+                    borderRadius: 2,
+                    p: 2,
+                    boxShadow: "0 2px 8px rgba(33,150,243,0.1)",
+                  }}
+                >
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "#21CBF3",
+                      fontWeight: 500,
+                      mb: 0.5,
+                    }}
+                  >
+                    İçilen
+                  </Typography>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      color: "#fff",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {waterData.yesterdayWaterIntake} ml
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
+
+            {/* Başarı Rozeti */}
+            {waterData.yesterdayWaterIntake >= waterData.dailyWaterTarget && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: 16,
+                  right: 16,
+                  width: 40,
+                  height: 40,
+                  bgcolor: "#4CAF50",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 4px 12px rgba(76,175,80,0.3)",
+                  animation: `${pulse} 2s infinite`,
+                }}
+              >
+                <CheckCircle
+                  sx={{
+                    fontSize: 24,
+                    color: "#fff",
+                  }}
+                />
+              </Box>
             )}
-          </CardContent>
-        </Card>
+          </Box>
+        </GlowingCard>
       </Box>
 
-      <Box sx={{ mt: 2, maxWidth: 400, mx: "auto" }}>
+      <Box sx={{ mt: 3, maxWidth: 500, mx: "auto" }}>
         <Grid container spacing={2}>
-          <Grid item xs={6}>
+          <Grid item xs={12} md={6}>
             <TextField
-              label="Bardak Boyutu (ml)"
+              fullWidth
+              label="Bardak Boyutu"
               type="number"
               value={waterData.glassSize}
               onChange={(e) =>
                 handleWaterSettingChange("glassSize", Number(e.target.value))
               }
-              variant="outlined"
-              fullWidth
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  backgroundColor: "rgba(255,255,255,0.1)",
+              variant="filled"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SportsBar
+                      sx={{
+                        color: "#21CBF3",
+                        fontSize: 28,
+                        filter: "drop-shadow(0 2px 4px rgba(33,203,243,0.3))",
+                      }}
+                    />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">ml</InputAdornment>
+                ),
+                sx: {
+                  background: "rgba(255,255,255,0.1)",
+                  borderRadius: "12px",
+                  border: "1px solid rgba(33,203,243,0.3)",
                   color: "#fff",
-                  backdropFilter: "blur(10px)",
-                  borderRadius: 2,
-                  transition: "all 0.3s ease",
-                  "&:hover": { backgroundColor: "rgba(255,255,255,0.15)" },
+                  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                  "&:hover": {
+                    background: "rgba(255,255,255,0.15)",
+                    transform: "translateY(-2px)",
+                  },
+                  "&.Mui-focused": {
+                    boxShadow: "0 0 15px rgba(33,203,243,0.4)",
+                    borderColor: "#21CBF3",
+                  },
                 },
-                "& .MuiInputLabel-root": { color: "#fff" },
-                "& .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "rgba(255,255,255,0.3)",
+              }}
+              InputLabelProps={{
+                sx: {
+                  color: "rgba(255,255,255,0.7)",
+                  "&.Mui-focused": { color: "#21CBF3" },
                 },
               }}
             />
           </Grid>
-          <Grid item xs={6}>
+
+          <Grid item xs={12} md={6}>
             <TextField
-              label="Günlük Su Hedefi (ml)"
+              fullWidth
+              label="Günlük Hedef"
               type="number"
               value={waterData.dailyWaterTarget}
               onChange={(e) =>
@@ -805,20 +852,42 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
                   Number(e.target.value)
                 )
               }
-              variant="outlined"
-              fullWidth
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  backgroundColor: "rgba(255,255,255,0.1)",
+              variant="filled"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <CheckCircle
+                      sx={{
+                        color: "#4CAF50",
+                        fontSize: 28,
+                        filter: "drop-shadow(0 2px 4px rgba(76,175,80,0.3))",
+                      }}
+                    />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">ml</InputAdornment>
+                ),
+                sx: {
+                  background: "rgba(255,255,255,0.1)",
+                  borderRadius: "12px",
+                  border: "1px solid rgba(76,175,80,0.3)",
                   color: "#fff",
-                  backdropFilter: "blur(10px)",
-                  borderRadius: 2,
-                  transition: "all 0.3s ease",
-                  "&:hover": { backgroundColor: "rgba(255,255,255,0.15)" },
+                  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                  "&:hover": {
+                    background: "rgba(255,255,255,0.15)",
+                    transform: "translateY(-2px)",
+                  },
+                  "&.Mui-focused": {
+                    boxShadow: "0 0 15px rgba(76,175,80,0.4)",
+                    borderColor: "#4CAF50",
+                  },
                 },
-                "& .MuiInputLabel-root": { color: "#fff" },
-                "& .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "rgba(255,255,255,0.3)",
+              }}
+              InputLabelProps={{
+                sx: {
+                  color: "rgba(255,255,255,0.7)",
+                  "&.Mui-focused": { color: "#4CAF50" },
                 },
               }}
             />

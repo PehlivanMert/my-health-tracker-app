@@ -129,11 +129,9 @@ const computeWindowTimes = (windowObj) => {
     // Overnight pencere: örn. {start: "18:45", end: "05:30"}
     let potentialStart = new Date(`${todayStr}T${windowObj.start}:00`);
     let potentialEnd = new Date(`${todayStr}T${windowObj.end}:00`);
-    // Eğer şu an potentialEnd'den önce ise, aktif pencere dünkü start'tan bugünkü end'e
     if (now < potentialEnd) {
       potentialStart.setDate(potentialStart.getDate() - 1);
     } else {
-      // Aksi halde, pencere bugünkü start'tan yarınki end'e
       potentialEnd.setDate(potentialEnd.getDate() + 1);
     }
     windowStart = potentialStart;
@@ -193,7 +191,8 @@ export const getMotivationalMessageForTime = (date) => {
 
 /**
  * Kullanıcının bildirim moduna göre su hatırlatma zamanlarını hesaplar.
- * Smart modda profil verilerinden (boy, kilo, cinsiyet, doğum tarihi) otomatik hesaplama yapılır;
+ * Smart modda, profil verilerinden (boy, kilo, cinsiyet, doğum tarihi) hesaplanan günlük su hedefinden,
+ * o güne kadar içilen su miktarı çıkarılarak kalan miktar üzerinden bildirim zamanları planlanır.
  * Custom modda ise kullanıcının belirlediği saat aralığına göre planlanır.
  * Her bildirim zamanı için günün saatine uygun motivasyon mesajı eklenir.
  * @param {Object} user - Firebase kullanıcı nesnesi
@@ -227,14 +226,26 @@ export const computeWaterReminderTimes = async (user) => {
     }
     const bmr = calculateBMR(gender, weight, height, age);
     const dailyWaterTarget = calculateDailyWaterTarget(bmr, 1.4);
-    const glassSize = data.glassSize || 250;
-    const numGlasses = Math.ceil(dailyWaterTarget / glassSize);
+    const waterIntake = data.waterIntake || 0;
+    const remainingTarget = Math.max(dailyWaterTarget - waterIntake, 0);
     console.log(
-      "computeWaterReminderTimes - dailyWaterTarget:",
+      "computeWaterReminderTimes - Günlük hedef:",
       dailyWaterTarget,
-      "glassSize:",
-      glassSize,
-      "numGlasses:",
+      "İçilen su:",
+      waterIntake,
+      "Kalan su hedefi:",
+      remainingTarget
+    );
+    if (remainingTarget <= 0) {
+      console.log(
+        "computeWaterReminderTimes - Günlük su hedefi aşıldı, bildirim zamanı hesaplanmadı."
+      );
+      return [];
+    }
+    const glassSize = data.glassSize || 250;
+    const numGlasses = Math.ceil(remainingTarget / glassSize);
+    console.log(
+      "computeWaterReminderTimes - Kalan hedefe göre numGlasses:",
       numGlasses
     );
 
@@ -257,7 +268,7 @@ export const computeWaterReminderTimes = async (user) => {
 
     // Başlangıç zamanı: aktif pencere içinde, şimdi+1 saniye veya pencere başlangıcı (hangisi daha sonraysa)
     let startTime = Math.max(windowStart.getTime(), now.getTime() + 1000);
-    while (startTime <= windowEnd.getTime()) {
+    while (startTime <= windowEnd.getTime() && numGlasses > 0) {
       const reminderTime = new Date(startTime);
       const message = getMotivationalMessageForTime(reminderTime);
       reminderSchedule.push({ time: reminderTime, message });

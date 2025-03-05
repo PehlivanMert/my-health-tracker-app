@@ -1,5 +1,5 @@
 // SupplementNotificationScheduler.js
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
 
 // Türkiye saatini döndürür
@@ -12,7 +12,7 @@ export const getTurkeyTime = () => {
 };
 
 // Takviye bildirim zamanlarını hesaplar
-export const computeSupplementReminderTimes = (suppData, user) => {
+export const computeSupplementReminderTimes = async (suppData, user) => {
   const times = [];
   const now = getTurkeyTime();
   const todayStr = now.toLocaleDateString("en-CA");
@@ -42,7 +42,44 @@ export const computeSupplementReminderTimes = (suppData, user) => {
       "computeSupplementReminderTimes - estimatedRemainingDays:",
       estimatedRemainingDays
     );
+
+    // Eşik kontrolü: 14, 7, 3, 1 gün
+    const thresholds = [14, 7, 3, 1];
+    if (thresholds.includes(Math.floor(estimatedRemainingDays))) {
+      console.log(
+        "computeSupplementReminderTimes - estimatedRemainingDays eşik değeri tetiklendi:",
+        Math.floor(estimatedRemainingDays)
+      );
+      if (user.notificationWindow && user.notificationWindow.end) {
+        const windowEnd = new Date(
+          `${todayStr}T${user.notificationWindow.end}:00`
+        );
+        times.push(windowEnd);
+        console.log(
+          "computeSupplementReminderTimes - Eşik durumunda bildirim penceresi kullanılarak hesaplanan zaman:",
+          windowEnd
+        );
+      } else {
+        const defaultTime = new Date(now.getTime() + 60 * 60000);
+        times.push(defaultTime);
+        console.log(
+          "computeSupplementReminderTimes - Eşik durumunda varsayılan 1 saat sonrası hesaplanan zaman:",
+          defaultTime
+        );
+      }
+    } else {
+      console.log(
+        "computeSupplementReminderTimes - Eşik kontrolü tetiklenmedi. estimatedRemainingDays:",
+        estimatedRemainingDays
+      );
+    }
+
+    // Kritik durum: estimatedRemainingDays <= 1 ise 1 dakika sonrası bildirim
     if (estimatedRemainingDays <= 1) {
+      console.log(
+        "computeSupplementReminderTimes - Kritik durum için estimatedRemainingDays <= 1:",
+        estimatedRemainingDays
+      );
       const autoTime = new Date(now.getTime() + 1 * 60000);
       times.push(autoTime);
       console.log(
@@ -50,6 +87,11 @@ export const computeSupplementReminderTimes = (suppData, user) => {
         autoTime
       );
     } else {
+      // Normal otomatik bildirim zamanı: global bildirim penceresi ya da varsayılan 1 saat sonrası
+      console.log(
+        "computeSupplementReminderTimes - Normal durumda estimatedRemainingDays > 1:",
+        estimatedRemainingDays
+      );
       if (user.notificationWindow && user.notificationWindow.end) {
         const windowEnd = new Date(
           `${todayStr}T${user.notificationWindow.end}:00`
@@ -73,6 +115,78 @@ export const computeSupplementReminderTimes = (suppData, user) => {
       "computeSupplementReminderTimes - Hiçbir bildirim zamanı hesaplanamadı: dailyUsage yok veya 0"
     );
   }
+
+  // Ek: Günlük tüketim kontrolü
+  // Varsayım: suppData.name, supplement’in adını içeriyor
+  try {
+    const consumptionDocRef = doc(
+      db,
+      "users",
+      user.uid,
+      "stats",
+      "supplementConsumption",
+      todayStr
+    );
+    const consumptionDoc = await getDoc(consumptionDocRef);
+    if (consumptionDoc.exists()) {
+      const consumptionData = consumptionDoc.data();
+      const consumed = consumptionData[suppData.name] || 0;
+      console.log(
+        "computeSupplementReminderTimes - Günlük tüketim verisi:",
+        suppData.name,
+        "consumed:",
+        consumed,
+        "dailyUsage:",
+        suppData.dailyUsage
+      );
+      if (consumed < suppData.dailyUsage) {
+        console.log(
+          "computeSupplementReminderTimes - Tüketim, dailyUsage'den düşük. consumed:",
+          consumed,
+          "dailyUsage:",
+          suppData.dailyUsage
+        );
+        if (user.notificationWindow && user.notificationWindow.end) {
+          const windowEnd = new Date(
+            `${todayStr}T${user.notificationWindow.end}:00`
+          );
+          const notifTimeMinus2 = new Date(
+            windowEnd.getTime() - 2 * 60 * 60000
+          );
+          const notifTimeMinus1 = new Date(
+            windowEnd.getTime() - 1 * 60 * 60000
+          );
+          times.push(notifTimeMinus2, notifTimeMinus1);
+          console.log(
+            "computeSupplementReminderTimes - Tüketim dailyUsage'den düşük, bildirim penceresi bitişinden 2 saat ve 1 saat öncesi hesaplanan zamanlar:",
+            notifTimeMinus2,
+            notifTimeMinus1
+          );
+        } else {
+          console.log(
+            "computeSupplementReminderTimes - Tüketim düşük fakat global bildirim penceresi tanımlı değil."
+          );
+        }
+      } else {
+        console.log(
+          "computeSupplementReminderTimes - Tüketim dailyUsage ile uyumlu. consumed:",
+          consumed,
+          "dailyUsage:",
+          suppData.dailyUsage
+        );
+      }
+    } else {
+      console.log(
+        "computeSupplementReminderTimes - Bugün için supplement consumption verisi bulunamadı."
+      );
+    }
+  } catch (error) {
+    console.error(
+      "computeSupplementReminderTimes - Supplement consumption verisi alınırken hata:",
+      error
+    );
+  }
+
   times.sort((a, b) => a - b);
   console.log(
     "computeSupplementReminderTimes - Sıralanmış bildirim zamanları:",
@@ -82,8 +196,12 @@ export const computeSupplementReminderTimes = (suppData, user) => {
 };
 
 // Gelecek takviye bildirim zamanını döndürür
-export const getNextSupplementReminderTime = (suppData, user) => {
-  const reminderTimes = computeSupplementReminderTimes(suppData, user);
+export const getNextSupplementReminderTime = async (suppData, user) => {
+  const reminderTimes = await computeSupplementReminderTimes(suppData, user);
+  console.log(
+    "getNextSupplementReminderTime - Hesaplanan reminderTimes listesi:",
+    reminderTimes
+  );
   const now = getTurkeyTime();
   for (const time of reminderTimes) {
     if (time > now) {
@@ -120,7 +238,7 @@ export const getNextSupplementReminderTime = (suppData, user) => {
 
 // Hesaplanan sonraki takviye bildirim zamanını ilgili supplement dokümanına kaydeder
 export const saveNextSupplementReminderTime = async (user, suppData) => {
-  const nextReminder = getNextSupplementReminderTime(suppData, user);
+  const nextReminder = await getNextSupplementReminderTime(suppData, user);
   if (!nextReminder) {
     console.warn(
       "saveNextSupplementReminderTime - Sonraki bildirim zamanı hesaplanamadı"

@@ -21,6 +21,7 @@ import NotificationsIcon from "@mui/icons-material/Notifications";
 import WaterDropIcon from "@mui/icons-material/WaterDrop";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -146,11 +147,12 @@ const WellnessTracker = ({ user }) => {
 
   const [supplements, setSupplements] = useState([]);
   const [openSupplementDialog, setOpenSupplementDialog] = useState(false);
-  const [newSupplement, setNewSupplement] = useState({
+  const [supplementForm, setSupplementForm] = useState({
     name: "",
     quantity: 0,
     dailyUsage: 1,
   });
+  const [editingSupplement, setEditingSupplement] = useState(null);
   const [waterData, setWaterData] = useState({ history: [] });
   const [supplementConsumptionToday, setSupplementConsumptionToday] = useState(
     {}
@@ -195,20 +197,41 @@ const WellnessTracker = ({ user }) => {
     fetchSupplementConsumptionToday();
   }, [user]);
 
-  const handleAddSupplement = async () => {
+  // supplements ve user güncellendiğinde nextSupplementReminderTime hesaplaması
+  useEffect(() => {
+    if (supplements && user) {
+      supplements.forEach(async (supp) => {
+        await saveNextSupplementReminderTime(user, supp);
+      });
+    }
+  }, [supplements, user]);
+
+  const handleSaveSupplement = async () => {
     const ref = getSupplementsRef();
     try {
-      await addDoc(ref, {
-        ...newSupplement,
-        quantity: Number(newSupplement.quantity),
-        initialQuantity: Number(newSupplement.quantity),
-        dailyUsage: Number(newSupplement.dailyUsage),
-      });
+      if (editingSupplement) {
+        // Düzenleme modunda: mevcut supplement dokümanını güncelle
+        const suppRef = doc(ref, editingSupplement.id);
+        await updateDoc(suppRef, {
+          name: supplementForm.name,
+          quantity: Number(supplementForm.quantity),
+          dailyUsage: Number(supplementForm.dailyUsage),
+        });
+      } else {
+        // Yeni ekleme modunda: yeni doküman oluştur
+        await addDoc(ref, {
+          ...supplementForm,
+          quantity: Number(supplementForm.quantity),
+          initialQuantity: Number(supplementForm.quantity),
+          dailyUsage: Number(supplementForm.dailyUsage),
+        });
+      }
       await fetchSupplements();
       setOpenSupplementDialog(false);
-      setNewSupplement({ name: "", quantity: 0, dailyUsage: 1 });
+      setSupplementForm({ name: "", quantity: 0, dailyUsage: 1 });
+      setEditingSupplement(null);
     } catch (error) {
-      console.error("Error adding supplement:", error);
+      console.error("Error saving supplement:", error);
     }
   };
 
@@ -254,6 +277,16 @@ const WellnessTracker = ({ user }) => {
     }
   };
 
+  const handleEditSupplement = (supplement) => {
+    setEditingSupplement(supplement);
+    setSupplementForm({
+      name: supplement.name,
+      quantity: supplement.quantity,
+      dailyUsage: supplement.dailyUsage,
+    });
+    setOpenSupplementDialog(true);
+  };
+
   const handleSaveNotificationWindow = async (window) => {
     const userRef = doc(db, "users", user.uid);
     try {
@@ -291,15 +324,6 @@ const WellnessTracker = ({ user }) => {
       console.error("Takviye bildirim ayarları güncelleme hatası:", error);
     }
   };
-
-  // supplements ve user güncellendiğinde nextSupplementReminderTime hesaplaması
-  useEffect(() => {
-    if (supplements && user) {
-      supplements.forEach(async (supp) => {
-        await saveNextSupplementReminderTime(user, supp);
-      });
-    }
-  }, [supplements, user]);
 
   return (
     <Box
@@ -357,7 +381,11 @@ const WellnessTracker = ({ user }) => {
         <WaterTracker user={user} onWaterDataChange={setWaterData} />
         <Box sx={{ mt: 4, textAlign: "center" }}>
           <AnimatedButton
-            onClick={() => setOpenSupplementDialog(true)}
+            onClick={() => {
+              setEditingSupplement(null);
+              setSupplementForm({ name: "", quantity: 0, dailyUsage: 1 });
+              setOpenSupplementDialog(true);
+            }}
             startIcon={<AddIcon />}
             sx={{ minWidth: 200 }}
           >
@@ -371,6 +399,7 @@ const WellnessTracker = ({ user }) => {
             boxShadow: "none",
             color: "#fff",
             mt: 4,
+            "&::before": { display: "none" },
           }}
         >
           <StyledAccordionSummary>
@@ -410,8 +439,7 @@ const WellnessTracker = ({ user }) => {
             <Grid container spacing={3} sx={{ mt: 1 }}>
               <AnimatePresence>
                 {(supplements || []).map((supplement) => {
-                  // supplements undefined olma ihtimaline karşı
-                  const name = supplement?.name || "Unknown"; // Güvenli name erişimi
+                  const name = supplement?.name || "Unknown";
                   const progress =
                     (supplement.quantity / supplement.initialQuantity) * 100;
                   const daysLeft = Math.floor(
@@ -479,22 +507,40 @@ const WellnessTracker = ({ user }) => {
                               {supplement.name}
                             </Typography>
                           </Box>
-                          <IconButton
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(supplement.id);
-                            }}
-                            sx={{
-                              color: "rgba(255,255,255,0.7)",
-                              transition: "all 0.3s",
-                              "&:hover": {
-                                color: "#ff5252",
-                                transform: "rotate(90deg)",
-                              },
-                            }}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
+                          <Box sx={{ display: "flex", gap: 1 }}>
+                            <IconButton
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditSupplement(supplement);
+                              }}
+                              sx={{
+                                color: "rgba(255,255,255,0.7)",
+                                transition: "all 0.3s",
+                                "&:hover": {
+                                  color: "#FFD700",
+                                  transform: "rotate(5deg)",
+                                },
+                              }}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(supplement.id);
+                              }}
+                              sx={{
+                                color: "rgba(255,255,255,0.7)",
+                                transition: "all 0.3s",
+                                "&:hover": {
+                                  color: "#ff5252",
+                                  transform: "rotate(90deg)",
+                                },
+                              }}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
                         </Box>
 
                         {/* İlerleme Çubuğu */}
@@ -650,6 +696,7 @@ const WellnessTracker = ({ user }) => {
             boxShadow: "none",
             color: "#fff",
             mt: 4,
+            "&::before": { display: "none" },
           }}
         >
           <StyledAccordionSummary>
@@ -673,7 +720,10 @@ const WellnessTracker = ({ user }) => {
         </Accordion>
         <Dialog
           open={openSupplementDialog}
-          onClose={() => setOpenSupplementDialog(false)}
+          onClose={() => {
+            setOpenSupplementDialog(false);
+            setEditingSupplement(null);
+          }}
           PaperProps={{
             sx: {
               background: "rgba(149, 157, 163, 0.83)",
@@ -684,16 +734,18 @@ const WellnessTracker = ({ user }) => {
             },
           }}
         >
-          <DialogTitle>Yeni Takviye Ekle</DialogTitle>
+          <DialogTitle>
+            {editingSupplement ? "Takviye Düzenle" : "Yeni Takviye Ekle"}
+          </DialogTitle>
           <DialogContent>
             <TextField
               autoFocus
               margin="dense"
               label="Takviye Adı"
               fullWidth
-              value={newSupplement.name}
+              value={supplementForm.name}
               onChange={(e) =>
-                setNewSupplement({ ...newSupplement, name: e.target.value })
+                setSupplementForm({ ...supplementForm, name: e.target.value })
               }
               sx={{ mb: 2 }}
             />
@@ -702,10 +754,10 @@ const WellnessTracker = ({ user }) => {
               label="Miktar"
               type="number"
               fullWidth
-              value={newSupplement.quantity}
+              value={supplementForm.quantity}
               onChange={(e) =>
-                setNewSupplement({
-                  ...newSupplement,
+                setSupplementForm({
+                  ...supplementForm,
                   quantity: Number(e.target.value),
                 })
               }
@@ -716,20 +768,27 @@ const WellnessTracker = ({ user }) => {
               label="Günlük Kullanım Miktarı"
               type="number"
               fullWidth
-              value={newSupplement.dailyUsage}
+              value={supplementForm.dailyUsage}
               onChange={(e) =>
-                setNewSupplement({
-                  ...newSupplement,
+                setSupplementForm({
+                  ...supplementForm,
                   dailyUsage: Number(e.target.value),
                 })
               }
             />
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setOpenSupplementDialog(false)}>
+            <Button
+              onClick={() => {
+                setOpenSupplementDialog(false);
+                setEditingSupplement(null);
+              }}
+            >
               İptal
             </Button>
-            <Button onClick={handleAddSupplement}>Ekle</Button>
+            <Button onClick={handleSaveSupplement}>
+              {editingSupplement ? "Güncelle" : "Ekle"}
+            </Button>
           </DialogActions>
         </Dialog>
         <NotificationSettingsDialog

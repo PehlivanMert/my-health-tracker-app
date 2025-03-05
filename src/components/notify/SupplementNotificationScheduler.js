@@ -11,21 +11,30 @@ export const getTurkeyTime = () => {
   return now;
 };
 
-// Global bildirim penceresini Firestore'dan alır: /users/{uid}/notificationWindow
+// Global bildirim penceresini Firestore'dan alır.
+// Artık kullanıcı dokümanını okuyup, içerisindeki notificationWindow alanını döndürüyoruz.
 export const getGlobalNotificationWindow = async (user) => {
   try {
-    const notifRef = doc(db, "users", user.uid, "notificationWindow");
-    const notifDoc = await getDoc(notifRef);
-    if (notifDoc.exists()) {
-      const data = notifDoc.data();
-      console.log(
-        "getGlobalNotificationWindow - Global bildirim penceresi alındı:",
-        data
-      );
-      return data;
+    const userDocRef = doc(db, "users", user.uid);
+    const userDoc = await getDoc(userDocRef);
+    if (userDoc.exists()) {
+      const data = userDoc.data();
+      if (data.notificationWindow) {
+        console.log(
+          "getGlobalNotificationWindow - Global bildirim penceresi alındı:",
+          data.notificationWindow
+        );
+        return data.notificationWindow;
+      } else {
+        console.warn(
+          "getGlobalNotificationWindow - Global bildirim penceresi bulunamadı for user:",
+          user.uid
+        );
+        return null;
+      }
     } else {
       console.warn(
-        "getGlobalNotificationWindow - Global bildirim penceresi bulunamadı for user:",
+        "getGlobalNotificationWindow - Kullanıcı dokümanı bulunamadı for user:",
         user.uid
       );
       return null;

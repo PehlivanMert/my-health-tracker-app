@@ -197,7 +197,7 @@ exports.handler = async function (event, context) {
                 notificationsToSend.push({
                   token: fcmToken,
                   data: {
-                    title: `${suppData.name} Takviyesini Almayı Unuttunuz!`,
+                    title: `${suppData.name} Takviyesini Almayı Unutmayın!`,
                     body: `Belirlenen saatte (${nextReminderTurkey.toLocaleTimeString(
                       "tr-TR",
                       {

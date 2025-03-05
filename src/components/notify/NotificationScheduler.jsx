@@ -1,5 +1,3 @@
-// NotificationScheduler.jsx
-
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
 
@@ -16,8 +14,6 @@ export const getTurkeyTime = () => {
 
 /**
  * Kullanıcının doğum tarihinden yaşını hesaplar.
- * @param {Date|string|Object} birthDate - Doğum tarihi (Date, ISO string veya Firebase timestamp)
- * @returns {number} Hesaplanan yaş
  */
 export const calculateAge = (birthDate) => {
   const birth = birthDate.toDate ? birthDate.toDate() : new Date(birthDate);
@@ -33,11 +29,6 @@ export const calculateAge = (birthDate) => {
 
 /**
  * Mifflin-St Jeor denklemi ile Bazal Metabolizma Hızını (BMR) hesaplar.
- * @param {string} gender - "male" veya "female"
- * @param {number} weight - Ağırlık (kg)
- * @param {number} height - Boy (cm)
- * @param {number} age - Yaş
- * @returns {number} Hesaplanan BMR
  */
 export const calculateBMR = (gender, weight, height, age) => {
   let bmr;
@@ -52,9 +43,6 @@ export const calculateBMR = (gender, weight, height, age) => {
 
 /**
  * BMR değeri ve çarpan üzerinden günlük su hedefini (ml) hesaplar.
- * @param {number} bmr - Hesaplanan BMR
- * @param {number} multiplier - Çarpan (varsayılan 1.4)
- * @returns {number} Günlük su hedefi (ml)
  */
 export const calculateDailyWaterTarget = (bmr, multiplier = 1.4) => {
   const dailyWaterTarget = Math.round(bmr * multiplier);
@@ -67,9 +55,6 @@ export const calculateDailyWaterTarget = (bmr, multiplier = 1.4) => {
 
 /**
  * Kullanıcıya ait profil ve su verilerini Firestore’dan getirir.
- * /users/{uid} ve /users/{uid}/water/current dokümanlarını birleştirir.
- * @param {Object} user - Firebase kullanıcı nesnesi
- * @returns {Object} Birleşik veri nesnesi
  */
 const fetchUserData = async (user) => {
   if (!user || !user.uid) return {};
@@ -94,23 +79,45 @@ const fetchUserData = async (user) => {
 };
 
 /**
- * Bildirim penceresi (start, end) değerlerini alır; yoksa varsayılan olarak 08:00-22:00 kullanır.
- * @param {Object} data - Kullanıcı verileri
- * @returns {Object} { start: string, end: string }
+ * Global bildirim penceresini kullanıcı dokümanından alır.
  */
-const getNotificationWindow = (data) => {
-  const windowObj = data.notificationWindow || { start: "08:00", end: "22:00" };
-  console.log("getNotificationWindow - Bildirim penceresi:", windowObj);
-  return windowObj;
+export const getGlobalNotificationWindow = async (user) => {
+  try {
+    const userDocRef = doc(db, "users", user.uid);
+    const userDoc = await getDoc(userDocRef);
+    if (userDoc.exists()) {
+      const data = userDoc.data();
+      if (data.notificationWindow) {
+        console.log(
+          "getGlobalNotificationWindow - Global bildirim penceresi alındı:",
+          data.notificationWindow
+        );
+        return data.notificationWindow;
+      } else {
+        console.warn(
+          "getGlobalNotificationWindow - Global bildirim penceresi bulunamadı for user:",
+          user.uid
+        );
+        return null;
+      }
+    } else {
+      console.warn(
+        "getGlobalNotificationWindow - Kullanıcı dokümanı bulunamadı for user:",
+        user.uid
+      );
+      return null;
+    }
+  } catch (error) {
+    console.error(
+      "getGlobalNotificationWindow - Global bildirim penceresi alınırken hata:",
+      error
+    );
+    return null;
+  }
 };
 
 /**
- * Global bildirim penceresini hesaplar.
- * Overnight (gece) pencereleri de ele alınır: Eğer start > end ise,
- * - Eğer şu an windowEnd’den önce ise, windowStart dünkü saat olarak belirlenir.
- * - Aksi halde, windowEnd yarın olarak ayarlanır.
- * @param {Object} windowObj - { start, end } zaman stringleri (ör. "18:45", "05:30")
- * @returns {Object} { windowStart: Date, windowEnd: Date }
+ * Bildirim penceresini (start, end) hesaplar.
  */
 const computeWindowTimes = (windowObj) => {
   const now = getTurkeyTime();
@@ -118,7 +125,6 @@ const computeWindowTimes = (windowObj) => {
   let windowStart, windowEnd;
 
   if (windowObj.start <= windowObj.end) {
-    // Normal (aynı gün) pencere
     windowStart = new Date(`${todayStr}T${windowObj.start}:00`);
     windowEnd = new Date(`${todayStr}T${windowObj.end}:00`);
     if (now > windowEnd) {
@@ -126,7 +132,6 @@ const computeWindowTimes = (windowObj) => {
       windowEnd.setDate(windowEnd.getDate() + 1);
     }
   } else {
-    // Overnight pencere: örn. {start: "18:45", end: "05:30"}
     let potentialStart = new Date(`${todayStr}T${windowObj.start}:00`);
     let potentialEnd = new Date(`${todayStr}T${windowObj.end}:00`);
     if (now < potentialEnd) {
@@ -148,39 +153,62 @@ const computeWindowTimes = (windowObj) => {
 
 /**
  * Belirtilen bildirim zamanı için günün saatine göre motivasyon mesajı oluşturur.
- * Mesajlar, zaman dilimine göre farklı seçenekler sunar ve rastgele bir seçim yapılır.
- * @param {Date} date - Bildirim zamanı
- * @returns {string} Motivasyon mesajı
  */
-export const getMotivationalMessageForTime = (date) => {
+export const getMotivationalMessageForTime = (date, weather = null) => {
   const hour = date.getHours();
   let messages = [];
+
   if (hour >= 6 && hour < 10) {
     messages = [
-      "Günaydın! Güne enerjik başlayın, suyunuzu için.",
-      "Yeni bir gün, yeni başlangıç! Hadi suyunuzu için.",
+      "Günaydın! Güne taptaze su damlalarıyla başlayın!",
+      "Yeni bir gün, enerjinizi artırmak için suyunuz hazır olsun!",
+      "Gün ışığıyla beraber suyun tadını çıkarın, harika bir gün sizi bekliyor!",
+      "Sabahın ilk ışıklarıyla su için, zinde bir başlangıç yapın!",
+      "Günaydın! Bol su, bol enerji demektir!",
     ];
   } else if (hour >= 10 && hour < 14) {
     messages = [
-      "Öğle vakti! Hedefinize bir adım daha yaklaşın.",
-      "Enerjinizi korumak için bol su için.",
+      "Öğle vakti: Hava sıcaksa, serinlemenin en iyi yolu su içmek!",
+      "Öğle zamanı! Suyu için, enerji depolayın!",
+      "Gün ortasında, bir bardak su ile kendinizi tazeleyin!",
+      "Öğlenin sıcaklığına meydan okuyun; suyun ferahlığı sizi canlandırsın!",
+      "Bir mola verin, suyunuzu için ve yenilenin!",
     ];
   } else if (hour >= 14 && hour < 18) {
     messages = [
-      "Öğleden sonra! Su içmeyi unutmayın.",
-      "Kendinize biraz su ayırın, enerjinizi toplayın.",
+      "Öğleden sonra: Rüzgar hafif, suyun ferahlığı sizi canlandırsın!",
+      "Hadi, biraz su içip kendinizi yenileyin!",
+      "Gün ortasının yorgunluğunu suyun tazeliğiyle atın!",
+      "Öğleden sonra suyunuzu için, enerjinizi tazeleyin!",
+      "Bir bardak su, günün geri kalanına güç katacaktır!",
     ];
   } else if (hour >= 18 && hour < 22) {
     messages = [
-      "Akşam oldu, gününüzü tamamlamak için su için.",
-      "Gün bitmeden su içmeyi unutmayın, vücudunuz dinç kalsın.",
+      "Akşam oldu! Güne güzel bir kapanış için serin bir yudum su harika!",
+      "Gün bitmeden, su içerek kendinizi ödüllendirin!",
+      "Akşamın huzurunu suyun ferahlığıyla yaşayın!",
+      "Gün sonu geldi, son bir bardak su ile günü tamamlayın!",
+      "Akşamın tadını çıkarın, suyunuz yanınızda olsun!",
     ];
   } else {
     messages = [
-      "Gece vakti, su içmeyi ihmal etmeyin!",
-      "Gece de su, sağlığınız için önemli!",
+      "Gece vakti bile su içmeyi ihmal etmeyin, rüyalarınıza tazelik katın!",
+      "Uyumadan önce bir yudum su, tatlı rüyalara kapı aralar!",
+      "Gece sessizliğinde, suyun ferahlığı ruhunuzu dinlendirsin!",
+      "Yatmadan önce su içmeyi unutmayın; rahat bir uykuya dalın!",
+      "Gece boyunca suyunuzun keyfini çıkarın, rüyalarınıza ilham olsun!",
     ];
   }
+
+  // Hava durumuna göre ekstra mesajlar ekleyelim
+  if (weather && weather.temperature > 30) {
+    messages.push("Bugün hava sıcak, suyunuz hayat kurtarıcı!");
+    messages.push("Sıcak günlerde su, vücudunuzun serin kalmasını sağlar!");
+  } else if (weather && weather.temperature < 10) {
+    messages.push("Soğuk havada içinizi ısıtacak bir yudum suya ne dersiniz?");
+    messages.push("Soğuk günlerde sıcak su, sizi ısıtır ve canlandırır!");
+  }
+
   const selectedMessage = messages[Math.floor(Math.random() * messages.length)];
   console.log(
     `getMotivationalMessageForTime - Saat ${hour} için mesaj:`,
@@ -190,13 +218,42 @@ export const getMotivationalMessageForTime = (date) => {
 };
 
 /**
+ * Hava durumu bilgisini (sıcaklık, nem, weathercode) almak için örnek fonksiyon.
+ * (Not: Gerçek uygulamada Open-Meteo API gibi gerçek bir servisten veri alınmalıdır.)
+ */
+export const fetchWeatherData = async (latitude, longitude) => {
+  try {
+    const response = await fetch(
+      `${
+        import.meta.env.VITE_OPEN_METEO_API_URL
+      }?latitude=${latitude}&longitude=${longitude}&current_weather=true`
+    );
+    const data = await response.json();
+    if (data.current_weather) {
+      console.log(
+        "fetchWeatherData - Hava durumu alındı:",
+        data.current_weather
+      );
+      return {
+        temperature: data.current_weather.temperature,
+        humidity: data.current_weather.humidity || 50,
+        weathercode: data.current_weather.weathercode,
+      };
+    } else {
+      console.warn("fetchWeatherData - Hava durumu verisi alınamadı:", data);
+      return null;
+    }
+  } catch (error) {
+    console.error("fetchWeatherData - Hata:", error);
+    return null;
+  }
+};
+
+/**
  * Kullanıcının bildirim moduna göre su hatırlatma zamanlarını hesaplar.
- * Smart modda, profil verilerinden (boy, kilo, cinsiyet, doğum tarihi) hesaplanan günlük su hedefinden,
- * o güne kadar içilen su miktarı çıkarılarak kalan miktar üzerinden bildirim zamanları planlanır.
- * Custom modda ise kullanıcının belirlediği saat aralığına göre planlanır.
- * Her bildirim zamanı için günün saatine uygun motivasyon mesajı eklenir.
- * @param {Object} user - Firebase kullanıcı nesnesi
- * @returns {Array<Object>} Bildirim zamanları dizisi, her eleman { time: Date, message: string }
+ * Hesaplanan bildirimler, tümüyle bir array olarak oluşturulup Firestore’daki
+ * "reminderTimes" alanına kaydedilir. Burada, şu andan 1 dakika sonrasına denk gelen (veya daha yakın)
+ * bildirimler array’den çıkarılır; geriye kalanlar kalır.
  */
 export const computeWaterReminderTimes = async (user) => {
   if (!user || !user.uid) return [];
@@ -206,16 +263,27 @@ export const computeWaterReminderTimes = async (user) => {
   const mode = data.waterNotificationOption || "smart";
   console.log("computeWaterReminderTimes - Bildirim modu:", mode);
 
-  const notifWindow = getNotificationWindow(data);
-  const { windowStart, windowEnd } = computeWindowTimes(notifWindow);
+  // Global bildirim penceresi: kullanıcı ana dokümanından okunuyor.
+  const globalWindow = (await getGlobalNotificationWindow(user)) ||
+    data.notificationWindow || { start: "08:00", end: "22:00" };
+  const { windowStart, windowEnd } = computeWindowTimes(globalWindow);
   const now = getTurkeyTime();
   let reminderSchedule = [];
 
   if (mode === "none") {
     console.log("computeWaterReminderTimes - Bildirimler kapalı (none mod).");
+    const waterRef = doc(db, "users", user.uid, "water", "current");
+    await setDoc(
+      waterRef,
+      {
+        nextWaterReminderTime: null,
+        nextWaterReminderMessage: null,
+        reminderTimes: [],
+      },
+      { merge: true }
+    );
     return [];
   } else if (mode === "smart") {
-    // Smart mod: Profil verilerinden hesaplamalar
     const profile = data.profile || data;
     const weight = parseFloat(profile.weight) || 93;
     const height = parseFloat(profile.height) || 190;
@@ -225,7 +293,47 @@ export const computeWaterReminderTimes = async (user) => {
       age = calculateAge(profile.birthDate);
     }
     const bmr = calculateBMR(gender, weight, height, age);
-    const dailyWaterTarget = calculateDailyWaterTarget(bmr, 1.4);
+
+    // Hava durumu kontrolü:
+    let temperature = 20;
+    let humidity = 50;
+    if (profile.latitude && profile.longitude) {
+      const weather = await fetchWeatherData(
+        profile.latitude,
+        profile.longitude
+      );
+      if (weather) {
+        temperature = weather.temperature;
+        humidity = weather.humidity;
+      } else {
+        console.warn(
+          "Hava durumu verisi alınamadı; varsayılan değerler kullanılacak."
+        );
+      }
+    }
+    const weatherMultiplier = 1 + (temperature - 20) / 100;
+    const activityMap = {
+      çok_düşük: 0.9,
+      düşük: 1.0,
+      orta: 1.1,
+      yüksek: 1.2,
+      çok_yüksek: 1.3,
+      aşırı: 1.4,
+      moderate: 1.1,
+    };
+    const activityLevel = data.activityLevel || "orta";
+    const activityMultiplier = activityMap[activityLevel] || 1.1;
+
+    const finalMultiplier = 1.4 * weatherMultiplier * activityMultiplier;
+    console.log(
+      "computeWaterReminderTimes - weatherMultiplier:",
+      weatherMultiplier,
+      "activityMultiplier:",
+      activityMultiplier,
+      "finalMultiplier:",
+      finalMultiplier
+    );
+    const dailyWaterTarget = calculateDailyWaterTarget(bmr, finalMultiplier);
     const waterIntake = data.waterIntake || 0;
     const remainingTarget = Math.max(dailyWaterTarget - waterIntake, 0);
     console.log(
@@ -249,7 +357,6 @@ export const computeWaterReminderTimes = async (user) => {
       numGlasses
     );
 
-    // Kaydet: bmr, dailyWaterTarget, glassSize, mod
     const waterRef = doc(db, "users", user.uid, "water", "current");
     await setDoc(
       waterRef,
@@ -266,14 +373,14 @@ export const computeWaterReminderTimes = async (user) => {
       interval
     );
 
-    // Başlangıç zamanı: aktif pencere içinde, şimdi+1 saniye veya pencere başlangıcı (hangisi daha sonraysa)
-    let startTime = Math.max(windowStart.getTime(), now.getTime() + 1000);
-    while (startTime <= windowEnd.getTime() && numGlasses > 0) {
+    // Bildirimlerin tamamı; sadece geleceğe yönelik (şu andan sonraki) bildirimler alınır.
+    let startTime = Math.max(windowStart.getTime(), now.getTime() + 60000);
+    for (let i = 0; i < numGlasses && startTime <= windowEnd.getTime(); i++) {
       const reminderTime = new Date(startTime);
       const message = getMotivationalMessageForTime(reminderTime);
       reminderSchedule.push({ time: reminderTime, message });
       console.log(
-        "computeWaterReminderTimes - Eklenen bildirim zamanı:",
+        "computeWaterReminderTimes - Eklenen smart bildirim zamanı:",
         reminderTime,
         "Mesaj:",
         message
@@ -281,7 +388,6 @@ export const computeWaterReminderTimes = async (user) => {
       startTime += interval * 60000;
     }
   } else if (mode === "custom") {
-    // Custom mod: Kullanıcının belirlediği bildirim aralığı (saat) kullanılır.
     const dailyWaterTarget = data.dailyWaterTarget || 2000;
     const glassSize = data.glassSize || 250;
     const customIntervalHours = data.customNotificationInterval || 1;
@@ -294,7 +400,29 @@ export const computeWaterReminderTimes = async (user) => {
       customIntervalHours
     );
 
-    let startTime = windowStart.getTime();
+    let startTime;
+    if (now >= windowStart && now < windowEnd) {
+      startTime = now.getTime() + customIntervalHours * 3600000;
+      console.log(
+        "computeWaterReminderTimes - Custom mod: Başlangıç zamanı gün içinde, şimdi + interval:",
+        new Date(startTime)
+      );
+    } else if (now >= windowEnd) {
+      const nextWindowStart = new Date(windowStart);
+      nextWindowStart.setDate(nextWindowStart.getDate() + 1);
+      startTime = nextWindowStart.getTime();
+      console.log(
+        "computeWaterReminderTimes - Custom mod: Gün sonu geçmiş, sonraki pencere başlangıcı:",
+        nextWindowStart
+      );
+    } else {
+      startTime = windowStart.getTime();
+      console.log(
+        "computeWaterReminderTimes - Custom mod: Pencere henüz başlamadı, pencere başlangıcı:",
+        windowStart
+      );
+    }
+
     while (startTime <= windowEnd.getTime()) {
       const reminderTime = new Date(startTime);
       const message = getMotivationalMessageForTime(reminderTime);
@@ -309,12 +437,23 @@ export const computeWaterReminderTimes = async (user) => {
     }
   }
 
-  // Bildirim zamanlarını Firestore'a kaydet (ISO string ve mesaj ile)
+  // NOT: Burada, hesaplanan tüm bildirimler (reminderSchedule) tutuluyor.
+  // İstenirse, "şu andan 1 dakika sonrasından daha yakın" olanlar filtrelenip atılabilir.
+  // Ancak; isteğe göre; ilk oluşturulan (yani, en yakın bildirim) 1 dakika içinde ise, onu array’den çıkaracağız.
+  const futureReminders = reminderSchedule.filter(
+    (reminder) => reminder.time.getTime() > now.getTime() + 60000
+  );
+  console.log(
+    "computeWaterReminderTimes - Gelecek bildirimler (1 dakikadan sonra):",
+    futureReminders
+  );
+
+  // Tüm geleceğe dönük bildirimler Firestore’daki reminderTimes alanına kaydediliyor.
   const waterRef = doc(db, "users", user.uid, "water", "current");
   await setDoc(
     waterRef,
     {
-      reminderTimes: reminderSchedule.map((obj) => ({
+      reminderTimes: futureReminders.map((obj) => ({
         time: obj.time.toISOString(),
         message: obj.message,
       })),
@@ -323,46 +462,97 @@ export const computeWaterReminderTimes = async (user) => {
   );
   console.log(
     "computeWaterReminderTimes - Hesaplanan bildirim zamanları:",
-    reminderSchedule
+    futureReminders
   );
-  return reminderSchedule;
+  return futureReminders;
 };
 
 /**
- * Hesaplanan bildirim zamanları arasından, mevcut zamandan sonraki ilk bildirimi bulur.
- * @param {Object} user - Firebase kullanıcı nesnesi
- * @returns {Object|null} { time: Date, message: string } veya null
+ * Mevcut Firestore’daki reminderTimes array’inden,
+ * eğer ilk bildirim 1 dakika sonra veya daha yakınsa silinir ve
+ * kalan array’in ilk elemanı nextWaterReminderTime/Message alanlarına set edilir.
+ * Eğer array boşsa, computeWaterReminderTimes tekrar çalıştırılır.
  */
-export const getNextWaterReminderTime = async (user) => {
-  const schedule = await computeWaterReminderTimes(user);
-  const now = getTurkeyTime();
-  for (const reminder of schedule) {
-    if (reminder.time.getTime() > now.getTime()) {
-      console.log(
-        "getNextWaterReminderTime - Sonraki bildirim bulundu:",
-        reminder
-      );
-      return reminder;
-    }
-  }
-  console.warn("getNextWaterReminderTime - Gelecek bildirim zamanı bulunamadı");
-  return null;
-};
-
-/**
- * Hesaplanan sonraki su hatırlatma zamanını Firestore’da saklar.
- * @param {Object} user - Firebase kullanıcı nesnesi
- * @returns {Object|null} { time: Date, message: string } veya null
- */
-export const saveNextWaterReminderTime = async (user) => {
+export const popNextReminder = async (user) => {
   const waterRef = doc(db, "users", user.uid, "water", "current");
-  const nextReminder = await getNextWaterReminderTime(user);
-  if (nextReminder) {
+  const waterSnap = await getDoc(waterRef);
+  let reminderTimes = [];
+  if (waterSnap.exists() && waterSnap.data().reminderTimes) {
+    reminderTimes = waterSnap.data().reminderTimes;
+  }
+  const now = getTurkeyTime();
+  // İlk elemanı sil (bildirim geldiği varsayımında)
+  if (reminderTimes.length > 0) {
+    console.log("popNextReminder - Silinen bildirim:", reminderTimes[0]);
+    reminderTimes.shift();
+  }
+  // Reminders'ı güncel zaman bazında filtreleyelim:
+  reminderTimes = reminderTimes.filter(
+    (r) => new Date(r.time).getTime() > now.getTime() + 60000
+  );
+  // Eğer array boşsa, bildirimler yeniden hesaplanır.
+  if (reminderTimes.length === 0) {
+    console.log("popNextReminder - Reminders boş, yeniden hesaplanıyor.");
+    reminderTimes = await computeWaterReminderTimes(user);
+  }
+  if (reminderTimes.length > 0) {
+    const nextReminder = reminderTimes[0];
     await setDoc(
       waterRef,
       {
-        nextWaterReminderTime: nextReminder.time.toISOString(),
+        nextWaterReminderTime: nextReminder.time,
         nextWaterReminderMessage: nextReminder.message,
+        reminderTimes: reminderTimes,
+      },
+      { merge: true }
+    );
+    console.log("popNextReminder - Yeni sonraki bildirim:", nextReminder);
+    return nextReminder;
+  } else {
+    await setDoc(
+      waterRef,
+      {
+        nextWaterReminderTime: null,
+        nextWaterReminderMessage: null,
+        reminderTimes: [],
+      },
+      { merge: true }
+    );
+    console.warn("popNextReminder - Reminders boş, bildirim ayarlanamadı.");
+    return null;
+  }
+};
+
+/**
+ * Mevcut Firestore’daki reminderTimes array’inden,
+ * en az 1 dakika sonrasındaki ilk bildirimi bulur ve onu nextWaterReminderTime/Message olarak kaydeder.
+ */
+export const saveNextWaterReminderTime = async (user) => {
+  const waterRef = doc(db, "users", user.uid, "water", "current");
+  const waterSnap = await getDoc(waterRef);
+  let reminderTimes = [];
+  if (waterSnap.exists() && waterSnap.data().reminderTimes) {
+    reminderTimes = waterSnap.data().reminderTimes;
+  }
+  const now = getTurkeyTime();
+  // 1 dakika sonrasından daha yakın olan bildirimleri array’den çıkarıyoruz.
+  reminderTimes = reminderTimes.filter(
+    (r) => new Date(r.time).getTime() > now.getTime() + 60000
+  );
+  if (reminderTimes.length === 0) {
+    console.log(
+      "saveNextWaterReminderTime - Reminders boş, yeniden hesaplanıyor."
+    );
+    reminderTimes = await computeWaterReminderTimes(user);
+  }
+  if (reminderTimes.length > 0) {
+    const nextReminder = reminderTimes[0];
+    await setDoc(
+      waterRef,
+      {
+        nextWaterReminderTime: nextReminder.time,
+        nextWaterReminderMessage: nextReminder.message,
+        reminderTimes: reminderTimes,
       },
       { merge: true }
     );
@@ -371,19 +561,28 @@ export const saveNextWaterReminderTime = async (user) => {
       nextReminder
     );
     return nextReminder;
+  } else {
+    await setDoc(
+      waterRef,
+      {
+        nextWaterReminderTime: null,
+        nextWaterReminderMessage: null,
+        reminderTimes: [],
+      },
+      { merge: true }
+    );
+    console.warn(
+      "saveNextWaterReminderTime - Sonraki bildirim zamanı hesaplanamadı"
+    );
+    return null;
   }
-  console.warn(
-    "saveNextWaterReminderTime - Sonraki bildirim zamanı hesaplanamadı"
-  );
-  return null;
 };
 
 /**
  * Su bildirimlerinin planlamasını tetikler.
- * Su içim miktarı güncellendiğinde veya hedef değiştiğinde bu fonksiyon çağrılarak,
- * yeni bildirim zamanları hesaplanır ve Firestore güncellenir.
- * @param {Object} user - Firebase kullanıcı nesnesi
- * @returns {Object} { reminderSchedule: Array<Object>, nextReminder: Object|null }
+ * İlk, tüm bildirimler hesaplanıp Firestore'a kaydedilir.
+ * Ardından, saveNextWaterReminderTime ile en az 1 dakika sonrası olan bildirim,
+ * nextWaterReminderTime/Message alanlarına set edilir.
  */
 export const scheduleWaterNotifications = async (user) => {
   if (!user || !user.uid) return;
@@ -397,12 +596,13 @@ export const scheduleWaterNotifications = async (user) => {
   const nextReminder = await saveNextWaterReminderTime(user);
   console.log(
     "scheduleWaterNotifications - Yeni su bildirim zamanları hesaplandı:",
-    reminderSchedule.map((r) => r.time.toLocaleTimeString())
+    reminderSchedule.map((r) => new Date(r.time).toLocaleTimeString())
   );
   console.log(
     "scheduleWaterNotifications - Sonraki bildirim zamanı:",
-    nextReminder ? nextReminder.time.toLocaleTimeString() : "Belirlenmedi"
+    nextReminder
+      ? new Date(nextReminder.time).toLocaleTimeString()
+      : "Belirlenmedi"
   );
-  // Burada ek push bildirimleri veya motivasyonel bildirim tetikleme kodları eklenebilir.
   return { reminderSchedule, nextReminder };
 };

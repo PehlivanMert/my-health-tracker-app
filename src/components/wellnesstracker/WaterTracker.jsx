@@ -3,7 +3,6 @@ import {
   Box,
   Card,
   Typography,
-  Button,
   Grid,
   TextField,
   IconButton,
@@ -15,7 +14,7 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import Confetti from "react-confetti";
 import Lottie from "lottie-react";
 import waterAnimation from "../../assets/waterAnimation.json";
-import sparkleAnimation from "../../assets/sparkleAnimation.json"; // Sparkle animasyon dosyası
+import sparkleAnimation from "../../assets/sparkleAnimation.json";
 import { db } from "../auth/firebaseConfig";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import AddIcon from "@mui/icons-material/Add";
@@ -24,44 +23,20 @@ import NotificationsIcon from "@mui/icons-material/Notifications";
 import NotificationsOffIcon from "@mui/icons-material/NotificationsOff";
 import WaterNotificationSettingsDialog from "./WaterNotificationSettingsDialog";
 import styles from "./waterAnimation.module.css";
-import { saveNextWaterReminderTime } from "../notify/NotificationScheduler";
+import {
+  saveNextWaterReminderTime,
+  scheduleWaterNotifications,
+} from "../notify/NotificationScheduler";
 import CheckCircle from "@mui/icons-material/CheckCircle";
 import CircularProgress from "@mui/material/CircularProgress";
 import InputAdornment from "@mui/material/InputAdornment";
 import { SportsBar } from "@mui/icons-material";
 
-// ============================================================
-// Animasyonlar & Styled Components
-// ============================================================
-
-// Keyframes tanımlamaları
-const wave = keyframes`
-  0% { background-position-x: 0; }
-  100% { background-position-x: 1000px; }
-`;
-
-const bubble = keyframes`
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
-`;
-
+// --- Animasyon ve stil tanımlamaları ---
 const pulse = keyframes`
   0% { transform: scale(1); }
   50% { transform: scale(1.05); }
   100% { transform: scale(1); }
-`;
-
-const float = keyframes`
-  0% { transform: translateY(0px) rotate(0deg); }
-  50% { transform: translateY(-20px) rotate(5deg); }
-  100% { transform: translateY(0px) rotate(0deg); }
-`;
-
-const textGlow = keyframes`
-  0% { text-shadow: 0 0 10px rgba(33,150,243,0.5); }
-  50% { text-shadow: 0 0 30px rgba(33,150,243,0.9), 0 0 50px rgba(33,150,243,0.7); }
-  100% { text-shadow: 0 0 10px rgba(33,150,243,0.5); }
 `;
 
 const fadeIn = keyframes`
@@ -69,12 +44,6 @@ const fadeIn = keyframes`
   to { opacity: 1; }
 `;
 
-const shine = keyframes`
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-`;
-
-// Achievement animasyon stil bileşenleri
 const AchievementOverlay = styled(Box)({
   position: "fixed",
   top: 0,
@@ -94,7 +63,7 @@ const AchievementText = styled(Typography)({
   background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
   WebkitBackgroundClip: "text",
   WebkitTextFillColor: "transparent",
-  animation: `${textGlow} 2s ease-in-out infinite, ${float} 3s ease-in-out infinite`,
+  animation: `${pulse} 2s infinite`,
   textAlign: "center",
   padding: "40px",
   borderRadius: "20px",
@@ -102,57 +71,16 @@ const AchievementText = styled(Typography)({
   boxShadow: "0 0 50px rgba(33,150,243,0.3)",
   position: "relative",
   overflow: "hidden",
-  "&::before": {
-    content: '""',
-    position: "absolute",
-    top: "-50%",
-    left: "-50%",
-    right: "-50%",
-    bottom: "-50%",
-    background:
-      "linear-gradient(45deg, transparent 20%, rgba(255,255,255,0.1) 50%, transparent 80%)",
-    animation: `${shine} 5s infinite linear`,
-  },
 });
 
-// Başarı animasyon bileşeni
 const AchievementAnimation = ({ message, onComplete }) => {
   return (
     <AchievementOverlay>
-      <Confetti
-        numberOfPieces={800}
-        recycle={false}
-        colors={["#2196F3", "#3F51B5", "#00BCD4", "#4CAF50"]}
-        gravity={0.15}
-        wind={0.02}
-        initialVelocityY={15}
-        style={{ zIndex: 10000 }}
-      />
-      <AchievementText
-        variant="h2"
-        sx={{ fontSize: { xs: "2rem", md: "3rem" } }}
-      >
-        {message}
-        <Lottie
-          animationData={sparkleAnimation}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-          }}
-        />
-      </AchievementText>
+      <AchievementText variant="h2">{message}</AchievementText>
     </AchievementOverlay>
   );
 };
 
-// Utility: Türkiye saatini döndürür
-const getTurkeyTime = () =>
-  new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
-
-// Eski stillerin korunmuş hali: GlowingCard, AnimatedButton, WaterContainer
 const GlowingCard = styled(Card, {
   shouldForwardProp: (prop) => prop !== "glowColor",
 })(({ glowColor }) => ({
@@ -185,22 +113,6 @@ const GlowingCard = styled(Card, {
   "&:hover::before": { opacity: 1 },
 }));
 
-const AnimatedButton = styled(Button)(({ theme }) => ({
-  background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
-  border: 0,
-  borderRadius: 25,
-  boxShadow: "0 3px 5px 2px rgba(33,150,243,0.3)",
-  color: "white",
-  padding: "12px 35px",
-  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-  position: "relative",
-  overflow: "hidden",
-  "&:hover": {
-    transform: "scale(1.05)",
-    boxShadow: "0 5px 15px 3px rgba(33,150,243,0.4)",
-  },
-}));
-
 const WaterContainer = styled(Box)(({ theme }) => ({
   position: "relative",
   width: "100%",
@@ -225,9 +137,9 @@ const WaterContainer = styled(Box)(({ theme }) => ({
   },
 }));
 
-// ============================================================
-// WaterTracker Component
-// ============================================================
+const getTurkeyTime = () =>
+  new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+
 const WaterTracker = ({ user, onWaterDataChange }) => {
   const [waterData, setWaterData] = useState({
     waterIntake: 0,
@@ -238,7 +150,8 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     lastResetDate: null,
     waterNotificationOption: "smart",
     customNotificationInterval: 1,
-    notificationWindow: { start: "08:00", end: "22:00" },
+    notificationWindow: { start: "07:00", end: "21:00" },
+    activityLevel: "orta", // Varsayılan aktiflik seviyesi (smart mod için)
   });
   const [showConfetti, setShowConfetti] = useState(false);
   const [achievement, setAchievement] = useState(null);
@@ -251,7 +164,6 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
 
   const getWaterDocRef = () => doc(db, "users", user.uid, "water", "current");
 
-  // Eğer gün değiştiyse günlük içim sıfırlama işlemini tetikler
   const checkIfResetNeeded = async (data) => {
     const nowTurkey = getTurkeyTime();
     const todayStr = nowTurkey.toLocaleDateString("en-CA");
@@ -260,7 +172,6 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     }
   };
 
-  // Firestore'dan su verilerini getirir
   const fetchWaterData = async () => {
     const ref = getWaterDocRef();
     const docSnap = await getDoc(ref);
@@ -278,17 +189,17 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         waterNotificationOption: data.waterNotificationOption || "smart",
         customNotificationInterval: data.customNotificationInterval || 1,
         notificationWindow: data.notificationWindow || {
-          start: "08:00",
-          end: "22:00",
+          start: "07:00",
+          end: "21:00",
         },
         nextWaterReminderTime: data.nextWaterReminderTime || null,
+        activityLevel: data.activityLevel || "orta",
       });
       await checkIfResetNeeded(data);
       if (onWaterDataChange) onWaterDataChange(data);
     }
   };
 
-  // Günlük su içim geçmişini günceller; dünden bugüne taşıma ve eski verileri filtreleme
   const resetDailyWaterIntake = async () => {
     try {
       const nowTurkey = getTurkeyTime();
@@ -344,7 +255,6 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     };
   }, [user]);
 
-  // Su ekleme işlemi; hedefe ulaşıldığında başarı animasyonu tetiklenir
   const handleAddWater = async () => {
     const newIntake = waterData.waterIntake + waterData.glassSize;
     const isGoalAchieved =
@@ -360,10 +270,15 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           glassSize: waterData.glassSize,
           waterNotificationOption: waterData.waterNotificationOption,
           customNotificationInterval: waterData.customNotificationInterval,
+          activityLevel: waterData.activityLevel,
         },
         { merge: true }
       );
       await fetchWaterData();
+      // Bildirimleri yeniden hesapla
+      const result = await scheduleWaterNotifications(user);
+      console.log("handleAddWater - Bildirimler yeniden hesaplandı:", result);
+      setNextReminder(result.nextReminder);
     } catch (error) {
       console.error("Error updating water intake:", error);
     }
@@ -379,24 +294,36 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     }
   };
 
-  // Su eksiltme işlemi
   const handleRemoveWater = async () => {
     const newIntake = Math.max(0, waterData.waterIntake - waterData.glassSize);
     const ref = getWaterDocRef();
     try {
       await setDoc(ref, { waterIntake: newIntake }, { merge: true });
       await fetchWaterData();
+      // Bildirimleri yeniden hesapla
+      const result = await scheduleWaterNotifications(user);
+      console.log(
+        "handleRemoveWater - Bildirimler yeniden hesaplandı:",
+        result
+      );
+      setNextReminder(result.nextReminder);
     } catch (error) {
       console.error("Error updating water intake:", error);
     }
   };
 
-  // Su ayarlarında değişiklik yapıldığında Firestore güncellenir
   const handleWaterSettingChange = async (field, value) => {
     const ref = getWaterDocRef();
     try {
       await setDoc(ref, { [field]: value }, { merge: true });
       await fetchWaterData();
+      // Ayar değişikliğinde bildirimleri yeniden hesapla
+      const result = await scheduleWaterNotifications(user);
+      console.log(
+        "handleWaterSettingChange - Bildirimler yeniden hesaplandı:",
+        result
+      );
+      setNextReminder(result.nextReminder);
     } catch (error) {
       console.error("Error updating water settings:", error);
     }
@@ -412,9 +339,8 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     fetchWaterData();
   }, [user]);
 
-  // Bildirim zamanlaması: saveNextWaterReminderTime fonksiyonu ile Firestore'daki sonraki su bildirim zamanı güncellenir
   useEffect(() => {
-    if (user && waterData) {
+    if (user && waterData && waterData.waterNotificationOption !== "none") {
       saveNextWaterReminderTime(user)
         .then((next) => {
           console.log("WaterTracker - nextReminder hesaplandı:", next);
@@ -423,6 +349,8 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         .catch((err) =>
           console.error("WaterTracker - saveNextWaterReminderTime hatası:", err)
         );
+    } else {
+      setNextReminder(null);
     }
   }, [waterData, user]);
 
@@ -557,7 +485,9 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           </Box>
           <Typography variant="subtitle1" sx={{ color: "#fff", mt: 2 }}>
             Sonraki bildirim:{" "}
-            {nextReminder
+            {waterData.waterNotificationOption === "none"
+              ? "Bildirim Kapalı"
+              : nextReminder
               ? new Date(nextReminder.time).toLocaleTimeString("tr-TR", {
                   hour: "2-digit",
                   minute: "2-digit",
@@ -674,7 +604,6 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         </Grid>
       </Box>
 
-      {/* "Dün içilen su" kartı */}
       <Box
         sx={{
           maxWidth: 300,
@@ -851,6 +780,12 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
             "customNotificationInterval",
             newSettings.customNotificationInterval
           );
+          if (newSettings.activityLevel) {
+            handleWaterSettingChange(
+              "activityLevel",
+              newSettings.activityLevel
+            );
+          }
         }}
       />
     </Box>

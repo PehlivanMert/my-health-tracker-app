@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -12,33 +12,46 @@ import {
   Button,
 } from "@mui/material";
 
-// Bu bileşen, NotificationScheduler.js’deki dinamik su hatırlatma mantığı ile uyumlu ayarları yönetir.
-// Ayarlar kaydedildikten sonra, opsiyonel updateWaterSchedule callback’i aracılığıyla
-// backend’deki saveNextWaterReminderTime fonksiyonunu tetikleyebilirsiniz.
-
+// Varsayılan değer vererek waterSettings'in undefined olma riskini azaltıyoruz.
 const WaterNotificationSettingsDialog = ({
   open,
   onClose,
-  waterSettings,
+  waterSettings = {},
   onSave,
-  // İsteğe bağlı: Su hatırlatma zamanını güncellemek için bir callback
   updateWaterSchedule,
 }) => {
+  // İlk değerleri waterSettings'ten alıyoruz veya default olarak ayarlıyoruz.
   const [notificationOption, setNotificationOption] = useState(
     waterSettings.waterNotificationOption || "smart"
   );
   const [customInterval, setCustomInterval] = useState(
     waterSettings.customNotificationInterval || 1
   );
+  const [activityLevel, setActivityLevel] = useState(
+    waterSettings.activityLevel || "orta"
+  );
+
+  useEffect(() => {
+    // Dışarıdan gelen waterSettings değiştiğinde state'leri güncelliyoruz.
+    setNotificationOption(waterSettings.waterNotificationOption || "smart");
+    setCustomInterval(waterSettings.customNotificationInterval || 1);
+    setActivityLevel(waterSettings.activityLevel || "orta");
+  }, [waterSettings]);
+
+  // Debug için
+  useEffect(() => {
+    console.log("Current notificationOption:", notificationOption);
+  }, [notificationOption]);
 
   const handleSave = async () => {
     const newSettings = {
       waterNotificationOption: notificationOption,
       customNotificationInterval: customInterval,
     };
+    if (notificationOption === "smart") {
+      newSettings.activityLevel = activityLevel;
+    }
     await onSave(newSettings);
-
-    // Ayarlar kaydedildikten sonra, backend’deki dinamik hesaplamaların tetiklenmesi için çağrı yapabilirsiniz.
     if (updateWaterSchedule) {
       await updateWaterSchedule(newSettings);
     }
@@ -50,8 +63,9 @@ const WaterNotificationSettingsDialog = ({
       <DialogTitle>Su Bildirim Ayarları</DialogTitle>
       <DialogContent>
         <FormControl fullWidth sx={{ mt: 2 }}>
-          <InputLabel>Mod Seçimi</InputLabel>
+          <InputLabel id="mode-label">Mod Seçimi</InputLabel>
           <Select
+            labelId="mode-label"
             value={notificationOption}
             label="Mod Seçimi"
             onChange={(e) => setNotificationOption(e.target.value)}
@@ -73,6 +87,24 @@ const WaterNotificationSettingsDialog = ({
             InputLabelProps={{ shrink: true }}
             sx={{ mt: 2 }}
           />
+        )}
+        {notificationOption === "smart" && (
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel id="activity-label">Aktiflik Seviyesi</InputLabel>
+            <Select
+              labelId="activity-label"
+              value={activityLevel}
+              label="Aktiflik Seviyesi"
+              onChange={(e) => setActivityLevel(e.target.value)}
+            >
+              <MenuItem value="çok_düşük">Çok Düşük</MenuItem>
+              <MenuItem value="düşük">Düşük</MenuItem>
+              <MenuItem value="orta">Orta</MenuItem>
+              <MenuItem value="yüksek">Yüksek</MenuItem>
+              <MenuItem value="çok_yüksek">Çok Yüksek</MenuItem>
+              <MenuItem value="aşırı">Aşırı</MenuItem>
+            </Select>
+          </FormControl>
         )}
       </DialogContent>
       <DialogActions>

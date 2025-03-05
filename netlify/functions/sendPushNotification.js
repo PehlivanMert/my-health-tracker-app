@@ -126,37 +126,43 @@ exports.handler = async function (event, context) {
 
         // ---------- Su Bildirimleri ----------
         try {
-          const waterRef = db
-            .collection("users")
-            .doc(userDoc.id)
-            .collection("water")
-            .doc("current");
-          const waterDoc = await waterRef.get();
-          if (
-            waterDoc.exists &&
-            waterDoc.data() &&
-            waterDoc.data().nextWaterReminderTime
-          ) {
-            const nextReminder = new Date(
-              waterDoc.data().nextWaterReminderTime
-            );
-            console.log(
-              `sendPushNotification - Kullanıcı ${userDoc.id} için su bildirimi zamanı:`,
-              nextReminder
-            );
-            if (Math.abs(now - nextReminder) / 60000 < 0.3) {
-              notificationsToSend.push({
-                token: fcmToken,
-                data: {
-                  title: "Su İçme Hatırlatması",
-                  body:
-                    waterDoc.data().nextWaterReminderMessage ||
-                    `Günlük su hedefin ${
-                      waterDoc.data().dailyWaterTarget
-                    } ml. Su içmeyi unutma!`,
-                  type: "water",
-                },
-              });
+          const waterRef = doc(db, "users", userDoc.id, "water", "current");
+          const waterSnap = await getDoc(waterRef);
+          if (waterSnap.exists()) {
+            const waterData = waterSnap.data();
+            if (waterData && waterData.nextWaterReminderTime) {
+              const nextReminder = new Date(waterData.nextWaterReminderTime);
+
+              // Log çıktılarıyla bildirim zamanı ve mesajını yazdırıyoruz.
+              console.log(
+                `sendPushNotification - Kullanıcı ${userDoc.id} için su bildirimi zamanı:`,
+                nextReminder
+              );
+              console.log(
+                "sendPushNotification - nextWaterReminderTime:",
+                waterData.nextWaterReminderTime
+              );
+              console.log(
+                "sendPushNotification - nextWaterReminderMessage:",
+                waterData.nextWaterReminderMessage
+              );
+
+              // Eğer bildirim zamanı, mevcut zamana yakınsa (örneğin 0.6 dakika/18 saniye içerisinde)
+              if (Math.abs(now - nextReminder) / 60000 < 0.6) {
+                notificationsToSend.push({
+                  token: fcmToken,
+                  data: {
+                    title: "Su İçme Hatırlatması",
+                    body:
+                      waterData.nextWaterReminderMessage ||
+                      `Günlük su hedefin ${waterData.dailyWaterTarget} ml. Su içmeyi unutma!`,
+                    nextWaterReminderTime: waterData.nextWaterReminderTime,
+                    nextWaterReminderMessage:
+                      waterData.nextWaterReminderMessage,
+                    type: "water",
+                  },
+                });
+              }
             }
           }
         } catch (err) {

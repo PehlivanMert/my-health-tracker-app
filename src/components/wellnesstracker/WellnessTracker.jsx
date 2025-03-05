@@ -292,6 +292,15 @@ const WellnessTracker = ({ user }) => {
     }
   };
 
+  // supplements ve user güncellendiğinde nextSupplementReminderTime hesaplaması
+  useEffect(() => {
+    if (supplements && user) {
+      supplements.forEach(async (supp) => {
+        await saveNextSupplementReminderTime(user, supp);
+      });
+    }
+  }, [supplements, user]);
+
   return (
     <Box
       sx={{

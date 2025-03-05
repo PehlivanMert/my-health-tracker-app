@@ -194,17 +194,33 @@ exports.handler = async function (event, context) {
                 nextReminderTurkey
               );
               if (Math.abs(now - nextReminderTurkey) / 60000 < 0.3) {
+                // Estimated remaining days hesaplanıyor
+                const estimatedRemainingDays = Math.floor(
+                  suppData.quantity / suppData.dailyUsage
+                );
+                let title = "";
+                let body = "";
+                if (estimatedRemainingDays === 0) {
+                  title = `${suppData.name} Takviyen Bitti!`;
+                  body = `Takviyen tamamen tükendi. Lütfen yenilemeyi unutmayın.`;
+                } else if ([14, 7, 3, 1].includes(estimatedRemainingDays)) {
+                  title = `${suppData.name} Takviyenden ${estimatedRemainingDays} Gün Kaldı!`;
+                  body = `Takviyenden ${estimatedRemainingDays} gün kaldı. Zamanında almayı unutmayın.`;
+                } else {
+                  title = `${suppData.name} Takviyesini Almayı Unutmayın!`;
+                  body = `Belirlenen saatte (${nextReminderTurkey.toLocaleTimeString(
+                    "tr-TR",
+                    {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }
+                  )}) almanız gereken takviyeyi henüz almadınız.`;
+                }
                 notificationsToSend.push({
                   token: fcmToken,
                   data: {
-                    title: `${suppData.name} Takviyesini Almayı Unutmayın!`,
-                    body: `Belirlenen saatte (${nextReminderTurkey.toLocaleTimeString(
-                      "tr-TR",
-                      {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      }
-                    )}) almanız gereken takviyeyi henüz almadınız.`,
+                    title,
+                    body,
                     supplementId: docSnap.id,
                   },
                 });

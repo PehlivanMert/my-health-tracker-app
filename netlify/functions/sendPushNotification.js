@@ -51,7 +51,7 @@ exports.handler = async function (event, context) {
               .map(Number);
             const routineTime = new Date(now);
             routineTime.setHours(routineHour, routineMinute, 0, 0);
-            if (Math.abs(now - routineTime) / 60000 < 1) {
+            if (Math.abs(now - routineTime) / 60000 < 0.3) {
               notificationsToSend.push({
                 token: fcmToken,
                 data: {
@@ -86,7 +86,7 @@ exports.handler = async function (event, context) {
             const triggerTime = new Date(
               eventStartTurkey.getTime() - offsetMinutes * 60000
             );
-            if (Math.abs(now - triggerTime) / 60000 < 1) {
+            if (Math.abs(now - triggerTime) / 60000 < 0.3) {
               notificationsToSend.push({
                 token: fcmToken,
                 data: {
@@ -144,7 +144,7 @@ exports.handler = async function (event, context) {
               `sendPushNotification - Kullanıcı ${userDoc.id} için su bildirimi zamanı:`,
               nextReminder
             );
-            if (Math.abs(now - nextReminder) / 60000 < 1) {
+            if (Math.abs(now - nextReminder) / 60000 < 0.3) {
               notificationsToSend.push({
                 token: fcmToken,
                 data: {
@@ -193,7 +193,7 @@ exports.handler = async function (event, context) {
                 `sendPushNotification - Kullanıcı ${userDoc.id} için takviye bildirimi zamanı (${suppData.name}):`,
                 nextReminderTurkey
               );
-              if (Math.abs(now - nextReminderTurkey) / 60000 < 1) {
+              if (Math.abs(now - nextReminderTurkey) / 60000 < 0.3) {
                 notificationsToSend.push({
                   token: fcmToken,
                   data: {

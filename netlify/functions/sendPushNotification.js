@@ -1,6 +1,7 @@
 // sendPushNotification.js
 const admin = require("firebase-admin");
 const fetch = require("node-fetch");
+const { doc, getDoc } = require("firebase-admin/firestore");
 
 if (!admin.apps.length) {
   const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);

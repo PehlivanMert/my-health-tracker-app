@@ -13,7 +13,7 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// Takvim bildirimleri için offsetler
+// Takvim bildirimleri için offsetler (dakika cinsinden)
 const notificationOffsets = {
   "on-time": 0,
   "15-minutes": 15,
@@ -51,7 +51,7 @@ exports.handler = async function (event, context) {
               .map(Number);
             const routineTime = new Date(now);
             routineTime.setHours(routineHour, routineMinute, 0, 0);
-            if (Math.abs(now - routineTime) / 60000 < 1) {
+            if (Math.abs(now - routineTime) / 60000 < 0.3) {
               notificationsToSend.push({
                 token: fcmToken,
                 data: {
@@ -86,7 +86,7 @@ exports.handler = async function (event, context) {
             const triggerTime = new Date(
               eventStartTurkey.getTime() - offsetMinutes * 60000
             );
-            if (Math.abs(now - triggerTime) / 60000 < 1) {
+            if (Math.abs(now - triggerTime) / 60000 < 0.3) {
               notificationsToSend.push({
                 token: fcmToken,
                 data: {
@@ -120,6 +120,7 @@ exports.handler = async function (event, context) {
             .map(Number);
           const startTotal = startH * 60 + startM;
           const endTotal = endH * 60 + endM;
+          // Eğer mevcut saat global bildirim penceresi içinde değilse, o kullanıcı için diğer bildirimler gönderilmez
           if (!(nowTotal >= startTotal && nowTotal <= endTotal)) return;
         }
 
@@ -131,7 +132,11 @@ exports.handler = async function (event, context) {
             .collection("water")
             .doc("current");
           const waterDoc = await waterRef.get();
-          if (waterDoc.exists && waterDoc.data().nextWaterReminderTime) {
+          if (
+            waterDoc.exists &&
+            waterDoc.data() &&
+            waterDoc.data().nextWaterReminderTime
+          ) {
             const nextReminder = new Date(
               waterDoc.data().nextWaterReminderTime
             );
@@ -139,14 +144,16 @@ exports.handler = async function (event, context) {
               `sendPushNotification - Kullanıcı ${userDoc.id} için su bildirimi zamanı:`,
               nextReminder
             );
-            if (Math.abs(now - nextReminder) / 60000 < 1) {
+            if (Math.abs(now - nextReminder) / 60000 < 0.3) {
               notificationsToSend.push({
                 token: fcmToken,
                 data: {
                   title: "Su İçme Hatırlatması",
-                  body: `Günlük su hedefin ${
-                    waterDoc.data().dailyWaterTarget
-                  } ml. Su içmeyi unutma!`,
+                  body:
+                    waterDoc.data().nextWaterReminderMessage ||
+                    `Günlük su hedefin ${
+                      waterDoc.data().dailyWaterTarget
+                    } ml. Su içmeyi unutma!`,
                   type: "water",
                 },
               });
@@ -176,6 +183,7 @@ exports.handler = async function (event, context) {
               const nextReminder = new Date(
                 suppData.nextSupplementReminderTime
               );
+              // Türkiye saatine göre ayarlanmış zaman
               const nextReminderTurkey = new Date(
                 nextReminder.toLocaleString("en-US", {
                   timeZone: "Europe/Istanbul",
@@ -185,14 +193,17 @@ exports.handler = async function (event, context) {
                 `sendPushNotification - Kullanıcı ${userDoc.id} için takviye bildirimi zamanı (${suppData.name}):`,
                 nextReminderTurkey
               );
-              if (Math.abs(now - nextReminderTurkey) / 60000 < 1) {
+              if (Math.abs(now - nextReminderTurkey) / 60000 < 0.3) {
                 notificationsToSend.push({
                   token: fcmToken,
                   data: {
                     title: `${suppData.name} Takviyesini Almayı Unuttunuz!`,
                     body: `Belirlenen saatte (${nextReminderTurkey.toLocaleTimeString(
                       "tr-TR",
-                      { hour: "2-digit", minute: "2-digit" }
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }
                     )}) almanız gereken takviyeyi henüz almadınız.`,
                     supplementId: docSnap.id,
                   },

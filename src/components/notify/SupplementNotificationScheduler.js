@@ -42,13 +42,21 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
       "computeSupplementReminderTimes - estimatedRemainingDays:",
       estimatedRemainingDays
     );
+    const flooredRemaining = Math.floor(estimatedRemainingDays);
 
-    // Eşik kontrolü: 14, 7, 3, 1 gün
-    const thresholds = [14, 7, 3, 1];
-    if (thresholds.includes(Math.floor(estimatedRemainingDays))) {
+    if (flooredRemaining === 0) {
+      // Takviyenin bitmiş olduğuna dair bildirim için zaman (örneğin 1 dakika sonrası)
+      const finishedTime = new Date(now.getTime() + 1 * 60000);
+      times.push(finishedTime);
+      console.log(
+        "computeSupplementReminderTimes - estimatedRemainingDays 0: Takviyen bitmiştir bildirimi için hesaplanan zaman:",
+        finishedTime
+      );
+    } else if ([14, 7, 3, 1].includes(flooredRemaining)) {
+      // Belirlenen eşik değerlerinden biri tetikleniyorsa (örn. 14, 7, 3 veya 1 günlük takviyen kaldı)
       console.log(
         "computeSupplementReminderTimes - estimatedRemainingDays eşik değeri tetiklendi:",
-        Math.floor(estimatedRemainingDays)
+        flooredRemaining
       );
       if (user.notificationWindow && user.notificationWindow.end) {
         const windowEnd = new Date(
@@ -56,40 +64,21 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
         );
         times.push(windowEnd);
         console.log(
-          "computeSupplementReminderTimes - Eşik durumunda bildirim penceresi kullanılarak hesaplanan zaman:",
+          `computeSupplementReminderTimes - ${flooredRemaining} günlük takviyen kaldı bildirimi için hesaplanan zaman (bildirim penceresi):`,
           windowEnd
         );
       } else {
         const defaultTime = new Date(now.getTime() + 60 * 60000);
         times.push(defaultTime);
         console.log(
-          "computeSupplementReminderTimes - Eşik durumunda varsayılan 1 saat sonrası hesaplanan zaman:",
+          `computeSupplementReminderTimes - ${flooredRemaining} günlük takviyen kaldı bildirimi için hesaplanan zaman (varsayılan 1 saat sonrası):`,
           defaultTime
         );
       }
     } else {
+      // Diğer durumlarda normal otomatik bildirim zamanı
       console.log(
-        "computeSupplementReminderTimes - Eşik kontrolü tetiklenmedi. estimatedRemainingDays:",
-        estimatedRemainingDays
-      );
-    }
-
-    // Kritik durum: estimatedRemainingDays <= 1 ise 1 dakika sonrası bildirim
-    if (estimatedRemainingDays <= 1) {
-      console.log(
-        "computeSupplementReminderTimes - Kritik durum için estimatedRemainingDays <= 1:",
-        estimatedRemainingDays
-      );
-      const autoTime = new Date(now.getTime() + 1 * 60000);
-      times.push(autoTime);
-      console.log(
-        "computeSupplementReminderTimes - Kritik durum, 1 dakika sonrası hesaplanan zaman:",
-        autoTime
-      );
-    } else {
-      // Normal otomatik bildirim zamanı: global bildirim penceresi ya da varsayılan 1 saat sonrası
-      console.log(
-        "computeSupplementReminderTimes - Normal durumda estimatedRemainingDays > 1:",
+        "computeSupplementReminderTimes - Normal durumda, estimatedRemainingDays:",
         estimatedRemainingDays
       );
       if (user.notificationWindow && user.notificationWindow.end) {
@@ -117,20 +106,24 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
   }
 
   // Ek: Günlük tüketim kontrolü
-  // Varsayım: suppData.name, supplement’in adını içeriyor
+  // Firestore veri modeli: "users/{user.uid}/stats/supplementConsumption" dokümanı,
+  // bu doküman içerisinde alanlar bugünün tarihine göre (en-CA formatında) tutuluyor.
+  // Her alan bir map olup, takviye isimlerini anahtar olarak ve kullanılan miktarları değer olarak içeriyor.
   try {
     const consumptionDocRef = doc(
       db,
       "users",
       user.uid,
       "stats",
-      "supplementConsumption",
-      todayStr
+      "supplementConsumption"
     );
     const consumptionDoc = await getDoc(consumptionDocRef);
     if (consumptionDoc.exists()) {
       const consumptionData = consumptionDoc.data();
-      const consumed = consumptionData[suppData.name] || 0;
+      // Bugünün consumption verisini alıyoruz
+      const todayConsumption = consumptionData[todayStr] || {};
+      // Eğer supplement için bir alan yoksa, consumption 0 kabul edilir.
+      const consumed = todayConsumption[suppData.name] || 0;
       console.log(
         "computeSupplementReminderTimes - Günlük tüketim verisi:",
         suppData.name,
@@ -177,7 +170,7 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
       }
     } else {
       console.log(
-        "computeSupplementReminderTimes - Bugün için supplement consumption verisi bulunamadı."
+        "computeSupplementReminderTimes - supplementConsumption dokümanı bulunamadı."
       );
     }
   } catch (error) {

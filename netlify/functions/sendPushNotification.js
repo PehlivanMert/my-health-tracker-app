@@ -1,7 +1,6 @@
 // sendPushNotification.js
 const admin = require("firebase-admin");
 const fetch = require("node-fetch");
-const { doc, getDoc } = require("firebase-admin/firestore");
 
 if (!admin.apps.length) {
   const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
@@ -127,9 +126,13 @@ exports.handler = async function (event, context) {
 
         // ---------- Su Bildirimleri ----------
         try {
-          const waterRef = doc(db, "users", userDoc.id, "water", "current");
-          const waterSnap = await getDoc(waterRef);
-          if (waterSnap.exists()) {
+          const waterRef = db
+            .collection("users")
+            .doc(userDoc.id)
+            .collection("water")
+            .doc("current");
+          const waterSnap = await waterRef.get();
+          if (waterSnap.exists) {
             const waterData = waterSnap.data();
             if (waterData && waterData.nextWaterReminderTime) {
               const nextReminder = new Date(waterData.nextWaterReminderTime);

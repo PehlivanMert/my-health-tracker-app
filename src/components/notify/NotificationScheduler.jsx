@@ -1,806 +1,380 @@
-// EnhancedWaterTrackingSystem.js
+// NotificationScheduler.jsx
 
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
-import React, { useState } from "react";
-import waterIcon from "../../assets/water-icon.png";
-
-// ============================================================
-// Firebase & Utility Fonksiyonları (Bildirim Scheduler)
-// ============================================================
 
 /**
  * Türkiye saatini döndürür.
  */
 export const getTurkeyTime = () => {
-  return new Date(
+  const turkeyTime = new Date(
     new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
   );
+  console.log("getTurkeyTime - Şu anki Türkiye zamanı:", turkeyTime);
+  return turkeyTime;
 };
 
 /**
- * Bazal Metabolizma Hızını (BMR) hesaplar.
- * Mifflin-St Jeor Denklemi kullanılarak erkek ve kadın için hesaplama yapılır.
- *
+ * Kullanıcının doğum tarihinden yaşını hesaplar.
+ * @param {Date|string|Object} birthDate - Doğum tarihi (Date, ISO string veya Firebase timestamp)
+ * @returns {number} Hesaplanan yaş
+ */
+export const calculateAge = (birthDate) => {
+  const birth = birthDate.toDate ? birthDate.toDate() : new Date(birthDate);
+  const today = getTurkeyTime();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  console.log("calculateAge - Hesaplanan yaş:", age);
+  return age;
+};
+
+/**
+ * Mifflin-St Jeor denklemi ile Bazal Metabolizma Hızını (BMR) hesaplar.
  * @param {string} gender - "male" veya "female"
- * @param {number} weight - ağırlık (kg)
- * @param {number} height - boy (cm)
- * @param {number} age - yaş
- * @returns {number} BMR değeri
+ * @param {number} weight - Ağırlık (kg)
+ * @param {number} height - Boy (cm)
+ * @param {number} age - Yaş
+ * @returns {number} Hesaplanan BMR
  */
 export const calculateBMR = (gender, weight, height, age) => {
-  if (gender === "male") {
-    return 10 * weight + 6.25 * height - 5 * age + 5;
-  } else if (gender === "female") {
-    return 10 * weight + 6.25 * height - 5 * age - 161;
+  let bmr;
+  if (gender === "female") {
+    bmr = 10 * weight + 6.25 * height - 5 * age - 161;
+  } else {
+    bmr = 10 * weight + 6.25 * height - 5 * age + 5;
   }
-  return 10 * weight + 6.25 * height - 5 * age + 5;
+  console.log("calculateBMR - Hesaplanan BMR:", bmr);
+  return bmr;
 };
 
 /**
- * Günlük su ihtiyacını hesaplar.
- * Bazal Metabolizma Hızına göre ve aktivite seviyesini çarpanı olarak hesaba katar.
- *
- * @param {number} bmr - Hesaplanan BMR değeri
- * @param {number} [activityLevel=1.2] - Aktivite seviyesi çarpanı (varsayılan: 1.2)
- * @returns {number} Günlük su ihtiyacı (ml cinsinden)
+ * BMR değeri ve çarpan üzerinden günlük su hedefini (ml) hesaplar.
+ * @param {number} bmr - Hesaplanan BMR
+ * @param {number} multiplier - Çarpan (varsayılan 1.4)
+ * @returns {number} Günlük su hedefi (ml)
  */
-export const calculateDailyWaterIntake = (bmr, activityLevel = 1.2) => {
-  const baseWaterIntake = bmr * 1; // Her 1 kalori için yaklaşık 1 ml su
-  return Math.round(baseWaterIntake * activityLevel);
+export const calculateDailyWaterTarget = (bmr, multiplier = 1.4) => {
+  const dailyWaterTarget = Math.round(bmr * multiplier);
+  console.log(
+    "calculateDailyWaterTarget - Günlük su hedefi:",
+    dailyWaterTarget
+  );
+  return dailyWaterTarget;
 };
 
 /**
- * Kullanıcı profilini ve mevcut su verilerini Firestore'dan getirir.
- * Artık profil verileri, kullanıcının ana dokümanında "profile" alanı olarak saklanıyor.
- *
+ * Kullanıcıya ait profil ve su verilerini Firestore’dan getirir.
+ * /users/{uid} ve /users/{uid}/water/current dokümanlarını birleştirir.
  * @param {Object} user - Firebase kullanıcı nesnesi
- * @returns {Object|null} Birleştirilmiş profil ve su verileri veya hata durumunda null
+ * @returns {Object} Birleşik veri nesnesi
  */
-export const fetchUserProfileAndWaterData = async (user) => {
-  if (!user || !user.uid) return null;
+const fetchUserData = async (user) => {
+  if (!user || !user.uid) return {};
   try {
-    // Kullanıcı verilerini ana dokümandan alıyoruz
+    // Kullanıcı ana verisi
     const userRef = doc(db, "users", user.uid);
     const userSnap = await getDoc(userRef);
     const userData = userSnap.exists() ? userSnap.data() : {};
+    console.log("fetchUserData - Kullanıcı ana verisi:", userData);
 
-    // Profil verilerini kullanıcı dokümanındaki "profile" alanından alıyoruz
-    const profileData = userData.profile || {};
-
-    // Su verilerini water/current dokümanından alıyoruz
+    // Su verileri
     const waterRef = doc(db, "users", user.uid, "water", "current");
     const waterSnap = await getDoc(waterRef);
     const waterData = waterSnap.exists() ? waterSnap.data() : {};
+    console.log("fetchUserData - Su verileri:", waterData);
 
-    // Water dokümanından notificationWindow alanını hariç tutuyoruz
-    const { notificationWindow, ...waterDataWithoutNotification } = waterData;
-
-    // Sonuçta, notificationWindow her zaman kullanıcı dokümanından gelecek
-    return {
-      ...userData,
-      ...profileData,
-      ...waterDataWithoutNotification,
-      notificationWindow: userData.notificationWindow || {
-        start: "07:00",
-        end: "22:00",
-      },
-    };
+    return { ...userData, ...waterData };
   } catch (error) {
-    console.error("fetchUserProfileAndWaterData hatası:", error);
-    return null;
+    console.error("fetchUserData - Hata:", error);
+    return {};
   }
 };
 
 /**
- * Gelişmiş su bildirim zamanlarını hesaplar.
- * Kullanıcı verilerine göre günlük hedef, bardak boyutu ve bildirim penceresi belirlenir.
- *
- * @param {Object} user - Firebase kullanıcı nesnesi
- * @returns {Promise<Array<Date>>} Bildirim zamanlarını içeren Date dizisi
+ * Bildirim penceresi (start, end) değerlerini alır; yoksa varsayılan olarak 08:00-22:00 kullanır.
+ * @param {Object} data - Kullanıcı verileri
+ * @returns {Object} { start: string, end: string }
  */
-export const computeEnhancedWaterReminderTimes = async (user) => {
-  const userData = await fetchUserProfileAndWaterData(user);
+const getNotificationWindow = (data) => {
+  const windowObj = data.notificationWindow || { start: "08:00", end: "22:00" };
+  console.log("getNotificationWindow - Bildirim penceresi:", windowObj);
+  return windowObj;
+};
 
-  if (!userData) {
-    console.warn("Kullanıcı verisi bulunamadı");
-    return [];
-  }
+/**
+ * Global bildirim penceresini hesaplar.
+ * Overnight (gece) pencereleri de ele alınır: Eğer start > end ise,
+ * - Eğer şu an windowEnd’den önce ise, windowStart dünkü saat olarak belirlenir.
+ * - Aksi halde, windowEnd yarın olarak ayarlanır.
+ * @param {Object} windowObj - { start, end } zaman stringleri (ör. "18:45", "05:30")
+ * @returns {Object} { windowStart: Date, windowEnd: Date }
+ */
+const computeWindowTimes = (windowObj) => {
+  const now = getTurkeyTime();
+  const todayStr = now.toISOString().split("T")[0];
+  let windowStart, windowEnd;
 
-  // weight ve height verileri string olabileceğinden parseFloat kullanılıyor
-  const weight = parseFloat(userData.weight) || 93; // Varsayılan 93 kg
-  const height = parseFloat(userData.height) || 190; // Varsayılan 190 cm
-
-  // Yaş alanı null ise doğum tarihinden hesapla
-  let age;
-  if (userData.age != null) {
-    age = parseInt(userData.age);
-  } else if (userData.birthDate) {
-    const birthDateObj = userData.birthDate.toDate
-      ? userData.birthDate.toDate()
-      : new Date(userData.birthDate);
-    const today = getTurkeyTime();
-    age = today.getFullYear() - birthDateObj.getFullYear();
-    const m = today.getMonth() - birthDateObj.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
-      age--;
+  if (windowObj.start <= windowObj.end) {
+    // Normal (aynı gün) pencere
+    windowStart = new Date(`${todayStr}T${windowObj.start}:00`);
+    windowEnd = new Date(`${todayStr}T${windowObj.end}:00`);
+    if (now > windowEnd) {
+      windowStart.setDate(windowStart.getDate() + 1);
+      windowEnd.setDate(windowEnd.getDate() + 1);
     }
   } else {
-    age = 30; // Varsayılan yaş
+    // Overnight pencere: örn. {start: "18:45", end: "05:30"}
+    let potentialStart = new Date(`${todayStr}T${windowObj.start}:00`);
+    let potentialEnd = new Date(`${todayStr}T${windowObj.end}:00`);
+    // Eğer şu an potentialEnd'den önce ise, aktif pencere dünkü start'tan bugünkü end'e
+    if (now < potentialEnd) {
+      potentialStart.setDate(potentialStart.getDate() - 1);
+    } else {
+      // Aksi halde, pencere bugünkü start'tan yarınki end'e
+      potentialEnd.setDate(potentialEnd.getDate() + 1);
+    }
+    windowStart = potentialStart;
+    windowEnd = potentialEnd;
   }
-
-  // Varsayılan olarak erkek kabul edilmiştir
-  const bmr = calculateBMR("male", weight, height, age);
-  const dailyWaterTarget = calculateDailyWaterIntake(bmr);
-  const glassSize = 250; // Ortalama bardak boyutu (ml)
-  const notificationWindow = userData.notificationWindow || {
-    start: "07:00",
-    end: "22:00",
-  };
-
-  const nowTurkey = getTurkeyTime();
-  const todayStr = nowTurkey.toLocaleDateString("en-CA"); // YYYY-MM-DD formatı
-
-  let windowStart = new Date(`${todayStr}T${notificationWindow.start}:00`);
-  let windowEnd = new Date(`${todayStr}T${notificationWindow.end}:00`);
-
-  if (nowTurkey > windowEnd) {
-    windowStart.setDate(windowStart.getDate() + 1);
-    windowEnd.setDate(windowEnd.getDate() + 1);
-  }
-
-  const numGlassesRequired = Math.ceil(dailyWaterTarget / glassSize);
-  const totalWindowMinutes = (windowEnd - windowStart) / 60000;
-  const intervalMinutes = Math.max(
-    15,
-    Math.floor(totalWindowMinutes / numGlassesRequired)
+  console.log(
+    "computeWindowTimes - Pencere başlangıcı:",
+    windowStart,
+    "Bitişi:",
+    windowEnd
   );
+  return { windowStart, windowEnd };
+};
 
-  let reminderTimes = [];
-  let t = Math.max(windowStart.getTime(), nowTurkey.getTime() + 1000); // 1 saniye ekleniyor
-  while (t <= windowEnd.getTime()) {
-    reminderTimes.push(new Date(t));
-    t += intervalMinutes * 60000;
+/**
+ * Belirtilen bildirim zamanı için günün saatine göre motivasyon mesajı oluşturur.
+ * @param {Date} date - Bildirim zamanı
+ * @returns {string} Motivasyon mesajı
+ */
+export const getMotivationalMessageForTime = (date) => {
+  const hour = date.getHours();
+  let message = "";
+  if (hour >= 6 && hour < 10) {
+    message = "Günaydın! Güne enerjik başlayın, suyunuzu için.";
+  } else if (hour >= 10 && hour < 14) {
+    message = "Öğle vakti! Hedefinize bir adım daha yaklaşın.";
+  } else if (hour >= 14 && hour < 18) {
+    message = "Öğleden sonra! Su içmeyi unutmayın.";
+  } else if (hour >= 18 && hour < 22) {
+    message = "Akşam oldu, gününüzü tamamlamak için su için.";
+  } else {
+    message = "Gece vakti, su içmeyi ihmal etmeyin!";
+  }
+  console.log(
+    `getMotivationalMessageForTime - Saat ${hour} için mesaj:`,
+    message
+  );
+  return message;
+};
+
+/**
+ * Kullanıcının bildirim moduna göre su hatırlatma zamanlarını hesaplar.
+ * Smart modda profil verilerinden (boy, kilo, cinsiyet, doğum tarihi) otomatik hesaplama yapılır;
+ * Custom modda ise kullanıcının belirlediği saat aralığına göre planlanır.
+ * Her bildirim zamanı için günün saatine uygun motivasyon mesajı eklenir.
+ * @param {Object} user - Firebase kullanıcı nesnesi
+ * @returns {Array<Object>} Bildirim zamanları dizisi, her eleman { time: Date, message: string }
+ */
+export const computeWaterReminderTimes = async (user) => {
+  if (!user || !user.uid) return [];
+  const data = await fetchUserData(user);
+  console.log("computeWaterReminderTimes - Birleşik veri:", data);
+
+  const mode = data.waterNotificationOption || "smart";
+  console.log("computeWaterReminderTimes - Bildirim modu:", mode);
+
+  const notifWindow = getNotificationWindow(data);
+  const { windowStart, windowEnd } = computeWindowTimes(notifWindow);
+  const now = getTurkeyTime();
+  let reminderSchedule = [];
+
+  if (mode === "none") {
+    console.log("computeWaterReminderTimes - Bildirimler kapalı (none mod).");
+    return [];
+  } else if (mode === "smart") {
+    // Smart mod: Profil verilerinden hesaplamalar
+    const profile = data.profile || data;
+    const weight = parseFloat(profile.weight) || 93;
+    const height = parseFloat(profile.height) || 190;
+    const gender = profile.gender || "male";
+    let age = profile.age != null ? parseInt(profile.age) : 30;
+    if (!profile.age && profile.birthDate) {
+      age = calculateAge(profile.birthDate);
+    }
+    const bmr = calculateBMR(gender, weight, height, age);
+    const dailyWaterTarget = calculateDailyWaterTarget(bmr, 1.4);
+    const glassSize = data.glassSize || 250;
+    const numGlasses = Math.ceil(dailyWaterTarget / glassSize);
+    console.log(
+      "computeWaterReminderTimes - dailyWaterTarget:",
+      dailyWaterTarget,
+      "glassSize:",
+      glassSize,
+      "numGlasses:",
+      numGlasses
+    );
+
+    // Kaydet: bmr, dailyWaterTarget, glassSize, mod
+    const waterRef = doc(db, "users", user.uid, "water", "current");
+    await setDoc(
+      waterRef,
+      { bmr, dailyWaterTarget, glassSize, waterNotificationOption: "smart" },
+      { merge: true }
+    );
+
+    const totalMinutes = (windowEnd - windowStart) / 60000;
+    const interval = Math.max(15, Math.floor(totalMinutes / numGlasses));
+    console.log(
+      "computeWaterReminderTimes - Toplam dakika:",
+      totalMinutes,
+      "Interval (dk):",
+      interval
+    );
+
+    // Başlangıç zamanı: aktif pencere içinde, şimdi+1 saniye veya pencere başlangıcı (hangisi daha sonraysa)
+    let startTime = Math.max(windowStart.getTime(), now.getTime() + 1000);
+    while (startTime <= windowEnd.getTime()) {
+      const reminderTime = new Date(startTime);
+      const message = getMotivationalMessageForTime(reminderTime);
+      reminderSchedule.push({ time: reminderTime, message });
+      console.log(
+        "computeWaterReminderTimes - Eklenen bildirim zamanı:",
+        reminderTime,
+        "Mesaj:",
+        message
+      );
+      startTime += interval * 60000;
+    }
+  } else if (mode === "custom") {
+    // Custom mod: Kullanıcının belirlediği bildirim aralığı (saat) kullanılır.
+    const dailyWaterTarget = data.dailyWaterTarget || 2000;
+    const glassSize = data.glassSize || 250;
+    const customIntervalHours = data.customNotificationInterval || 1;
+    console.log(
+      "computeWaterReminderTimes - Custom mod: dailyWaterTarget:",
+      dailyWaterTarget,
+      "glassSize:",
+      glassSize,
+      "customIntervalHours:",
+      customIntervalHours
+    );
+
+    let startTime = windowStart.getTime();
+    while (startTime <= windowEnd.getTime()) {
+      const reminderTime = new Date(startTime);
+      const message = getMotivationalMessageForTime(reminderTime);
+      reminderSchedule.push({ time: reminderTime, message });
+      console.log(
+        "computeWaterReminderTimes - Eklenen custom bildirim zamanı:",
+        reminderTime,
+        "Mesaj:",
+        message
+      );
+      startTime += customIntervalHours * 3600000;
+    }
   }
 
+  // Bildirim zamanlarını Firestore'a kaydet (ISO string ve mesaj ile)
+  const waterRef = doc(db, "users", user.uid, "water", "current");
   await setDoc(
-    doc(db, "users", user.uid, "water", "current"),
+    waterRef,
     {
-      dailyWaterTarget,
-      glassSize,
-      numGlassesRequired,
-      bmr,
-      waterNotificationOption: "smart",
-      notificationWindow,
+      reminderTimes: reminderSchedule.map((obj) => ({
+        time: obj.time.toISOString(),
+        message: obj.message,
+      })),
     },
     { merge: true }
   );
-
-  console.log("Gelişmiş su bildirim zamanları:", {
-    dailyWaterTarget,
-    glassSize,
-    numGlassesRequired,
-    reminderTimes: reminderTimes.map((t) => t.toLocaleTimeString()),
-  });
-
-  return reminderTimes;
+  console.log(
+    "computeWaterReminderTimes - Hesaplanan bildirim zamanları:",
+    reminderSchedule
+  );
+  return reminderSchedule;
 };
 
 /**
- * Sonraki su bildirim zamanını hesaplar.
- *
+ * Hesaplanan bildirim zamanları arasından, mevcut zamandan sonraki ilk bildirimi bulur.
  * @param {Object} user - Firebase kullanıcı nesnesi
- * @returns {Promise<Date|null>} Sonraki bildirim zamanı veya bulunamazsa null
+ * @returns {Object|null} { time: Date, message: string } veya null
  */
 export const getNextWaterReminderTime = async (user) => {
-  const reminderTimes = await computeEnhancedWaterReminderTimes(user);
+  const schedule = await computeWaterReminderTimes(user);
   const now = getTurkeyTime();
-
-  for (const time of reminderTimes) {
-    if (time.getTime() > now.getTime()) {
-      // ">" kullanıldı, böylece şu an değil, gelecekteki bir zaman seçilir.
-      console.log("Sonraki su bildirim zamanı:", time);
-      return time;
+  for (const reminder of schedule) {
+    if (reminder.time.getTime() > now.getTime()) {
+      console.log(
+        "getNextWaterReminderTime - Sonraki bildirim bulundu:",
+        reminder
+      );
+      return reminder;
     }
   }
-
-  console.warn("Gelecek bildirim zamanı bulunamadı");
+  console.warn("getNextWaterReminderTime - Gelecek bildirim zamanı bulunamadı");
   return null;
 };
 
 /**
- * Hesaplanan sonraki su bildirim zamanını Firestore'a kaydeder.
- *
+ * Hesaplanan sonraki su hatırlatma zamanını Firestore’da saklar.
  * @param {Object} user - Firebase kullanıcı nesnesi
- * @returns {Promise<Date|null>} Kaydedilen bildirim zamanı veya hata durumunda null
+ * @returns {Object|null} { time: Date, message: string } veya null
  */
 export const saveNextWaterReminderTime = async (user) => {
+  const waterRef = doc(db, "users", user.uid, "water", "current");
   const nextReminder = await getNextWaterReminderTime(user);
-  if (!nextReminder) {
-    console.warn("Sonraki bildirim zamanı hesaplanamadı");
-    return null;
-  }
-
-  const waterDocRef = doc(db, "users", user.uid, "water", "current");
-  await setDoc(
-    waterDocRef,
-    { nextWaterReminderTime: nextReminder.toISOString() },
-    { merge: true }
-  );
-
-  console.log(
-    "Kaydedilen sonraki su bildirim zamanı:",
-    nextReminder.toISOString()
-  );
-  return nextReminder;
-};
-
-// ============================================================
-// Gelişmiş Su Takip Sistemi Ek Özellikleri
-// ============================================================
-
-/**
- * Su takip sisteminin tüm gelişmiş özelliklerini barındıran sınıf.
- */
-export class WaterTrackingSystem {
-  constructor(user) {
-    this.user = user;
-  }
-
-  getTurkeyTime() {
-    return getTurkeyTime();
-  }
-
-  async fetchUserProfileAndWaterData() {
-    return await fetchUserProfileAndWaterData(this.user);
-  }
-
-  calculateBMR(gender, weight, height, age) {
-    return calculateBMR(gender, weight, height, age);
-  }
-
-  calculateDailyWaterIntake(bmr, activityLevel = 1.2) {
-    return calculateDailyWaterIntake(bmr, activityLevel);
-  }
-
-  calculateAge(birthDate) {
-    const birth = birthDate.toDate ? birthDate.toDate() : new Date(birthDate);
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    const m = today.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-      age--;
-    }
-    return age;
-  }
-
-  /**
-   * Aktivite ve günün saatine göre dinamik su içme hızı ve motivasyon ayarlaması
-   */
-  async adjustWaterIntakeStrategy(currentIntake, totalDailyTarget) {
-    console.log("\n🔄 Su Alım Stratejisi Dinamik Ayarlaması:");
-    const turkeyTime = this.getTurkeyTime();
-    const currentHour = turkeyTime.getHours();
-
-    const timeBasedStrategies = [
+  if (nextReminder) {
+    await setDoc(
+      waterRef,
       {
-        period: "Sabah (06:00-10:00)",
-        startHour: 6,
-        endHour: 10,
-        intakeMultiplier: 0.3,
-        strategy: "Güne Başlangıç Takviyesi",
-        motivationalTips: [
-          "🌅 Güne su içerek başlamak enerjinizi artırır!",
-          "☀️ Sabah su içmek metabolizmanızı hızlandırır.",
-        ],
+        nextWaterReminderTime: nextReminder.time.toISOString(),
+        nextWaterReminderMessage: nextReminder.message,
       },
-      {
-        period: "Öğle (10:00-14:00)",
-        startHour: 10,
-        endHour: 14,
-        intakeMultiplier: 0.25,
-        strategy: "Verimlilik Hidratasyonu",
-        motivationalTips: [
-          "💼 Su içmek konsantrasyonunuzu artırır!",
-          "🧠 Hidrasyon mental performansı yükseltir.",
-        ],
-      },
-      {
-        period: "Öğleden Sonra (14:00-18:00)",
-        startHour: 14,
-        endHour: 18,
-        intakeMultiplier: 0.2,
-        strategy: "Toparlanma ve Dengelem",
-        motivationalTips: [
-          "🔋 Enerjinizi yenilemek için su şart!",
-          "💧 Düzenli su içmek yorgunluğu azaltır.",
-        ],
-      },
-      {
-        period: "Akşam (18:00-22:00)",
-        startHour: 18,
-        endHour: 22,
-        intakeMultiplier: 0.15,
-        strategy: "Akşam Toparlanma",
-        motivationalTips: [
-          "🌙 Akşam az ve kontrollü su için",
-          "😴 Gece uykusunu bölmeyecek şekilde dikkatli ol",
-        ],
-      },
-      {
-        period: "Gece (22:00-06:00)",
-        startHour: 22,
-        endHour: 6,
-        intakeMultiplier: 0.1,
-        strategy: "Minimum Hidrasyon",
-        motivationalTips: ["🌙 Gece minimal su tüketimi", "💤 Uykuyu bölmeme"],
-      },
-    ];
-
-    const currentStrategy =
-      timeBasedStrategies.find(
-        (strategy) =>
-          currentHour >= strategy.startHour && currentHour < strategy.endHour
-      ) || timeBasedStrategies[0];
-
-    const percentageIntake = (currentIntake / totalDailyTarget) * 100;
-    let recommendedIntake, strategyMessage, motivationalMessage;
-
-    if (percentageIntake < currentStrategy.intakeMultiplier * 100) {
-      recommendedIntake = totalDailyTarget * currentStrategy.intakeMultiplier;
-      strategyMessage = `🎯 ${currentStrategy.period} Strateji: ${currentStrategy.strategy}`;
-      motivationalMessage =
-        currentStrategy.motivationalTips[
-          Math.floor(Math.random() * currentStrategy.motivationalTips.length)
-        ];
-    } else {
-      strategyMessage = "✅ Şu an için su alım hedefindesin!";
-      motivationalMessage = "👍 Devam et, harikasın!";
-    }
-
-    console.log("🕒 Güncel Zaman Dilimi:", currentStrategy.period);
-    console.log("📊 Günlük Hedef:", totalDailyTarget, "ml");
-    console.log("💧 Şu Ana Kadar İçilen Su:", currentIntake, "ml");
-    console.log("📈 Alım Yüzdesi:", percentageIntake.toFixed(2), "%");
-    console.log("🎯 Strateji Mesajı:", strategyMessage);
-    console.log("💬 Motivasyon:", motivationalMessage);
-
-    return {
-      currentStrategy,
-      recommendedIntake,
-      strategyMessage,
-      motivationalMessage,
-    };
-  }
-
-  /**
-   * Günlük su davranış puanlaması ve performans takibi
-   */
-  calculateWaterIntakeScore(waterHistory, totalDailyTarget) {
-    console.log("\n🏆 Su İçme Performans Skorlaması:");
-
-    if (!waterHistory || waterHistory.length === 0) {
-      console.log("❌ Henüz veri yok");
-      return { score: 0, performance: "Başlangıç" };
-    }
-
-    const last7DaysIntake = waterHistory.filter((entry) => {
-      const entryDate = new Date(entry.date);
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      return entryDate >= sevenDaysAgo;
-    });
-
-    const totalIntake = last7DaysIntake.reduce(
-      (sum, entry) => sum + entry.intake,
-      0
+      { merge: true }
     );
-    const averageDailyIntake = totalIntake / 7;
-
-    const performanceLevels = [
-      {
-        threshold: totalDailyTarget * 0.5,
-        level: "Başlangıç",
-        emoji: "🔻",
-        advice: "Su alımını artırmalısın!",
-      },
-      {
-        threshold: totalDailyTarget * 0.7,
-        level: "Gelişmekte Olan",
-        emoji: "🟨",
-        advice: "Biraz daha gayret et!",
-      },
-      {
-        threshold: totalDailyTarget * 0.9,
-        level: "İyi",
-        emoji: "🟢",
-        advice: "Devam et, çok yakınsın!",
-      },
-      {
-        threshold: totalDailyTarget * 1.1,
-        level: "Mükemmel",
-        emoji: "🏆",
-        advice: "Süper performans!",
-      },
-    ];
-
-    const baseScore = (averageDailyIntake / totalDailyTarget) * 100;
-    const score = Math.min(Math.max(baseScore, 0), 100);
-
-    const performance =
-      performanceLevels.find((level) => score <= level.threshold) ||
-      performanceLevels[performanceLevels.length - 1];
-
-    console.log("📅 Son 7 Günlük Veriler:");
-    console.log("💧 Toplam Su Alımı:", totalIntake.toFixed(2), "ml");
-    console.log("📊 Günlük Ortalama:", averageDailyIntake.toFixed(2), "ml");
-    console.log("🎯 Günlük Hedef:", totalDailyTarget, "ml");
-    console.log("🏅 Performans Skoru:", score.toFixed(2));
     console.log(
-      "📈 Performans Seviyesi:",
-      performance.level,
-      performance.emoji
+      "saveNextWaterReminderTime - Kaydedilen sonraki bildirim zamanı:",
+      nextReminder
     );
-    console.log("💡 Tavsiye:", performance.advice);
-
-    return {
-      score,
-      performance: performance.level,
-      emoji: performance.emoji,
-      advice: performance.advice,
-    };
+    return nextReminder;
   }
-
-  /**
-   * Gelişmiş su hatırlatma ve bildirim sistemi
-   */
-  generateSmartReminders(waterIntakeScore, dailyWaterTarget) {
-    console.log("\n🔔 Akıllı Bildirim Sistemi:");
-
-    const reminderTypes = [
-      {
-        type: "Motivasyonel",
-        messages: [
-          "💧 Her yudum sağlık, her bardak enerji!",
-          "🌊 Vücudun en iyi arkadaşı su!",
-          "🚀 Hidrasyon performansını yükseltme zamanı!",
-        ],
-      },
-      {
-        type: "Eğitici",
-        messages: [
-          "💡 Biliyor muydun? Su metabolizmayı hızlandırır!",
-          "🧠 Hidrasyon mental performansı artırır.",
-          "❤️ Düzenli su içmek kalp sağlığına iyi gelir!",
-        ],
-      },
-      {
-        type: "Meydan Okuma",
-        messages: [
-          "🎯 Bugünkü su hedefini yakala!",
-          "🏅 Hidrasyon meydan okumasını başlat!",
-          "🔋 Enerjini su ile yenile!",
-        ],
-      },
-    ];
-
-    let selectedReminderType;
-    if (waterIntakeScore.score < 50) {
-      selectedReminderType = reminderTypes.find(
-        (rt) => rt.type === "Meydan Okuma"
-      );
-    } else if (waterIntakeScore.score < 80) {
-      selectedReminderType = reminderTypes.find(
-        (rt) => rt.type === "Motivasyonel"
-      );
-    } else {
-      selectedReminderType = reminderTypes.find((rt) => rt.type === "Eğitici");
-    }
-
-    const randomMessage =
-      selectedReminderType.messages[
-        Math.floor(Math.random() * selectedReminderType.messages.length)
-      ];
-
-    console.log("📊 Performans Skoru:", waterIntakeScore.score.toFixed(2));
-    console.log("📣 Bildirim Tipi:", selectedReminderType.type);
-    console.log("💬 Seçilen Mesaj:", randomMessage);
-
-    return {
-      type: selectedReminderType.type,
-      message: randomMessage,
-    };
-  }
-
-  /**
-   * Günlük su takip raporunu oluşturur.
-   */
-  createDailyWaterReport(waterHistory, dailyWaterTarget) {
-    console.log("\n📝 Günlük Su Takip Raporu:");
-    const turkeyTime = this.getTurkeyTime();
-    const todayStr = turkeyTime.toISOString().split("T")[0];
-
-    const todayIntake = waterHistory
-      .filter((entry) => entry.date === todayStr)
-      .reduce((sum, entry) => sum + entry.intake, 0);
-
-    const remainingWater = Math.max(0, dailyWaterTarget - todayIntake);
-
-    const reportSections = [
-      {
-        title: "📊 Günlük İstatistikler",
-        details: [
-          `Günlük Hedef: ${dailyWaterTarget} ml`,
-          `Şu Ana Kadar İçilen: ${todayIntake} ml`,
-          `Kalan Su: ${remainingWater} ml`,
-        ],
-      },
-      {
-        title: "🌈 Performans Özeti",
-        details: [
-          `Günün saati: ${turkeyTime.toLocaleTimeString()}`,
-          `Hedefe Ulaşma Oranı: ${(
-            (todayIntake / dailyWaterTarget) *
-            100
-          ).toFixed(2)}%`,
-        ],
-      },
-    ];
-
-    console.log("📅 Tarih:", todayStr);
-    reportSections.forEach((section) => {
-      console.log(`\n${section.title}`);
-      section.details.forEach((detail) => console.log(detail));
-    });
-
-    return {
-      date: todayStr,
-      dailyTarget: dailyWaterTarget,
-      currentIntake: todayIntake,
-      remainingWater: remainingWater,
-      reportSections: reportSections,
-    };
-  }
-
-  /**
-   * Gelişmiş su takip metodunu genişletir.
-   */
-  async enhancedWaterTracking(waterIntakeAmount) {
-    console.log("\n🚀 Gelişmiş Su Takip Sistemi Başlatılıyor...");
-    try {
-      const userData = await this.fetchUserProfileAndWaterData();
-      if (!userData) {
-        console.error("❌ Kullanıcı verisi alınamadı!");
-        return null;
-      }
-
-      const weight = parseFloat(userData.weight) || 93;
-      const height = parseFloat(userData.height) || 190;
-      let age;
-      if (userData.age != null) {
-        age = parseInt(userData.age);
-      } else if (userData.birthDate) {
-        age = this.calculateAge(userData.birthDate);
-      } else {
-        age = 30;
-      }
-
-      const bmr = this.calculateBMR("male", weight, height, age);
-      const dailyWaterTarget = this.calculateDailyWaterIntake(bmr, 1.4);
-
-      const intakeStrategy = await this.adjustWaterIntakeStrategy(
-        waterIntakeAmount,
-        dailyWaterTarget
-      );
-
-      const waterHistory = userData.history || [];
-
-      const waterIntakeScore = this.calculateWaterIntakeScore(
-        waterHistory,
-        dailyWaterTarget
-      );
-
-      const smartReminders = this.generateSmartReminders(
-        waterIntakeScore,
-        dailyWaterTarget
-      );
-
-      const dailyReport = this.createDailyWaterReport(
-        waterHistory,
-        dailyWaterTarget
-      );
-
-      await this.saveWaterTrackingData({
-        bmr,
-        dailyWaterTarget,
-        intakeStrategy,
-        waterIntakeScore,
-        smartReminders,
-        dailyReport,
-      });
-
-      return {
-        bmr,
-        dailyWaterTarget,
-        intakeStrategy,
-        waterIntakeScore,
-        smartReminders,
-        dailyReport,
-      };
-    } catch (error) {
-      console.error("❌ Gelişmiş su takip sisteminde hata:", error);
-      return null;
-    }
-  }
-
-  /**
-   * Su takip verilerini kaydeder (örnek implementasyon).
-   */
-  async saveWaterTrackingData(data) {
-    console.log("Water tracking data saved:", data);
-    // Gerçek senaryoda veritabanına kaydetme işlemi burada yapılacaktır.
-    return Promise.resolve(true);
-  }
-}
-
-// ============================================================
-// Ekstra Fonksiyonlar & React Bileşenleri
-// ============================================================
-
-/**
- * Su takip sistemini başlatır.
- */
-export const initializeEnhancedWaterTracking = async (user) => {
-  const waterTracker = new WaterTrackingSystem(user);
-  return await waterTracker.enhancedWaterTracking();
-};
-
-/**
- * React Hook örneği: Su Takip Verilerini yönetir.
- */
-export const useWaterTracker = (user) => {
-  const [waterTrackingData, setWaterTrackingData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const trackWaterIntake = async (amount) => {
-    setLoading(true);
-    try {
-      const waterTracker = new WaterTrackingSystem(user);
-      const result = await waterTracker.enhancedWaterTracking(amount);
-      setWaterTrackingData(result);
-      setLoading(false);
-      return result;
-    } catch (err) {
-      console.error("Su takibi sırasında hata:", err);
-      setError(err);
-      setLoading(false);
-      return null;
-    }
-  };
-
-  return {
-    waterTrackingData,
-    trackWaterIntake,
-    loading,
-    error,
-  };
-};
-
-/**
- * Bildirim Entegrasyonu Örneği
- */
-export const setupWaterIntakeNotifications = async (user) => {
-  console.log("💧 Su Bildirimleri Kurulumu Başlatılıyor...");
-  try {
-    const notificationPermission = await Notification.requestPermission();
-    if (notificationPermission !== "granted") {
-      console.warn("❌ Bildirim izni reddedildi");
-      return false;
-    }
-
-    const waterTracker = new WaterTrackingSystem(user);
-    const userData = await waterTracker.fetchUserProfileAndWaterData();
-    if (!userData) {
-      console.error("❌ Kullanıcı verisi alınamadı");
-      return false;
-    }
-
-    const weight = parseFloat(userData.weight) || 93;
-    const height = parseFloat(userData.height) || 190;
-    let age;
-    if (userData.age != null) {
-      age = parseInt(userData.age);
-    } else if (userData.birthDate) {
-      age = waterTracker.calculateAge(userData.birthDate);
-    } else {
-      age = 30;
-    }
-
-    const bmr = waterTracker.calculateBMR("male", weight, height, age);
-    const dailyWaterTarget = waterTracker.calculateDailyWaterIntake(bmr, 1.4);
-
-    const notificationStrategy = [
-      {
-        time: "08:00",
-        message: "🌅 Günaydın! Günün ilk su içme zamanı geldi.",
-        amount: dailyWaterTarget * 0.3,
-      },
-      {
-        time: "11:00",
-        message: "☀️ Öğlen öncesi su takviyesi zamanı!",
-        amount: dailyWaterTarget * 0.25,
-      },
-      {
-        time: "14:00",
-        message: "🌞 Öğleden sonra enerjini topla!",
-        amount: dailyWaterTarget * 0.2,
-      },
-      {
-        time: "17:00",
-        message: "🌆 Akşama hazırlık için su içmeyi unutma!",
-        amount: dailyWaterTarget * 0.15,
-      },
-    ];
-
-    const scheduledNotifications = notificationStrategy.map((notification) => ({
-      time: notification.time,
-      message: notification.message,
-      scheduleNotification: () => {
-        if ("Notification" in window) {
-          new Notification(notification.message, {
-            body: `Hedef: ${notification.amount.toFixed(0)} ml su içmelisin.`,
-            icon: waterIcon,
-          });
-        }
-      },
-    }));
-
-    console.log("✅ Su Bildirimleri Başarıyla Kuruldu");
-    return scheduledNotifications;
-  } catch (error) {
-    console.error("❌ Su bildirimleri kurulumunda hata:", error);
-    return null;
-  }
-};
-
-/**
- * Widget Bileşeni Örneği
- */
-export const WaterIntakeWidget = ({ user }) => {
-  const { waterTrackingData, trackWaterIntake, loading, error } =
-    useWaterTracker(user);
-
-  const handleWaterIntake = (amount) => {
-    trackWaterIntake(amount);
-  };
-
-  if (loading) return <div>Yükleniyor...</div>;
-  if (error) return <div>Hata oluştu: {error.message}</div>;
-
-  return (
-    <div className="water-intake-widget">
-      <h2>Su Takip Sistemi</h2>
-      {waterTrackingData && (
-        <>
-          <div className="daily-target">
-            Günlük Hedef: {waterTrackingData.dailyWaterTarget} ml
-          </div>
-          <div className="intake-progress">
-            Şu Ana Kadar İçilen: {waterTrackingData.dailyReport.currentIntake}{" "}
-            ml
-          </div>
-          <div className="water-buttons">
-            <button onClick={() => handleWaterIntake(250)}>250 ml İç</button>
-            <button onClick={() => handleWaterIntake(500)}>500 ml İç</button>
-          </div>
-          {waterTrackingData.smartReminders && (
-            <div className="motivational-message">
-              {waterTrackingData.smartReminders.message}
-            </div>
-          )}
-        </>
-      )}
-    </div>
+  console.warn(
+    "saveNextWaterReminderTime - Sonraki bildirim zamanı hesaplanamadı"
   );
+  return null;
+};
+
+/**
+ * Su bildirimlerinin planlamasını tetikler.
+ * Su içim miktarı güncellendiğinde veya hedef değiştiğinde bu fonksiyon çağrılarak,
+ * yeni bildirim zamanları hesaplanır ve Firestore güncellenir.
+ * @param {Object} user - Firebase kullanıcı nesnesi
+ * @returns {Object} { reminderSchedule: Array<Object>, nextReminder: Object|null }
+ */
+export const scheduleWaterNotifications = async (user) => {
+  if (!user || !user.uid) return;
+  const data = await fetchUserData(user);
+  const mode = data.waterNotificationOption || "smart";
+  if (mode === "none") {
+    console.log("scheduleWaterNotifications - Bildirimler kapalı (none mod).");
+    return { reminderSchedule: [], nextReminder: null };
+  }
+  const reminderSchedule = await computeWaterReminderTimes(user);
+  const nextReminder = await saveNextWaterReminderTime(user);
+  console.log(
+    "scheduleWaterNotifications - Yeni su bildirim zamanları hesaplandı:",
+    reminderSchedule.map((r) => r.time.toLocaleTimeString())
+  );
+  console.log(
+    "scheduleWaterNotifications - Sonraki bildirim zamanı:",
+    nextReminder ? nextReminder.time.toLocaleTimeString() : "Belirlenmedi"
+  );
+  // Burada ek push bildirimleri veya motivasyonel bildirim tetikleme kodları eklenebilir.
+  return { reminderSchedule, nextReminder };
 };

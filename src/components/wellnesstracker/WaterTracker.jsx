@@ -558,7 +558,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           <Typography variant="subtitle1" sx={{ color: "#785E", mt: 2 }}>
             Sonraki bildirim:{" "}
             {nextReminder
-              ? new Date(nextReminder).toLocaleTimeString("tr-TR", {
+              ? new Date(nextReminder.time).toLocaleTimeString("tr-TR", {
                   hour: "2-digit",
                   minute: "2-digit",
                 })

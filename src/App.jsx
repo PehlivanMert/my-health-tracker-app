@@ -22,6 +22,8 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
 
 // Bottom Navigation ve ikonlar
@@ -370,6 +372,7 @@ function App() {
     height: "",
     weight: "",
     birthDate: "",
+    gender: "",
   });
   const [showWelcome, setShowWelcome] = useState(false);
 
@@ -378,14 +381,20 @@ function App() {
       const fetchProfile = async () => {
         const userDocRef = doc(db, "users", user.uid);
         const docSnap = await getDoc(userDocRef);
+
         if (docSnap.exists() && docSnap.data().profile) {
           let prof = docSnap.data().profile;
+
           if (prof.birthDate?.toDate) {
             prof.birthDate = format(prof.birthDate.toDate(), "yyyy-MM-dd");
           } else if (prof.birthDate?.includes("T")) {
             prof.birthDate = format(new Date(prof.birthDate), "yyyy-MM-dd");
           }
-          setProfileData(prof);
+
+          setProfileData({
+            ...prof,
+            gender: prof.gender || "", // Varsayılan olarak boş string ayarla
+          });
         } else {
           setProfileData({
             username: user.email,
@@ -395,9 +404,11 @@ function App() {
             height: "",
             weight: "",
             birthDate: "",
+            gender: "", // Yeni eklenen alan
           });
         }
       };
+
       fetchProfile();
       if (!localStorage.getItem("welcomeShown")) {
         setShowWelcome(true);
@@ -434,13 +445,16 @@ function App() {
     try {
       const userDocRef = doc(db, "users", user.uid);
       const profileToSave = { ...profileData };
+
       if (profileToSave.birthDate) {
         const [year, month, day] = profileToSave.birthDate.split("-");
         profileToSave.birthDate = new Date(year, month - 1, day);
       }
+
       await updateDoc(userDocRef, {
         profile: profileToSave,
       });
+
       toast.success("Profil başarıyla güncellendi");
       setOpenProfileModal(false);
     } catch (error) {
@@ -700,6 +714,21 @@ function App() {
                 sx={{ background: "rgba(255,255,255,0.9)" }}
                 inputProps={{ readOnly: true }}
               />
+              <FormControl
+                fullWidth
+                sx={{ background: "rgba(255,255,255,0.9)" }}
+              >
+                <InputLabel id="gender-label">Cinsiyet</InputLabel>
+                <Select
+                  labelId="gender-label"
+                  name="gender"
+                  value={profileData.gender}
+                  onChange={handleProfileChange}
+                >
+                  <MenuItem value="male">Erkek</MenuItem>
+                  <MenuItem value="female">Kadın</MenuItem>
+                </Select>
+              </FormControl>
               <TextField
                 label="İsim"
                 name="firstName"

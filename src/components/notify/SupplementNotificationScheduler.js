@@ -11,6 +11,34 @@ export const getTurkeyTime = () => {
   return now;
 };
 
+// Global bildirim penceresini Firestore'dan alır: /users/{uid}/notificationWindow
+export const getGlobalNotificationWindow = async (user) => {
+  try {
+    const notifRef = doc(db, "users", user.uid, "notificationWindow");
+    const notifDoc = await getDoc(notifRef);
+    if (notifDoc.exists()) {
+      const data = notifDoc.data();
+      console.log(
+        "getGlobalNotificationWindow - Global bildirim penceresi alındı:",
+        data
+      );
+      return data;
+    } else {
+      console.warn(
+        "getGlobalNotificationWindow - Global bildirim penceresi bulunamadı for user:",
+        user.uid
+      );
+      return null;
+    }
+  } catch (error) {
+    console.error(
+      "getGlobalNotificationWindow - Global bildirim penceresi alınırken hata:",
+      error
+    );
+    return null;
+  }
+};
+
 // Takviye bildirim zamanlarını hesaplar
 export const computeSupplementReminderTimes = async (suppData, user) => {
   const times = [];
@@ -20,6 +48,9 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
     "computeSupplementReminderTimes - Bugünün tarihi (en-CA):",
     todayStr
   );
+
+  // Global bildirim penceresini çekiyoruz
+  const globalNotifWindow = await getGlobalNotificationWindow(user);
 
   // Manuel bildirim zamanı varsa
   if (
@@ -58,10 +89,8 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
         "computeSupplementReminderTimes - estimatedRemainingDays eşik değeri tetiklendi:",
         flooredRemaining
       );
-      if (user.notificationWindow && user.notificationWindow.end) {
-        const windowEnd = new Date(
-          `${todayStr}T${user.notificationWindow.end}:00`
-        );
+      if (globalNotifWindow && globalNotifWindow.end) {
+        const windowEnd = new Date(`${todayStr}T${globalNotifWindow.end}:00`);
         times.push(windowEnd);
         console.log(
           `computeSupplementReminderTimes - ${flooredRemaining} günlük takviyen kaldı bildirimi için hesaplanan zaman (bildirim penceresi):`,
@@ -81,10 +110,8 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
         "computeSupplementReminderTimes - Normal durumda, estimatedRemainingDays:",
         estimatedRemainingDays
       );
-      if (user.notificationWindow && user.notificationWindow.end) {
-        const windowEnd = new Date(
-          `${todayStr}T${user.notificationWindow.end}:00`
-        );
+      if (globalNotifWindow && globalNotifWindow.end) {
+        const windowEnd = new Date(`${todayStr}T${globalNotifWindow.end}:00`);
         times.push(windowEnd);
         console.log(
           "computeSupplementReminderTimes - Bildirim penceresi kullanılarak hesaplanan zaman:",
@@ -108,7 +135,7 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
   // Ek: Günlük tüketim kontrolü
   // Firestore veri modeli: "users/{user.uid}/stats/supplementConsumption" dokümanı,
   // bu doküman içerisinde alanlar bugünün tarihine göre (en-CA formatında) tutuluyor.
-  // Her alan bir map olup, takviye isimlerini anahtar olarak ve kullanılan miktarları değer olarak içeriyor.
+  // Her alan, takviye isimlerini anahtar olarak ve kullanılan miktarları değer olarak içeriyor.
   try {
     const consumptionDocRef = doc(
       db,
@@ -139,10 +166,8 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
           "dailyUsage:",
           suppData.dailyUsage
         );
-        if (user.notificationWindow && user.notificationWindow.end) {
-          const windowEnd = new Date(
-            `${todayStr}T${user.notificationWindow.end}:00`
-          );
+        if (globalNotifWindow && globalNotifWindow.end) {
+          const windowEnd = new Date(`${todayStr}T${globalNotifWindow.end}:00`);
           const notifTimeMinus2 = new Date(
             windowEnd.getTime() - 2 * 60 * 60000
           );

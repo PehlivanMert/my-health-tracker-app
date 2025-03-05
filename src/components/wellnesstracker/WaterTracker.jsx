@@ -555,7 +555,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
               </IconButton>
             </Tooltip>
           </Box>
-          <Typography variant="subtitle1" sx={{ color: "#785E", mt: 2 }}>
+          <Typography variant="subtitle1" sx={{ color: "#fff", mt: 2 }}>
             Sonraki bildirim:{" "}
             {nextReminder
               ? new Date(nextReminder.time).toLocaleTimeString("tr-TR", {

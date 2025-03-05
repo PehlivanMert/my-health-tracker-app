@@ -150,28 +150,45 @@ const computeWindowTimes = (windowObj) => {
 
 /**
  * Belirtilen bildirim zamanı için günün saatine göre motivasyon mesajı oluşturur.
+ * Mesajlar, zaman dilimine göre farklı seçenekler sunar ve rastgele bir seçim yapılır.
  * @param {Date} date - Bildirim zamanı
  * @returns {string} Motivasyon mesajı
  */
 export const getMotivationalMessageForTime = (date) => {
   const hour = date.getHours();
-  let message = "";
+  let messages = [];
   if (hour >= 6 && hour < 10) {
-    message = "Günaydın! Güne enerjik başlayın, suyunuzu için.";
+    messages = [
+      "Günaydın! Güne enerjik başlayın, suyunuzu için.",
+      "Yeni bir gün, yeni başlangıç! Hadi suyunuzu için.",
+    ];
   } else if (hour >= 10 && hour < 14) {
-    message = "Öğle vakti! Hedefinize bir adım daha yaklaşın.";
+    messages = [
+      "Öğle vakti! Hedefinize bir adım daha yaklaşın.",
+      "Enerjinizi korumak için bol su için.",
+    ];
   } else if (hour >= 14 && hour < 18) {
-    message = "Öğleden sonra! Su içmeyi unutmayın.";
+    messages = [
+      "Öğleden sonra! Su içmeyi unutmayın.",
+      "Kendinize biraz su ayırın, enerjinizi toplayın.",
+    ];
   } else if (hour >= 18 && hour < 22) {
-    message = "Akşam oldu, gününüzü tamamlamak için su için.";
+    messages = [
+      "Akşam oldu, gününüzü tamamlamak için su için.",
+      "Gün bitmeden su içmeyi unutmayın, vücudunuz dinç kalsın.",
+    ];
   } else {
-    message = "Gece vakti, su içmeyi ihmal etmeyin!";
+    messages = [
+      "Gece vakti, su içmeyi ihmal etmeyin!",
+      "Gece de su, sağlığınız için önemli!",
+    ];
   }
+  const selectedMessage = messages[Math.floor(Math.random() * messages.length)];
   console.log(
     `getMotivationalMessageForTime - Saat ${hour} için mesaj:`,
-    message
+    selectedMessage
   );
-  return message;
+  return selectedMessage;
 };
 
 /**

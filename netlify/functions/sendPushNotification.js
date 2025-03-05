@@ -149,9 +149,11 @@ exports.handler = async function (event, context) {
                 token: fcmToken,
                 data: {
                   title: "Su İçme Hatırlatması",
-                  body: `Günlük su hedefin ${
-                    waterDoc.data().dailyWaterTarget
-                  } ml. Su içmeyi unutma!`,
+                  body:
+                    waterDoc.data().nextWaterReminderMessage ||
+                    `Günlük su hedefin ${
+                      waterDoc.data().dailyWaterTarget
+                    } ml. Su içmeyi unutma!`,
                   type: "water",
                 },
               });

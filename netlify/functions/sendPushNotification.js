@@ -132,15 +132,23 @@ exports.handler = async function (event, context) {
             .collection("water")
             .doc("current");
           const waterSnap = await waterRef.get();
+
           if (waterSnap.exists) {
+            // Burayı kontrol edin - exists bir metot değil, property
             const waterData = waterSnap.data();
             if (waterData && waterData.nextWaterReminderTime) {
               const nextReminder = new Date(waterData.nextWaterReminderTime);
 
-              // Log çıktılarıyla bildirim zamanı ve mesajını yazdırıyoruz.
+              // Takviye bildirimlerinde olduğu gibi, Türkiye saatine dönüştürme yapıyoruz
+              const nextReminderTurkey = new Date(
+                nextReminder.toLocaleString("en-US", {
+                  timeZone: "Europe/Istanbul",
+                })
+              );
+
               console.log(
                 `sendPushNotification - Kullanıcı ${userDoc.id} için su bildirimi zamanı:`,
-                nextReminder
+                nextReminderTurkey
               );
               console.log(
                 "sendPushNotification - nextWaterReminderTime:",
@@ -151,8 +159,8 @@ exports.handler = async function (event, context) {
                 waterData.nextWaterReminderMessage
               );
 
-              // Eğer bildirim zamanı, mevcut zamana yakınsa (örneğin 0.6 dakika/18 saniye içerisinde)
-              if (Math.abs(now - nextReminder) / 60000 < 0.6) {
+              // Takviye bildirimlerindeki gibi Türkiye saati ile karşılaştırma yapıyoruz
+              if (Math.abs(now - nextReminderTurkey) / 60000 < 0.6) {
                 notificationsToSend.push({
                   token: fcmToken,
                   data: {

@@ -19,6 +19,7 @@ import {
   styled,
   keyframes,
   CircularProgress,
+  LinearProgress,
 } from "@mui/material";
 import {
   DeleteForever,
@@ -36,7 +37,6 @@ import {
   NotificationsNone,
 } from "@mui/icons-material";
 import { motion, AnimatePresence } from "framer-motion";
-import confetti from "canvas-confetti";
 import { showToast } from "../../utils/weather-theme-notify/NotificationManager";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
@@ -510,66 +510,91 @@ const DailyRoutine = ({ user }) => {
                   }}
                 />
 
+                {/* İçerik */}
                 <Box
                   sx={{
                     display: "flex",
+                    flexDirection: { xs: "column", sm: "row" },
                     alignItems: "center",
                     p: { xs: 2, sm: 3 },
                     position: "relative",
                     zIndex: 1,
                   }}
                 >
-                  {/* İkon ve Progress Çemberi */}
-                  <Box
-                    sx={{
-                      position: "relative",
-                      mr: { xs: 1, sm: 2 },
-                      width: { xs: 50, sm: 80 },
-                      height: { xs: 50, sm: 80 },
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <CircularProgress
-                      variant="determinate"
-                      value={(stat.value / stat.total) * 100}
-                      thickness={6}
-                      size="100%"
-                      sx={{
-                        position: "absolute",
-                        color: `${stat.color}30`,
-                        "& .MuiCircularProgress-circle": {
-                          strokeLinecap: "round",
-                          stroke: stat.color,
-                        },
-                      }}
-                    />
+                  {/* İkon / Progress Alanı */}
+                  {isMobile ? (
+                    // Küçük ekranda: sadece ikon, progress halkası kaldırıldı
                     <Box
                       sx={{
-                        width: "60%",
-                        height: "60%",
-                        borderRadius: "50%",
-                        background: `linear-gradient(45deg, ${stat.color} 0%, ${stat.color}80 100%)`,
+                        width: 50,
+                        height: 50,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        boxShadow: `0 4px 20px ${stat.color}40`,
-                        position: "relative",
+                        mb: 1,
                       }}
                     >
                       {React.cloneElement(stat.icon, {
                         sx: {
-                          fontSize: { xs: "1.2rem", sm: "2rem" },
+                          fontSize: "1.2rem",
                           color: "white",
                           filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))",
                         },
                       })}
                     </Box>
-                  </Box>
+                  ) : (
+                    // Büyük ekranlarda: orijinal circular progress ile ikon
+                    <Box
+                      sx={{
+                        position: "relative",
+                        mr: 2,
+                        width: 80,
+                        height: 80,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <CircularProgress
+                        variant="determinate"
+                        value={(stat.value / stat.total) * 100}
+                        thickness={6}
+                        size="100%"
+                        sx={{
+                          position: "absolute",
+                          color: `${stat.color}30`,
+                          "& .MuiCircularProgress-circle": {
+                            strokeLinecap: "round",
+                            stroke: stat.color,
+                          },
+                        }}
+                      />
+                      <Box
+                        sx={{
+                          width: "60%",
+                          height: "60%",
+                          borderRadius: "50%",
+                          background: `linear-gradient(45deg, ${stat.color} 0%, ${stat.color}80 100%)`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          boxShadow: `0 4px 20px ${stat.color}40`,
+                          position: "relative",
+                        }}
+                      >
+                        {React.cloneElement(stat.icon, {
+                          sx: {
+                            fontSize: "2rem",
+                            color: "white",
+                            filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))",
+                          },
+                        })}
+                      </Box>
+                    </Box>
+                  )}
 
                   {/* İstatistik Bilgileri */}
-                  <Box>
+                  <Box sx={{ textAlign: { xs: "center", sm: "left" } }}>
                     <Typography
                       variant="subtitle2"
                       sx={{
@@ -620,6 +645,24 @@ const DailyRoutine = ({ user }) => {
                     </Typography>
                   </Box>
                 </Box>
+
+                {/* Küçük ekranda LinearProgress Bar */}
+                {isMobile && (
+                  <Box sx={{ px: { xs: 2, sm: 3 }, pb: 2 }}>
+                    <LinearProgress
+                      variant="determinate"
+                      value={(stat.value / stat.total) * 100}
+                      sx={{
+                        height: 10,
+                        borderRadius: 5,
+                        backgroundColor: `${stat.color}20`,
+                        "& .MuiLinearProgress-bar": {
+                          backgroundColor: stat.color,
+                        },
+                      }}
+                    />
+                  </Box>
+                )}
               </Box>
             </Grid>
           ))}

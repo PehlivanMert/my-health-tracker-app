@@ -249,6 +249,7 @@ const HealthDashboard = ({ user }) => {
       const prompt = `Kullanıcı bilgileri:
 İsim: ${profileData.firstName || "Belirtilmemiş"},
 Yaş: ${age || "Belirtilmemiş"},
+Cinsiyet: ${profileData.gender || "Belirtilmemiş"},
 Boy: ${profileData.height || "Belirtilmemiş"} cm,
 Kilo: ${profileData.weight || "Belirtilmemiş"} kg,
 ${bmi ? `VKİ: ${bmi.value} (${bmi.status})` : ""}

@@ -48,6 +48,34 @@ export const getGlobalNotificationWindow = async (user) => {
   }
 };
 
+const computeWindowTimes = (windowObj) => {
+  const now = getTurkeyTime();
+  const todayStr = now.toISOString().split("T")[0];
+
+  // Bugünün tarihine göre başlangıç ve bitiş zamanlarını oluşturuyoruz.
+  let start = new Date(`${todayStr}T${windowObj.start}:00`);
+  let end = new Date(`${todayStr}T${windowObj.end}:00`);
+
+  // Eğer başlangıç saati bitiş saatinden büyükse (overnight durum), bitiş zamanını ertesi güne ayarlıyoruz.
+  if (start.getTime() > end.getTime()) {
+    end.setDate(end.getDate() + 1);
+  }
+
+  // Eğer mevcut zaman pencere bitişinden sonra ise, pencereyi bir sonraki güne taşıyoruz.
+  if (now.getTime() > end.getTime()) {
+    start.setDate(start.getDate() + 1);
+    end.setDate(end.getDate() + 1);
+  }
+
+  console.log(
+    "computeWindowTimes - Pencere başlangıcı:",
+    start,
+    "Bitişi:",
+    end
+  );
+  return { windowStart: start, windowEnd: end };
+};
+
 // Takviye bildirim zamanlarını hesaplar
 export const computeSupplementReminderTimes = async (suppData, user) => {
   const times = [];
@@ -58,8 +86,11 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
     todayStr
   );
 
-  // Global bildirim penceresini çekiyoruz
+  // Global bildirim penceresini çekiyoruz ve overnight durumunu işliyoruz.
   const globalNotifWindow = await getGlobalNotificationWindow(user);
+  const { windowStart, windowEnd } = computeWindowTimes(
+    globalNotifWindow || { start: "08:00", end: "22:00" }
+  );
 
   // Manuel bildirim zamanı varsa
   if (

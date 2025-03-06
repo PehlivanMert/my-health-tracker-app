@@ -485,7 +485,10 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           </Box>
           <Typography variant="subtitle1" sx={{ color: "#fff", mt: 2 }}>
             Sonraki bildirim:{" "}
-            {waterData.waterNotificationOption === "none"
+            {waterData.waterIntake >= waterData.dailyWaterTarget &&
+            waterData.waterNotificationOption != "none"
+              ? "Tebrikler hedefe ulaştınız"
+              : waterData.waterNotificationOption === "none"
               ? "Bildirim Kapalı"
               : nextReminder
               ? new Date(nextReminder.time).toLocaleTimeString("tr-TR", {

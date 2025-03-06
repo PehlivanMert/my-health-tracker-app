@@ -118,6 +118,7 @@ export const getGlobalNotificationWindow = async (user) => {
  * Bildirim penceresini (start, end) hesaplar.
  * Eğer pencere overnight ise (örn. 18:45–05:45), bitiş zamanı ertesi güne ayarlanır.
  */
+// Global bildirim penceresi zamanlarını hesaplar.
 const computeWindowTimes = (windowObj) => {
   const now = getTurkeyTime();
   const todayStr = now.toISOString().split("T")[0];
@@ -125,17 +126,15 @@ const computeWindowTimes = (windowObj) => {
   let start = new Date(`${todayStr}T${windowObj.start}:00`);
   let end = new Date(`${todayStr}T${windowObj.end}:00`);
 
+  // Eğer pencere overnight (geceye yayılan) ise, bitiş zamanını ertesi güne taşıyoruz.
   if (start.getTime() > end.getTime()) {
     end.setDate(end.getDate() + 1);
   }
 
+  // Eğer mevcut zaman pencere bitişinden sonra ise, bir sonraki pencere için tarihleri güncelliyoruz.
   if (now.getTime() > end.getTime()) {
     start.setDate(start.getDate() + 1);
     end.setDate(end.getDate() + 1);
-  }
-
-  if (now.getTime() < end.getTime() && now.getTime() < start.getTime()) {
-    start.setDate(start.getDate() - 1);
   }
 
   console.log(
@@ -198,7 +197,7 @@ export const getMotivationalMessageForTime = (date, weather = null) => {
   }
 
   if (weather && weather.temperature) {
-    console.log("fetchWeatherData - Sıcaklık:", weather.temperature);
+    console.log("getWeatherData  - Sıcaklık:", weather.temperature);
     if (weather.temperature > 30) {
       messages.push("Bugün hava sıcak, suyunuz hayat kurtarıcı!");
       messages.push("Sıcak günlerde su, vücudunuzun serin kalmasını sağlar!");
@@ -220,35 +219,53 @@ export const getMotivationalMessageForTime = (date, weather = null) => {
 
 /**
  * Hava durumu bilgisini (sıcaklık, nem, weathercode) almak için örnek fonksiyon.
+ *
  */
-export const fetchWeatherData = async (latitude, longitude) => {
+
+// 1. Kullanıcının gerçek zamanlı konumunu alan yardımcı fonksiyon
+const getUserLocation = () => {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Tarayıcınız konum servisini desteklemiyor."));
+    } else {
+      navigator.geolocation.getCurrentPosition(
+        (position) => resolve(position.coords),
+        (error) => reject(error)
+      );
+    }
+  });
+};
+
+// 2. Güncellenmiş getWeatherData fonksiyonu (konum izni + API entegrasyonu)
+export const getWeatherData = async () => {
   try {
+    // A. Konum izni iste ve koordinatları al
+    const { latitude, longitude } = await getUserLocation();
+    console.log("Konum alındı:", { latitude, longitude });
+
+    // B. API isteği
     const response = await fetch(
       `${
         import.meta.env.VITE_OPEN_METEO_API_URL
-      }?latitude=${latitude}&longitude=${longitude}&current_weather=true`
+      }?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code`
     );
+
+    // C. Veri kontrolü
     const data = await response.json();
-    if (data.current_weather) {
-      console.log(
-        "fetchWeatherData - Hava durumu alındı:",
-        data.current_weather
-      );
-      console.log(
-        "fetchWeatherData - Sıcaklık:",
-        data.current_weather.temperature
-      );
-      return {
-        temperature: data.current_weather.temperature,
-        humidity: data.current_weather.humidity || 50,
-        weathercode: data.current_weather.weathercode,
-      };
-    } else {
-      console.warn("fetchWeatherData - Hava durumu verisi alınamadı:", data);
-      return null;
+    if (!data.current) {
+      throw new Error("Hava durumu verisi alınamadı");
     }
+
+    // D. Formatlanmış veriyi döndür
+    return {
+      temperature: data.current.temperature_2m,
+      humidity: data.current.relative_humidity_2m,
+      weathercode: data.current.weather_code,
+    };
   } catch (error) {
-    console.error("fetchWeatherData - Hata:", error);
+    // E. Hata yönetimi
+    console.error("Hava durumu hatası:", error.message);
+    toast.error(error.message || "Hava durumu alınamadı");
     return null;
   }
 };
@@ -298,24 +315,20 @@ export const computeWaterReminderTimes = async (user) => {
       age = calculateAge(profile.birthDate);
     }
     const bmr = calculateBMR(gender, weight, height, age);
-
-    // Hava durumu kontrolü:
     let temperature = 20;
     let humidity = 50;
-    if (profile.latitude && profile.longitude) {
-      const weather = await fetchWeatherData(
-        profile.latitude,
-        profile.longitude
-      );
-      if (weather) {
-        temperature = weather.temperature;
-        humidity = weather.humidity;
-      } else {
-        console.warn(
-          "Hava durumu verisi alınamadı; varsayılan değerler kullanılacak."
-        );
-      }
+
+    // Hava durumu kontrolü:
+    const weather = await getWeatherData(); // Parametre gerekmez
+    if (weather) {
+      temperature = weather.temperature;
+      humidity = weather.humidity;
+      console.log("Hava durumu verisi:", { temperature, humidity });
+    } else {
+      console.warn("Varsayılan sıcaklık ve nem kullanılıyor.");
     }
+
+    const humidityMultiplier = 1 + Math.abs(50 - humidity) / 200;
     const weatherMultiplier = 1 + (temperature - 20) / 100;
     const activityMap = {
       çok_düşük: 0.9,
@@ -329,15 +342,14 @@ export const computeWaterReminderTimes = async (user) => {
     const activityLevel = data.activityLevel || "orta";
     const activityMultiplier = activityMap[activityLevel] || 1.1;
 
-    const finalMultiplier = 1.4 * weatherMultiplier * activityMultiplier;
-    console.log(
-      "computeWaterReminderTimes - weatherMultiplier:",
-      weatherMultiplier,
-      "activityMultiplier:",
-      activityMultiplier,
-      "finalMultiplier:",
-      finalMultiplier
-    );
+    const finalMultiplier =
+      1.4 * weatherMultiplier * humidityMultiplier * activityMultiplier;
+    console.log("Çarpanlar:", {
+      Sıcaklık: weatherMultiplier.toFixed(2),
+      Nem: humidityMultiplier.toFixed(2),
+      Aktivite: activityMultiplier.toFixed(2),
+      Toplam: finalMultiplier.toFixed(2),
+    });
     const dailyWaterTarget = calculateDailyWaterTarget(bmr, finalMultiplier);
     const waterIntake = data.waterIntake || 0;
     const remainingTarget = Math.max(dailyWaterTarget - waterIntake, 0);

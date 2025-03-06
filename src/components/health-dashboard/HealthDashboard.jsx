@@ -276,10 +276,11 @@ Günlük Detaylı sağlık önerileri oluştur:
 1. Su tüketim analizi ve öneriler
 2. Takviye kullanım değerlendirmesi
 3. VKİ analizi ve yorumu
-4. Günlük aktivite planı
+4. Günlük aktivite ve egzersiz planı
 5. Beslenme önerileri
-6. Sağlıklı bir tarif
-Madde madde ve sade metin formatında max 1750 karakterle oluştur bilimsel ve eğlenceli bir dil kullan sonuna da özlü bir söz ekle.`;
+6. Sağlıklı ve dengeli bir yemek ya da içecek tarifi
+7. Özlü bir sağlık sözü
+Madde madde ve sade metin formatında max 2500 karakterle oluştur bilimsel ama eğlenceli bir dil kullan.`;
 
       const response = await fetch(API_URL, {
         method: "POST",
@@ -287,7 +288,7 @@ Madde madde ve sade metin formatında max 1750 karakterle oluştur bilimsel ve e
         body: JSON.stringify({
           model: "qwen-max",
           messages: [{ role: "user", content: prompt }],
-          max_tokens: 2000,
+          max_tokens: 3000,
           temperature: 0.6,
         }),
       });

@@ -497,8 +497,13 @@ export const popNextReminder = async (user) => {
   const waterSnap = await getDoc(waterRef);
   let reminderTimes = [];
   if (waterSnap.exists() && waterSnap.data().reminderTimes) {
-    reminderTimes = waterSnap.data().reminderTimes;
+    // Firestore’dan okunan reminderTimes dizisindeki her bir r objesinin time alanını Date nesnesine çeviriyoruz.
+    reminderTimes = waterSnap.data().reminderTimes.map((r) => ({
+      ...r,
+      time: new Date(r.time),
+    }));
   }
+
   const now = getTurkeyTime();
   if (reminderTimes.length > 0) {
     console.log("popNextReminder - Silinen bildirim:", reminderTimes[0]);
@@ -548,8 +553,13 @@ export const saveNextWaterReminderTime = async (user) => {
   const waterSnap = await getDoc(waterRef);
   let reminderTimes = [];
   if (waterSnap.exists() && waterSnap.data().reminderTimes) {
-    reminderTimes = waterSnap.data().reminderTimes;
+    // Firestore’dan okunan reminderTimes dizisindeki her bir r objesinin time alanını Date nesnesine çeviriyoruz.
+    reminderTimes = waterSnap.data().reminderTimes.map((r) => ({
+      ...r,
+      time: new Date(r.time),
+    }));
   }
+
   const now = getTurkeyTime();
   reminderTimes = reminderTimes.filter(
     (r) => new Date(r.time).getTime() > now.getTime() + 60000

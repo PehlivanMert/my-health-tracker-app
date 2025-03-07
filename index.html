@@ -32,9 +32,44 @@
     <title>Sağlık ve Rutin Takip Sistemi</title>
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
+    <!-- Uygulamayı yüklemek için buton -->
+    <button id="installPWA" style="display: none">Uygulamayı Yükle</button>
+
     <!-- Vite giriş dosyası -->
     <script type="module" src="/src/main.jsx"></script>
+
+    <!-- Ekstra scriptler -->
+    <script>
+      // Güncelleme kontrolü için controllerchange
+      let refreshing;
+      navigator.serviceWorker.addEventListener("controllerchange", function () {
+        if (!refreshing) {
+          refreshing = true;
+          if (
+            confirm("Yeni bir güncelleme var! Sayfayı yenilemek ister misiniz?")
+          ) {
+            window.location.reload();
+          }
+        }
+      });
+
+      // PWA yükleme bildirimi
+      let deferredPrompt;
+      window.addEventListener("beforeinstallprompt", (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        document.getElementById("installPWA").style.display = "block";
+      });
+
+      document.getElementById("installPWA").addEventListener("click", () => {
+        deferredPrompt.prompt();
+      });
+
+      // Alternatif, daha basit controllerchange kodu
+      // navigator.serviceWorker.addEventListener('controllerchange', function() {
+      //   window.location.reload();
+      // });
+    </script>
   </body>
 </html>

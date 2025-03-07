@@ -15,20 +15,34 @@ import {
   handlePasswordReset,
 } from "./AuthHandlers";
 
-// Animasyonlar
+// Arka plan tam ekran container
+const FullScreenBackground = styled(Box)(({ theme }) => ({
+  position: "fixed",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  zIndex: -1,
+  // background2.jpg dosyasına göre düzeltilmiş yol:
+  background: 'url("../../assets/background2.jpg") no-repeat center center',
+  backgroundSize: "cover",
+}));
+
+// Kartın hafif yukarı-aşağı hareketi
 const float = keyframes`
   0% { transform: translateY(0px); }
   50% { transform: translateY(-8px); }
   100% { transform: translateY(0px); }
 `;
 
+// Kalp atışı benzeri efekt
 const pulse = keyframes`
   0% { transform: scale(1); }
   50% { transform: scale(1.02); }
   100% { transform: scale(1); }
 `;
 
-// Stilize Bileşenler
+// Glassmorphism efektli stilize kart
 const AuthCard = styled(Paper)(({ theme }) => ({
   position: "relative",
   padding: theme.spacing(3),
@@ -43,6 +57,7 @@ const AuthCard = styled(Paper)(({ theme }) => ({
   overflow: "hidden",
   transition: "all 0.3s ease-in-out",
   animation: `${float} 4s ease-in-out infinite`,
+
   [theme.breakpoints.down("sm")]: {
     padding: theme.spacing(2),
     width: "95%",
@@ -64,6 +79,7 @@ const AuthCard = styled(Paper)(({ theme }) => ({
   },
 }));
 
+// Animasyonlu buton
 const AnimatedButton = styled(Button)(({ theme }) => ({
   background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
   border: 0,
@@ -89,119 +105,236 @@ const AnimatedButton = styled(Button)(({ theme }) => ({
 const UserAuth = ({ setUser }) => {
   const theme = useTheme();
   const [isRegister, setIsRegister] = useState(false);
-  const [loginData, setLoginData] = useState({ username: "", password: "" });
+  const [loginData, setLoginData] = useState({
+    username: "",
+    password: "",
+    firstName: "",
+    lastName: "",
+  });
   const [errors, setErrors] = useState({ username: false, password: false });
 
+  // Form gönderildiğinde login veya register
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (isRegister) {
+      handleRegister(e, { loginData, setUser, setLoginData });
+    } else {
+      handleLogin(e, { loginData, setUser, setLoginData });
+    }
+  };
+
   return (
-    <AuthCard>
-      <Typography
-        variant="h3"
-        align="center"
-        sx={{
-          fontWeight: 800,
-          background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          mb: 4,
-          textShadow: "2px 2px 4px rgba(0,0,0,0.2)",
-          animation: `${pulse} 2s ease-in-out infinite`,
-        }}
-      >
-        {isRegister ? "Kayıt Ol" : "Giriş Yap"}
-      </Typography>
+    <>
+      {/* Arka plan */}
+      <FullScreenBackground />
 
-      <form
-        onSubmit={(e) =>
-          isRegister
-            ? handleRegister(e, { loginData, setUser, setLoginData })
-            : handleLogin(e, { loginData, setUser, setLoginData })
-        }
-      >
-        <TextField
-          name="loginUsername"
-          label="Email"
-          type="email"
-          fullWidth
-          margin="normal"
-          value={loginData.username}
-          onChange={(e) => {
-            setLoginData({ ...loginData, username: e.target.value });
-            setErrors({ ...errors, username: !e.target.value.includes("@") });
-          }}
-          required
-          error={errors.username}
-          helperText={errors.username ? "Geçerli bir email adresi giriniz" : ""}
+      {/* Glassmorphism Kart */}
+      <AuthCard>
+        <Typography
+          variant="h3"
+          align="center"
           sx={{
-            "& .MuiOutlinedInput-root": {
-              borderRadius: "12px",
-              background: "rgba(255, 255, 255, 0.75)",
-              color: "#2196F3",
-              "& fieldset": {
-                borderColor: "rgba(255, 255, 255, 0.3)",
-              },
-              "&:hover fieldset": {
-                borderColor: "#2196F3",
-              },
-              "&.Mui-focused fieldset": {
-                borderColor: "#3F51B5",
-              },
-            },
-            mb: 3,
+            fontWeight: 800,
+            background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            mb: 4,
+            textShadow: "2px 2px 4px rgba(0,0,0,0.2)",
+            animation: `${pulse} 2s ease-in-out infinite`,
           }}
-          InputLabelProps={{
-            style: { color: "#2196F3" },
-          }}
-        />
-
-        <TextField
-          name="loginPassword"
-          label="Şifre"
-          type="password"
-          fullWidth
-          margin="normal"
-          value={loginData.password}
-          onChange={(e) => {
-            setLoginData({ ...loginData, password: e.target.value });
-            setErrors({ ...errors, password: e.target.value.length < 8 });
-          }}
-          required
-          error={errors.password}
-          helperText={isRegister ? "En az 8 karakter olmalıdır" : ""}
-          sx={{
-            "& .MuiOutlinedInput-root": {
-              borderRadius: "12px",
-              background: "rgb(255, 255, 255, 0.75)",
-              color: "#2196F3",
-              "& fieldset": {
-                borderColor: "rgba(255, 255, 255, 0.3)",
-              },
-              "&:hover fieldset": {
-                borderColor: "#2196F3",
-              },
-              "&.Mui-focused fieldset": {
-                borderColor: "#3F51B5",
-              },
-            },
-            mb: 3,
-          }}
-          InputLabelProps={{
-            style: { color: "#2196F3" },
-          }}
-        />
-
-        <AnimatedButton
-          type="submit"
-          fullWidth
-          disabled={!loginData.username || !loginData.password}
         >
           {isRegister ? "Kayıt Ol" : "Giriş Yap"}
-        </AnimatedButton>
-      </form>
+        </Typography>
 
-      <Box sx={{ mt: 3, display: "flex", justifyContent: "space-between" }}>
-        {!isRegister && (
+        <form onSubmit={handleSubmit}>
+          {/* Email */}
+          <TextField
+            name="loginUsername"
+            label="Email"
+            type="email"
+            fullWidth
+            margin="normal"
+            value={loginData.username}
+            onChange={(e) => {
+              setLoginData({ ...loginData, username: e.target.value });
+              setErrors({
+                ...errors,
+                username: !e.target.value.includes("@"),
+              });
+            }}
+            required
+            error={errors.username}
+            helperText={
+              errors.username ? "Geçerli bir email adresi giriniz" : ""
+            }
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "12px",
+                background: "rgba(255, 255, 255, 0.75)",
+                color: "#2196F3",
+                "& fieldset": {
+                  borderColor: "rgba(255, 255, 255, 0.3)",
+                },
+                "&:hover fieldset": {
+                  borderColor: "#2196F3",
+                },
+                "&.Mui-focused fieldset": {
+                  borderColor: "#3F51B5",
+                },
+              },
+              mb: 3,
+            }}
+            InputLabelProps={{
+              style: { color: "#2196F3" },
+            }}
+          />
+
+          {/* Şifre */}
+          <TextField
+            name="loginPassword"
+            label="Şifre"
+            type="password"
+            fullWidth
+            margin="normal"
+            value={loginData.password}
+            onChange={(e) => {
+              setLoginData({ ...loginData, password: e.target.value });
+              setErrors({
+                ...errors,
+                password: e.target.value.length < 8 && isRegister,
+              });
+            }}
+            required
+            error={errors.password}
+            helperText={isRegister ? "En az 8 karakter olmalıdır" : ""}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "12px",
+                background: "rgb(255, 255, 255, 0.75)",
+                color: "#2196F3",
+                "& fieldset": {
+                  borderColor: "rgba(255, 255, 255, 0.3)",
+                },
+                "&:hover fieldset": {
+                  borderColor: "#2196F3",
+                },
+                "&.Mui-focused fieldset": {
+                  borderColor: "#3F51B5",
+                },
+              },
+              mb: 3,
+            }}
+            InputLabelProps={{
+              style: { color: "#2196F3" },
+            }}
+          />
+
+          {/* Kayıt modunda isim ve soyisim */}
+          {isRegister && (
+            <>
+              <TextField
+                name="firstName"
+                label="İsim"
+                fullWidth
+                margin="normal"
+                value={loginData.firstName}
+                onChange={(e) =>
+                  setLoginData({ ...loginData, firstName: e.target.value })
+                }
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "12px",
+                    background: "rgba(255, 255, 255, 0.75)",
+                    color: "#2196F3",
+                    "& fieldset": {
+                      borderColor: "rgba(255, 255, 255, 0.3)",
+                    },
+                    "&:hover fieldset": {
+                      borderColor: "#2196F3",
+                    },
+                    "&.Mui-focused fieldset": {
+                      borderColor: "#3F51B5",
+                    },
+                  },
+                  mb: 3,
+                }}
+                InputLabelProps={{
+                  style: { color: "#2196F3" },
+                }}
+              />
+
+              <TextField
+                name="lastName"
+                label="Soyisim"
+                fullWidth
+                margin="normal"
+                value={loginData.lastName}
+                onChange={(e) =>
+                  setLoginData({ ...loginData, lastName: e.target.value })
+                }
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "12px",
+                    background: "rgba(255, 255, 255, 0.75)",
+                    color: "#2196F3",
+                    "& fieldset": {
+                      borderColor: "rgba(255, 255, 255, 0.3)",
+                    },
+                    "&:hover fieldset": {
+                      borderColor: "#2196F3",
+                    },
+                    "&.Mui-focused fieldset": {
+                      borderColor: "#3F51B5",
+                    },
+                  },
+                  mb: 3,
+                }}
+                InputLabelProps={{
+                  style: { color: "#2196F3" },
+                }}
+              />
+            </>
+          )}
+
+          {/* Giriş/Kayıt Butonu */}
+          <AnimatedButton
+            type="submit"
+            fullWidth
+            disabled={!loginData.username || !loginData.password}
+          >
+            {isRegister ? "Kayıt Ol" : "Giriş Yap"}
+          </AnimatedButton>
+        </form>
+
+        {/* Şifre Sıfırlama ve Giriş/Kayıt Mod Değiştirme */}
+        <Box sx={{ mt: 3, display: "flex", justifyContent: "space-between" }}>
+          {!isRegister && (
+            <Button
+              onClick={() => handlePasswordReset(loginData.username)}
+              variant="text"
+              sx={{
+                color: "#2196F3",
+                textTransform: "none",
+                "&:hover": {
+                  color: "#3F51B5",
+                  background: "rgba(33, 150, 243, 0.1)",
+                },
+              }}
+            >
+              Şifremi Unuttum
+            </Button>
+          )}
+
           <Button
-            onClick={() => handlePasswordReset(loginData.username)}
+            onClick={() => {
+              setIsRegister(!isRegister);
+              setLoginData({
+                username: "",
+                password: "",
+                firstName: "",
+                lastName: "",
+              });
+            }}
             variant="text"
             sx={{
               color: "#2196F3",
@@ -212,29 +345,11 @@ const UserAuth = ({ setUser }) => {
               },
             }}
           >
-            Şifremi Unuttum
+            {isRegister ? "Hesabın var mı? Giriş Yap" : "Hesap Oluştur"}
           </Button>
-        )}
-
-        <Button
-          onClick={() => {
-            setIsRegister(!isRegister);
-            setLoginData({ username: "", password: "" });
-          }}
-          variant="text"
-          sx={{
-            color: "#2196F3",
-            textTransform: "none",
-            "&:hover": {
-              color: "#3F51B5",
-              background: "rgba(33, 150, 243, 0.1)",
-            },
-          }}
-        >
-          {isRegister ? "Hesabın var mı? Giriş Yap" : "Hesap Oluştur"}
-        </Button>
-      </Box>
-    </AuthCard>
+        </Box>
+      </AuthCard>
+    </>
   );
 };
 

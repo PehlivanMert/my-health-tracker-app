@@ -42,17 +42,17 @@
     <!-- Ekstra scriptler -->
     <script>
       // Güncelleme kontrolü için controllerchange
-      let refreshing;
-      navigator.serviceWorker.addEventListener("controllerchange", function () {
-        if (!refreshing) {
-          refreshing = true;
-          if (
-            confirm("Yeni bir güncelleme var! Sayfayı yenilemek ister misiniz?")
-          ) {
-            window.location.reload();
-          }
-        }
-      });
+      // let refreshing;
+      // navigator.serviceWorker.addEventListener("controllerchange", function () {
+      //   if (!refreshing) {
+      //     refreshing = true;
+      //    if (
+      //     confirm("Yeni bir güncelleme var! Sayfayı yenilemek ister misiniz?")
+      //   ) {
+      //    window.location.reload();
+      //   }
+      //  }
+      //  });
 
       // PWA yükleme bildirimi
       let deferredPrompt;
@@ -67,9 +67,9 @@
       });
 
       // Alternatif, daha basit controllerchange kodu
-      // navigator.serviceWorker.addEventListener('controllerchange', function() {
-      //   window.location.reload();
-      // });
+      navigator.serviceWorker.addEventListener("controllerchange", function () {
+        window.location.reload();
+      });
     </script>
   </body>
 </html>

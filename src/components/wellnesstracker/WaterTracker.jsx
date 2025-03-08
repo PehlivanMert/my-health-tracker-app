@@ -141,6 +141,7 @@ const getTurkeyTime = () =>
   new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
 
 const WaterTracker = ({ user, onWaterDataChange }) => {
+  // Varsayılan değerlerin yanı sıra, verinin yüklendiğini göstermek için dataFetched ekledik.
   const [waterData, setWaterData] = useState({
     waterIntake: 0,
     dailyWaterTarget: 2000,
@@ -151,8 +152,11 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     waterNotificationOption: "smart",
     customNotificationInterval: 1,
     notificationWindow: { start: "07:00", end: "21:00" },
-    activityLevel: "orta", // Varsayılan aktiflik seviyesi (smart mod için)
+    nextWaterReminderTime: null,
+    nextWaterReminderMessage: null,
+    activityLevel: "orta",
   });
+  const [dataFetched, setDataFetched] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [achievement, setAchievement] = useState(null);
   const [nextReminder, setNextReminder] = useState(null);
@@ -193,57 +197,12 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           end: "21:00",
         },
         nextWaterReminderTime: data.nextWaterReminderTime || null,
+        nextWaterReminderMessage: data.nextWaterReminderMessage || null,
         activityLevel: data.activityLevel || "orta",
       });
+      setDataFetched(true); // veriler yüklendiğini işaretle
       await checkIfResetNeeded(data);
       if (onWaterDataChange) onWaterDataChange(data);
-    }
-  };
-
-  const resetDailyWaterIntake = async () => {
-    try {
-      const nowTurkey = getTurkeyTime();
-      const yesterday = new Date(nowTurkey);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toLocaleDateString("en-CA");
-      const todayStr = nowTurkey.toLocaleDateString("en-CA");
-      const ref = getWaterDocRef();
-      const docSnap = await getDoc(ref);
-      let updatedHistory = [];
-      if (docSnap.exists()) {
-        const currentData = docSnap.data();
-        const currentHistory = currentData.history || [];
-        const oneYearAgo = new Date(nowTurkey);
-        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-        const filteredHistory = currentHistory.filter(
-          (entry) => new Date(entry.date + "T00:00:00") >= oneYearAgo
-        );
-        updatedHistory = [
-          ...filteredHistory.filter(
-            (entry) => entry.date !== yesterdayStr && entry.date !== todayStr
-          ),
-          { date: yesterdayStr, intake: currentData.waterIntake || 0 },
-        ];
-      }
-      await setDoc(
-        ref,
-        {
-          waterIntake: 0,
-          dailyWaterTarget: docSnap.exists()
-            ? docSnap.data().dailyWaterTarget || 2000
-            : 2000,
-          glassSize: docSnap.exists() ? docSnap.data().glassSize || 250 : 250,
-          history: updatedHistory,
-          yesterdayWaterIntake: docSnap.exists()
-            ? docSnap.data().waterIntake || 0
-            : 0,
-          lastResetDate: todayStr,
-        },
-        { merge: true }
-      );
-      await fetchWaterData();
-    } catch (error) {
-      console.error("Reset error:", error);
     }
   };
 
@@ -275,7 +234,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         { merge: true }
       );
       await fetchWaterData();
-      // Bildirimleri yeniden hesapla
+      // Su ekleme/çıkarma durumlarında bildirim yeniden hesaplanır.
       const result = await scheduleWaterNotifications(user);
       console.log("handleAddWater - Bildirimler yeniden hesaplandı:", result);
       setNextReminder(result.nextReminder);
@@ -300,7 +259,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     try {
       await setDoc(ref, { waterIntake: newIntake }, { merge: true });
       await fetchWaterData();
-      // Bildirimleri yeniden hesapla
+      // Su ekleme/çıkarma durumlarında bildirim yeniden hesaplanır.
       const result = await scheduleWaterNotifications(user);
       console.log(
         "handleRemoveWater - Bildirimler yeniden hesaplandı:",
@@ -317,7 +276,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     try {
       await setDoc(ref, { [field]: value }, { merge: true });
       await fetchWaterData();
-      // Ayar değişikliğinde bildirimleri yeniden hesapla
+      // Ayar değişikliğinde bildirim yeniden hesaplanır.
       const result = await scheduleWaterNotifications(user);
       console.log(
         "handleWaterSettingChange - Bildirimler yeniden hesaplandı:",
@@ -334,13 +293,21 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     100
   );
 
+  // NEXT REMINDER hesaplamasını, yalnızca gerçek veriler yüklendikten sonra çalıştırıyoruz.
   useEffect(() => {
-    if (!user) return;
-    fetchWaterData();
-  }, [user]);
+    if (!user?.uid || !dataFetched) return;
+    const now = getTurkeyTime();
 
-  useEffect(() => {
-    if (user && waterData && waterData.waterNotificationOption !== "none") {
+    if (
+      waterData.nextWaterReminderTime &&
+      new Date(waterData.nextWaterReminderTime).getTime() >
+        now.getTime() + 60000
+    ) {
+      setNextReminder({
+        time: waterData.nextWaterReminderTime,
+        message: waterData.nextWaterReminderMessage,
+      });
+    } else if (waterData.waterNotificationOption !== "none") {
       saveNextWaterReminderTime(user)
         .then((next) => {
           console.log("WaterTracker - nextReminder hesaplandı:", next);
@@ -352,7 +319,12 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     } else {
       setNextReminder(null);
     }
-  }, [waterData, user]);
+  }, [
+    user?.uid,
+    waterData.nextWaterReminderTime,
+    waterData.waterNotificationOption,
+    dataFetched,
+  ]);
 
   return (
     <Box sx={{ textAlign: "center", mb: 6 }}>
@@ -486,7 +458,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           <Typography variant="subtitle1" sx={{ color: "#fff", mt: 2 }}>
             Sonraki bildirim:{" "}
             {waterData.waterIntake >= waterData.dailyWaterTarget &&
-            waterData.waterNotificationOption != "none"
+            waterData.waterNotificationOption !== "none"
               ? "Tebrikler hedefe ulaştınız"
               : waterData.waterNotificationOption === "none"
               ? "Bildirim Kapalı"

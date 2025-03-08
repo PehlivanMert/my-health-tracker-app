@@ -118,7 +118,6 @@ export const getGlobalNotificationWindow = async (user) => {
  * Bildirim penceresini (start, end) hesaplar.
  * Eğer pencere overnight ise (örn. 18:45–05:45), bitiş zamanı ertesi güne ayarlanır.
  */
-// Global bildirim penceresi zamanlarını hesaplar.
 const computeWindowTimes = (windowObj) => {
   const now = getTurkeyTime();
   const todayStr = now.toISOString().split("T")[0];
@@ -126,7 +125,7 @@ const computeWindowTimes = (windowObj) => {
   let start = new Date(`${todayStr}T${windowObj.start}:00`);
   let end = new Date(`${todayStr}T${windowObj.end}:00`);
 
-  // Eğer pencere overnight (geceye yayılan) ise, bitiş zamanını ertesi güne taşıyoruz.
+  // Eğer pencere overnight ise, bitiş zamanını ertesi güne taşıyoruz.
   if (start.getTime() > end.getTime()) {
     end.setDate(end.getDate() + 1);
   }
@@ -221,7 +220,6 @@ export const getMotivationalMessageForTime = (date, weather = null) => {
  * Hava durumu bilgisini (sıcaklık, nem, weathercode) almak için örnek fonksiyon.
  *
  */
-
 // 1. Kullanıcının gerçek zamanlı konumunu alan yardımcı fonksiyon
 const getUserLocation = () => {
   return new Promise((resolve, reject) => {
@@ -497,7 +495,6 @@ export const popNextReminder = async (user) => {
   const waterSnap = await getDoc(waterRef);
   let reminderTimes = [];
   if (waterSnap.exists() && waterSnap.data().reminderTimes) {
-    // Firestore’dan okunan reminderTimes dizisindeki her bir r objesinin time alanını Date nesnesine çeviriyoruz.
     reminderTimes = waterSnap.data().reminderTimes.map((r) => ({
       ...r,
       time: new Date(r.time),
@@ -510,7 +507,7 @@ export const popNextReminder = async (user) => {
     reminderTimes.shift();
   }
   reminderTimes = reminderTimes.filter(
-    (r) => new Date(r.time).getTime() > now.getTime() + 60000
+    (r) => r.time.getTime() > now.getTime() + 60000
   );
   if (reminderTimes.length === 0) {
     console.log("popNextReminder - Reminders boş, yeniden hesaplanıyor.");
@@ -553,7 +550,6 @@ export const saveNextWaterReminderTime = async (user) => {
   const waterSnap = await getDoc(waterRef);
   let reminderTimes = [];
   if (waterSnap.exists() && waterSnap.data().reminderTimes) {
-    // Firestore’dan okunan reminderTimes dizisindeki her bir r objesinin time alanını Date nesnesine çeviriyoruz.
     reminderTimes = waterSnap.data().reminderTimes.map((r) => ({
       ...r,
       time: new Date(r.time),
@@ -562,7 +558,7 @@ export const saveNextWaterReminderTime = async (user) => {
 
   const now = getTurkeyTime();
   reminderTimes = reminderTimes.filter(
-    (r) => new Date(r.time).getTime() > now.getTime() + 60000
+    (r) => r.time.getTime() > now.getTime() + 60000
   );
   if (reminderTimes.length === 0) {
     console.log(
@@ -608,37 +604,68 @@ export const saveNextWaterReminderTime = async (user) => {
  * - İlk, tüm bildirimler hesaplanıp Firestore’a kaydedilir.
  * - Ardından, saveNextWaterReminderTime ile en az 1 dakika sonrası olan bildirim,
  *   nextWaterReminderTime/Message alanlarına set edilir.
+ *
+ * GÜNCELLEME:
+ * - Hesaplama sonlandırma zamanını takip eden "notificationsLastCalculated" alanı eklenmiştir.
+ * - Eğer bu alan mevcutsa ve son hesaplama 5 dakika içinde yapılmışsa, hesaplama tekrarlanmaz.
  */
 export const scheduleWaterNotifications = async (user) => {
   if (!user || !user.uid) return;
 
-  // Önce kullanıcıya ait su dokümanını alıyoruz.
   const waterRef = doc(db, "users", user.uid, "water", "current");
   const waterSnap = await getDoc(waterRef);
+  const now = getTurkeyTime();
+  const THRESHOLD = 30 * 60 * 1000; // 30 dakika
 
-  // Eğer reminderTimes dizisi mevcut ve boş değilse, yeniden hesaplama yapmadan mevcut bildirimleri döndür.
-  if (
-    waterSnap.exists() &&
-    waterSnap.data().reminderTimes &&
-    waterSnap.data().reminderTimes.length > 0
-  ) {
-    const existingReminderTimes = waterSnap.data().reminderTimes.map((r) => ({
-      ...r,
-      time: new Date(r.time),
-    }));
-    const nextReminder = waterSnap.data().nextWaterReminderTime
-      ? {
-          time: new Date(waterSnap.data().nextWaterReminderTime),
-          message: waterSnap.data().nextWaterReminderMessage,
-        }
-      : null;
-    console.log(
-      "scheduleWaterNotifications - Varolan su bildirimleri kullanılıyor."
-    );
-    return { reminderSchedule: existingReminderTimes, nextReminder };
+  if (waterSnap.exists()) {
+    const data = waterSnap.data();
+    // Şu anki tetikleyici değerleri oluşturuyoruz.
+    const triggerFields = {
+      waterIntake: data.waterIntake || 0,
+      waterNotificationOption: data.waterNotificationOption || "smart",
+      activityLevel: data.activityLevel || "orta",
+      notificationWindow: JSON.stringify(
+        data.notificationWindow || { start: "08:00", end: "22:00" }
+      ),
+    };
+
+    let existingReminderTimes = [];
+    if (data.reminderTimes && data.reminderTimes.length > 0) {
+      existingReminderTimes = data.reminderTimes.map((r) => ({
+        ...r,
+        time: new Date(r.time),
+      }));
+    }
+
+    const lastTriggers = data.lastNotificationTriggers;
+    // Eğer tetikleyici değerler aynıysa ve mevcut reminderTimes geçerliyse, hesaplamayı tekrarlamıyoruz.
+    if (
+      lastTriggers &&
+      lastTriggers.waterIntake === triggerFields.waterIntake &&
+      lastTriggers.waterNotificationOption ===
+        triggerFields.waterNotificationOption &&
+      lastTriggers.activityLevel === triggerFields.activityLevel &&
+      lastTriggers.notificationWindow === triggerFields.notificationWindow &&
+      existingReminderTimes.length > 0 &&
+      existingReminderTimes[0].time.getTime() > now.getTime() + 60000 &&
+      data.notificationsLastCalculated &&
+      now.getTime() - new Date(data.notificationsLastCalculated).getTime() <
+        THRESHOLD
+    ) {
+      const nextReminder = data.nextWaterReminderTime
+        ? {
+            time: new Date(data.nextWaterReminderTime),
+            message: data.nextWaterReminderMessage,
+          }
+        : null;
+      console.log(
+        "scheduleWaterNotifications - Mevcut bildirimler kullanılıyor."
+      );
+      return { reminderSchedule: existingReminderTimes, nextReminder };
+    }
   }
 
-  // Eğer reminderTimes boşsa (veya daha önce hiç hesaplanmamışsa), yeni bildirim zamanlarını hesaplıyoruz.
+  // Tetikleyici değişiklik var veya reminderTimes boş, yeniden hesaplama yapıyoruz.
   const data = await fetchUserData(user);
   const mode = data.waterNotificationOption || "smart";
   if (mode === "none") {
@@ -647,6 +674,27 @@ export const scheduleWaterNotifications = async (user) => {
   }
   const reminderSchedule = await computeWaterReminderTimes(user);
   const nextReminder = await saveNextWaterReminderTime(user);
+
+  // Yeni tetikleyici değerleri oluşturuyoruz.
+  const newTriggerFields = {
+    waterIntake: data.waterIntake || 0,
+    waterNotificationOption: data.waterNotificationOption || "smart",
+    activityLevel: data.activityLevel || "orta",
+    notificationWindow: JSON.stringify(
+      data.notificationWindow || { start: "08:00", end: "22:00" }
+    ),
+  };
+
+  // Hesaplama zamanını ve tetikleyici değerleri güncelliyoruz.
+  await setDoc(
+    waterRef,
+    {
+      notificationsLastCalculated: now.toISOString(),
+      lastNotificationTriggers: newTriggerFields,
+    },
+    { merge: true }
+  );
+
   console.log(
     "scheduleWaterNotifications - Yeni su bildirim zamanları hesaplandı:",
     reminderSchedule.map((r) => new Date(r.time).toLocaleTimeString())

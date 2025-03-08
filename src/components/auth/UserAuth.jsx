@@ -39,12 +39,16 @@ const GlassmorphismCard = styled(motion.div, {
   width: "100%",
   maxWidth: 450,
   borderRadius: "24px",
-  background: "rgba(255, 255, 255, 0.12)",
+  background: "rgba(255, 255, 255, 0.25)", // opaklığı artırdık
   backdropFilter: "blur(16px)",
   border: "1px solid rgba(255, 255, 255, 0.2)",
   boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
   overflow: "hidden",
   transition: "all 0.4s ease",
+  // Mobilde daha da belirgin olması için
+  [theme.breakpoints.down("sm")]: {
+    background: "rgba(255, 255, 255, 0.3)",
+  },
   "&::before": {
     content: '""',
     position: "absolute",
@@ -95,6 +99,12 @@ const GlowingTextField = styled(TextField, {
     },
     "&.Mui-focused fieldset": {
       borderColor: $focusColor,
+    },
+    // Autofill stilini geçersiz kılmak için eklenen kısım
+    "& input:-webkit-autofill": {
+      WebkitBoxShadow: `0 0 0 100px rgba(255, 255, 255, 0.09) inset`,
+      WebkitTextFillColor: "#ffffff",
+      transition: "background-color 5000s ease-in-out 0s",
     },
   },
   "& .MuiInputLabel-root": {

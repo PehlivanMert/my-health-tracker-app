@@ -39,13 +39,15 @@ const GlassmorphismCard = styled(motion.div, {
   width: "100%",
   maxWidth: 450,
   borderRadius: "24px",
-  background: "rgba(255, 255, 255, 0.25)", // opaklığı artırdık
+  background: "rgba(255, 255, 255, 0.25)",
   backdropFilter: "blur(16px)",
+  WebkitBackdropFilter: "blur(16px)", // iOS/PWA uyumluluğu için
+  transform: "translateZ(0)", // GPU hızlandırma
+  willChange: "transform, opacity",
   border: "1px solid rgba(255, 255, 255, 0.2)",
   boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
   overflow: "hidden",
   transition: "all 0.4s ease",
-  // Mobilde daha da belirgin olması için
   [theme.breakpoints.down("sm")]: {
     background: "rgba(255, 255, 255, 0.3)",
   },
@@ -57,13 +59,13 @@ const GlassmorphismCard = styled(motion.div, {
     width: "200%",
     height: "200%",
     background: `radial-gradient(circle, ${$glowColor}33 0%, transparent 50%)`,
-    opacity: 0,
+    opacity: 0.5, // sabit, orta derecede saydamlık
     transition: "opacity 0.6s ease",
     pointerEvents: "none",
     zIndex: -1,
   },
   "&:hover::before": {
-    opacity: 1,
+    opacity: 0.7, // hover durumunda hafif artan opaklık, ama tamamen beyazlaştırmıyor
   },
   "&::after": {
     content: '""',

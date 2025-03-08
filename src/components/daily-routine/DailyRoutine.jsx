@@ -135,15 +135,15 @@ const StatCard = ({ title, value, total, icon, color }) => {
     </motion.div>
   );
 };
-
 const DailyRoutine = ({ user }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [newRoutine, setNewRoutine] = useState({ title: "", time: "" });
   const [editRoutineId, setEditRoutineId] = useState(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState({});
-  const [weeklyStats, setWeeklyStats] = useState({ completed: 0, total: 0 });
-  const [monthlyStats, setMonthlyStats] = useState({ completed: 0, total: 0 });
+  // Kümülatif sayaçlar: haftalık ve aylık (eklenen ve tamamlanan)
+  const [weeklyStats, setWeeklyStats] = useState({ added: 0, completed: 0 });
+  const [monthlyStats, setMonthlyStats] = useState({ added: 0, completed: 0 });
   const [modalOpen, setModalOpen] = useState(false);
   const [allNotifications, setAllNotifications] = useState(false);
   const [routines, setRoutines] = useState([]);
@@ -179,56 +179,29 @@ const DailyRoutine = ({ user }) => {
     );
   };
 
-  // Haftalık ve aylık istatistikleri güncelle
-  useEffect(() => {
-    const now = new Date();
-    const currentWeek = getWeekNumber(now);
-    const currentMonth = now.getMonth();
+  // Günlük istatistikler (UI tabanlı, resetlenecek)
+  const dailyStats = {
+    completed: routines.filter((r) => r.checked).length,
+    total: routines.length,
+  };
 
-    const weeklyCompleted = routines.filter(
-      (r) =>
-        r.checked && getWeekNumber(new Date(r.completionDate)) === currentWeek
-    ).length;
-
-    const monthlyCompleted = routines.filter(
-      (r) => r.checked && isSameMonth(new Date(r.completionDate), now)
-    ).length;
-
-    setWeeklyStats({
-      completed: weeklyCompleted,
-      total: routines.filter(
-        (r) => getWeekNumber(new Date(r.createdAt)) === currentWeek
-      ).length,
-    });
-
-    setMonthlyStats({
-      completed: monthlyCompleted,
-      total: routines.filter((r) => isSameMonth(new Date(r.createdAt), now))
-        .length,
-    });
-  }, [routines]);
-
-  // Günlük, haftalık ve aylık istatistikleri sıfırla
+  // Gece yarısı UI reseti (check'ler sıfırlanır) ve haftalık/aylık kümülatif sayaçlar
   useEffect(() => {
     const checkReset = () => {
       const now = new Date();
-
-      // Sonraki gün gece yarısı için zaman hesaplama
+      // Sonraki gün gece yarısı
       const tomorrow = new Date(now);
       tomorrow.setDate(now.getDate() + 1);
       tomorrow.setHours(0, 0, 0, 0);
-
-      // Sonraki Pazartesi için zaman hesaplama
+      // Sonraki Pazartesi
       const nextMonday = new Date(now);
       nextMonday.setDate(now.getDate() + ((1 + 7 - now.getDay()) % 7));
       nextMonday.setHours(0, 0, 0, 0);
-
-      // Sonraki ay için zaman hesaplama
+      // Sonraki ay
       const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-      // Günlük reset - gece yarısı tüm check'leri sıfırla
+      // Günlük reset: yalnızca UI'deki check'leri sıfırla
       const timeoutDaily = setTimeout(() => {
-        // Tüm rutinlerin işaretini kaldır
         setRoutines((prevRoutines) =>
           prevRoutines.map((r) => ({
             ...r,
@@ -236,19 +209,16 @@ const DailyRoutine = ({ user }) => {
             completionDate: null,
           }))
         );
-
-        // Günlük istatistikleri sıfırla (isteğe bağlı)
-        // dailyStats zaten routines'a bağlı olduğu için otomatik güncellenecek
       }, tomorrow - now);
 
-      // Haftalık istatistikleri sıfırlama
+      // Yeni haftaya geçişte kümülatif sayaçlar resetlensin
       const timeoutWeekly = setTimeout(() => {
-        setWeeklyStats({ completed: 0, total: 0 });
+        setWeeklyStats({ added: 0, completed: 0 });
       }, nextMonday - now);
 
-      // Aylık istatistikleri sıfırlama
+      // Yeni aya geçişte kümülatif sayaçlar resetlensin
       const timeoutMonthly = setTimeout(() => {
-        setMonthlyStats({ completed: 0, total: 0 });
+        setMonthlyStats({ added: 0, completed: 0 });
       }, nextMonth - now);
 
       return () => {
@@ -258,13 +228,10 @@ const DailyRoutine = ({ user }) => {
       };
     };
 
-    // İlk çalıştırmada ve sonra her saat başı kontrol et
     checkReset();
-    const timer = setInterval(checkReset, 3600000); // Her saat başı kontrol
-
+    const timer = setInterval(checkReset, 3600000); // Her saat kontrol
     return () => clearInterval(timer);
   }, []);
-
   // Rutin kaydetme işlemi
   const handleSaveRoutine = () => {
     if (!newRoutine.title || !newRoutine.time) return;
@@ -278,6 +245,7 @@ const DailyRoutine = ({ user }) => {
               ...newRoutine,
               id: r.id,
               notificationEnabled: r.notificationEnabled || false,
+              // Düzenleme sırasında kümülatif sayaçlar değişmez
             }
           : r
       );
@@ -290,12 +258,14 @@ const DailyRoutine = ({ user }) => {
           createdAt: new Date().toISOString(),
           completionDate: null,
           checked: false,
-          notificationEnabled: false, // Bildirim varsayılan kapalı
+          notificationEnabled: false,
         },
       ];
+      // Yeni rutin eklendiğinde kümülatif sayaçlar güncellenir
+      setWeeklyStats((prev) => ({ ...prev, added: prev.added + 1 }));
+      setMonthlyStats((prev) => ({ ...prev, added: prev.added + 1 }));
     }
 
-    // Rutinleri saate göre sırala
     updatedRoutines = sortRoutinesByTime(updatedRoutines);
 
     setRoutines(updatedRoutines);
@@ -304,30 +274,63 @@ const DailyRoutine = ({ user }) => {
     setEditRoutineId(null);
   };
 
-  // Rutin silme işlemi
+  // Rutin silme işlemi (kümülatif sayaçlar dokunulmaz)
   const deleteRoutine = (id) => {
     setRoutines(routines.filter((routine) => routine.id !== id));
   };
 
   // Rutin işaretleme işlemi
   const handleCheckboxChange = (routineId) => {
-    setRoutines(
-      routines.map((r) =>
-        r.id === routineId
-          ? {
-              ...r,
-              checked: !r.checked,
-              completionDate: !r.checked ? new Date().toISOString() : null,
-            }
-          : r
-      )
+    setRoutines((prevRoutines) =>
+      prevRoutines.map((r) => {
+        if (r.id === routineId) {
+          if (!r.checked) {
+            // Manuel check yapıldığında tamamlanma sayaçları artar
+            setWeeklyStats((prev) => ({
+              ...prev,
+              completed: prev.completed + 1,
+            }));
+            setMonthlyStats((prev) => ({
+              ...prev,
+              completed: prev.completed + 1,
+            }));
+          } else {
+            // Check kaldırılırsa sayaçlar düşer
+            setWeeklyStats((prev) => ({
+              ...prev,
+              completed: Math.max(prev.completed - 1, 0),
+            }));
+            setMonthlyStats((prev) => ({
+              ...prev,
+              completed: Math.max(prev.completed - 1, 0),
+            }));
+          }
+          return {
+            ...r,
+            checked: !r.checked,
+            completionDate: !r.checked ? new Date().toISOString() : null,
+          };
+        }
+        return r;
+      })
     );
   };
 
   // Tüm rutinleri işaretle
   const handleSelectAll = () => {
-    setRoutines(
-      routines.map((r) => ({
+    const countToCheck = routines.filter((r) => !r.checked).length;
+    if (countToCheck > 0) {
+      setWeeklyStats((prev) => ({
+        ...prev,
+        completed: prev.completed + countToCheck,
+      }));
+      setMonthlyStats((prev) => ({
+        ...prev,
+        completed: prev.completed + countToCheck,
+      }));
+    }
+    setRoutines((prevRoutines) =>
+      prevRoutines.map((r) => ({
         ...r,
         checked: true,
         completionDate: new Date().toISOString(),
@@ -337,8 +340,19 @@ const DailyRoutine = ({ user }) => {
 
   // Tüm rutinlerin işaretini kaldır
   const handleUnselectAll = () => {
-    setRoutines(
-      routines.map((r) => ({
+    const countToUncheck = routines.filter((r) => r.checked).length;
+    if (countToUncheck > 0) {
+      setWeeklyStats((prev) => ({
+        ...prev,
+        completed: Math.max(prev.completed - countToUncheck, 0),
+      }));
+      setMonthlyStats((prev) => ({
+        ...prev,
+        completed: Math.max(prev.completed - countToUncheck, 0),
+      }));
+    }
+    setRoutines((prevRoutines) =>
+      prevRoutines.map((r) => ({
         ...r,
         checked: false,
         completionDate: null,
@@ -351,7 +365,7 @@ const DailyRoutine = ({ user }) => {
     setRoutines([]);
   };
 
-  // her rutinin Firestore'da saklanan verisinde "notificationEnabled" alanını güncelliyoruz.
+  // Her rutinin Firestore'daki "notificationEnabled" alanını güncelleme
   const handleNotificationChange = (routineId) => {
     const routine = routines.find((r) => r.id === routineId);
     if (!routine) return;
@@ -363,13 +377,11 @@ const DailyRoutine = ({ user }) => {
       isEnabled ? "success" : "error"
     );
 
-    // Rutin objesindeki notificationEnabled değeri güncellensin
     const updatedRoutines = routines.map((r) =>
       r.id === routineId ? { ...r, notificationEnabled: isEnabled } : r
     );
     setRoutines(updatedRoutines);
 
-    // notificationsEnabled state'ini de güncelleyin
     setNotificationsEnabled((prev) => ({
       ...prev,
       [routineId]: isEnabled,
@@ -387,7 +399,6 @@ const DailyRoutine = ({ user }) => {
 
     setAllNotifications(newState);
 
-    // Tüm rutinleri güncelle
     const updatedRoutines = routines.map((r) => ({
       ...r,
       notificationEnabled: newState,
@@ -395,7 +406,6 @@ const DailyRoutine = ({ user }) => {
 
     setRoutines(updatedRoutines);
 
-    // notificationsEnabled state'ini de güncelle
     const updatedNotifications = {};
     updatedRoutines.forEach((r) => {
       updatedNotifications[r.id] = newState;
@@ -403,13 +413,6 @@ const DailyRoutine = ({ user }) => {
 
     setNotificationsEnabled(updatedNotifications);
   };
-
-  // Günlük istatistikler
-  const dailyStats = {
-    completed: routines.filter((r) => r.checked).length,
-    total: routines.length,
-  };
-
   // Firestore'dan rutinleri yükle
   useEffect(() => {
     const loadRoutines = async () => {
@@ -490,14 +493,14 @@ const DailyRoutine = ({ user }) => {
             {
               title: "Haftalık Başarı",
               value: weeklyStats.completed,
-              total: weeklyStats.total,
+              total: weeklyStats.added,
               icon: <CheckCircleOutline />,
               color: "#2196F3",
             },
             {
               title: "Aylık Başarı",
               value: monthlyStats.completed,
-              total: monthlyStats.total,
+              total: monthlyStats.added,
               icon: <NotificationsActive />,
               color: "#9C27B0",
             },
@@ -550,9 +553,7 @@ const DailyRoutine = ({ user }) => {
                     zIndex: 1,
                   }}
                 >
-                  {/* İkon / Progress Alanı */}
                   {isMobile ? (
-                    // Küçük ekranda: sadece ikon, progress halkası kaldırıldı
                     <Box
                       sx={{
                         width: 50,
@@ -572,7 +573,6 @@ const DailyRoutine = ({ user }) => {
                       })}
                     </Box>
                   ) : (
-                    // Büyük ekranlarda: orijinal circular progress ile ikon
                     <Box
                       sx={{
                         position: "relative",
@@ -622,7 +622,6 @@ const DailyRoutine = ({ user }) => {
                     </Box>
                   )}
 
-                  {/* İstatistik Bilgileri */}
                   <Box sx={{ textAlign: { xs: "center", sm: "left" } }}>
                     <Typography
                       variant="subtitle2"
@@ -674,8 +673,6 @@ const DailyRoutine = ({ user }) => {
                     </Typography>
                   </Box>
                 </Box>
-
-                {/* Küçük ekranda LinearProgress Bar */}
                 {isMobile && (
                   <Box sx={{ px: { xs: 2, sm: 3 }, pb: 2 }}>
                     <LinearProgress

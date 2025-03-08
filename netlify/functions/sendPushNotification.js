@@ -74,7 +74,7 @@ exports.handler = async function (event, context) {
               notificationsToSend.push({
                 token: fcmToken,
                 data: {
-                  title: routine.title,
+                  title: "Rutin Hatırlatması",
                   body: `Şimdi ${routine.title} rutininin zamanı geldi!`,
                   routineId: routine.id || "",
                 },
@@ -169,7 +169,7 @@ exports.handler = async function (event, context) {
               notificationsToSend.push({
                 token: fcmToken,
                 data: {
-                  title: eventData.title,
+                  title: "Takvim Etkinliği Hatırlatması",
                   body: `Etkinlik: ${eventData.title} ${
                     offsetMinutes > 0
                       ? `(${offsetMinutes} dakika sonra)`

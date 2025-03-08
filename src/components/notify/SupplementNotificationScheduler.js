@@ -86,30 +86,9 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
     todayStr
   );
 
-  // Global bildirim penceresini çekiyoruz ve overnight durumunu işliyoruz.
-  const globalNotifWindow = await getGlobalNotificationWindow(user);
-  const { windowStart, windowEnd } = computeWindowTimes(
-    globalNotifWindow || { start: "08:00", end: "22:00" }
-  );
-
-  // Manuel bildirim zamanı varsa
-  if (
-    suppData.notificationSchedule &&
-    suppData.notificationSchedule.length > 0
-  ) {
-    suppData.notificationSchedule.forEach((timeStr) => {
-      const scheduled = new Date(`${todayStr}T${timeStr}:00`);
-      times.push(scheduled);
-      console.log(
-        "computeSupplementReminderTimes - Manuel olarak hesaplanan zaman:",
-        scheduled
-      );
-    });
-  }
-  // Otomatik hesaplama: Günlük kullanım tanımlıysa
-  else if (suppData.dailyUsage > 0) {
-    // Önce Firestore'dan bugünkü tüketim verisini alıp, günlük kullanım hedefiyle karşılaştırıyoruz.
-    let consumptionReached = false;
+  // Önce tüketim kontrolü yapıyoruz (otomatik veya manuel fark etmeksizin)
+  let consumptionReached = false;
+  if (suppData.dailyUsage > 0) {
     try {
       const consumptionDocRef = doc(
         db,
@@ -136,7 +115,7 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
       if (consumed >= suppData.dailyUsage) {
         consumptionReached = true;
         console.log(
-          "computeSupplementReminderTimes - Günlük kullanım hedefe ulaştı, otomatik bildirim oluşturulmayacak."
+          "computeSupplementReminderTimes - Günlük kullanım hedefe ulaştı, bildirim oluşturulmayacak."
         );
       }
     } catch (error) {
@@ -145,66 +124,90 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
         error
       );
     }
+  }
 
-    if (!consumptionReached) {
-      // Hedefe ulaşılmadıysa otomatik bildirim zamanlarını hesaplıyoruz.
-      const estimatedRemainingDays = suppData.quantity / suppData.dailyUsage;
+  // Eğer tüketim hedefine ulaşılmışsa, hiçbir bildirim zamanı döndürmeyelim.
+  if (consumptionReached) {
+    return [];
+  }
+
+  // Global bildirim penceresini çekiyoruz ve overnight durumunu işliyoruz.
+  const globalNotifWindow = (await getGlobalNotificationWindow(user)) || {
+    start: "08:00",
+    end: "22:00",
+  };
+  const { windowStart, windowEnd } = computeWindowTimes(globalNotifWindow);
+
+  // Manuel bildirim zamanı varsa
+  if (
+    suppData.notificationSchedule &&
+    suppData.notificationSchedule.length > 0
+  ) {
+    suppData.notificationSchedule.forEach((timeStr) => {
+      const scheduled = new Date(`${todayStr}T${timeStr}:00`);
+      times.push(scheduled);
       console.log(
-        "computeSupplementReminderTimes - estimatedRemainingDays:",
+        "computeSupplementReminderTimes - Manuel olarak hesaplanan zaman:",
+        scheduled
+      );
+    });
+  }
+  // Otomatik hesaplama: Günlük kullanım tanımlıysa
+  else if (suppData.dailyUsage > 0) {
+    const estimatedRemainingDays = suppData.quantity / suppData.dailyUsage;
+    console.log(
+      "computeSupplementReminderTimes - estimatedRemainingDays:",
+      estimatedRemainingDays
+    );
+    const flooredRemaining = Math.floor(estimatedRemainingDays);
+
+    if (flooredRemaining === 0) {
+      // Takviyenin bittiğine dair bildirim (örneğin 1 dakika sonrası)
+      const finishedTime = new Date(now.getTime() + 1 * 60000);
+      times.push(finishedTime);
+      console.log(
+        "computeSupplementReminderTimes - estimatedRemainingDays 0: Takviyen bitmiştir bildirimi için hesaplanan zaman:",
+        finishedTime
+      );
+    } else if ([14, 7, 3, 1].includes(flooredRemaining)) {
+      console.log(
+        "computeSupplementReminderTimes - estimatedRemainingDays eşik değeri tetiklendi:",
+        flooredRemaining
+      );
+      if (globalNotifWindow && globalNotifWindow.end) {
+        const windowEnd = new Date(`${todayStr}T${globalNotifWindow.end}:00`);
+        times.push(windowEnd);
+        console.log(
+          `computeSupplementReminderTimes - ${flooredRemaining} günlük takviyen kaldı bildirimi için hesaplanan zaman (bildirim penceresi):`,
+          windowEnd
+        );
+      } else {
+        const defaultTime = new Date(now.getTime() + 60 * 60000);
+        times.push(defaultTime);
+        console.log(
+          `computeSupplementReminderTimes - ${flooredRemaining} günlük takviyen kaldı bildirimi için hesaplanan zaman (varsayılan 1 saat sonrası):`,
+          defaultTime
+        );
+      }
+    } else {
+      console.log(
+        "computeSupplementReminderTimes - Normal durumda, estimatedRemainingDays:",
         estimatedRemainingDays
       );
-      const flooredRemaining = Math.floor(estimatedRemainingDays);
-
-      if (flooredRemaining === 0) {
-        // Takviyenin bittiğine dair bildirim (örneğin 1 dakika sonrası)
-        const finishedTime = new Date(now.getTime() + 1 * 60000);
-        times.push(finishedTime);
+      if (globalNotifWindow && globalNotifWindow.end) {
+        const windowEnd = new Date(`${todayStr}T${globalNotifWindow.end}:00`);
+        times.push(windowEnd);
         console.log(
-          "computeSupplementReminderTimes - estimatedRemainingDays 0: Takviyen bitmiştir bildirimi için hesaplanan zaman:",
-          finishedTime
+          "computeSupplementReminderTimes - Bildirim penceresi kullanılarak hesaplanan zaman:",
+          windowEnd
         );
-      } else if ([14, 7, 3, 1].includes(flooredRemaining)) {
-        // Belirlenen eşik değerlerinden biri tetikleniyorsa (örn. 14, 7, 3 veya 1 günlük takviyen kaldı)
-        console.log(
-          "computeSupplementReminderTimes - estimatedRemainingDays eşik değeri tetiklendi:",
-          flooredRemaining
-        );
-        if (globalNotifWindow && globalNotifWindow.end) {
-          const windowEnd = new Date(`${todayStr}T${globalNotifWindow.end}:00`);
-          times.push(windowEnd);
-          console.log(
-            `computeSupplementReminderTimes - ${flooredRemaining} günlük takviyen kaldı bildirimi için hesaplanan zaman (bildirim penceresi):`,
-            windowEnd
-          );
-        } else {
-          const defaultTime = new Date(now.getTime() + 60 * 60000);
-          times.push(defaultTime);
-          console.log(
-            `computeSupplementReminderTimes - ${flooredRemaining} günlük takviyen kaldı bildirimi için hesaplanan zaman (varsayılan 1 saat sonrası):`,
-            defaultTime
-          );
-        }
       } else {
-        // Diğer durumlarda normal otomatik bildirim zamanı
+        const autoTime = new Date(now.getTime() + 60 * 60000);
+        times.push(autoTime);
         console.log(
-          "computeSupplementReminderTimes - Normal durumda, estimatedRemainingDays:",
-          estimatedRemainingDays
+          "computeSupplementReminderTimes - Varsayılan 1 saat sonrası hesaplanan zaman:",
+          autoTime
         );
-        if (globalNotifWindow && globalNotifWindow.end) {
-          const windowEnd = new Date(`${todayStr}T${globalNotifWindow.end}:00`);
-          times.push(windowEnd);
-          console.log(
-            "computeSupplementReminderTimes - Bildirim penceresi kullanılarak hesaplanan zaman:",
-            windowEnd
-          );
-        } else {
-          const autoTime = new Date(now.getTime() + 60 * 60000);
-          times.push(autoTime);
-          console.log(
-            "computeSupplementReminderTimes - Varsayılan 1 saat sonrası hesaplanan zaman:",
-            autoTime
-          );
-        }
       }
     }
   } else {

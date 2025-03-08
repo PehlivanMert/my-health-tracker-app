@@ -39,17 +39,23 @@ const GlassmorphismCard = styled(motion.div, {
   width: "100%",
   maxWidth: 450,
   borderRadius: "24px",
-  background: "rgba(255, 255, 255, 0.25)",
+  // Normalde çok beyaz görünmemesi için arka plan opaklığı hafif azaltıldı.
+  background: "rgba(255, 255, 255, 0.15)",
   backdropFilter: "blur(16px)",
-  WebkitBackdropFilter: "blur(16px)", // iOS/PWA uyumluluğu için
-  transform: "translateZ(0)", // GPU hızlandırma
-  willChange: "transform, opacity",
+  WebkitBackdropFilter: "blur(16px)", // iOS/PWA uyumluluğu için eklenmiştir.
   border: "1px solid rgba(255, 255, 255, 0.2)",
   boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
   overflow: "hidden",
-  transition: "all 0.4s ease",
+  transition: "background 0.4s ease, all 0.4s ease",
+  // Hover durumunda biraz daha opak olsun.
+  "&:hover": {
+    background: "rgba(255, 255, 255, 0.25)",
+  },
   [theme.breakpoints.down("sm")]: {
-    background: "rgba(255, 255, 255, 0.3)",
+    background: "rgba(255, 255, 255, 0.2)",
+    "&:hover": {
+      background: "rgba(255, 255, 255, 0.3)",
+    },
   },
   "&::before": {
     content: '""',
@@ -59,13 +65,13 @@ const GlassmorphismCard = styled(motion.div, {
     width: "200%",
     height: "200%",
     background: `radial-gradient(circle, ${$glowColor}33 0%, transparent 50%)`,
-    opacity: 0.5, // sabit, orta derecede saydamlık
+    opacity: 0,
     transition: "opacity 0.6s ease",
     pointerEvents: "none",
     zIndex: -1,
   },
   "&:hover::before": {
-    opacity: 0.7, // hover durumunda hafif artan opaklık, ama tamamen beyazlaştırmıyor
+    opacity: 1,
   },
   "&::after": {
     content: '""',
@@ -102,7 +108,6 @@ const GlowingTextField = styled(TextField, {
     "&.Mui-focused fieldset": {
       borderColor: $focusColor,
     },
-    // Autofill stilini geçersiz kılmak için eklenen kısım
     "& input:-webkit-autofill": {
       WebkitBoxShadow: `0 0 0 100px rgba(255, 255, 255, 0.09) inset`,
       WebkitTextFillColor: "#ffffff",
@@ -234,6 +239,7 @@ const UserAuth = ({ setUser }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [activeGlow, setActiveGlow] = useState("#2196F3");
   const [remainingTime, setRemainingTime] = useState(0);
+
   // Şifre sıfırlama butonunun zamanlayıcısı
   useEffect(() => {
     const savedTime = localStorage.getItem("lastEmailSent");

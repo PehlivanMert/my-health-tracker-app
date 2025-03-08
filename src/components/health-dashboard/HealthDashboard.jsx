@@ -150,7 +150,9 @@ const HealthDashboard = ({ user }) => {
         const data = userSnap.data();
         setProfileData({
           ...data.profile,
-          birthDate: data.profile?.birthDate?.toDate() || null,
+          birthDate: data.profile?.birthDate
+            ? new Date(data.profile.birthDate)
+            : null,
         });
 
         // Öneri geçmişini tarih sırasına göre sırala (en son en üstte olacak)

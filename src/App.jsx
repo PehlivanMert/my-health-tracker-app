@@ -61,7 +61,8 @@ import { handlePasswordReset } from "./components/auth/AuthHandlers";
 import Lottie from "lottie-react";
 import welcomeAnimation from "./assets/welcomeAnimation.json";
 import HealthDashboard from "./components/health-dashboard/HealthDashboard";
-import { px } from "framer-motion";
+import { computeAge } from "../src/utils/dateHelpers";
+import BirthdayCelebration from "/src/utils/BirthdayCelebration.jsx";
 
 // Animasyonlar
 const float = keyframes`
@@ -314,6 +315,7 @@ function App() {
     }
   }, [user]);
 
+  // Email Doğrulama Geri Sayımı
   useEffect(() => {
     const timer = setInterval(() => {
       const savedTime = parseInt(localStorage.getItem("lastEmailSent") || 0);
@@ -324,6 +326,7 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
+  // Email Doğrulama Tekrar Gönderme
   const handleResendEmail = async () => {
     try {
       await sendEmailVerification(auth.currentUser);
@@ -350,26 +353,62 @@ function App() {
   });
   const [showWelcome, setShowWelcome] = useState(false);
 
+  // Doğum günü animasyonu
+  const [showBirthdayAnimation, setShowBirthdayAnimation] = useState(false);
+
+  useEffect(() => {
+    if (user && profileData.birthDate) {
+      const today = new Date();
+      const birthDate = new Date(profileData.birthDate);
+      // Sadece gün ve ay kontrolü
+      if (
+        today.getMonth() === birthDate.getMonth() &&
+        today.getDate() === birthDate.getDate()
+      ) {
+        // Aynı gün içinde birden fazla gösterimi engellemek için
+        const storageKey = `birthdayShown_${user.uid}`;
+        const lastShown = localStorage.getItem(storageKey);
+        const todayStr = today.toDateString();
+        if (lastShown !== todayStr) {
+          setShowBirthdayAnimation(true);
+          localStorage.setItem(storageKey, todayStr);
+          // 10 saniye sonra animasyonu kapat
+          setTimeout(() => setShowBirthdayAnimation(false), 10000);
+        }
+      }
+    }
+  }, [user, profileData.birthDate]);
+
+  // Profil Verilerini Firestore'dan Yükleme
   useEffect(() => {
     if (user) {
       const fetchProfile = async () => {
         const userDocRef = doc(db, "users", user.uid);
         const docSnap = await getDoc(userDocRef);
-
+        let prof = {};
         if (docSnap.exists() && docSnap.data().profile) {
-          let prof = docSnap.data().profile;
-
+          prof = docSnap.data().profile;
+          // Firestore’da timestamp veya ISO formatında saklanıyorsa, Date objesine çevirin.
+          let birth;
           if (prof.birthDate?.toDate) {
-            prof.birthDate = format(prof.birthDate.toDate(), "yyyy-MM-dd");
-          } else if (prof.birthDate?.includes("T")) {
-            prof.birthDate = format(new Date(prof.birthDate), "yyyy-MM-dd");
+            birth = prof.birthDate.toDate();
+            prof.birthDate = format(birth, "yyyy-MM-dd");
+          } else if (prof.birthDate && prof.birthDate.includes("T")) {
+            birth = new Date(prof.birthDate);
+            prof.birthDate = format(birth, "yyyy-MM-dd");
           }
-
-          setProfileData({
-            ...prof,
-            gender: prof.gender || "", // Varsayılan olarak boş string ayarla
-          });
+          // Yaş hesaplama ve profile ekleme:
+          if (birth) {
+            const age = computeAge(birth);
+            prof.age = age;
+            // İsteğe bağlı: Firestore’daki profilde age alanı yoksa güncelleyin
+            await updateDoc(userDocRef, { profile: { ...prof, age } });
+          }
+          // Varsayılan değerler ve diğer alanlar:
+          prof.gender = prof.gender || "";
+          setProfileData(prof);
         } else {
+          // Profil verisi yoksa, varsayılan olarak ayarlayın
           setProfileData({
             username: user.email,
             firstName: "",
@@ -378,13 +417,28 @@ function App() {
             height: "",
             weight: "",
             birthDate: "",
-            gender: "", // Yeni eklenen alan
+            gender: "",
+            age: null,
           });
         }
       };
 
       fetchProfile();
+
+      // Hoşgeldin ekranı gibi diğer işlemler...
       if (!localStorage.getItem("welcomeShown")) {
+        setShowWelcome(true);
+        localStorage.setItem("welcomeShown", "true");
+        setTimeout(() => setShowWelcome(false), 3000);
+      }
+    }
+  }, [user]);
+
+  // Email Doğrulama Sonrası Hoşgeldin Ekranı
+  useEffect(() => {
+    if (user && user.emailVerified) {
+      const welcomeAlreadyShown = localStorage.getItem("welcomeShown");
+      if (!welcomeAlreadyShown) {
         setShowWelcome(true);
         localStorage.setItem("welcomeShown", "true");
         setTimeout(() => setShowWelcome(false), 3000);
@@ -443,759 +497,782 @@ function App() {
 
   if (!authChecked) return <div style={{ display: "none" }}></div>;
 
-  return !user ? (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        position: "relative",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        overflow: "hidden",
-        "&::before": {
-          content: '""',
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          background: `url(${background}) no-repeat center center`,
-          backgroundSize: "cover",
-          zIndex: -1,
-        },
-      }}
-    >
-      <GlowingContainer maxWidth="sm" sx={{ mt: 4 }} glowColor={activeGlow}>
+  return (
+    <>
+      {showBirthdayAnimation && <BirthdayCelebration />}
+      {/* Mevcut kullanıcı kontrolü ve içerik render'ı */}
+      {!user ? (
         <Box
           sx={{
-            p: 4,
-            backdropFilter: "blur(10px)",
-            borderRadius: "24px",
-            background: "rgba(255, 255, 255, 0.1)",
-          }}
-        >
-          <UserAuth
-            isRegister={isRegister}
-            setIsRegister={setIsRegister}
-            loginData={loginData}
-            setLoginData={setLoginData}
-            setUser={setUser}
-            errors={errors}
-            setErrors={setErrors}
-          />
-        </Box>
-        <ToastContainer />
-      </GlowingContainer>
-    </Box>
-  ) : !user.emailVerified ? (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: `url(${background}) no-repeat center center`,
-        backgroundSize: "cover",
-      }}
-    >
-      <GlowingContainer maxWidth="sm" sx={{ mt: 4 }} glowColor="#00BCD4">
-        <Paper
-          sx={{
-            p: 4,
-            textAlign: "center",
-            background: "rgba(255, 255, 255, 0.1)",
-            backdropFilter: "blur(10px)",
-            borderRadius: "24px",
-            border: "1px solid rgba(33, 150, 243, 0.2)",
-          }}
-        >
-          <Box sx={{ textAlign: "center" }}>
-            <Box
-              component="h5"
-              sx={{
-                background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
-              Email Doğrulama
-            </Box>
-            <Box
-              component="p"
-              sx={{ mb: 3, color: "rgba(255, 255, 255, 0.9)" }}
-            >
-              Lütfen email adresinize gönderilen doğrulama linkine tıklayın.
-            </Box>
-            <AnimatedButton
-              onClick={handleResendEmail}
-              disabled={remainingTime > 0}
-            >
-              {remainingTime > 0
-                ? `${Math.ceil(
-                    remainingTime / 1000
-                  )} saniye sonra tekrar deneyin`
-                : "Doğrulama Emailini Gönder"}
-            </AnimatedButton>
-          </Box>
-          <AnimatedButton
-            sx={{ mt: 2 }}
-            variant="outlined"
-            onClick={() => {
-              auth.signOut();
-              setUser(null);
-            }}
-          >
-            Çıkış Yap
-          </AnimatedButton>
-        </Paper>
-        <ToastContainer />
-      </GlowingContainer>
-    </Box>
-  ) : showWelcome ? (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexDirection: "column",
-        background: `url(${background}) no-repeat center center`,
-        backgroundSize: "cover",
-      }}
-    >
-      <Lottie
-        animationData={welcomeAnimation}
-        style={{ width: 300, height: 300 }}
-      />
-      <Typography variant="h4" sx={{ color: "#fff", mt: 2 }}>
-        Hoşgeldin, {profileData.firstName || profileData.username}!
-      </Typography>
-    </Box>
-  ) : (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        background:
-          "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
-        transition: "background 0.5s ease",
-      }}
-    >
-      <div className="app-container">
-        <AppBar
-          position="static"
-          sx={{
-            background:
-              "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
-            boxShadow: "0 4px 20px rgba(33, 150, 243, 0.25)",
+            minHeight: "100vh",
             position: "relative",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             overflow: "hidden",
-            "&::after": {
+            "&::before": {
               content: '""',
               position: "absolute",
-              bottom: 0,
+              top: 0,
               left: 0,
-              right: 0,
-              height: "3px",
-              background: "rgba(255, 255, 255, 0.1)",
-            },
-            transition: "all 0.3s ease",
-            "&:hover": {
-              boxShadow: "0 6px 25px rgba(33, 150, 243, 0.35)",
+              width: "100%",
+              height: "100%",
+              background: `url(${background}) no-repeat center center`,
+              backgroundSize: "cover",
+              zIndex: -1,
             },
           }}
         >
-          <Toolbar
-            sx={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: { xs: 1, sm: 0 },
-              py: { xs: 1, sm: 1.5 },
-              px: { xs: 2, sm: 4 },
-            }}
-          >
+          <GlowingContainer maxWidth="sm" sx={{ mt: 4 }} glowColor={activeGlow}>
             <Box
               sx={{
-                transition: "all 0.3s ease",
-                "&:hover": { transform: "translateX(5px)" },
+                p: 4,
+                backdropFilter: "blur(10px)",
+                borderRadius: "24px",
+                background: "rgba(255, 255, 255, 0.1)",
               }}
             >
-              <Typography
-                variant="h6"
-                sx={{
-                  fontWeight: 600,
-                  letterSpacing: "0.5px",
-                  color: "rgba(255, 255, 255, 0.95)",
-                  textShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                  fontSize: { xs: "0.8rem", sm: "1rem" },
+              <UserAuth
+                isRegister={isRegister}
+                setIsRegister={setIsRegister}
+                loginData={loginData}
+                setLoginData={setLoginData}
+                setUser={setUser}
+                errors={errors}
+                setErrors={setErrors}
+              />
+            </Box>
+            <ToastContainer />
+          </GlowingContainer>
+        </Box>
+      ) : !user.emailVerified ? (
+        <Box
+          sx={{
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: `url(${background}) no-repeat center center`,
+            backgroundSize: "cover",
+          }}
+        >
+          <GlowingContainer maxWidth="sm" sx={{ mt: 4 }} glowColor="#00BCD4">
+            <Paper
+              sx={{
+                p: 4,
+                textAlign: "center",
+                background: "rgba(255, 255, 255, 0.1)",
+                backdropFilter: "blur(10px)",
+                borderRadius: "24px",
+                border: "1px solid rgba(33, 150, 243, 0.2)",
+              }}
+            >
+              <Box sx={{ textAlign: "center" }}>
+                <Box
+                  component="h5"
+                  sx={{
+                    background:
+                      "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                  }}
+                >
+                  Email Doğrulama
+                </Box>
+                <Box
+                  component="p"
+                  sx={{ mb: 3, color: "rgba(255, 255, 255, 0.9)" }}
+                >
+                  Lütfen email adresinize gönderilen doğrulama linkine tıklayın.
+                </Box>
+                <AnimatedButton
+                  onClick={handleResendEmail}
+                  disabled={remainingTime > 0}
+                >
+                  {remainingTime > 0
+                    ? `${Math.ceil(
+                        remainingTime / 1000
+                      )} saniye sonra tekrar deneyin`
+                    : "Doğrulama Emailini Gönder"}
+                </AnimatedButton>
+              </Box>
+              <AnimatedButton
+                sx={{ mt: 2 }}
+                variant="outlined"
+                onClick={() => {
+                  auth.signOut();
+                  setUser(null);
                 }}
               >
-                {format(currentTime, "dd MMMM yyyy")}
-              </Typography>
-            </Box>
-
-            <Box
-              sx={{
-                background: "rgba(255, 255, 255, 0.1)",
-                backdropFilter: "blur(8px)",
-                borderRadius: 3,
-                padding: { xs: "4px 8px", sm: "8px 16px" },
-                mr: { xs: "65px" },
-                transition: "all 0.3s ease",
-                "&:hover": {
-                  background: "rgba(255, 255, 255, 0.15)",
-                  transform: "translateY(-2px)",
-                },
-              }}
-            >
-              <WeatherWidget />
-            </Box>
-
-            <Avatar
-              src={profileData.profileImage || ""}
-              onClick={handleAvatarClick}
-              sx={{
-                cursor: "pointer",
-                width: { xs: 30, sm: 40 },
-                height: { xs: 30, sm: 40 },
-              }}
-            />
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
-              onClose={handleMenuClose}
-            >
-              <MenuItem onClick={handleProfileOpen}>Profil</MenuItem>
-              <MenuItem onClick={handleSignOut}>Çıkış Yap</MenuItem>
-            </Menu>
-          </Toolbar>
-        </AppBar>
-
-        {/* Profil Dialog */}
-        <Dialog
-          open={openProfileModal}
-          onClose={handleProfileClose}
-          fullWidth
-          maxWidth="md"
+                Çıkış Yap
+              </AnimatedButton>
+            </Paper>
+            <ToastContainer />
+          </GlowingContainer>
+        </Box>
+      ) : showWelcome ? (
+        <Box
           sx={{
-            "& .MuiPaper-root": {
-              background: "linear-gradient(145deg, #f0f8ff 0%, #e6f7ff 100%)",
-              borderRadius: "20px",
-              boxShadow: "0 8px 32px rgba(33, 150, 243, 0.2)",
-            },
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "column",
+            background: `url(${background}) no-repeat center center`,
+            backgroundSize: "cover",
           }}
         >
-          <DialogTitle
-            sx={{
-              background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
-              color: "white",
-              fontWeight: "bold",
-              borderRadius: "20px 20px 0 0",
-              py: 3,
-              textAlign: "center",
-            }}
-          >
-            Profil Düzenleme
-          </DialogTitle>
-
-          <DialogContent sx={{ pt: 3 }}>
-            <Box
+          <Lottie
+            animationData={welcomeAnimation}
+            style={{ width: 300, height: 300 }}
+          />
+          <Typography variant="h4" sx={{ color: "#fff", mt: 2 }}>
+            Hoşgeldin, {profileData.firstName || profileData.username}!
+          </Typography>
+        </Box>
+      ) : (
+        <Box
+          sx={{
+            minHeight: "100vh",
+            background:
+              "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
+            transition: "background 0.5s ease",
+          }}
+        >
+          <div className="app-container">
+            <AppBar
+              position="static"
               sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-                gap: 3,
-                my: 2,
-              }}
-            >
-              <TextField
-                label="Kullanıcı Adı"
-                name="username"
-                fullWidth
-                value={profileData.username || ""}
-                onChange={handleProfileChange}
-                variant="outlined"
-                sx={{ background: "rgba(255,255,255,0.9)" }}
-                inputProps={{ readOnly: true }}
-              />
-              <FormControl
-                fullWidth
-                sx={{ background: "rgba(255,255,255,0.9)" }}
-              >
-                <InputLabel id="gender-label">Cinsiyet</InputLabel>
-                <Select
-                  labelId="gender-label"
-                  name="gender"
-                  value={profileData.gender}
-                  onChange={handleProfileChange}
-                >
-                  <MenuItem value="male">Erkek</MenuItem>
-                  <MenuItem value="female">Kadın</MenuItem>
-                </Select>
-              </FormControl>
-              <TextField
-                label="İsim"
-                name="firstName"
-                fullWidth
-                value={profileData.firstName || ""}
-                onChange={handleProfileChange}
-                variant="outlined"
-                sx={{ background: "rgba(255,255,255,0.9)" }}
-              />
-              <TextField
-                label="Soyisim"
-                name="lastName"
-                fullWidth
-                value={profileData.lastName || ""}
-                onChange={handleProfileChange}
-                variant="outlined"
-                sx={{ background: "rgba(255,255,255,0.9)" }}
-              />
-              <TextField
-                label="Doğum Tarihi"
-                name="birthDate"
-                type="date"
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-                value={profileData.birthDate || ""}
-                onChange={handleProfileChange}
-                variant="outlined"
-                sx={{ background: "rgba(255,255,255,0.9)" }}
-              />
-              <TextField
-                label="Boy (cm)"
-                name="height"
-                type="number"
-                fullWidth
-                value={profileData.height || ""}
-                onChange={handleProfileChange}
-                variant="outlined"
-                sx={{ background: "rgba(255,255,255,0.9)" }}
-                inputProps={{ min: 0, max: 300 }}
-              />
-              <TextField
-                label="Kilo (kg)"
-                name="weight"
-                type="number"
-                fullWidth
-                value={profileData.weight || ""}
-                onChange={handleProfileChange}
-                variant="outlined"
-                sx={{ background: "rgba(255,255,255,0.9)" }}
-                inputProps={{ min: 0, max: 500 }}
-              />
-            </Box>
-
-            <Typography variant="h6" sx={{ mt: 2, mb: 1, color: "#2196F3" }}>
-              Avatar Seçimi
-            </Typography>
-
-            <Box
-              sx={{
-                display: "flex",
-                gap: 2,
-                overflowX: "auto",
-                pb: 2,
-                "&::-webkit-scrollbar": {
-                  height: "6px",
-                },
-                "&::-webkit-scrollbar-thumb": {
-                  background: "#2196F3",
-                  borderRadius: "4px",
-                },
-              }}
-            >
-              {availableAvatars?.map((url) => (
-                <Avatar
-                  key={url}
-                  src={url}
-                  alt="Profil avatarı"
-                  sx={{
-                    cursor: "pointer",
-                    width: 80,
-                    height: 80,
-                    border:
-                      profileData.profileImage === url
-                        ? "3px solid #2196F3"
-                        : "2px solid #e0e0e0",
-                    transition: "all 0.3s ease",
-                    "&:hover": {
-                      transform: "scale(1.1)",
-                      boxShadow: "0 4px 15px rgba(33, 150, 243, 0.3)",
-                    },
-                  }}
-                  onClick={() => handleAvatarSelect(url)}
-                />
-              ))}
-            </Box>
-
-            <Button
-              onClick={() => handlePasswordReset(user?.email)}
-              sx={{
-                mt: 2,
-                background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
-                color: "white",
-                "&:hover": {
-                  transform: "scale(1.02)",
-                  boxShadow: "0 3px 10px rgba(33, 150, 243, 0.5)",
-                },
-              }}
-            >
-              Şifre Sıfırlama Maili Gönder
-            </Button>
-          </DialogContent>
-
-          <DialogActions
-            sx={{
-              px: 3,
-              py: 2,
-              background: "rgba(255,255,255,0.9)",
-              borderRadius: "0 0 20px 20px",
-            }}
-          >
-            <Button
-              onClick={handleProfileClose}
-              sx={{
-                color: "#2196F3",
-                border: "2px solid #2196F3",
-                "&:hover": { background: "#2196F322" },
-              }}
-            >
-              İptal
-            </Button>
-            <Button
-              onClick={handleProfileSave}
-              sx={{
-                background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
-                color: "white",
-                ml: 1,
-                "&:hover": {
-                  boxShadow: "0 3px 10px rgba(33, 150, 243, 0.5)",
-                },
-              }}
-            >
-              Değişiklikleri Kaydet
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* İçerik Alanı */}
-        {isPWA ? (
-          // --- PWA MODE: BOTTOM NAVIGATION ---
-          <React.Fragment>
-            {/* İçerik alanına ekstra alt boşluk eklenerek alt navigasyonun üzerine taşmaması sağlandı */}
-            <Box sx={{ pb: 15, mt: 2 }}>
-              {activeTab === 0 && <DailyRoutine user={user} />}
-              {activeTab === 1 && <WellnessTracker user={user} />}
-              {activeTab === 2 && <HealthDashboard user={user} />}
-              {activeTab === 3 && (
-                <ProTips
-                  additionalInfo={additionalInfo}
-                  setAdditionalInfo={setAdditionalInfo}
-                  user={user}
-                />
-              )}
-              {activeTab === 4 && (
-                <Exercises
-                  exercises={exercises}
-                  setExercises={setExercises}
-                  handleExerciseSubmit={handleExerciseSubmit}
-                  editingExercise={editingExercise}
-                  setEditingExercise={setEditingExercise}
-                />
-              )}
-              {activeTab === 5 && <CalendarComponent user={user} />}
-            </Box>
-
-            <BottomNavigation
-              showLabels
-              value={activeTab}
-              onChange={(event, newValue) => handleTabChange(newValue)}
-              sx={{
-                position: "fixed",
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: "64px",
-                pb: "env(safe-area-inset-bottom, 0px)",
-                zIndex: 1300,
-                borderTop: "1px solid #ccc",
                 background:
                   "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
-              }}
-            >
-              <BottomNavigationAction
-                sx={{
-                  flex: 1,
-                  minWidth: 0,
-                  "&.Mui-selected": {
-                    backgroundColor: "transparent",
-                    borderTop: "3px solid white",
-                  },
-                }}
-                label="Rutin"
-                icon={<HomeIcon sx={{ color: "white", mt: "-4px" }} />}
-              />
-              <BottomNavigationAction
-                sx={{
-                  flex: 1,
-                  minWidth: 0,
-                  "&.Mui-selected": {
-                    backgroundColor: "transparent",
-                    borderTop: "3px solid white",
-                  },
-                }}
-                label="Yaşam"
-                icon={<FavoriteIcon sx={{ color: "white", mt: "-4px" }} />}
-              />
-              <BottomNavigationAction
-                sx={{
-                  flex: 1,
-                  minWidth: 0,
-                  "&.Mui-selected": {
-                    backgroundColor: "transparent",
-                    borderTop: "3px solid white",
-                  },
-                }}
-                label="Sağlık"
-                icon={<DashboardIcon sx={{ color: "white", mt: "-4px" }} />}
-              />
-              <BottomNavigationAction
-                sx={{
-                  flex: 1,
-                  minWidth: 0,
-                  "&.Mui-selected": {
-                    backgroundColor: "transparent",
-                    borderTop: "3px solid white",
-                  },
-                }}
-                label="İpuçları"
-                icon={<LightbulbIcon sx={{ color: "white", mt: "-4px" }} />}
-              />
-              <BottomNavigationAction
-                sx={{
-                  flex: 1,
-                  minWidth: 0,
-                  "&.Mui-selected": {
-                    backgroundColor: "transparent",
-                    borderTop: "3px solid white",
-                  },
-                }}
-                label="Egzersiz"
-                icon={<FitnessCenterIcon sx={{ color: "white", mt: "-4px" }} />}
-              />
-              <BottomNavigationAction
-                sx={{
-                  flex: 1,
-                  minWidth: 0,
-                  "&.Mui-selected": {
-                    backgroundColor: "transparent",
-                    borderTop: "3px solid white",
-                  },
-                }}
-                label="Takvim"
-                icon={<CalendarMonthIcon sx={{ color: "white", mt: "-4px" }} />}
-              />
-            </BottomNavigation>
-          </React.Fragment>
-        ) : (
-          // --- PWA dışı: TABS ---
-          <React.Fragment>
-            <Tabs
-              value={activeTab}
-              onChange={(event, newTab) => handleTabChange(newTab)}
-              variant="scrollable"
-              scrollButtons="auto"
-              textColor="primary"
-              indicatorColor="primary"
-              sx={{
-                height: "60px",
-                minHeight: "60px",
-                justifyContent: "center",
-                background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
+                boxShadow: "0 4px 20px rgba(33, 150, 243, 0.25)",
                 position: "relative",
-                boxShadow: "0 4px 20px rgba(33, 150, 243, 0.1)",
+                overflow: "hidden",
                 "&::after": {
                   content: '""',
                   position: "absolute",
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  height: "1px",
-                  background:
-                    "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
-                  opacity: 0.7,
+                  height: "3px",
+                  background: "rgba(255, 255, 255, 0.1)",
                 },
-                "& .MuiTabs-flexContainer": {
-                  justifyContent: { xs: "flex-start", md: "center" },
-                  gap: 1,
-                },
-                "& .MuiTabs-indicator": {
-                  background:
-                    "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
-                  height: 3,
-                  borderRadius: "3px 3px 0 0",
-                  boxShadow: "0 -2px 8px rgba(33, 150, 243, 0.2)",
-                },
-                "& .MuiTab-root": {
-                  textTransform: "none",
-                  fontWeight: 700,
-                  fontSize: { xs: "0.8rem", md: "0.95rem" },
-                  margin: "0 5px",
-                  minWidth: "auto",
-                  padding: "10px 20px",
-                  borderRadius: "8px 8px 0 0",
-                  transition: "all 0.3s ease",
-                  color: "rgba(0, 0, 0, 0.6)",
-                  "&:hover": {
-                    backgroundColor: "rgba(33, 150, 243, 0.08)",
-                    transform: "translateY(-2px)",
-                    color: "#2196F3",
-                  },
-                  "&.Mui-selected": {
-                    color: "#2196F3",
-                    background: "rgba(33, 150, 243, 0.08)",
-                    fontWeight: 700,
-                  },
-                },
-                "& .MuiTabScrollButton-root": {
-                  width: 48,
-                  transition: "all 0.3s ease",
-                  "&.Mui-disabled": { opacity: 0 },
-                  "&:hover": { backgroundColor: "rgba(33, 150, 243, 0.08)" },
-                  "& .MuiSvgIcon-root": {
-                    fontSize: "1.5rem",
-                    color: "#2196F3",
-                  },
-                },
-              }}
-            >
-              <Tab
-                icon={<HomeIcon sx={{ fontSize: "1.0rem" }} />}
-                label="Rutin"
-              />
-              <Tab
-                icon={<FavoriteIcon sx={{ fontSize: "1.0rem" }} />}
-                label="Yaşam"
-              />
-              <Tab
-                icon={<DashboardIcon sx={{ fontSize: "1.0rem" }} />}
-                label="Sağlık"
-              />
-              <Tab
-                icon={<LightbulbIcon sx={{ fontSize: "1.0rem" }} />}
-                label="İpuçları"
-              />
-              <Tab
-                icon={<FitnessCenterIcon sx={{ fontSize: "1.0rem" }} />}
-                label="Egzersiz"
-              />
-              <Tab
-                icon={<CalendarMonthIcon sx={{ fontSize: "1.0rem" }} />}
-                label="Takvim"
-              />
-            </Tabs>
-
-            {activeTab === 0 && <DailyRoutine user={user} />}
-            {activeTab === 1 && <WellnessTracker user={user} />}
-            {activeTab === 2 && <HealthDashboard user={user} />}
-            {activeTab === 3 && (
-              <ProTips
-                additionalInfo={additionalInfo}
-                setAdditionalInfo={setAdditionalInfo}
-                user={user}
-              />
-            )}
-            {activeTab === 4 && (
-              <Exercises
-                exercises={exercises}
-                setExercises={setExercises}
-                handleExerciseSubmit={handleExerciseSubmit}
-                editingExercise={editingExercise}
-                setEditingExercise={setEditingExercise}
-              />
-            )}
-            {activeTab === 5 && <CalendarComponent user={user} />}
-          </React.Fragment>
-        )}
-
-        {/* Footer yalnızca PWA dışı modda gösterilsin */}
-        {!isPWA && (
-          <Box
-            className="footer-container"
-            sx={{
-              display: "flex",
-              flexDirection: { xs: "column", sm: "row" },
-              alignItems: "center",
-              justifyContent: "space-between",
-              p: 1.5,
-              background: "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
-              borderTop: "1px solid rgba(33, 150, 243, 0.1)",
-              position: "relative",
-              bottom: 0,
-              left: 0,
-              width: "100%",
-              "&::before": {
-                content: '""',
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                height: "3px",
-                background:
-                  "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
-                opacity: 0.5,
-              },
-              boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.05)",
-              gap: { xs: 2, sm: 0 },
-            }}
-          >
-            <Typography
-              variant="body2"
-              sx={{
-                fontWeight: 600,
-                background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                transition: "all 0.3s ease",
-                "&:hover": { transform: "translateX(5px)" },
-              }}
-            >
-              © 2025 Sağlık ve Rutin Takip Sistemi
-            </Typography>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 2,
-                background: "rgba(255, 255, 255, 0.8)",
-                backdropFilter: "blur(8px)",
-                padding: "8px 16px",
-                borderRadius: 3,
                 transition: "all 0.3s ease",
                 "&:hover": {
-                  transform: "translateY(-2px)",
-                  boxShadow: "0 4px 15px rgba(33, 150, 243, 0.1)",
+                  boxShadow: "0 6px 25px rgba(33, 150, 243, 0.35)",
                 },
               }}
-            ></Box>
-          </Box>
-        )}
+            >
+              <Toolbar
+                sx={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: { xs: 1, sm: 0 },
+                  py: { xs: 1, sm: 1.5 },
+                  px: { xs: 2, sm: 4 },
+                }}
+              >
+                <Box
+                  sx={{
+                    transition: "all 0.3s ease",
+                    "&:hover": { transform: "translateX(5px)" },
+                  }}
+                >
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: 600,
+                      letterSpacing: "0.5px",
+                      color: "rgba(255, 255, 255, 0.95)",
+                      textShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                      fontSize: { xs: "0.8rem", sm: "1rem" },
+                    }}
+                  >
+                    {format(currentTime, "dd MMMM yyyy")}
+                  </Typography>
+                </Box>
 
-        <ToastContainer position="bottom-right" autoClose={3000} />
-        <ToastContainer
-          position="top-right"
-          autoClose={3000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-        />
-      </div>
-    </Box>
+                <Box
+                  sx={{
+                    background: "rgba(255, 255, 255, 0.1)",
+                    backdropFilter: "blur(8px)",
+                    borderRadius: 3,
+                    padding: { xs: "4px 8px", sm: "8px 16px" },
+                    mr: { xs: "65px" },
+                    transition: "all 0.3s ease",
+                    "&:hover": {
+                      background: "rgba(255, 255, 255, 0.15)",
+                      transform: "translateY(-2px)",
+                    },
+                  }}
+                >
+                  <WeatherWidget />
+                </Box>
+
+                <Avatar
+                  src={profileData.profileImage || ""}
+                  onClick={handleAvatarClick}
+                  sx={{
+                    cursor: "pointer",
+                    width: { xs: 30, sm: 40 },
+                    height: { xs: 30, sm: 40 },
+                  }}
+                />
+                <Menu
+                  anchorEl={anchorEl}
+                  open={Boolean(anchorEl)}
+                  onClose={handleMenuClose}
+                >
+                  <MenuItem onClick={handleProfileOpen}>Profil</MenuItem>
+                  <MenuItem onClick={handleSignOut}>Çıkış Yap</MenuItem>
+                </Menu>
+              </Toolbar>
+            </AppBar>
+
+            {/* Profil Dialog */}
+            <Dialog
+              open={openProfileModal}
+              onClose={handleProfileClose}
+              fullWidth
+              maxWidth="md"
+              sx={{
+                "& .MuiPaper-root": {
+                  background:
+                    "linear-gradient(145deg, #f0f8ff 0%, #e6f7ff 100%)",
+                  borderRadius: "20px",
+                  boxShadow: "0 8px 32px rgba(33, 150, 243, 0.2)",
+                },
+              }}
+            >
+              <DialogTitle
+                sx={{
+                  background:
+                    "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
+                  color: "white",
+                  fontWeight: "bold",
+                  borderRadius: "20px 20px 0 0",
+                  py: 3,
+                  textAlign: "center",
+                }}
+              >
+                Profil Düzenleme
+              </DialogTitle>
+
+              <DialogContent sx={{ pt: 3 }}>
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                    gap: 3,
+                    my: 2,
+                  }}
+                >
+                  <TextField
+                    label="Kullanıcı Adı"
+                    name="username"
+                    fullWidth
+                    value={profileData.username || ""}
+                    onChange={handleProfileChange}
+                    variant="outlined"
+                    sx={{ background: "rgba(255,255,255,0.9)" }}
+                    inputProps={{ readOnly: true }}
+                  />
+                  <FormControl
+                    fullWidth
+                    sx={{ background: "rgba(255,255,255,0.9)" }}
+                  >
+                    <InputLabel id="gender-label">Cinsiyet</InputLabel>
+                    <Select
+                      labelId="gender-label"
+                      name="gender"
+                      value={profileData.gender}
+                      onChange={handleProfileChange}
+                    >
+                      <MenuItem value="male">Erkek</MenuItem>
+                      <MenuItem value="female">Kadın</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <TextField
+                    label="İsim"
+                    name="firstName"
+                    fullWidth
+                    value={profileData.firstName || ""}
+                    onChange={handleProfileChange}
+                    variant="outlined"
+                    sx={{ background: "rgba(255,255,255,0.9)" }}
+                  />
+                  <TextField
+                    label="Soyisim"
+                    name="lastName"
+                    fullWidth
+                    value={profileData.lastName || ""}
+                    onChange={handleProfileChange}
+                    variant="outlined"
+                    sx={{ background: "rgba(255,255,255,0.9)" }}
+                  />
+                  <TextField
+                    label="Doğum Tarihi"
+                    name="birthDate"
+                    type="date"
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                    value={profileData.birthDate || ""}
+                    onChange={handleProfileChange}
+                    variant="outlined"
+                    sx={{ background: "rgba(255,255,255,0.9)" }}
+                  />
+                  <TextField
+                    label="Boy (cm)"
+                    name="height"
+                    type="number"
+                    fullWidth
+                    value={profileData.height || ""}
+                    onChange={handleProfileChange}
+                    variant="outlined"
+                    sx={{ background: "rgba(255,255,255,0.9)" }}
+                    inputProps={{ min: 0, max: 300 }}
+                  />
+                  <TextField
+                    label="Kilo (kg)"
+                    name="weight"
+                    type="number"
+                    fullWidth
+                    value={profileData.weight || ""}
+                    onChange={handleProfileChange}
+                    variant="outlined"
+                    sx={{ background: "rgba(255,255,255,0.9)" }}
+                    inputProps={{ min: 0, max: 500 }}
+                  />
+                </Box>
+
+                <Typography
+                  variant="h6"
+                  sx={{ mt: 2, mb: 1, color: "#2196F3" }}
+                >
+                  Avatar Seçimi
+                </Typography>
+
+                <Box
+                  sx={{
+                    display: "flex",
+                    gap: 2,
+                    overflowX: "auto",
+                    pb: 2,
+                    "&::-webkit-scrollbar": {
+                      height: "6px",
+                    },
+                    "&::-webkit-scrollbar-thumb": {
+                      background: "#2196F3",
+                      borderRadius: "4px",
+                    },
+                  }}
+                >
+                  {availableAvatars?.map((url) => (
+                    <Avatar
+                      key={url}
+                      src={url}
+                      alt="Profil avatarı"
+                      sx={{
+                        cursor: "pointer",
+                        width: 80,
+                        height: 80,
+                        border:
+                          profileData.profileImage === url
+                            ? "3px solid #2196F3"
+                            : "2px solid #e0e0e0",
+                        transition: "all 0.3s ease",
+                        "&:hover": {
+                          transform: "scale(1.1)",
+                          boxShadow: "0 4px 15px rgba(33, 150, 243, 0.3)",
+                        },
+                      }}
+                      onClick={() => handleAvatarSelect(url)}
+                    />
+                  ))}
+                </Box>
+
+                <Button
+                  onClick={() => handlePasswordReset(user?.email)}
+                  sx={{
+                    mt: 2,
+                    background:
+                      "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
+                    color: "white",
+                    "&:hover": {
+                      transform: "scale(1.02)",
+                      boxShadow: "0 3px 10px rgba(33, 150, 243, 0.5)",
+                    },
+                  }}
+                >
+                  Şifre Sıfırlama Maili Gönder
+                </Button>
+              </DialogContent>
+
+              <DialogActions
+                sx={{
+                  px: 3,
+                  py: 2,
+                  background: "rgba(255,255,255,0.9)",
+                  borderRadius: "0 0 20px 20px",
+                }}
+              >
+                <Button
+                  onClick={handleProfileClose}
+                  sx={{
+                    color: "#2196F3",
+                    border: "2px solid #2196F3",
+                    "&:hover": { background: "#2196F322" },
+                  }}
+                >
+                  İptal
+                </Button>
+                <Button
+                  onClick={handleProfileSave}
+                  sx={{
+                    background:
+                      "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
+                    color: "white",
+                    ml: 1,
+                    "&:hover": {
+                      boxShadow: "0 3px 10px rgba(33, 150, 243, 0.5)",
+                    },
+                  }}
+                >
+                  Değişiklikleri Kaydet
+                </Button>
+              </DialogActions>
+            </Dialog>
+
+            {/* İçerik Alanı */}
+            {isPWA ? (
+              // --- PWA MODE: BOTTOM NAVIGATION ---
+              <React.Fragment>
+                {/* İçerik alanına ekstra alt boşluk eklenerek alt navigasyonun üzerine taşmaması sağlandı */}
+                <Box sx={{ pb: 15, mt: 2 }}>
+                  {activeTab === 0 && <DailyRoutine user={user} />}
+                  {activeTab === 1 && <WellnessTracker user={user} />}
+                  {activeTab === 2 && <HealthDashboard user={user} />}
+                  {activeTab === 3 && (
+                    <ProTips
+                      additionalInfo={additionalInfo}
+                      setAdditionalInfo={setAdditionalInfo}
+                      user={user}
+                    />
+                  )}
+                  {activeTab === 4 && (
+                    <Exercises
+                      exercises={exercises}
+                      setExercises={setExercises}
+                      handleExerciseSubmit={handleExerciseSubmit}
+                      editingExercise={editingExercise}
+                      setEditingExercise={setEditingExercise}
+                    />
+                  )}
+                  {activeTab === 5 && <CalendarComponent user={user} />}
+                </Box>
+
+                <BottomNavigation
+                  showLabels
+                  value={activeTab}
+                  onChange={(event, newValue) => handleTabChange(newValue)}
+                  sx={{
+                    position: "fixed",
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: "64px",
+                    pb: "env(safe-area-inset-bottom, 0px)",
+                    zIndex: 1300,
+                    borderTop: "1px solid #ccc",
+                    background:
+                      "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
+                  }}
+                >
+                  <BottomNavigationAction
+                    sx={{
+                      flex: 1,
+                      minWidth: 0,
+                      "&.Mui-selected": {
+                        backgroundColor: "transparent",
+                        borderTop: "3px solid white",
+                      },
+                    }}
+                    label="Rutin"
+                    icon={<HomeIcon sx={{ color: "white", mt: "-4px" }} />}
+                  />
+                  <BottomNavigationAction
+                    sx={{
+                      flex: 1,
+                      minWidth: 0,
+                      "&.Mui-selected": {
+                        backgroundColor: "transparent",
+                        borderTop: "3px solid white",
+                      },
+                    }}
+                    label="Yaşam"
+                    icon={<FavoriteIcon sx={{ color: "white", mt: "-4px" }} />}
+                  />
+                  <BottomNavigationAction
+                    sx={{
+                      flex: 1,
+                      minWidth: 0,
+                      "&.Mui-selected": {
+                        backgroundColor: "transparent",
+                        borderTop: "3px solid white",
+                      },
+                    }}
+                    label="Sağlık"
+                    icon={<DashboardIcon sx={{ color: "white", mt: "-4px" }} />}
+                  />
+                  <BottomNavigationAction
+                    sx={{
+                      flex: 1,
+                      minWidth: 0,
+                      "&.Mui-selected": {
+                        backgroundColor: "transparent",
+                        borderTop: "3px solid white",
+                      },
+                    }}
+                    label="İpuçları"
+                    icon={<LightbulbIcon sx={{ color: "white", mt: "-4px" }} />}
+                  />
+                  <BottomNavigationAction
+                    sx={{
+                      flex: 1,
+                      minWidth: 0,
+                      "&.Mui-selected": {
+                        backgroundColor: "transparent",
+                        borderTop: "3px solid white",
+                      },
+                    }}
+                    label="Egzersiz"
+                    icon={
+                      <FitnessCenterIcon sx={{ color: "white", mt: "-4px" }} />
+                    }
+                  />
+                  <BottomNavigationAction
+                    sx={{
+                      flex: 1,
+                      minWidth: 0,
+                      "&.Mui-selected": {
+                        backgroundColor: "transparent",
+                        borderTop: "3px solid white",
+                      },
+                    }}
+                    label="Takvim"
+                    icon={
+                      <CalendarMonthIcon sx={{ color: "white", mt: "-4px" }} />
+                    }
+                  />
+                </BottomNavigation>
+              </React.Fragment>
+            ) : (
+              // --- PWA dışı: TABS ---
+              <React.Fragment>
+                <Tabs
+                  value={activeTab}
+                  onChange={(event, newTab) => handleTabChange(newTab)}
+                  variant="scrollable"
+                  scrollButtons="auto"
+                  textColor="primary"
+                  indicatorColor="primary"
+                  sx={{
+                    height: "60px",
+                    minHeight: "60px",
+                    justifyContent: "center",
+                    background:
+                      "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
+                    position: "relative",
+                    boxShadow: "0 4px 20px rgba(33, 150, 243, 0.1)",
+                    "&::after": {
+                      content: '""',
+                      position: "absolute",
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: "1px",
+                      background:
+                        "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
+                      opacity: 0.7,
+                    },
+                    "& .MuiTabs-flexContainer": {
+                      justifyContent: { xs: "flex-start", md: "center" },
+                      gap: 1,
+                    },
+                    "& .MuiTabs-indicator": {
+                      background:
+                        "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
+                      height: 3,
+                      borderRadius: "3px 3px 0 0",
+                      boxShadow: "0 -2px 8px rgba(33, 150, 243, 0.2)",
+                    },
+                    "& .MuiTab-root": {
+                      textTransform: "none",
+                      fontWeight: 700,
+                      fontSize: { xs: "0.8rem", md: "0.95rem" },
+                      margin: "0 5px",
+                      minWidth: "auto",
+                      padding: "10px 20px",
+                      borderRadius: "8px 8px 0 0",
+                      transition: "all 0.3s ease",
+                      color: "rgba(0, 0, 0, 0.6)",
+                      "&:hover": {
+                        backgroundColor: "rgba(33, 150, 243, 0.08)",
+                        transform: "translateY(-2px)",
+                        color: "#2196F3",
+                      },
+                      "&.Mui-selected": {
+                        color: "#2196F3",
+                        background: "rgba(33, 150, 243, 0.08)",
+                        fontWeight: 700,
+                      },
+                    },
+                    "& .MuiTabScrollButton-root": {
+                      width: 48,
+                      transition: "all 0.3s ease",
+                      "&.Mui-disabled": { opacity: 0 },
+                      "&:hover": {
+                        backgroundColor: "rgba(33, 150, 243, 0.08)",
+                      },
+                      "& .MuiSvgIcon-root": {
+                        fontSize: "1.5rem",
+                        color: "#2196F3",
+                      },
+                    },
+                  }}
+                >
+                  <Tab
+                    icon={<HomeIcon sx={{ fontSize: "1.0rem" }} />}
+                    label="Rutin"
+                  />
+                  <Tab
+                    icon={<FavoriteIcon sx={{ fontSize: "1.0rem" }} />}
+                    label="Yaşam"
+                  />
+                  <Tab
+                    icon={<DashboardIcon sx={{ fontSize: "1.0rem" }} />}
+                    label="Sağlık"
+                  />
+                  <Tab
+                    icon={<LightbulbIcon sx={{ fontSize: "1.0rem" }} />}
+                    label="İpuçları"
+                  />
+                  <Tab
+                    icon={<FitnessCenterIcon sx={{ fontSize: "1.0rem" }} />}
+                    label="Egzersiz"
+                  />
+                  <Tab
+                    icon={<CalendarMonthIcon sx={{ fontSize: "1.0rem" }} />}
+                    label="Takvim"
+                  />
+                </Tabs>
+
+                {activeTab === 0 && <DailyRoutine user={user} />}
+                {activeTab === 1 && <WellnessTracker user={user} />}
+                {activeTab === 2 && <HealthDashboard user={user} />}
+                {activeTab === 3 && (
+                  <ProTips
+                    additionalInfo={additionalInfo}
+                    setAdditionalInfo={setAdditionalInfo}
+                    user={user}
+                  />
+                )}
+                {activeTab === 4 && (
+                  <Exercises
+                    exercises={exercises}
+                    setExercises={setExercises}
+                    handleExerciseSubmit={handleExerciseSubmit}
+                    editingExercise={editingExercise}
+                    setEditingExercise={setEditingExercise}
+                  />
+                )}
+                {activeTab === 5 && <CalendarComponent user={user} />}
+              </React.Fragment>
+            )}
+
+            {/* Footer yalnızca PWA dışı modda gösterilsin */}
+            {!isPWA && (
+              <Box
+                className="footer-container"
+                sx={{
+                  display: "flex",
+                  flexDirection: { xs: "column", sm: "row" },
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  p: 1.5,
+                  background:
+                    "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
+                  borderTop: "1px solid rgba(33, 150, 243, 0.1)",
+                  position: "relative",
+                  bottom: 0,
+                  left: 0,
+                  width: "100%",
+                  "&::before": {
+                    content: '""',
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: "3px",
+                    background:
+                      "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
+                    opacity: 0.5,
+                  },
+                  boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.05)",
+                  gap: { xs: 2, sm: 0 },
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 600,
+                    background:
+                      "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    transition: "all 0.3s ease",
+                    "&:hover": { transform: "translateX(5px)" },
+                  }}
+                >
+                  © 2025 Sağlık ve Rutin Takip Sistemi
+                </Typography>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 2,
+                    background: "rgba(255, 255, 255, 0.8)",
+                    backdropFilter: "blur(8px)",
+                    padding: "8px 16px",
+                    borderRadius: 3,
+                    transition: "all 0.3s ease",
+                    "&:hover": {
+                      transform: "translateY(-2px)",
+                      boxShadow: "0 4px 15px rgba(33, 150, 243, 0.1)",
+                    },
+                  }}
+                ></Box>
+              </Box>
+            )}
+
+            <ToastContainer position="bottom-right" autoClose={3000} />
+            <ToastContainer
+              position="top-right"
+              autoClose={3000}
+              hideProgressBar={false}
+              newestOnTop={false}
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+            />
+          </div>
+        </Box>
+      )}
+      <ToastContainer position="bottom-right" autoClose={3000} />
+    </>
   );
 }
-
 export default App;

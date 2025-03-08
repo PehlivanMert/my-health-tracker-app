@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Card,
@@ -10,11 +10,9 @@ import {
   useTheme,
 } from "@mui/material";
 import { styled, keyframes, alpha } from "@mui/material/styles";
-import useMediaQuery from "@mui/material/useMediaQuery";
 import Confetti from "react-confetti";
 import Lottie from "lottie-react";
 import waterAnimation from "../../assets/waterAnimation.json";
-import sparkleAnimation from "../../assets/sparkleAnimation.json";
 import { db } from "../auth/firebaseConfig";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import AddIcon from "@mui/icons-material/Add";
@@ -140,8 +138,37 @@ const WaterContainer = styled(Box)(({ theme }) => ({
 const getTurkeyTime = () =>
   new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
 
+// Ek: resetDailyWaterIntake fonksiyonunun tanımlaması
+const resetDailyWaterIntake = async (
+  getWaterDocRef,
+  waterData,
+  fetchWaterData
+) => {
+  const ref = getWaterDocRef();
+  const todayStr = getTurkeyTime().toLocaleDateString("en-CA");
+  const newHistoryEntry = {
+    date: waterData.lastResetDate || todayStr,
+    intake: waterData.waterIntake,
+  };
+
+  try {
+    await setDoc(
+      ref,
+      {
+        waterIntake: 0,
+        yesterdayWaterIntake: waterData.waterIntake,
+        lastResetDate: todayStr,
+        history: [...(waterData.history || []), newHistoryEntry],
+      },
+      { merge: true }
+    );
+    await fetchWaterData();
+  } catch (error) {
+    console.error("Reset işlemi sırasında hata oluştu:", error);
+  }
+};
+
 const WaterTracker = ({ user, onWaterDataChange }) => {
-  // Varsayılan değerlerin yanı sıra, verinin yüklendiğini göstermek için dataFetched ekledik.
   const [waterData, setWaterData] = useState({
     waterIntake: 0,
     dailyWaterTarget: 2000,
@@ -161,10 +188,8 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   const [achievement, setAchievement] = useState(null);
   const [nextReminder, setNextReminder] = useState(null);
   const [waterNotifDialogOpen, setWaterNotifDialogOpen] = useState(false);
-  const timerRef = useRef(null);
 
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const getWaterDocRef = () => doc(db, "users", user.uid, "water", "current");
 
@@ -172,7 +197,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     const nowTurkey = getTurkeyTime();
     const todayStr = nowTurkey.toLocaleDateString("en-CA");
     if (data.lastResetDate !== todayStr) {
-      await resetDailyWaterIntake();
+      await resetDailyWaterIntake(getWaterDocRef, waterData, fetchWaterData);
     }
   };
 
@@ -200,7 +225,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         nextWaterReminderMessage: data.nextWaterReminderMessage || null,
         activityLevel: data.activityLevel || "orta",
       });
-      setDataFetched(true); // veriler yüklendiğini işaretle
+      setDataFetched(true);
       await checkIfResetNeeded(data);
       if (onWaterDataChange) onWaterDataChange(data);
     }
@@ -209,9 +234,6 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   useEffect(() => {
     if (!user) return;
     fetchWaterData();
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
   }, [user]);
 
   const handleAddWater = async () => {
@@ -234,7 +256,6 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         { merge: true }
       );
       await fetchWaterData();
-      // Su ekleme/çıkarma durumlarında bildirim yeniden hesaplanır.
       const result = await scheduleWaterNotifications(user);
       console.log("handleAddWater - Bildirimler yeniden hesaplandı:", result);
       setNextReminder(result.nextReminder);
@@ -259,7 +280,6 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     try {
       await setDoc(ref, { waterIntake: newIntake }, { merge: true });
       await fetchWaterData();
-      // Su ekleme/çıkarma durumlarında bildirim yeniden hesaplanır.
       const result = await scheduleWaterNotifications(user);
       console.log(
         "handleRemoveWater - Bildirimler yeniden hesaplandı:",
@@ -276,7 +296,6 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     try {
       await setDoc(ref, { [field]: value }, { merge: true });
       await fetchWaterData();
-      // Ayar değişikliğinde bildirim yeniden hesaplanır.
       const result = await scheduleWaterNotifications(user);
       console.log(
         "handleWaterSettingChange - Bildirimler yeniden hesaplandı:",
@@ -293,7 +312,27 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     100
   );
 
-  // NEXT REMINDER hesaplamasını, yalnızca gerçek veriler yüklendikten sonra çalıştırıyoruz.
+  useEffect(() => {
+    const scheduleReset = () => {
+      const now = getTurkeyTime();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(now.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0); // Gece yarısı
+      const msUntilMidnight = tomorrow.getTime() - now.getTime();
+
+      const timeoutId = setTimeout(async () => {
+        await resetDailyWaterIntake(getWaterDocRef, waterData, fetchWaterData);
+        scheduleReset(); // Bir sonraki gün için yeniden zamanla
+      }, msUntilMidnight);
+
+      return timeoutId;
+    };
+
+    const resetTimeout = scheduleReset();
+
+    return () => clearTimeout(resetTimeout);
+  }, [user]);
+
   useEffect(() => {
     if (!user?.uid || !dataFetched) return;
     const now = getTurkeyTime();
@@ -324,6 +363,10 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     waterData.nextWaterReminderTime,
     waterData.waterNotificationOption,
     dataFetched,
+    waterData.waterIntake, // eklenmeli
+    waterData.dailyWaterTarget, // eklenmeli
+    waterData.customNotificationInterval, // eklenmeli
+    waterData.activityLevel, // eklenmeli
   ]);
 
   return (

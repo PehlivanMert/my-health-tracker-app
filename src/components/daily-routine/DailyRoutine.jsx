@@ -208,31 +208,60 @@ const DailyRoutine = ({ user }) => {
     });
   }, [routines]);
 
-  // Haftalık ve aylık istatistikleri sıfırla
+  // Günlük, haftalık ve aylık istatistikleri sıfırla
   useEffect(() => {
     const checkReset = () => {
       const now = new Date();
+
+      // Sonraki gün gece yarısı için zaman hesaplama
+      const tomorrow = new Date(now);
+      tomorrow.setDate(now.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+
+      // Sonraki Pazartesi için zaman hesaplama
       const nextMonday = new Date(now);
       nextMonday.setDate(now.getDate() + ((1 + 7 - now.getDay()) % 7));
       nextMonday.setHours(0, 0, 0, 0);
 
+      // Sonraki ay için zaman hesaplama
       const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
+      // Günlük reset - gece yarısı tüm check'leri sıfırla
+      const timeoutDaily = setTimeout(() => {
+        // Tüm rutinlerin işaretini kaldır
+        setRoutines((prevRoutines) =>
+          prevRoutines.map((r) => ({
+            ...r,
+            checked: false,
+            completionDate: null,
+          }))
+        );
+
+        // Günlük istatistikleri sıfırla (isteğe bağlı)
+        // dailyStats zaten routines'a bağlı olduğu için otomatik güncellenecek
+      }, tomorrow - now);
+
+      // Haftalık istatistikleri sıfırlama
       const timeoutWeekly = setTimeout(() => {
         setWeeklyStats({ completed: 0, total: 0 });
       }, nextMonday - now);
 
+      // Aylık istatistikleri sıfırlama
       const timeoutMonthly = setTimeout(() => {
         setMonthlyStats({ completed: 0, total: 0 });
       }, nextMonth - now);
 
       return () => {
+        clearTimeout(timeoutDaily);
         clearTimeout(timeoutWeekly);
         clearTimeout(timeoutMonthly);
       };
     };
 
-    const timer = setInterval(checkReset, 3600000);
+    // İlk çalıştırmada ve sonra her saat başı kontrol et
+    checkReset();
+    const timer = setInterval(checkReset, 3600000); // Her saat başı kontrol
+
     return () => clearInterval(timer);
   }, []);
 

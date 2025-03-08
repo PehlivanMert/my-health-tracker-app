@@ -611,6 +611,34 @@ export const saveNextWaterReminderTime = async (user) => {
  */
 export const scheduleWaterNotifications = async (user) => {
   if (!user || !user.uid) return;
+
+  // Önce kullanıcıya ait su dokümanını alıyoruz.
+  const waterRef = doc(db, "users", user.uid, "water", "current");
+  const waterSnap = await getDoc(waterRef);
+
+  // Eğer reminderTimes dizisi mevcut ve boş değilse, yeniden hesaplama yapmadan mevcut bildirimleri döndür.
+  if (
+    waterSnap.exists() &&
+    waterSnap.data().reminderTimes &&
+    waterSnap.data().reminderTimes.length > 0
+  ) {
+    const existingReminderTimes = waterSnap.data().reminderTimes.map((r) => ({
+      ...r,
+      time: new Date(r.time),
+    }));
+    const nextReminder = waterSnap.data().nextWaterReminderTime
+      ? {
+          time: new Date(waterSnap.data().nextWaterReminderTime),
+          message: waterSnap.data().nextWaterReminderMessage,
+        }
+      : null;
+    console.log(
+      "scheduleWaterNotifications - Varolan su bildirimleri kullanılıyor."
+    );
+    return { reminderSchedule: existingReminderTimes, nextReminder };
+  }
+
+  // Eğer reminderTimes boşsa (veya daha önce hiç hesaplanmamışsa), yeni bildirim zamanlarını hesaplıyoruz.
   const data = await fetchUserData(user);
   const mode = data.waterNotificationOption || "smart";
   if (mode === "none") {

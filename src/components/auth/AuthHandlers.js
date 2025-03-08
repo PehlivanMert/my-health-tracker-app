@@ -5,8 +5,10 @@ import {
   signOut,
   sendEmailVerification,
   sendPasswordResetEmail,
+  updateProfile, // eklenen import
 } from "firebase/auth";
-import { auth } from "./firebaseConfig";
+import { auth, db } from "./firebaseConfig"; // db eklenmeli
+import { doc, setDoc } from "firebase/firestore";
 
 export const handleLogin = async (e, { loginData, setUser, setLoginData }) => {
   e.preventDefault();
@@ -61,9 +63,36 @@ export const handleRegister = async (
     await sendEmailVerification(userCredential.user);
     const now = Date.now();
     localStorage.setItem("lastEmailSent", now);
+
+    // Firestore'da kullanıcının dokümanına "profile" adlı map alanı ekleniyor.
+    // Bu alanda age, birthDate, firstName, gender, height, lastName, profileImage, username, weight gibi alanlar yer alıyor.
+    await setDoc(
+      doc(db, "users", userCredential.user.uid),
+      {
+        profile: {
+          age: null,
+          birthDate: null, // İsteğe bağlı; henüz alınmadıysa null
+          firstName: loginData.firstName,
+          gender: "",
+          height: "",
+          lastName: loginData.lastName,
+          profileImage: "",
+          username: loginData.username,
+          weight: "",
+        },
+      },
+      { merge: true }
+    );
+
     setUser(userCredential.user);
     toast.success("Kayıt başarılı! E-posta doğrulama gönderildi.");
-    setLoginData({ username: "", password: "" });
+    setLoginData({
+      username: "",
+      password: "",
+      firstName: "",
+      lastName: "",
+      confirmPassword: "",
+    });
   } catch (error) {
     console.error("Kayıt hatası:", error);
     switch (error.code) {

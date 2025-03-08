@@ -60,19 +60,33 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   console.log("[Service Worker] Activate event");
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log("[Service Worker] Deleting old cache:", cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    caches
+      .keys()
+      .then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => {
+            if (cacheName !== CACHE_NAME) {
+              console.log("[Service Worker] Deleting old cache:", cacheName);
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      })
+      .then(() => {
+        return self.clients
+          .claim()
+          .then(() => {
+            return self.clients.matchAll({ type: "window" });
+          })
+          .then((clients) => {
+            clients.forEach((client) => client.navigate(client.url));
+          });
+      })
   );
-  self.clients.claim();
 });
+
+// Eski SW'nin beklemeden yenisiyle değişmesini sağlar
+self.skipWaiting();
 
 // 3. Fetch event: Önce önbellekten yanıtla, yoksa ağa başvur; navigasyon istekleri offline.html ile yanıtlasın
 self.addEventListener("fetch", (event) => {

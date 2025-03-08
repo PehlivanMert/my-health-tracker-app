@@ -35,6 +35,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import LightbulbIcon from "@mui/icons-material/Lightbulb";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import background from "./assets/background.jpg";
 
 import "react-toastify/dist/ReactToastify.css";
 import "tippy.js/dist/tippy.css";
@@ -82,7 +83,9 @@ const ripple = keyframes`
 `;
 
 // Styled Components
-const GlowingContainer = styled(Container)(({ theme, glowColor }) => ({
+const GlowingContainer = styled(Container, {
+  shouldForwardProp: (prop) => prop !== "glowColor",
+})(({ theme, glowColor }) => ({
   position: "relative",
   background: "rgba(33, 150, 243, 0.1)",
   backdropFilter: "blur(10px)",
@@ -95,7 +98,6 @@ const GlowingContainer = styled(Container)(({ theme, glowColor }) => ({
     boxShadow: `0 0 40px ${glowColor || "#2196F344"}`,
   },
 }));
-
 const AnimatedButton = styled(Button)(({ theme }) => ({
   background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
   border: 0,
@@ -337,17 +339,13 @@ function App() {
   }, [user]);
 
   useEffect(() => {
-    const savedTime = localStorage.getItem("lastEmailSent");
-    if (savedTime) {
-      const remaining = Math.max(0, 60000 - (Date.now() - parseInt(savedTime)));
+    const timer = setInterval(() => {
+      const savedTime = parseInt(localStorage.getItem("lastEmailSent") || 0);
+      const remaining = Math.max(0, 60000 - (Date.now() - savedTime));
       setRemainingTime(remaining);
-      if (remaining > 0) {
-        const timer = setInterval(() => {
-          setRemainingTime((prev) => Math.max(0, prev - 1000));
-        }, 1000);
-        return () => clearInterval(timer);
-      }
-    }
+    }, 1000);
+
+    return () => clearInterval(timer);
   }, []);
 
   const handleResendEmail = async () => {
@@ -413,7 +411,7 @@ function App() {
       if (!localStorage.getItem("welcomeShown")) {
         setShowWelcome(true);
         localStorage.setItem("welcomeShown", "true");
-        setTimeout(() => setShowWelcome(false), 2500);
+        setTimeout(() => setShowWelcome(false), 3000);
       }
     }
   }, [user]);
@@ -438,9 +436,7 @@ function App() {
   const handleAvatarSelect = (url) => {
     setProfileData((prev) => ({ ...prev, profileImage: url }));
   };
-  const handleImageChange = (e) => {
-    // Kullanıcının fotoğraf yüklemesine izin vermiyoruz.
-  };
+
   const handleProfileSave = async () => {
     try {
       const userDocRef = doc(db, "users", user.uid);
@@ -470,104 +466,135 @@ function App() {
   };
 
   if (!authChecked) return <div style={{ display: "none" }}></div>;
-  if (showWelcome) {
-    return (
-      <Box
-        sx={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexDirection: "column",
-          background: "linear-gradient(135deg, #1a2a6c, #2196F3, #3F51B5)",
-        }}
-      >
-        <Lottie
-          animationData={welcomeAnimation}
-          style={{ width: 300, height: 300 }}
-        />
-        <Typography variant="h4" sx={{ color: "#fff", mt: 2 }}>
-          Hoşgeldin, {profileData.firstName || profileData.username}!
-        </Typography>
-      </Box>
-    );
-  }
+
   return !user ? (
-    <GlowingContainer maxWidth="sm" sx={{ mt: 4 }} glowColor={activeGlow}>
-      <Box
-        sx={{
-          p: 4,
-          backdropFilter: "blur(10px)",
-          borderRadius: "24px",
-          background: "rgba(255, 255, 255, 0.1)",
-        }}
-      >
-        <UserAuth
-          isRegister={isRegister}
-          setIsRegister={setIsRegister}
-          loginData={loginData}
-          setLoginData={setLoginData}
-          setUser={setUser}
-          errors={errors}
-          setErrors={setErrors}
-        />
-      </Box>
-      <ToastContainer />
-    </GlowingContainer>
-  ) : !user.emailVerified ? (
-    <GlowingContainer maxWidth="sm" sx={{ mt: 4 }} glowColor="#00BCD4">
-      <Paper
-        sx={{
-          p: 4,
-          textAlign: "center",
-          background: "rgba(255, 255, 255, 0.1)",
-          backdropFilter: "blur(10px)",
-          borderRadius: "24px",
-          border: "1px solid rgba(33, 150, 243, 0.2)",
-        }}
-      >
-        <FloatingElement
-          sx={{ mb: 3, p: 2, border: "1px solid rgba(33, 150, 243, 0.3)" }}
+    <Box
+      sx={{
+        minHeight: "100vh",
+        position: "relative",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          background: `url(${background}) no-repeat center center`,
+          backgroundSize: "cover",
+          zIndex: -1,
+        },
+      }}
+    >
+      <GlowingContainer maxWidth="sm" sx={{ mt: 4 }} glowColor={activeGlow}>
+        <Box
+          sx={{
+            p: 4,
+            backdropFilter: "blur(10px)",
+            borderRadius: "24px",
+            background: "rgba(255, 255, 255, 0.1)",
+          }}
         >
-          <Typography
-            variant="h5"
-            gutterBottom
-            sx={{
-              background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
+          <UserAuth
+            isRegister={isRegister}
+            setIsRegister={setIsRegister}
+            loginData={loginData}
+            setLoginData={setLoginData}
+            setUser={setUser}
+            errors={errors}
+            setErrors={setErrors}
+          />
+        </Box>
+        <ToastContainer />
+      </GlowingContainer>
+    </Box>
+  ) : !user.emailVerified ? (
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: `url(${background}) no-repeat center center`,
+        backgroundSize: "cover",
+      }}
+    >
+      <GlowingContainer maxWidth="sm" sx={{ mt: 4 }} glowColor="#00BCD4">
+        <Paper
+          sx={{
+            p: 4,
+            textAlign: "center",
+            background: "rgba(255, 255, 255, 0.1)",
+            backdropFilter: "blur(10px)",
+            borderRadius: "24px",
+            border: "1px solid rgba(33, 150, 243, 0.2)",
+          }}
+        >
+          <Box sx={{ textAlign: "center" }}>
+            <Box
+              component="h5"
+              sx={{
+                background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              Email Doğrulama
+            </Box>
+            <Box
+              component="p"
+              sx={{ mb: 3, color: "rgba(255, 255, 255, 0.9)" }}
+            >
+              Lütfen email adresinize gönderilen doğrulama linkine tıklayın.
+            </Box>
+            <AnimatedButton
+              onClick={handleResendEmail}
+              disabled={remainingTime > 0}
+            >
+              {remainingTime > 0
+                ? `${Math.ceil(
+                    remainingTime / 1000
+                  )} saniye sonra tekrar deneyin`
+                : "Doğrulama Emailini Gönder"}
+            </AnimatedButton>
+          </Box>
+          <AnimatedButton
+            sx={{ mt: 2 }}
+            variant="outlined"
+            onClick={() => {
+              auth.signOut();
+              setUser(null);
             }}
           >
-            Email Doğrulama
-          </Typography>
-          <Typography
-            variant="body1"
-            sx={{ mb: 3, color: "rgba(255, 255, 255, 0.9)" }}
-          >
-            Lütfen email adresinize gönderilen doğrulama linkine tıklayın.
-          </Typography>
-          <AnimatedButton
-            onClick={handleResendEmail}
-            disabled={remainingTime > 0}
-          >
-            {remainingTime > 0
-              ? `${Math.ceil(remainingTime / 1000)} saniye sonra tekrar deneyin`
-              : "Doğrulama Emailini Gönder"}
+            Çıkış Yap
           </AnimatedButton>
-        </FloatingElement>
-        <AnimatedButton
-          variant="outlined"
-          onClick={() => {
-            auth.signOut();
-            setUser(null);
-          }}
-          fullWidth
-        >
-          Çıkış Yap
-        </AnimatedButton>
-      </Paper>
-      <ToastContainer />
-    </GlowingContainer>
+        </Paper>
+        <ToastContainer />
+      </GlowingContainer>
+    </Box>
+  ) : showWelcome ? (
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexDirection: "column",
+        background: `url(${background}) no-repeat center center`,
+        backgroundSize: "cover",
+      }}
+    >
+      <Lottie
+        animationData={welcomeAnimation}
+        style={{ width: 300, height: 300 }}
+      />
+      <Typography variant="h4" sx={{ color: "#fff", mt: 2 }}>
+        Hoşgeldin, {profileData.firstName || profileData.username}!
+      </Typography>
+    </Box>
   ) : (
     <Box
       sx={{

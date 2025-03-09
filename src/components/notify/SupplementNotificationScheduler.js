@@ -1,5 +1,5 @@
 // SupplementNotificationScheduler.js
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
 
 // Türkiye saatini döndürür
@@ -316,15 +316,11 @@ export const saveNextSupplementReminderTime = async (user, suppData) => {
   }
 
   // Supplement dokümanını, yeni bildirim zamanı, tetikleyici değerler ve hesaplama zamanıyla güncelliyoruz.
-  await setDoc(
-    suppDocRef,
-    {
-      nextSupplementReminderTime: nextReminder.toISOString(),
-      lastNotificationTriggers: newTriggers,
-      notificationsLastCalculated: now.toISOString(),
-    },
-    { merge: true }
-  );
+  await updateDoc(suppDocRef, {
+    nextSupplementReminderTime: nextReminder.toISOString(),
+    lastNotificationTriggers: newTriggers,
+    notificationsLastCalculated: now.toISOString(),
+  });
   console.log(
     "SupplementReminder: Yeni bildirim zamanı kaydedildi:",
     nextReminder.toISOString()

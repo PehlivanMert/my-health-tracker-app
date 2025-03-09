@@ -391,8 +391,8 @@ function App() {
           // Firestore’da timestamp veya ISO formatında saklanıyorsa, Date objesine çevirin.
           let birth;
           if (prof.birthDate?.toDate) {
-            birth = prof.birthDate.toDate();
-            prof.birthDate = format(birth, "yyyy-MM-dd");
+            birth = prof.birthDate.toDate(); // 👈 Date objesi olarak sakla
+            prof.birthDate = birth; // Formatlama yapma!
           } else if (prof.birthDate && prof.birthDate.includes("T")) {
             birth = new Date(prof.birthDate);
             prof.birthDate = format(birth, "yyyy-MM-dd");
@@ -472,7 +472,7 @@ function App() {
       const userDocRef = doc(db, "users", user.uid);
       const profileToSave = { ...profileData };
 
-      if (profileToSave.birthDate) {
+      if (typeof profileToSave.birthDate === "string") {
         const [year, month, day] = profileToSave.birthDate.split("-");
         profileToSave.birthDate = new Date(year, month - 1, day);
       }
@@ -817,7 +817,11 @@ function App() {
                     type="date"
                     fullWidth
                     InputLabelProps={{ shrink: true }}
-                    value={profileData.birthDate || ""}
+                    value={
+                      profileData.birthDate
+                        ? format(profileData.birthDate, "yyyy-MM-dd")
+                        : ""
+                    }
                     onChange={handleProfileChange}
                     variant="outlined"
                     sx={{ background: "rgba(255,255,255,0.9)" }}

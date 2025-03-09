@@ -151,7 +151,9 @@ const HealthDashboard = ({ user }) => {
         setProfileData({
           ...data.profile,
           birthDate: data.profile?.birthDate
-            ? new Date(data.profile.birthDate)
+            ? typeof data.profile.birthDate === "number"
+              ? new Date(data.profile.birthDate * 1000)
+              : new Date(data.profile.birthDate)
             : null,
         });
 
@@ -192,13 +194,6 @@ const HealthDashboard = ({ user }) => {
     }
   };
 
-  const calculateAge = () => {
-    if (!profileData.birthDate) return null;
-    const today = new Date();
-    const birthDate = new Date(profileData.birthDate);
-    return today.getFullYear() - birthDate.getFullYear();
-  };
-
   const calculateBMI = () => {
     if (!profileData.height || !profileData.weight) return null;
     const heightInMeters = profileData.height / 100;
@@ -211,20 +206,6 @@ const HealthDashboard = ({ user }) => {
     else status = "Obez";
 
     return { value: bmi.toFixed(2), status };
-  };
-
-  // Hesaplanan metrikleri Firebase'ye güncelliyoruz.
-  const updateMetrics = async () => {
-    const age = calculateAge();
-    const bmi = calculateBMI();
-    try {
-      await updateDoc(doc(db, "users", user.uid), {
-        "profile.age": age,
-        "healthData.bmi": bmi,
-      });
-    } catch (error) {
-      toast.error("Metrik güncelleme hatası: " + error.message);
-    }
   };
 
   // Öneri oluştururken, profil bilgileriyle birlikte yeni istatistikleri de API'ye gönderiyoruz.
@@ -282,7 +263,7 @@ Günlük Detaylı sağlık önerileri oluştur:
 5. Beslenme önerileri
 6. Sağlıklı ve dengeli bir yemek ya da içecek tarifi
 7. Özlü bir sağlık sözü
-Madde madde ve sade metin formatında max 2500 karakterle oluştur tarihe göre dinsel vb özel bir dönemse ona göre bilimsel ama eğlenceli bir dil kullan.`;
+Madde madde ve sade metin formatında max 2500 karakterle oluştur tarihe göre dinsel vb özel bir dönemse ona göre bilimsel ama eğlenceli bir dil kullan hep aynı başlıkları kullanma.`;
 
       const response = await fetch(API_URL, {
         method: "POST",
@@ -337,7 +318,6 @@ Madde madde ve sade metin formatında max 2500 karakterle oluştur tarihe göre 
   useEffect(() => {
     if (user) {
       fetchAllData();
-      updateMetrics();
     }
   }, [user]);
 
@@ -535,7 +515,7 @@ Madde madde ve sade metin formatında max 2500 karakterle oluştur tarihe göre 
             {
               icon: <Cake sx={{ fontSize: 24 }} />,
               title: "Yaş",
-              value: calculateAge(),
+              value: profileData.age,
               color: theme.palette.secondary.main,
             },
             {

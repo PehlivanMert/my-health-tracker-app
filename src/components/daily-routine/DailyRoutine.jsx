@@ -135,6 +135,7 @@ const StatCard = ({ title, value, total, icon, color }) => {
     </motion.div>
   );
 };
+
 const DailyRoutine = ({ user }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -232,6 +233,7 @@ const DailyRoutine = ({ user }) => {
     const timer = setInterval(checkReset, 3600000); // Her saat kontrol
     return () => clearInterval(timer);
   }, []);
+
   // Rutin kaydetme işlemi
   const handleSaveRoutine = () => {
     if (!newRoutine.title || !newRoutine.time) return;
@@ -245,7 +247,6 @@ const DailyRoutine = ({ user }) => {
               ...newRoutine,
               id: r.id,
               notificationEnabled: r.notificationEnabled || false,
-              // Düzenleme sırasında kümülatif sayaçlar değişmez
             }
           : r
       );
@@ -413,7 +414,8 @@ const DailyRoutine = ({ user }) => {
 
     setNotificationsEnabled(updatedNotifications);
   };
-  // Firestore'dan rutinleri yükle
+
+  // Firestore'dan rutinleri ve istatistikleri yükle
   useEffect(() => {
     const loadRoutines = async () => {
       if (!user) return;
@@ -425,13 +427,19 @@ const DailyRoutine = ({ user }) => {
           const data = docSnap.data();
           // Eğer routines alanı tanımlı değilse, default rutinleri kullan
           setRoutines(data.routines || initialRoutines);
+          setWeeklyStats(data.weeklyStats || { added: 0, completed: 0 });
+          setMonthlyStats(data.monthlyStats || { added: 0, completed: 0 });
         } else {
-          // Kullanıcıya ait belge yoksa, default rutinlerle yeni belge oluştur
+          // Kullanıcıya ait belge yoksa, default rutinlerle ve sıfırlanmış istatistiklerle yeni belge oluştur
           const initialData = {
             routines: initialRoutines,
+            weeklyStats: { added: 0, completed: 0 },
+            monthlyStats: { added: 0, completed: 0 },
           };
           await setDoc(userDocRef, initialData);
           setRoutines(initialRoutines);
+          setWeeklyStats({ added: 0, completed: 0 });
+          setMonthlyStats({ added: 0, completed: 0 });
         }
         isInitialLoad.current = false;
       } catch (error) {
@@ -441,19 +449,19 @@ const DailyRoutine = ({ user }) => {
     loadRoutines();
   }, [user]);
 
-  // Firestore'a rutinleri kaydet
+  // Firestore'a rutinleri ve istatistikleri kaydet (state değiştikçe güncelle)
   useEffect(() => {
     if (!user || isInitialLoad.current) return;
-    const updateRoutinesInFirestore = async () => {
+    const updateDataInFirestore = async () => {
       try {
         const userDocRef = doc(db, "users", user.uid);
-        await updateDoc(userDocRef, { routines });
+        await updateDoc(userDocRef, { routines, weeklyStats, monthlyStats });
       } catch (error) {
         console.error("Rutin kaydetme hatası:", error);
       }
     };
-    updateRoutinesInFirestore();
-  }, [routines, user]);
+    updateDataInFirestore();
+  }, [routines, weeklyStats, monthlyStats, user]);
 
   return (
     <Box
@@ -526,7 +534,6 @@ const DailyRoutine = ({ user }) => {
                   },
                 }}
               >
-                {/* Dalga Efekti */}
                 <Box
                   sx={{
                     position: "absolute",
@@ -541,8 +548,6 @@ const DailyRoutine = ({ user }) => {
                     opacity: { xs: 0.3, sm: 0.6 },
                   }}
                 />
-
-                {/* İçerik */}
                 <Box
                   sx={{
                     display: "flex",
@@ -621,7 +626,6 @@ const DailyRoutine = ({ user }) => {
                       </Box>
                     </Box>
                   )}
-
                   <Box sx={{ textAlign: { xs: "center", sm: "left" } }}>
                     <Typography
                       variant="subtitle2"

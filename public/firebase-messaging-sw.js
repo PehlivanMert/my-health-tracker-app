@@ -91,26 +91,22 @@ self.skipWaiting();
 
 // 3. Fetch event: Önce önbellekten yanıtla, yoksa ağa başvur; navigasyon istekleri offline.html ile yanıtlasın
 self.addEventListener("fetch", (event) => {
-  // Sadece GET isteklerini işleyin
-  if (event.request.method !== "GET") return;
-
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request)
-        .then((networkResponse) => {
-          return networkResponse;
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          // İsteğin başarılı olması durumunda, cache’i de güncelleyebilirsiniz.
+          return response;
         })
-        .catch(() => {
-          // Eğer istek navigasyon tipi ise offline.html döndür
-          if (event.request.mode === "navigate") {
-            return caches.match("/offline.html");
-          }
-        });
-    })
-  );
+        .catch(() => caches.match("/offline.html"))
+    );
+  } else {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        return cachedResponse || fetch(event.request);
+      })
+    );
+  }
 });
 
 /* =======================

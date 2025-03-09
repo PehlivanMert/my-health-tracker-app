@@ -220,7 +220,7 @@ const HealthDashboard = ({ user }) => {
 
     setLoading(true);
     try {
-      const age = calculateAge();
+      const age = profileData.age;
       const bmi = calculateBMI();
 
       // Güncel tarih ve saat bilgisini 'Tarih ve Saat' olarak alıyoruz

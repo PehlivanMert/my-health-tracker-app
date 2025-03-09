@@ -1,14 +1,9 @@
-// firebase-messaging-sw.js
-import { initializeApp } from "firebase/app";
-import { getMessaging, onBackgroundMessage } from "firebase/messaging/sw";
-import firebaseConfig from "./firebase-config.js";
-
-const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
-
-/* =======================
-   Caching Mekanizması
-   ======================= */
+importScripts(
+  "https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"
+);
+importScripts(
+  "https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js"
+);
 
 const CACHE_VERSION = new Date().getTime();
 const CACHE_NAME = `wellness-tracker-v${CACHE_VERSION}`;
@@ -19,6 +14,24 @@ const ASSETS = [
   "/logo4.jpeg",
   "/offline.html",
 ];
+
+// Firebase konfigürasyon bilgilerini kopyalayın
+const firebaseConfig = {
+  apiKey: "AIzaSyD64A3LlceBtvBH2Uphg5yTUP9MgK1EeBc",
+  authDomain: "my-health-tracker-application.firebaseapp.com",
+  projectId: "my-health-tracker-application",
+  storageBucket: "my-health-tracker-application.firebasestorage.app",
+  messagingSenderId: "905993574620",
+  appId: "1:905993574620:web:987e4b6f320a8d6aa5bc19",
+  measurementId: "G-Y6V8X8JH7F",
+};
+
+firebase.initializeApp(firebaseConfig);
+const messaging = firebase.messaging();
+
+/* =======================
+   Caching Mekanizması
+   ======================= */
 
 // 1. Install event: ASSETS dizisindeki dosyaları önbelleğe ekle
 self.addEventListener("install", (event) => {
@@ -63,21 +76,28 @@ self.addEventListener("activate", (event) => {
       .then(() => {
         return self.clients
           .claim()
-          .then(() => self.clients.matchAll({ type: "window" }))
+          .then(() => {
+            return self.clients.matchAll({ type: "window" });
+          })
           .then((clients) => {
             clients.forEach((client) => client.navigate(client.url));
           });
       })
   );
-  self.skipWaiting();
 });
+
+// Eski SW'nin beklemeden yenisiyle değişmesini sağlar
+self.skipWaiting();
 
 // 3. Fetch event: Önce önbellekten yanıtla, yoksa ağa başvur; navigasyon istekleri offline.html ile yanıtlasın
 self.addEventListener("fetch", (event) => {
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request)
-        .then((response) => response)
+        .then((response) => {
+          // İsteğin başarılı olması durumunda, cache’i de güncelleyebilirsiniz.
+          return response;
+        })
         .catch(() => caches.match("/offline.html"))
     );
   } else {
@@ -94,7 +114,7 @@ self.addEventListener("fetch", (event) => {
    ======================= */
 
 // Background mesajları dinle
-onBackgroundMessage(messaging, (payload) => {
+messaging.onBackgroundMessage((payload) => {
   console.log(
     "[firebase-messaging-sw.js] Received background message ",
     payload
@@ -106,7 +126,6 @@ onBackgroundMessage(messaging, (payload) => {
   });
 });
 
-// Push event dinleyicisi (ekstra)
 self.addEventListener("push", (event) => {
   if (!event.data) return;
   let data;
@@ -126,3 +145,6 @@ self.addEventListener("push", (event) => {
   const icon = data.icon || "/logo4.jpeg";
   self.registration.showNotification(title, { body, icon });
 });
+
+//ctrl+ k + c
+//ctrl+ k + u

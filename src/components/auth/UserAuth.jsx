@@ -30,32 +30,40 @@ import {
 
 // Animasyonlar & Stilize Edilmiş Bileşenler
 
+const isIOS = () =>
+  /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
 // Glassmorphism container with dynamic glow effect
 const GlassmorphismCard = styled(motion.div, {
-  shouldForwardProp: (prop) => prop !== "$glowColor",
-})(({ theme, $glowColor = "#2196F3" }) => ({
+  shouldForwardProp: (prop) => prop !== "$glowColor" && prop !== "isIOS",
+})(({ theme, $glowColor = "#2196F3", isIOS }) => ({
   position: "relative",
   padding: theme.spacing(4),
   width: "100%",
   maxWidth: 450,
   borderRadius: "24px",
-  background: "rgba(255, 255, 255, 0.15)",
+  // iOS için opaklık değeri biraz arttırıldı
+  background: isIOS ? "rgba(255, 255, 255, 0.25)" : "rgba(255, 255, 255, 0.15)",
   backdropFilter: "blur(16px)",
   WebkitBackdropFilter: "blur(16px)",
   border: "1px solid rgba(255, 255, 255, 0.2)",
   boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
   overflow: "hidden",
-  backgroundClip: "padding-box", // ekleniyor
-  willChange: "backdrop-filter", // ekleniyor
-  transform: "translateZ(0)", // ekleniyor
+  backgroundClip: "padding-box",
+  willChange: "backdrop-filter",
+  transform: "translateZ(0)",
   transition: "background 0.4s ease, all 0.4s ease",
   "&:hover": {
-    background: "rgba(255, 255, 255, 0.25)",
+    background: isIOS
+      ? "rgba(255, 255, 255, 0.35)"
+      : "rgba(255, 255, 255, 0.25)",
   },
   [theme.breakpoints.down("sm")]: {
-    background: "rgba(255, 255, 255, 0.2)",
+    background: isIOS ? "rgba(255, 255, 255, 0.3)" : "rgba(255, 255, 255, 0.2)",
     "&:hover": {
-      background: "rgba(255, 255, 255, 0.3)",
+      background: isIOS
+        ? "rgba(255, 255, 255, 0.4)"
+        : "rgba(255, 255, 255, 0.3)",
     },
   },
   "&::before": {
@@ -87,14 +95,17 @@ const GlassmorphismCard = styled(motion.div, {
 
 // Animated form field with glow effect
 const GlowingTextField = styled(TextField, {
-  shouldForwardProp: (prop) => prop !== "$focusColor",
-})(({ theme, $focusColor = "#2196F3" }) => ({
+  shouldForwardProp: (prop) => prop !== "$focusColor" && prop !== "isIOS",
+})(({ theme, $focusColor = "#2196F3", isIOS }) => ({
   marginBottom: theme.spacing(3),
   "& .MuiOutlinedInput-root": {
     borderRadius: "16px",
-    background: "rgba(255, 255, 255, 0.09)",
+    // iOS'ta input alanının arka planı biraz daha opak olsun
+    background: isIOS
+      ? "rgba(255, 255, 255, 0.15)"
+      : "rgba(255, 255, 255, 0.09)",
     backdropFilter: "blur(5px)",
-    WebkitBackdropFilter: "blur(5px)", // iOS uyumluluğu için
+    WebkitBackdropFilter: "blur(5px)",
     color: "#ffffff",
     transition: "all 0.3s ease",
     "& fieldset": {
@@ -110,15 +121,10 @@ const GlowingTextField = styled(TextField, {
     "&.Mui-focused fieldset": {
       borderColor: $focusColor,
     },
-    // iOS için input elementine özel stil
-    "& input": {
-      WebkitAppearance: "none",
-      WebkitTextFillColor: "#ffffff", // zorunlu: metin renginin beyaz olarak kalması
-      color: "#ffffff",
-      textShadow: "0 0 1px rgba(0,0,0,0.5)", // kontrast artırıcı ince gölge
-    },
     "& input:-webkit-autofill": {
-      WebkitBoxShadow: `0 0 0 100px rgba(255, 255, 255, 0.09) inset`,
+      WebkitBoxShadow: `0 0 0 100px ${
+        isIOS ? "rgba(255, 255, 255, 0.15)" : "rgba(255, 255, 255, 0.09)"
+      } inset`,
       WebkitTextFillColor: "#ffffff",
       transition: "background-color 5000s ease-in-out 0s",
     },
@@ -346,6 +352,8 @@ const UserAuth = ({ setUser }) => {
     }
   };
 
+  const isIOSDevice = isIOS();
+
   return (
     <AnimatePresence mode="wait">
       <GlassmorphismCard
@@ -357,6 +365,7 @@ const UserAuth = ({ setUser }) => {
         exit="out"
         variants={pageVariants}
         transition={{ duration: 0.4 }}
+        $isIOS={isIOSDevice}
         $glowColor={activeGlow}
       >
         <motion.div
@@ -416,6 +425,7 @@ const UserAuth = ({ setUser }) => {
               variants={itemVariants}
             >
               <GlowingTextField
+                isIOS={isIOSDevice}
                 fullWidth
                 label="E-posta"
                 type="email"
@@ -447,6 +457,7 @@ const UserAuth = ({ setUser }) => {
                   variants={itemVariants}
                 >
                   <GlowingTextField
+                    isIOS={isIOSDevice}
                     fullWidth
                     label="Şifre"
                     type={showPassword ? "text" : "password"}
@@ -490,6 +501,7 @@ const UserAuth = ({ setUser }) => {
                       variants={itemVariants}
                     >
                       <GlowingTextField
+                        isIOS={isIOSDevice}
                         fullWidth
                         label="Şifre Tekrar"
                         type={showPassword ? "text" : "password"}
@@ -524,6 +536,7 @@ const UserAuth = ({ setUser }) => {
                       variants={itemVariants}
                     >
                       <GlowingTextField
+                        isIOS={isIOSDevice}
                         fullWidth
                         label="İsim"
                         name="firstName"
@@ -557,6 +570,7 @@ const UserAuth = ({ setUser }) => {
                       variants={itemVariants}
                     >
                       <GlowingTextField
+                        isIOS={isIOSDevice}
                         fullWidth
                         label="Soyisim"
                         name="lastName"

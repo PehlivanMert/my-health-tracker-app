@@ -263,7 +263,7 @@ Günlük Detaylı sağlık önerileri oluştur:
 5. Beslenme önerileri
 6. Sağlıklı ve dengeli bir yemek ya da içecek tarifi
 7. Özlü bir sağlık sözü
-Madde madde ve sade metin formatında max 2500 karakterle oluştur tarihe göre dinsel vb özel bir dönemse ona göre bilimsel ama eğlenceli bir dil kullan hep aynı başlıkları kullanma.`;
+Madde madde ve sade metin formatında max 2500 karakterle oluştur bilimsel ama eğlenceli bir dil kullan.`;
 
       const response = await fetch(API_URL, {
         method: "POST",

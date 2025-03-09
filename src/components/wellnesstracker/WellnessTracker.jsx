@@ -44,6 +44,7 @@ import {
   HealthAndSafety,
   Vaccines,
 } from "@mui/icons-material";
+import SupplementDialog from "./SupplementDialog";
 
 import NotificationSettingsDialog from "./NotificationSettingsDialog";
 import WaterTracker from "./WaterTracker";
@@ -762,79 +763,19 @@ const WellnessTracker = ({ user }) => {
             </Grid>
           </AccordionDetails>
         </Accordion>
-        <Dialog
-          open={openSupplementDialog}
+        <SupplementDialog
+          openSupplementDialog={openSupplementDialog}
           onClose={() => {
             setOpenSupplementDialog(false);
             setEditingSupplement(null);
           }}
-          PaperProps={{
-            sx: {
-              background: "rgba(149, 157, 163, 0.83)",
-              backdropFilter: "blur(10px)",
-              borderRadius: "24px",
-              padding: 2,
-              border: "1px solid rgba(33,150,243,0.2)",
-            },
-          }}
-        >
-          <DialogTitle>
-            {editingSupplement ? "Takviye Düzenle" : "Yeni Takviye Ekle"}
-          </DialogTitle>
-          <DialogContent>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="Takviye Adı"
-              fullWidth
-              value={supplementForm.name}
-              onChange={(e) =>
-                setSupplementForm({ ...supplementForm, name: e.target.value })
-              }
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              margin="dense"
-              label="Miktar"
-              type="number"
-              fullWidth
-              value={supplementForm.quantity}
-              onChange={(e) =>
-                setSupplementForm({
-                  ...supplementForm,
-                  quantity: Number(e.target.value),
-                })
-              }
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              margin="dense"
-              label="Günlük Kullanım Miktarı"
-              type="number"
-              fullWidth
-              value={supplementForm.dailyUsage}
-              onChange={(e) =>
-                setSupplementForm({
-                  ...supplementForm,
-                  dailyUsage: Number(e.target.value),
-                })
-              }
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button
-              onClick={() => {
-                setOpenSupplementDialog(false);
-                setEditingSupplement(null);
-              }}
-            >
-              İptal
-            </Button>
-            <Button onClick={handleSaveSupplement}>
-              {editingSupplement ? "Güncelle" : "Ekle"}
-            </Button>
-          </DialogActions>
-        </Dialog>
+          editingSupplement={editingSupplement}
+          supplementForm={supplementForm}
+          setSupplementForm={setSupplementForm}
+          setOpenSupplementDialog={setOpenSupplementDialog}
+          setEditingSupplement={setEditingSupplement}
+          handleSaveSupplement={handleSaveSupplement}
+        />
         <NotificationSettingsDialog
           open={notificationDialogOpen}
           onClose={() => setNotificationDialogOpen(false)}

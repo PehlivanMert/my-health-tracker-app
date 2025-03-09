@@ -363,10 +363,12 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     waterData.nextWaterReminderTime,
     waterData.waterNotificationOption,
     dataFetched,
-    waterData.waterIntake, // eklenmeli
-    waterData.dailyWaterTarget, // eklenmeli
-    waterData.customNotificationInterval, // eklenmeli
-    waterData.activityLevel, // eklenmeli
+    waterData.waterIntake,
+    waterData.dailyWaterTarget,
+    waterData.customNotificationInterval,
+    waterData.activityLevel,
+    waterData.notificationWindow?.start,
+    waterData.notificationWindow?.end,
   ]);
 
   return (

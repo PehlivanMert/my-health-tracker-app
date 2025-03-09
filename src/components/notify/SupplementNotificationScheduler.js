@@ -267,21 +267,66 @@ export const getNextSupplementReminderTime = async (suppData, user) => {
 
 // Hesaplanan sonraki takviye bildirim zamanını ilgili supplement dokümanına kaydeder
 export const saveNextSupplementReminderTime = async (user, suppData) => {
+  const now = getTurkeyTime();
+  const suppDocRef = doc(db, "users", user.uid, "supplements", suppData.id);
+
+  // Mevcut supplement dokümanını çekip tetikleyici değerleri alalım.
+  const suppSnap = await getDoc(suppDocRef);
+  let existingTriggers = {};
+  let existingNextReminder = null;
+  if (suppSnap.exists()) {
+    const data = suppSnap.data();
+    existingTriggers = data.lastNotificationTriggers || {};
+    existingNextReminder = data.nextSupplementReminderTime
+      ? new Date(data.nextSupplementReminderTime)
+      : null;
+  }
+
+  // Global bildirim penceresini çekiyoruz.
+  const globalNotifWindow = (await getGlobalNotificationWindow(user)) || {
+    start: "08:00",
+    end: "22:00",
+  };
+
+  // Yeni tetikleyici nesnesini oluşturuyoruz.
+  const newTriggers = {
+    globalNotificationWindow: JSON.stringify(globalNotifWindow),
+    notificationSchedule: suppData.notificationSchedule || "",
+    dailyUsage: suppData.dailyUsage,
+    quantity: suppData.quantity,
+  };
+
+  // Eğer mevcut tetikleyicilerle yeni tetikleyiciler aynıysa ve mevcut bildirim 1 dakika sonrasından geçerliyse, yeniden hesaplamaya gerek yok.
+  if (
+    existingNextReminder &&
+    JSON.stringify(existingTriggers) === JSON.stringify(newTriggers) &&
+    existingNextReminder.getTime() > now.getTime() + 60000
+  ) {
+    console.log(
+      "SupplementReminder: Mevcut bildirim geçerli, yeniden hesaplama yapılmadı."
+    );
+    return existingNextReminder;
+  }
+
+  // Yeni sonraki bildirim zamanını hesaplıyoruz.
   const nextReminder = await getNextSupplementReminderTime(suppData, user);
   if (!nextReminder) {
-    console.warn(
-      "saveNextSupplementReminderTime - Sonraki bildirim zamanı hesaplanamadı"
-    );
+    console.warn("SupplementReminder: Sonraki bildirim zamanı hesaplanamadı");
     return null;
   }
-  const suppDocRef = doc(db, "users", user.uid, "supplements", suppData.id);
+
+  // Supplement dokümanını, yeni bildirim zamanı, tetikleyici değerler ve hesaplama zamanıyla güncelliyoruz.
   await setDoc(
     suppDocRef,
-    { nextSupplementReminderTime: nextReminder.toISOString() },
+    {
+      nextSupplementReminderTime: nextReminder.toISOString(),
+      lastNotificationTriggers: newTriggers,
+      notificationsLastCalculated: now.toISOString(),
+    },
     { merge: true }
   );
   console.log(
-    "saveNextSupplementReminderTime - Kaydedilen sonraki takviye bildirimi zamanı:",
+    "SupplementReminder: Yeni bildirim zamanı kaydedildi:",
     nextReminder.toISOString()
   );
   return nextReminder;

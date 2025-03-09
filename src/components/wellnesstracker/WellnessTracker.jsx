@@ -199,12 +199,41 @@ const WellnessTracker = ({ user }) => {
 
   // supplements ve user güncellendiğinde nextSupplementReminderTime hesaplaması
   useEffect(() => {
-    if (supplements && user) {
-      supplements.forEach(async (supp) => {
-        await saveNextSupplementReminderTime(user, supp);
-      });
-    }
-  }, [supplements, user]);
+    const checkAndUpdateReminders = async () => {
+      if (!supplements.length || !user) return;
+
+      for (const supp of supplements) {
+        const suppDocRef = doc(db, "users", user.uid, "supplements", supp.id);
+        const suppSnap = await getDoc(suppDocRef);
+
+        if (suppSnap.exists()) {
+          const data = suppSnap.data();
+          const lastCalculated = data.notificationsLastCalculated
+            ? new Date(data.notificationsLastCalculated)
+            : null;
+          const now = new Date();
+          const THRESHOLD = 60 * 60 * 1000; // 30 dakika
+
+          // Eğer son hesaplama 30 dakikadan eskiyse, yeni hesaplama yap
+          if (
+            !lastCalculated ||
+            now.getTime() - lastCalculated.getTime() > THRESHOLD
+          ) {
+            console.log(
+              `📌 SupplementReminder: ${supp.name} için hesaplama tetiklendi`
+            );
+            await saveNextSupplementReminderTime(user, supp);
+          } else {
+            console.log(
+              `✅ SupplementReminder: ${supp.name} için hesaplama atlandı (Son hesap: ${lastCalculated})`
+            );
+          }
+        }
+      }
+    };
+
+    checkAndUpdateReminders();
+  }, [user, supplements]); // Sadece supplements veya user değişirse çalışır.
 
   const handleSaveSupplement = async () => {
     const ref = getSupplementsRef();
@@ -227,6 +256,10 @@ const WellnessTracker = ({ user }) => {
         });
       }
       await fetchSupplements();
+      // Yeni takviye eklendiğinde tüm supplementler için bildirimleri güncelleyelim
+      supplements.forEach(async (supp) => {
+        await saveNextSupplementReminderTime(user, supp);
+      });
       setOpenSupplementDialog(false);
       setSupplementForm({ name: "", quantity: 0, dailyUsage: 1 });
       setEditingSupplement(null);
@@ -243,6 +276,8 @@ const WellnessTracker = ({ user }) => {
       const supplementRef = doc(ref, id);
       await updateDoc(supplementRef, { quantity: newQuantity });
       await fetchSupplements();
+      // Takviye tüketildiğinde bildirim zamanını güncelleyelim
+      await saveNextSupplementReminderTime(user, supplement);
       const suppName = supplement.name;
       const today = new Date().toLocaleDateString("en-CA", {
         timeZone: "Europe/Istanbul",
@@ -289,8 +324,17 @@ const WellnessTracker = ({ user }) => {
 
   const handleSaveNotificationWindow = async (window) => {
     const userRef = doc(db, "users", user.uid);
+    const waterRef = doc(db, "users", user.uid, "water", "current");
     try {
+      // Global kullanıcı dokümanını güncelle
       await setDoc(userRef, { notificationWindow: window }, { merge: true });
+      // Aynı ayarı water dokümanına da yansıt
+      await setDoc(waterRef, { notificationWindow: window }, { merge: true });
+
+      // Global bildirim penceresi değiştiğinde, tüm supplementler için bildirim zamanlarını yeniden hesaplayalım
+      supplements.forEach(async (supp) => {
+        await saveNextSupplementReminderTime(user, supp);
+      });
     } catch (error) {
       console.error("Bildirim ayarları güncelleme hatası:", error);
     }

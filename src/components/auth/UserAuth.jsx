@@ -39,15 +39,16 @@ const GlassmorphismCard = styled(motion.div, {
   width: "100%",
   maxWidth: 450,
   borderRadius: "24px",
-  // Normalde çok beyaz görünmemesi için arka plan opaklığı hafif azaltıldı.
   background: "rgba(255, 255, 255, 0.15)",
   backdropFilter: "blur(16px)",
-  WebkitBackdropFilter: "blur(16px)", // iOS/PWA uyumluluğu için eklenmiştir.
+  WebkitBackdropFilter: "blur(16px)",
   border: "1px solid rgba(255, 255, 255, 0.2)",
   boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
   overflow: "hidden",
+  backgroundClip: "padding-box", // ekleniyor
+  willChange: "backdrop-filter", // ekleniyor
+  transform: "translateZ(0)", // ekleniyor
   transition: "background 0.4s ease, all 0.4s ease",
-  // Hover durumunda biraz daha opak olsun.
   "&:hover": {
     background: "rgba(255, 255, 255, 0.25)",
   },

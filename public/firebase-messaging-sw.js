@@ -5,7 +5,8 @@ importScripts(
   "https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js"
 );
 
-const CACHE_NAME = "wellness-tracker-v4";
+const CACHE_VERSION = new Date().getTime();
+const CACHE_NAME = `wellness-tracker-v${CACHE_VERSION}`;
 const ASSETS = [
   "/",
   "/index.html",

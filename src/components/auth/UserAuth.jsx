@@ -94,6 +94,7 @@ const GlowingTextField = styled(TextField, {
     borderRadius: "16px",
     background: "rgba(255, 255, 255, 0.09)",
     backdropFilter: "blur(5px)",
+    WebkitBackdropFilter: "blur(5px)", // iOS uyumluluğu için
     color: "#ffffff",
     transition: "all 0.3s ease",
     "& fieldset": {
@@ -108,6 +109,13 @@ const GlowingTextField = styled(TextField, {
     },
     "&.Mui-focused fieldset": {
       borderColor: $focusColor,
+    },
+    // iOS için input elementine özel stil
+    "& input": {
+      WebkitAppearance: "none",
+      WebkitTextFillColor: "#ffffff", // zorunlu: metin renginin beyaz olarak kalması
+      color: "#ffffff",
+      textShadow: "0 0 1px rgba(0,0,0,0.5)", // kontrast artırıcı ince gölge
     },
     "& input:-webkit-autofill": {
       WebkitBoxShadow: `0 0 0 100px rgba(255, 255, 255, 0.09) inset`,

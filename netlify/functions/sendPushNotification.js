@@ -112,16 +112,79 @@ const getCachedSupplements = async (userId) => {
   return snapshot;
 };
 
-// sendEachForMulticast: Her bir token için ayrı ayrı bildirim gönderir.
-const sendEachForMulticast = async (msg) => {
+// sendEachForMulticast: Her bir token için ayrı ayrı bildirim gönderir ve geçersiz tokenları takip eder
+const sendEachForMulticast = async (msg, userId) => {
   const { tokens, data } = msg;
   const sendPromises = tokens.map((token) =>
-    admin.messaging().send({
-      token,
-      data,
-    })
+    admin
+      .messaging()
+      .send({
+        token,
+        data,
+      })
+      .then(() => ({ token, valid: true }))
+      .catch((error) => {
+        console.log(`Token hatası (${token}):`, error.code);
+        // Geçersiz token, kayıtlı olmayan token veya kullanıcının uygulamayı kaldırdığı durumlar
+        const invalidTokenErrors = [
+          "messaging/invalid-registration-token",
+          "messaging/registration-token-not-registered",
+          "messaging/invalid-argument",
+          "messaging/unregistered",
+        ];
+
+        const shouldRemove = invalidTokenErrors.includes(error.code);
+        return { token, valid: false, shouldRemove, errorCode: error.code };
+      })
   );
-  return await Promise.all(sendPromises);
+
+  const results = await Promise.all(sendPromises);
+
+  // Geçersiz tokenları belirle
+  const invalidTokens = results
+    .filter((result) => result.shouldRemove)
+    .map((result) => result.token);
+
+  // Eğer geçersiz tokenlar varsa, bunları kullanıcı dökümanından kaldır
+  if (invalidTokens.length > 0 && userId) {
+    try {
+      const userRef = db.collection("users").doc(userId);
+
+      // Transaction içinde tokenları güvenli bir şekilde kaldır
+      await db.runTransaction(async (transaction) => {
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists) return;
+
+        const userData = userDoc.data();
+        const currentTokens = userData.fcmTokens || [];
+
+        // Geçersiz tokenları filtrele
+        const validTokens = currentTokens.filter(
+          (token) => !invalidTokens.includes(token)
+        );
+
+        // Sadece değişiklik varsa güncelle
+        if (validTokens.length !== currentTokens.length) {
+          console.log(
+            `Kullanıcı ${userId} için ${
+              currentTokens.length - validTokens.length
+            } geçersiz token kaldırıldı`
+          );
+          transaction.update(userRef, { fcmTokens: validTokens });
+
+          // Kullanıcı cache'ini sıfırla
+          cachedUsers = null;
+        }
+      });
+    } catch (err) {
+      console.error(
+        `Kullanıcı ${userId} için FCM tokenları temizlenemedi:`,
+        err
+      );
+    }
+  }
+
+  return results;
 };
 
 exports.handler = async function (event, context) {
@@ -129,7 +192,7 @@ exports.handler = async function (event, context) {
     const now = getTurkeyTime();
     const notificationsToSend = [];
 
-    // Cache’lenmiş kullanıcıları alıyoruz (15 dakikalık TTL)
+    // Cache'lenmiş kullanıcıları alıyoruz (15 dakikalık TTL)
     const userDocs = await getCachedUsers();
 
     // Kullanıcılar arası işlemleri paralel yürütüyoruz
@@ -138,6 +201,9 @@ exports.handler = async function (event, context) {
         const userData = userDoc.data();
         const fcmTokens = userData.fcmTokens; // Token dizisi kullanılıyor
         if (!fcmTokens || fcmTokens.length === 0) return;
+
+        // Kullanıcıya ait bildirimleri toplamak için yerel dizi
+        let notificationsForThisUser = [];
 
         // ---------- Rutin Bildirimleri ----------
         if (userData.routines && Array.isArray(userData.routines)) {
@@ -153,7 +219,7 @@ exports.handler = async function (event, context) {
                 `sendPushNotification - Kullanıcı ${userDoc.id} için rutin bildirimi zamanı:`,
                 routineTime
               );
-              notificationsToSend.push({
+              notificationsForThisUser.push({
                 tokens: fcmTokens,
                 data: {
                   title: "Rutin Hatırlatması",
@@ -213,7 +279,7 @@ exports.handler = async function (event, context) {
                 `sendPushNotification - Kullanıcı ${userDoc.id} için takvim bildirimi zamanı:`,
                 triggerTime
               );
-              notificationsToSend.push({
+              notificationsForThisUser.push({
                 tokens: fcmTokens,
                 data: {
                   title: "Takvim Etkinliği Hatırlatması",
@@ -231,7 +297,6 @@ exports.handler = async function (event, context) {
 
         // ---------- Global Bildirim Penceresi Kontrolü (Su ve Takviye bildirimleri için) ----------
         let isWithinNotificationWindow = true;
-
         if (userData.notificationWindow) {
           const [nowHour, nowMinute] = now
             .toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })
@@ -248,11 +313,9 @@ exports.handler = async function (event, context) {
           const endTotal = endH * 60 + endM;
 
           if (startTotal < endTotal) {
-            // Aynı gün içindeki pencere
             isWithinNotificationWindow =
               nowTotal >= startTotal && nowTotal <= endTotal;
           } else {
-            // Pencere gece boyunca (ör. 18:45 - 05:30)
             isWithinNotificationWindow =
               nowTotal >= startTotal || nowTotal <= endTotal;
           }
@@ -280,8 +343,8 @@ exports.handler = async function (event, context) {
               `sendPushNotification - Kullanıcı ${userDoc.id} için su bildirimi zamanı:`,
               nextReminderTurkey
             );
-            if (Math.abs(now - nextReminderTurkey) / 60000 < 0.6) {
-              notificationsToSend.push({
+            if (Math.abs(now - nextReminderTurkey) / 60000 < 0.3) {
+              notificationsForThisUser.push({
                 tokens: fcmTokens,
                 data: {
                   title: "Su İçme Hatırlatması",
@@ -319,10 +382,6 @@ exports.handler = async function (event, context) {
                 nextReminderTurkey
               );
               if (Math.abs(now - nextReminderTurkey) / 60000 < 0.3) {
-                console.log(
-                  `sendPushNotification - Kullanıcı ${userDoc.id} için takviye bildirimi zamanı:`,
-                  nextReminderTurkey
-                );
                 const estimatedRemainingDays = Math.floor(
                   suppData.quantity / suppData.dailyUsage
                 );
@@ -341,7 +400,7 @@ exports.handler = async function (event, context) {
                     { hour: "2-digit", minute: "2-digit" }
                   )}) almanız gereken takviyeyi henüz almadınız.`;
                 }
-                notificationsToSend.push({
+                notificationsForThisUser.push({
                   tokens: fcmTokens,
                   data: {
                     title,
@@ -353,21 +412,35 @@ exports.handler = async function (event, context) {
             }
           });
         }
+
+        // Kullanıcıya ait bildirimler varsa, kullanıcı ID'si ile birlikte ekle
+        if (notificationsForThisUser.length > 0) {
+          notificationsToSend.push({
+            userId: userDoc.id,
+            notifications: notificationsForThisUser,
+          });
+        }
       })
     );
 
-    // Tüm bildirim mesajlarını, her token için ayrı ayrı gönderiyoruz (sendEachForMulticast)
+    // Tüm bildirim mesajlarını, her token için ayrı ayrı gönder ve geçersiz tokenları temizle
     const sendResults = await Promise.all(
-      notificationsToSend.map(async (msg) => {
+      notificationsToSend.map(async (userNotifications) => {
         try {
-          const result = await sendEachForMulticast(msg);
-          return result;
+          const { userId, notifications } = userNotifications;
+          const results = await Promise.all(
+            notifications.map((notification) =>
+              sendEachForMulticast(notification, userId)
+            )
+          );
+          return { userId, results };
         } catch (err) {
-          console.error("Bildirim gönderme hatası:", err, "Mesaj:", msg);
+          console.error("Bildirim gönderme hatası:", err);
           return err;
         }
       })
     );
+
     console.log(
       "sendPushNotification - Gönderilen bildirim sonuçları:",
       sendResults

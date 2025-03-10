@@ -36,6 +36,7 @@ import {
   NotificationsActive,
   NotificationsNone,
 } from "@mui/icons-material";
+import CloseIcon from "@mui/icons-material/Close";
 import { motion, AnimatePresence } from "framer-motion";
 import { showToast } from "../../utils/weather-theme-notify/NotificationManager";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
@@ -136,6 +137,43 @@ const StatCard = ({ title, value, total, icon, color }) => {
   );
 };
 
+const StyledDialogTitle = styled(DialogTitle)(({ theme }) => ({
+  padding: theme.spacing(3),
+  background: "linear-gradient(135deg, #4b6cb7 0%, #182848 100%)",
+  color: theme.palette.primary.contrastText,
+  position: "relative",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  "& .MuiTypography-root": {
+    fontWeight: 700,
+    fontSize: "1.25rem",
+    textShadow: "0px 2px 4px rgba(0,0,0,0.2)",
+  },
+}));
+
+const StyledDialogContent = styled(DialogContent)(({ theme }) => ({
+  padding: theme.spacing(3),
+  background: alpha("#f8f9fa", 0.95),
+}));
+
+const ActionButton = styled(Button)(({ theme }) => ({
+  borderRadius: theme.spacing(3),
+  padding: theme.spacing(1.2, 3.5),
+  textTransform: "none",
+  fontWeight: 600,
+  letterSpacing: "0.5px",
+  boxShadow: theme.shadows[3],
+  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+  "&:hover": {
+    transform: "translateY(-3px) scale(1.02)",
+    boxShadow: "0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23)",
+  },
+  "&:active": {
+    transform: "translateY(0) scale(0.98)",
+  },
+}));
+
 const DailyRoutine = ({ user }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -149,6 +187,7 @@ const DailyRoutine = ({ user }) => {
   const [allNotifications, setAllNotifications] = useState(false);
   const [routines, setRoutines] = useState([]);
   const isInitialLoad = useRef(true);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 
   useEffect(() => {
     const initialNotifications = {};
@@ -925,7 +964,7 @@ const DailyRoutine = ({ user }) => {
           <Grid item xs={12} sm={4}>
             <AnimatedButton
               fullWidth
-              onClick={handleDeleteAll}
+              onClick={() => setOpenDeleteDialog(true)}
               startIcon={<DeleteSweep />}
               sx={{
                 background: "linear-gradient(45deg, #9C27B0 30%, #EF5350 90%)",
@@ -936,6 +975,81 @@ const DailyRoutine = ({ user }) => {
           </Grid>
         </Grid>
       </Container>
+      <Dialog
+        open={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          sx: {
+            background: alpha("#f8f9fa", 0.95),
+            backdropFilter: "blur(10px)",
+            borderRadius: 4,
+            boxShadow:
+              "0 50px 100px rgba(0,0,0,0.25), 0 30px 60px rgba(0,0,0,0.22)",
+            padding: 0,
+          },
+        }}
+      >
+        <StyledDialogTitle component="div">
+          <Typography variant="h6" component="span">
+            Tüm Rutinleri Sil
+          </Typography>
+          <IconButton
+            onClick={() => setOpenDeleteDialog(false)}
+            sx={{
+              position: "absolute",
+              right: 8,
+              top: 8,
+              color: "#fff",
+              background: alpha("#000", 0.2),
+              "&:hover": { background: alpha("#000", 0.3) },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </StyledDialogTitle>
+        <StyledDialogContent dividers>
+          <Typography variant="body1">
+            Tüm rutinler silinecek! Emin misiniz?
+          </Typography>
+        </StyledDialogContent>
+        <DialogActions
+          sx={{
+            justifyContent: "space-between",
+            p: 3,
+            bgcolor: alpha("#f5f5f5", 0.5),
+            background:
+              "linear-gradient(rgba(255,255,255,0.8), rgba(245,245,245,0.9))",
+            backdropFilter: "blur(10px)",
+          }}
+        >
+          <ActionButton
+            onClick={() => setOpenDeleteDialog(false)}
+            variant="outlined"
+            color="secondary"
+            sx={{
+              background: "linear-gradient(135deg, #182848 0%, #4b6cb7 100%)",
+            }}
+          >
+            İptal
+          </ActionButton>
+          <ActionButton
+            onClick={() => {
+              setRoutines([]);
+              setOpenDeleteDialog(false);
+            }}
+            variant="contained"
+            color="primary"
+            sx={{
+              background: "linear-gradient(135deg, #4b6cb7 0%, #182848 100%)",
+              ml: "auto",
+            }}
+          >
+            Sil
+          </ActionButton>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

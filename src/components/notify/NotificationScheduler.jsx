@@ -397,6 +397,7 @@ export const computeWaterReminderTimes = async (user) => {
 
     for (let i = 0; i < numGlasses && startTime <= windowEnd.getTime(); i++) {
       const reminderTime = new Date(startTime);
+      reminderTime.setSeconds(0, 0); // Saniyeleri ve milisaniyeleri 0 yap
       const message = getMotivationalMessageForTime(reminderTime);
       reminderSchedule.push({ time: reminderTime, message });
       console.log(
@@ -445,6 +446,7 @@ export const computeWaterReminderTimes = async (user) => {
 
     while (startTime <= windowEnd.getTime()) {
       const reminderTime = new Date(startTime);
+      reminderTime.setSeconds(0, 0); // Saniyeleri ve milisaniyeleri 0 yap
       const message = getMotivationalMessageForTime(reminderTime);
       reminderSchedule.push({ time: reminderTime, message });
       console.log(

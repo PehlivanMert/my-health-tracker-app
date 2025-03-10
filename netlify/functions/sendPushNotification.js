@@ -231,12 +231,10 @@ exports.handler = async function (event, context) {
 
         // ---------- Global Bildirim Penceresi Kontrolü (Su ve Takviye bildirimleri için) ----------
         let isWithinNotificationWindow = true;
+
         if (userData.notificationWindow) {
           const [nowHour, nowMinute] = now
-            .toLocaleTimeString("tr-TR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })
+            .toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })
             .split(":")
             .map(Number);
           const nowTotal = nowHour * 60 + nowMinute;
@@ -248,11 +246,23 @@ exports.handler = async function (event, context) {
             .map(Number);
           const startTotal = startH * 60 + startM;
           const endTotal = endH * 60 + endM;
-          if (!(nowTotal >= startTotal && nowTotal <= endTotal)) {
+
+          if (startTotal < endTotal) {
+            // Aynı gün içindeki pencere
+            isWithinNotificationWindow =
+              nowTotal >= startTotal && nowTotal <= endTotal;
+          } else {
+            // Pencere gece boyunca (ör. 18:45 - 05:30)
+            isWithinNotificationWindow =
+              nowTotal >= startTotal || nowTotal <= endTotal;
+          }
+
+          if (!isWithinNotificationWindow) {
             console.log(
               `Kullanıcı ${userDoc.id} için bildirim penceresi dışında: ${nowTotal} - ${startTotal}-${endTotal}`
             );
-            isWithinNotificationWindow = false;
+            // Bildirim gönderimini atla
+            return;
           }
         }
 

@@ -42,10 +42,10 @@ const supplementsCache = {};
 const getCachedUsers = async () => {
   const nowMillis = Date.now();
   if (cachedUsers && nowMillis - cachedUsersTimestamp < CACHE_TTL) {
-    console.log("Kullanıcılar cache'den alınıyor.");
+    console.log("Kullanıcılar ve Rutinler cache'den alınıyor.");
     return cachedUsers;
   }
-  console.log("Kullanıcılar Firestore'dan çekiliyor.");
+  console.log("Kullanıcılar ve Rutinler Firestore'dan çekiliyor.");
   const snapshot = await db.collection("users").get();
   cachedUsers = snapshot.docs;
   cachedUsersTimestamp = nowMillis;

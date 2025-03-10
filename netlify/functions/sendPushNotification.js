@@ -28,14 +28,20 @@ const getTurkeyTime = () => {
   );
 };
 
-// Global cache değişkenleri: kullanıcı verileri 15 dakikalık TTL ile saklanır
+// Cache TTL: 15 dakika (900.000 ms)
+const CACHE_TTL = 900000;
+
+// Global cache değişkenleri
 let cachedUsers = null;
 let cachedUsersTimestamp = 0;
-const USERS_CACHE_TTL = 750000; // 15 dakika
+const calendarEventsCache = {};
+const waterCache = {};
+const supplementsCache = {};
 
+// Cache'lenmiş kullanıcıları alır
 const getCachedUsers = async () => {
   const nowMillis = Date.now();
-  if (cachedUsers && nowMillis - cachedUsersTimestamp < USERS_CACHE_TTL) {
+  if (cachedUsers && nowMillis - cachedUsersTimestamp < CACHE_TTL) {
     console.log("Kullanıcılar cache'den alınıyor.");
     return cachedUsers;
   }
@@ -44,6 +50,67 @@ const getCachedUsers = async () => {
   cachedUsers = snapshot.docs;
   cachedUsersTimestamp = nowMillis;
   return cachedUsers;
+};
+
+// Cache'lenmiş takvim verilerini alır
+const getCachedCalendarEvents = async (userId) => {
+  const nowMillis = Date.now();
+  if (
+    calendarEventsCache[userId] &&
+    nowMillis - calendarEventsCache[userId].timestamp < CACHE_TTL
+  ) {
+    console.log(`Takvim verileri cache'den alınıyor (user: ${userId}).`);
+    return calendarEventsCache[userId].data;
+  }
+  console.log(`Takvim verileri Firestore'dan çekiliyor (user: ${userId}).`);
+  const snapshot = await db
+    .collection("users")
+    .doc(userId)
+    .collection("calendarEvents")
+    .get();
+  calendarEventsCache[userId] = { data: snapshot, timestamp: nowMillis };
+  return snapshot;
+};
+
+// Cache'lenmiş su verilerini alır
+const getCachedWater = async (userId) => {
+  const nowMillis = Date.now();
+  if (
+    waterCache[userId] &&
+    nowMillis - waterCache[userId].timestamp < CACHE_TTL
+  ) {
+    console.log(`Su verileri cache'den alınıyor (user: ${userId}).`);
+    return waterCache[userId].data;
+  }
+  console.log(`Su verileri Firestore'dan çekiliyor (user: ${userId}).`);
+  const snapshot = await db
+    .collection("users")
+    .doc(userId)
+    .collection("water")
+    .doc("current")
+    .get();
+  waterCache[userId] = { data: snapshot, timestamp: nowMillis };
+  return snapshot;
+};
+
+// Cache'lenmiş supplement verilerini alır
+const getCachedSupplements = async (userId) => {
+  const nowMillis = Date.now();
+  if (
+    supplementsCache[userId] &&
+    nowMillis - supplementsCache[userId].timestamp < CACHE_TTL
+  ) {
+    console.log(`Supplement verileri cache'den alınıyor (user: ${userId}).`);
+    return supplementsCache[userId].data;
+  }
+  console.log(`Supplement verileri Firestore'dan çekiliyor (user: ${userId}).`);
+  const snapshot = await db
+    .collection("users")
+    .doc(userId)
+    .collection("supplements")
+    .get();
+  supplementsCache[userId] = { data: snapshot, timestamp: nowMillis };
+  return snapshot;
 };
 
 exports.handler = async function (event, context) {
@@ -62,6 +129,7 @@ exports.handler = async function (event, context) {
         if (!fcmToken) return;
 
         // ---------- Rutin Bildirimleri ----------
+        // Rutin verileri kullanıcı dokümanı içinde bulunduğundan cache'lenmiş durumda
         if (userData.routines && Array.isArray(userData.routines)) {
           userData.routines.forEach((routine) => {
             if (!routine.notificationEnabled || routine.checked) return;
@@ -87,46 +155,26 @@ exports.handler = async function (event, context) {
           });
         }
 
-        // ---------- Subcollection Sorgularını Paralel Çalıştırma ----------
-        const calendarEventsPromise = db
-          .collection("users")
-          .doc(userDoc.id)
-          .collection("calendarEvents")
-          .get()
-          .catch((err) => {
+        // ---------- Cache'lenmiş Subcollection Sorgularını Paralel Çalıştırma ----------
+        const [calendarSnapshot, waterSnap, suppSnapshot] = await Promise.all([
+          getCachedCalendarEvents(userDoc.id).catch((err) => {
             console.error(`Kullanıcı ${userDoc.id} için takvim hatası:`, err);
             return null;
-          });
-        const waterPromise = db
-          .collection("users")
-          .doc(userDoc.id)
-          .collection("water")
-          .doc("current")
-          .get()
-          .catch((err) => {
+          }),
+          getCachedWater(userDoc.id).catch((err) => {
             console.error(
               `Kullanıcı ${userDoc.id} için su hatırlatma hatası:`,
               err
             );
             return null;
-          });
-        const supplementsPromise = db
-          .collection("users")
-          .doc(userDoc.id)
-          .collection("supplements")
-          .get()
-          .catch((err) => {
+          }),
+          getCachedSupplements(userDoc.id).catch((err) => {
             console.error(
               `Kullanıcı ${userDoc.id} için takviye hatırlatma hatası:`,
               err
             );
             return null;
-          });
-
-        const [calendarSnapshot, waterSnap, suppSnapshot] = await Promise.all([
-          calendarEventsPromise,
-          waterPromise,
-          supplementsPromise,
+          }),
         ]);
 
         // ---------- Takvim Bildirimleri (Global bildirim penceresinden bağımsız) ----------

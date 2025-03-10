@@ -1,5 +1,4 @@
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
@@ -16,16 +15,9 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-
-// Analytics yalnızca tarayıcı ortamında initialize edilsin
-let analytics;
-if (typeof window !== "undefined") {
-  analytics = getAnalytics(app);
-}
-
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 const messaging = getMessaging(app);
 
-export { app, auth, db, storage, messaging, analytics };
+export { app, auth, db, storage, messaging };

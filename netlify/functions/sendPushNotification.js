@@ -31,7 +31,7 @@ const getTurkeyTime = () => {
 // Global cache değişkenleri: kullanıcı verileri 15 dakikalık TTL ile saklanır
 let cachedUsers = null;
 let cachedUsersTimestamp = 0;
-const USERS_CACHE_TTL = 900000; // 15 dakika
+const USERS_CACHE_TTL = 750000; // 15 dakika
 
 const getCachedUsers = async () => {
   const nowMillis = Date.now();

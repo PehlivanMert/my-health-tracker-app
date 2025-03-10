@@ -689,7 +689,7 @@ function App() {
                       fontSize: { xs: "0.8rem", sm: "1rem" },
                     }}
                   >
-                    {format(currentTime, "dd MMMM yyyy")}
+                    {format(currentTime, "dd MMMM yyyy", { locale: tr })}
                   </Typography>
                 </Box>
 

@@ -63,6 +63,7 @@ import welcomeAnimation from "./assets/welcomeAnimation.json";
 import HealthDashboard from "./components/health-dashboard/HealthDashboard";
 import { computeAge } from "../src/utils/dateHelpers";
 import BirthdayCelebration from "/src/utils/BirthdayCelebration.jsx";
+import { tr } from "date-fns/locale";
 
 // Animasyonlar
 const float = keyframes`

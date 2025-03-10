@@ -71,6 +71,10 @@ exports.handler = async function (event, context) {
             const routineTime = new Date(now);
             routineTime.setHours(routineHour, routineMinute, 0, 0);
             if (Math.abs(now - routineTime) / 60000 < 0.3) {
+              console.log(
+                `sendPushNotification - Kullanıcı ${userDoc.id} için rutin bildirimi zamanı:`,
+                routineTime
+              );
               notificationsToSend.push({
                 token: fcmToken,
                 data: {
@@ -81,29 +85,6 @@ exports.handler = async function (event, context) {
               });
             }
           });
-        }
-
-        // ---------- Global Bildirim Penceresi Kontrolü ----------
-        if (userData.notificationWindow) {
-          const [nowHour, nowMinute] = now
-            .toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })
-            .split(":")
-            .map(Number);
-          const nowTotal = nowHour * 60 + nowMinute;
-          const [startH, startM] = userData.notificationWindow.start
-            .split(":")
-            .map(Number);
-          const [endH, endM] = userData.notificationWindow.end
-            .split(":")
-            .map(Number);
-          const startTotal = startH * 60 + startM;
-          const endTotal = endH * 60 + endM;
-          if (!(nowTotal >= startTotal && nowTotal <= endTotal)) {
-            console.log(
-              `Kullanıcı ${userDoc.id} için bildirim penceresi dışında: ${nowTotal} - ${startTotal}-${endTotal}`
-            );
-            return;
-          }
         }
 
         // ---------- Subcollection Sorgularını Paralel Çalıştırma ----------
@@ -148,7 +129,7 @@ exports.handler = async function (event, context) {
           supplementsPromise,
         ]);
 
-        // ---------- Takvim Bildirimleri ----------
+        // ---------- Takvim Bildirimleri (Global bildirim penceresinden bağımsız) ----------
         if (calendarSnapshot) {
           calendarSnapshot.forEach((docSnap) => {
             const eventData = docSnap.data();
@@ -166,6 +147,10 @@ exports.handler = async function (event, context) {
               eventStartTurkey.getTime() - offsetMinutes * 60000
             );
             if (Math.abs(now - triggerTime) / 60000 < 0.3) {
+              console.log(
+                `sendPushNotification - Kullanıcı ${userDoc.id} için takvim bildirimi zamanı:`,
+                triggerTime
+              );
               notificationsToSend.push({
                 token: fcmToken,
                 data: {
@@ -182,8 +167,32 @@ exports.handler = async function (event, context) {
           });
         }
 
-        // ---------- Su Bildirimleri ----------
-        if (waterSnap && waterSnap.exists) {
+        // ---------- Global Bildirim Penceresi Kontrolü (Su ve Takviye bildirimleri için) ----------
+        let isWithinNotificationWindow = true;
+        if (userData.notificationWindow) {
+          const [nowHour, nowMinute] = now
+            .toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })
+            .split(":")
+            .map(Number);
+          const nowTotal = nowHour * 60 + nowMinute;
+          const [startH, startM] = userData.notificationWindow.start
+            .split(":")
+            .map(Number);
+          const [endH, endM] = userData.notificationWindow.end
+            .split(":")
+            .map(Number);
+          const startTotal = startH * 60 + startM;
+          const endTotal = endH * 60 + endM;
+          if (!(nowTotal >= startTotal && nowTotal <= endTotal)) {
+            console.log(
+              `Kullanıcı ${userDoc.id} için bildirim penceresi dışında: ${nowTotal} - ${startTotal}-${endTotal}`
+            );
+            isWithinNotificationWindow = false;
+          }
+        }
+
+        // ---------- Su Bildirimleri (Global bildirim penceresi kontrolü geçerse) ----------
+        if (isWithinNotificationWindow && waterSnap && waterSnap.exists) {
           const waterData = waterSnap.data();
           if (waterData && waterData.nextWaterReminderTime) {
             const nextReminder = new Date(waterData.nextWaterReminderTime);
@@ -213,8 +222,8 @@ exports.handler = async function (event, context) {
           }
         }
 
-        // ---------- Takviye Bildirimleri ----------
-        if (suppSnapshot) {
+        // ---------- Takviye Bildirimleri (Global bildirim penceresi kontrolü geçerse) ----------
+        if (isWithinNotificationWindow && suppSnapshot) {
           suppSnapshot.forEach((docSnap) => {
             const suppData = docSnap.data();
             if (
@@ -231,6 +240,10 @@ exports.handler = async function (event, context) {
                 })
               );
               if (Math.abs(now - nextReminderTurkey) / 60000 < 0.3) {
+                console.log(
+                  `sendPushNotification - Kullanıcı ${userDoc.id} için takviye bildirimi zamanı:`,
+                  nextReminderTurkey
+                );
                 const estimatedRemainingDays = Math.floor(
                   suppData.quantity / suppData.dailyUsage
                 );
@@ -240,8 +253,8 @@ exports.handler = async function (event, context) {
                   title = `${suppData.name} Takviyen Bitti!`;
                   body = `Takviyen tamamen tükendi. Lütfen yenilemeyi unutmayın.`;
                 } else if ([14, 7, 3, 1].includes(estimatedRemainingDays)) {
-                  title = `${suppData.name} Takviyenden ${estimatedRemainingDays} Gün Kaldı!`;
-                  body = `Takviyenden ${estimatedRemainingDays} gün kaldı. Zamanında almayı unutmayın.`;
+                  title = `${suppData.name} Takviyeden ${estimatedRemainingDays} Gün Kaldı!`;
+                  body = `Takviyeden ${estimatedRemainingDays} gün kaldı. Zamanında almayı unutmayın.`;
                 } else {
                   title = `${suppData.name} Takviyesini Almayı Unutmayın!`;
                   body = `Belirlenen saatte (${nextReminderTurkey.toLocaleTimeString(

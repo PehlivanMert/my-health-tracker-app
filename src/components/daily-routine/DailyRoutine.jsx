@@ -363,7 +363,9 @@ const DailyRoutine = ({ user }) => {
 
   // Tüm rutinleri sil
   const handleDeleteAll = () => {
-    setRoutines([]);
+    if (window.confirm("Tüm rutinler silinecek! Emin misiniz?")) {
+      setRoutines([]);
+    }
   };
 
   // Her rutinin Firestore'daki "notificationEnabled" alanını güncelleme

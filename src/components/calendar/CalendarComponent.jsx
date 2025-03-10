@@ -629,7 +629,6 @@ const CalendarComponent = ({ user }) => {
         }}
       >
         <FullCalendar
-          timeZone="Europe/Istanbul"
           ref={calendarRef}
           plugins={[
             dayGridPlugin,

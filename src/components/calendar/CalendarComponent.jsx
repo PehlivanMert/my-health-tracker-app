@@ -815,9 +815,16 @@ const CalendarComponent = ({ user }) => {
 // ----------------------------------------------------------------
 // Etkinliğin nasıl görüneceğini özelleştiren içerik fonksiyonu
 const renderEventContent = (eventInfo) => {
-  const startStr = DateTime.fromJSDate(eventInfo.event.start).toFormat("HH:mm");
-  const endStr = DateTime.fromJSDate(eventInfo.event.end).toFormat("HH:mm");
+  const startStr = DateTime.fromJSDate(eventInfo.event.start)
+    .setZone("Europe/Istanbul") // İstanbul saat dilimine ayarla
+    .toFormat("HH:mm");
+
+  const endStr = DateTime.fromJSDate(eventInfo.event.end)
+    .setZone("Europe/Istanbul") // İstanbul saat dilimine ayarla
+    .toFormat("HH:mm");
+
   const isAllDay = eventInfo.event.allDay;
+
   return (
     <Box
       sx={{
@@ -1186,10 +1193,23 @@ const styles = {
           boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
           transition: "all 0.3s ease",
           "@media (max-width:600px)": {
-            fontSize: "0.8rem",
-            padding: "4px 8px",
+            fontSize: "0.6rem !important", // !important ekledik
+            padding: "2px 4px !important", // !important ekledik
           },
         },
+        "& .fc-toolbar .fc-button": {
+          backgroundColor: "#3674B5",
+          color: "white",
+          border: "none",
+          borderRadius: "8px",
+          boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+          transition: "all 0.3s ease",
+          "@media (max-width:600px)": {
+            fontSize: "0.6rem",
+            padding: "2px 4px",
+          },
+        },
+
         "& .fc-button:hover": {
           backgroundColor: "#A1E3F9",
           transform: "translateY(-2px)",
@@ -1197,14 +1217,6 @@ const styles = {
         "& .fc-button-primary.fc-button-active": {
           backgroundColor: "#98E4FF",
           color: "black",
-        },
-        "& .fc-toolbar-title": {
-          color: "#fff",
-          fontSize: "1.5rem",
-          fontWeight: "bold",
-          "@media (max-width:600px)": {
-            fontSize: "1.2rem",
-          },
         },
       },
     },
@@ -1215,6 +1227,13 @@ const styles = {
       {
         border: "1px solid rgba(255, 255, 255, 0.2) !important",
       },
+    "& .fc-toolbar-title": {
+      fontSize: "1.5rem",
+      fontWeight: "bold",
+      "@media (max-width:600px)": {
+        fontSize: "1.2rem",
+      },
+    },
   },
   dialogContent: {
     py: 2,

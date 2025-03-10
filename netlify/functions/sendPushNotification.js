@@ -27,8 +27,8 @@ const getTurkeyTime = () => {
   );
 };
 
-// Cache TTL: 15 dakika (900.000 ms)
-const CACHE_TTL = 60000;
+// Cache TTL: 10 dakika (600.000 ms)
+const CACHE_TTL = 600000;
 
 // Global cache değişkenleri
 let cachedUsers = null;

@@ -188,20 +188,32 @@ const DailyRoutine = ({ user }) => {
 
   // Gece yarısı UI reseti (check'ler sıfırlanır) ve haftalık/aylık kümülatif sayaçlar
   useEffect(() => {
-    const checkReset = () => {
-      const now = new Date();
-      // Sonraki gün gece yarısı
-      const tomorrow = new Date(now);
-      tomorrow.setDate(now.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0);
-      // Sonraki Pazartesi
-      const nextMonday = new Date(now);
-      nextMonday.setDate(now.getDate() + ((1 + 7 - now.getDay()) % 7));
-      nextMonday.setHours(0, 0, 0, 0);
-      // Sonraki ay
-      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const getTurkeyTime = (date = new Date()) =>
+      new Date(date.toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
 
-      // Günlük reset: yalnızca UI'deki check'leri sıfırla
+    const checkReset = () => {
+      const nowTurkey = getTurkeyTime();
+
+      // Türkiye saatine göre yarın 00:00'ı hesapla
+      const tomorrowTurkey = new Date(nowTurkey);
+      tomorrowTurkey.setDate(nowTurkey.getDate() + 1);
+      tomorrowTurkey.setHours(0, 0, 0, 0);
+
+      // Türkiye saatine göre sonraki Pazartesi
+      const nextMondayTurkey = new Date(nowTurkey);
+      nextMondayTurkey.setDate(
+        nowTurkey.getDate() + ((1 + 7 - nowTurkey.getDay()) % 7)
+      );
+      nextMondayTurkey.setHours(0, 0, 0, 0);
+
+      // Türkiye saatine göre sonraki ayın ilk günü
+      const nextMonthTurkey = new Date(
+        nowTurkey.getFullYear(),
+        nowTurkey.getMonth() + 1,
+        1
+      );
+
+      // Günlük reset: UI'daki check'leri Türkiye saatine göre yarın 00:00'da sıfırla
       const timeoutDaily = setTimeout(() => {
         setRoutines((prevRoutines) =>
           prevRoutines.map((r) => ({
@@ -210,17 +222,17 @@ const DailyRoutine = ({ user }) => {
             completionDate: null,
           }))
         );
-      }, tomorrow - now);
+      }, tomorrowTurkey - nowTurkey);
 
-      // Yeni haftaya geçişte kümülatif sayaçlar resetlensin
+      // Haftalık reset: Türkiye saatine göre sonraki Pazartesi'de kümülatif sayaçları sıfırla
       const timeoutWeekly = setTimeout(() => {
         setWeeklyStats({ added: 0, completed: 0 });
-      }, nextMonday - now);
+      }, nextMondayTurkey - nowTurkey);
 
-      // Yeni aya geçişte kümülatif sayaçlar resetlensin
+      // Aylık reset: Türkiye saatine göre sonraki ayın ilk gününde kümülatif sayaçları sıfırla
       const timeoutMonthly = setTimeout(() => {
         setMonthlyStats({ added: 0, completed: 0 });
-      }, nextMonth - now);
+      }, nextMonthTurkey - nowTurkey);
 
       return () => {
         clearTimeout(timeoutDaily);
@@ -229,9 +241,16 @@ const DailyRoutine = ({ user }) => {
       };
     };
 
-    checkReset();
-    const timer = setInterval(checkReset, 3600000); // Her saat kontrol
-    return () => clearInterval(timer);
+    const cleanup = checkReset();
+    const timer = setInterval(() => {
+      // Her saat kontrol edip yeni zamanlamaları ayarla
+      cleanup();
+      checkReset();
+    }, 3600000);
+
+    return () => {
+      clearInterval(timer);
+    };
   }, []);
 
   // Rutin kaydetme işlemi

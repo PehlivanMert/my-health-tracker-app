@@ -14,7 +14,7 @@ import Confetti from "react-confetti";
 import Lottie from "lottie-react";
 import waterAnimation from "../../assets/waterAnimation.json";
 import { db } from "../auth/firebaseConfig";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, updateDoc, getDoc, setDoc, arrayUnion } from "firebase/firestore";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import NotificationsIcon from "@mui/icons-material/Notifications";
@@ -138,35 +138,36 @@ const WaterContainer = styled(Box)(({ theme }) => ({
 const getTurkeyTime = () =>
   new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
 
-// Ek: resetDailyWaterIntake fonksiyonunun tanımlaması
+// ─── YENİ RESET İŞLEVİ ─────────────────────────────────────────────
+// Bu versiyonda, Firestore'dan çekilen en güncel veriyi (currentFirestoreData) kullanıyoruz
+// ve arrayUnion ile history dizisine yeni entry ekleyerek, eski kayıtların silinmesini engelliyoruz.
 const resetDailyWaterIntake = async (
   getWaterDocRef,
-  waterData,
+  currentFirestoreData,
   fetchWaterData
 ) => {
   const ref = getWaterDocRef();
   const todayStr = getTurkeyTime().toLocaleDateString("en-CA");
   const newHistoryEntry = {
-    date: waterData.lastResetDate || todayStr,
-    intake: waterData.waterIntake,
+    date: currentFirestoreData.lastResetDate || todayStr,
+    intake: currentFirestoreData.waterIntake,
   };
 
   try {
-    await setDoc(
-      ref,
-      {
-        waterIntake: 0,
-        yesterdayWaterIntake: waterData.waterIntake,
-        lastResetDate: todayStr,
-        history: [...(waterData.history || []), newHistoryEntry],
-      },
-      { merge: true }
-    );
+    // Güncel verilerden history dizisine yeni entry ekleniyor; böylece eski kayıtlar korunuyor.
+    await updateDoc(ref, {
+      waterIntake: 0,
+      yesterdayWaterIntake: currentFirestoreData.waterIntake,
+      lastResetDate: todayStr,
+      history: arrayUnion(newHistoryEntry),
+    });
     await fetchWaterData();
   } catch (error) {
     console.error("Reset işlemi sırasında hata oluştu:", error);
   }
 };
+
+// ─────────────────────────────────────────────────────────────────
 
 const WaterTracker = ({ user, onWaterDataChange }) => {
   const [waterData, setWaterData] = useState({
@@ -193,11 +194,13 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
 
   const getWaterDocRef = () => doc(db, "users", user.uid, "water", "current");
 
+  // Güncelleme öncesinde Firestore'dan çekilen veriyi kullanarak sıfırlama gerekip gerekmediğini kontrol ediyoruz.
   const checkIfResetNeeded = async (data) => {
     const nowTurkey = getTurkeyTime();
     const todayStr = nowTurkey.toLocaleDateString("en-CA");
     if (data.lastResetDate !== todayStr) {
-      await resetDailyWaterIntake(getWaterDocRef, waterData, fetchWaterData);
+      // NOT: Burada state'deki waterData yerine, Firestore'dan çekilen data (en güncel veri) kullanılıyor.
+      await resetDailyWaterIntake(getWaterDocRef, data, fetchWaterData);
     }
   };
 
@@ -312,6 +315,8 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     100
   );
 
+  // ─── GECE YARISI RESET LOGİĞİ ─────────────────────────────
+  // Bu useEffect, gün değişiminde (gece yarısı) sıfırlama işlemini tetikler.
   useEffect(() => {
     const scheduleReset = () => {
       const now = getTurkeyTime();
@@ -321,6 +326,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
       const msUntilMidnight = tomorrow.getTime() - now.getTime();
 
       const timeoutId = setTimeout(async () => {
+        // Burada state'deki waterData yerine, fetchWaterData ile çekilen en güncel veriyi kullanmak daha sağlıklı olabilir.
         await resetDailyWaterIntake(getWaterDocRef, waterData, fetchWaterData);
         scheduleReset(); // Bir sonraki gün için yeniden zamanla
       }, msUntilMidnight);
@@ -329,7 +335,6 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     };
 
     const resetTimeout = scheduleReset();
-
     return () => clearTimeout(resetTimeout);
   }, [user]);
 

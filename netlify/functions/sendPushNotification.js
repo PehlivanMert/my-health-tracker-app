@@ -112,6 +112,18 @@ const getCachedSupplements = async (userId) => {
   return snapshot;
 };
 
+// sendEachForMulticast: Her bir token için ayrı ayrı bildirim gönderir.
+const sendEachForMulticast = async (msg) => {
+  const { tokens, data } = msg;
+  const sendPromises = tokens.map((token) =>
+    admin.messaging().send({
+      token,
+      data,
+    })
+  );
+  return await Promise.all(sendPromises);
+};
+
 exports.handler = async function (event, context) {
   try {
     const now = getTurkeyTime();
@@ -124,7 +136,7 @@ exports.handler = async function (event, context) {
     await Promise.all(
       userDocs.map(async (userDoc) => {
         const userData = userDoc.data();
-        const fcmTokens = userData.fcmTokens; // Artık token dizisi kullanılıyor
+        const fcmTokens = userData.fcmTokens; // Token dizisi kullanılıyor
         if (!fcmTokens || fcmTokens.length === 0) return;
 
         // ---------- Rutin Bildirimleri ----------
@@ -143,14 +155,10 @@ exports.handler = async function (event, context) {
               );
               notificationsToSend.push({
                 tokens: fcmTokens,
-                payload: {
-                  notification: {
-                    title: "Rutin Hatırlatması",
-                    body: `Şimdi ${routine.title} rutininin zamanı geldi!`,
-                  },
-                  data: {
-                    routineId: routine.id || "",
-                  },
+                data: {
+                  title: "Rutin Hatırlatması",
+                  body: `Şimdi ${routine.title} rutininin zamanı geldi!`,
+                  routineId: routine.id || "",
                 },
               });
             }
@@ -207,18 +215,14 @@ exports.handler = async function (event, context) {
               );
               notificationsToSend.push({
                 tokens: fcmTokens,
-                payload: {
-                  notification: {
-                    title: "Takvim Etkinliği Hatırlatması",
-                    body: `Etkinlik: ${eventData.title} ${
-                      offsetMinutes > 0
-                        ? `(${offsetMinutes} dakika sonra)`
-                        : "(şimdi)"
-                    } başlayacak.`,
-                  },
-                  data: {
-                    eventId: docSnap.id,
-                  },
+                data: {
+                  title: "Takvim Etkinliği Hatırlatması",
+                  body: `Etkinlik: ${eventData.title} ${
+                    offsetMinutes > 0
+                      ? `(${offsetMinutes} dakika sonra)`
+                      : "(şimdi)"
+                  } başlayacak.`,
+                  eventId: docSnap.id,
                 },
               });
             }
@@ -269,19 +273,14 @@ exports.handler = async function (event, context) {
             if (Math.abs(now - nextReminderTurkey) / 60000 < 0.6) {
               notificationsToSend.push({
                 tokens: fcmTokens,
-                payload: {
-                  notification: {
-                    title: "Su İçme Hatırlatması",
-                    body:
-                      waterData.nextWaterReminderMessage ||
-                      `Günlük su hedefin ${waterData.dailyWaterTarget} ml. Su içmeyi unutma!`,
-                  },
-                  data: {
-                    nextWaterReminderTime: waterData.nextWaterReminderTime,
-                    nextWaterReminderMessage:
-                      waterData.nextWaterReminderMessage,
-                    type: "water",
-                  },
+                data: {
+                  title: "Su İçme Hatırlatması",
+                  body:
+                    waterData.nextWaterReminderMessage ||
+                    `Günlük su hedefin ${waterData.dailyWaterTarget} ml. Su içmeyi unutma!`,
+                  nextWaterReminderTime: waterData.nextWaterReminderTime,
+                  nextWaterReminderMessage: waterData.nextWaterReminderMessage,
+                  type: "water",
                 },
               });
             }
@@ -334,14 +333,10 @@ exports.handler = async function (event, context) {
                 }
                 notificationsToSend.push({
                   tokens: fcmTokens,
-                  payload: {
-                    notification: {
-                      title,
-                      body,
-                    },
-                    data: {
-                      supplementId: docSnap.id,
-                    },
+                  data: {
+                    title,
+                    body,
+                    supplementId: docSnap.id,
                   },
                 });
               }
@@ -351,17 +346,17 @@ exports.handler = async function (event, context) {
       })
     );
 
-    // Tüm bildirim mesajlarını paralel olarak sendToDevice kullanarak gönderiyoruz
+    // Tüm bildirim mesajlarını, her token için ayrı ayrı gönderiyoruz (sendEachForMulticast)
     const sendResults = await Promise.all(
-      notificationsToSend.map((msg) =>
-        admin
-          .messaging()
-          .sendToDevice(msg.tokens, msg.payload)
-          .catch((err) => {
-            console.error("Bildirim gönderme hatası:", err, "Mesaj:", msg);
-            return err;
-          })
-      )
+      notificationsToSend.map(async (msg) => {
+        try {
+          const result = await sendEachForMulticast(msg);
+          return result;
+        } catch (err) {
+          console.error("Bildirim gönderme hatası:", err, "Mesaj:", msg);
+          return err;
+        }
+      })
     );
     console.log(
       "sendPushNotification - Gönderilen bildirim sonuçları:",

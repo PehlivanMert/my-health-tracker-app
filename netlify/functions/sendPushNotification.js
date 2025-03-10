@@ -1,4 +1,3 @@
-// sendPushNotification.js
 const admin = require("firebase-admin");
 const fetch = require("node-fetch");
 
@@ -125,11 +124,10 @@ exports.handler = async function (event, context) {
     await Promise.all(
       userDocs.map(async (userDoc) => {
         const userData = userDoc.data();
-        const fcmToken = userData.fcmToken;
-        if (!fcmToken) return;
+        const fcmTokens = userData.fcmTokens; // Artık token dizisi kullanılıyor
+        if (!fcmTokens || fcmTokens.length === 0) return;
 
         // ---------- Rutin Bildirimleri ----------
-        // Rutin verileri kullanıcı dokümanı içinde bulunduğundan cache'lenmiş durumda
         if (userData.routines && Array.isArray(userData.routines)) {
           userData.routines.forEach((routine) => {
             if (!routine.notificationEnabled || routine.checked) return;
@@ -144,7 +142,7 @@ exports.handler = async function (event, context) {
                 routineTime
               );
               notificationsToSend.push({
-                token: fcmToken,
+                tokens: fcmTokens,
                 data: {
                   title: "Rutin Hatırlatması",
                   body: `Şimdi ${routine.title} rutininin zamanı geldi!`,
@@ -191,6 +189,10 @@ exports.handler = async function (event, context) {
                 timeZone: "Europe/Istanbul",
               })
             );
+            console.log(
+              `sendPushNotification - Kullanıcı ${userDoc.id} için su bildirimi zamanı:`,
+              eventData.title
+            );
             const triggerTime = new Date(
               eventStartTurkey.getTime() - offsetMinutes * 60000
             );
@@ -200,7 +202,7 @@ exports.handler = async function (event, context) {
                 triggerTime
               );
               notificationsToSend.push({
-                token: fcmToken,
+                tokens: fcmTokens,
                 data: {
                   title: "Takvim Etkinliği Hatırlatması",
                   body: `Etkinlik: ${eventData.title} ${
@@ -219,7 +221,10 @@ exports.handler = async function (event, context) {
         let isWithinNotificationWindow = true;
         if (userData.notificationWindow) {
           const [nowHour, nowMinute] = now
-            .toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })
+            .toLocaleTimeString("tr-TR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
             .split(":")
             .map(Number);
           const nowTotal = nowHour * 60 + nowMinute;
@@ -255,7 +260,7 @@ exports.handler = async function (event, context) {
             );
             if (Math.abs(now - nextReminderTurkey) / 60000 < 0.6) {
               notificationsToSend.push({
-                token: fcmToken,
+                tokens: fcmTokens,
                 data: {
                   title: "Su İçme Hatırlatması",
                   body:
@@ -287,6 +292,10 @@ exports.handler = async function (event, context) {
                   timeZone: "Europe/Istanbul",
                 })
               );
+              console.log(
+                `sendPushNotification - Kullanıcı ${userDoc.id} için takviye bildirimi zamanı:`,
+                nextReminderTurkey
+              );
               if (Math.abs(now - nextReminderTurkey) / 60000 < 0.3) {
                 console.log(
                   `sendPushNotification - Kullanıcı ${userDoc.id} için takviye bildirimi zamanı:`,
@@ -311,7 +320,7 @@ exports.handler = async function (event, context) {
                   )}) almanız gereken takviyeyi henüz almadınız.`;
                 }
                 notificationsToSend.push({
-                  token: fcmToken,
+                  tokens: fcmTokens,
                   data: {
                     title,
                     body,
@@ -325,12 +334,12 @@ exports.handler = async function (event, context) {
       })
     );
 
-    // Tüm bildirim mesajlarını paralel olarak gönderiyoruz
+    // Tüm bildirim mesajlarını paralel olarak multicast kullanarak gönderiyoruz
     const sendResults = await Promise.all(
       notificationsToSend.map((msg) =>
         admin
           .messaging()
-          .send(msg)
+          .sendMulticast(msg)
           .catch((err) => {
             console.error("Bildirim gönderme hatası:", err, "Mesaj:", msg);
             return err;

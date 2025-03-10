@@ -1,6 +1,6 @@
 import { getToken } from "firebase/messaging";
 import { messaging, db } from "../components/auth/firebaseConfig";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, arrayUnion } from "firebase/firestore";
 
 export const requestNotificationPermissionAndSaveToken = async (user) => {
   try {
@@ -13,26 +13,24 @@ export const requestNotificationPermissionAndSaveToken = async (user) => {
 
       if (fcmToken) {
         const userDocRef = doc(db, "users", user.uid);
-        await updateDoc(userDocRef, { fcmToken });
+        // Yeni token'ı "fcmTokens" dizisine ekliyoruz.
+        await updateDoc(userDocRef, { fcmTokens: arrayUnion(fcmToken) });
         console.log("✅ FCM Token başarıyla kaydedildi:", fcmToken);
       } else {
         console.warn("FCM token alınamadı, token boş.");
-        // Hatalı token varsa Firestore'dan temizleyelim.
-        const userDocRef = doc(db, "users", user.uid);
-        await updateDoc(userDocRef, { fcmToken: null });
+        // İsteğe bağlı: Hatalı tokenı diziden temizlemek için arrayRemove kullanılabilir.
       }
     } else {
       console.warn("Bildirim izni reddedildi.");
-      // İzin reddedilirse, varsa eski token'ı temizleyelim.
-      const userDocRef = doc(db, "users", user.uid);
-      await updateDoc(userDocRef, { fcmToken: null });
+      // İzin reddedilirse, token temizleme işlemini gerçekleştirmek isteyebilirsiniz.
+      // Örneğin: await updateDoc(userDocRef, { fcmTokens: [] });
     }
   } catch (error) {
     console.error("❌ FCM token alınamadı:", error);
-    // Hata durumunda eski token'ı temizlemeye çalışalım.
     try {
       const userDocRef = doc(db, "users", user.uid);
-      await updateDoc(userDocRef, { fcmToken: null });
+      // Hata durumunda token dizisini temizleyebilirsiniz.
+      // await updateDoc(userDocRef, { fcmTokens: [] });
     } catch (updateError) {
       console.error("Firestore token güncelleme hatası:", updateError);
     }

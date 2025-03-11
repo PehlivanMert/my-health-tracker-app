@@ -132,7 +132,6 @@ const sendEachForMulticast = async (msg, userId) => {
           "messaging/invalid-argument",
           "messaging/unregistered",
         ];
-
         const shouldRemove = invalidTokenErrors.includes(error.code);
         return { token, valid: false, shouldRemove, errorCode: error.code };
       })
@@ -149,21 +148,15 @@ const sendEachForMulticast = async (msg, userId) => {
   if (invalidTokens.length > 0 && userId) {
     try {
       const userRef = db.collection("users").doc(userId);
-
       // Transaction içinde tokenları güvenli bir şekilde kaldır
       await db.runTransaction(async (transaction) => {
         const userDoc = await transaction.get(userRef);
         if (!userDoc.exists) return;
-
         const userData = userDoc.data();
         const currentTokens = userData.fcmTokens || [];
-
-        // Geçersiz tokenları filtrele
         const validTokens = currentTokens.filter(
           (token) => !invalidTokens.includes(token)
         );
-
-        // Sadece değişiklik varsa güncelle
         if (validTokens.length !== currentTokens.length) {
           console.log(
             `Kullanıcı ${userId} için ${
@@ -171,7 +164,6 @@ const sendEachForMulticast = async (msg, userId) => {
             } geçersiz token kaldırıldı`
           );
           transaction.update(userRef, { fcmTokens: validTokens });
-
           // Kullanıcı cache'ini sıfırla
           cachedUsers = null;
         }
@@ -183,7 +175,6 @@ const sendEachForMulticast = async (msg, userId) => {
       );
     }
   }
-
   return results;
 };
 
@@ -196,17 +187,15 @@ exports.handler = async function (event, context) {
     // Cache'lenmiş kullanıcıları alıyoruz (15 dakikalık TTL)
     const userDocs = await getCachedUsers();
 
-    // Kullanıcılar arası işlemleri paralel yürütüyoruz
     await Promise.all(
       userDocs.map(async (userDoc) => {
         const userData = userDoc.data();
-        const fcmTokens = userData.fcmTokens; // Token dizisi kullanılıyor
+        const fcmTokens = userData.fcmTokens;
         if (!fcmTokens || fcmTokens.length === 0) return;
 
-        // Kullanıcıya ait bildirimleri toplamak için yerel dizi
         let notificationsForThisUser = [];
 
-        // ---------- Rutin Bildirimleri ----------
+        // Rutin Bildirimleri
         if (userData.routines && Array.isArray(userData.routines)) {
           userData.routines.forEach((routine) => {
             if (!routine.notificationEnabled || routine.checked) return;
@@ -232,7 +221,7 @@ exports.handler = async function (event, context) {
           });
         }
 
-        // ---------- Cache'lenmiş Subcollection Sorgularını Paralel Çalıştırma ----------
+        // Subcollection Sorgularını paralel çalıştır
         const [calendarSnapshot, waterSnap, suppSnapshot] = await Promise.all([
           getCachedCalendarEvents(userDoc.id).catch((err) => {
             console.error(`Kullanıcı ${userDoc.id} için takvim hatası:`, err);
@@ -254,7 +243,7 @@ exports.handler = async function (event, context) {
           }),
         ]);
 
-        // ---------- Takvim Bildirimleri (Global bildirim penceresinden bağımsız) ----------
+        // Takvim Bildirimleri (Global bildirim penceresinden bağımsız)
         if (calendarSnapshot) {
           calendarSnapshot.forEach((docSnap) => {
             const eventData = docSnap.data();
@@ -296,7 +285,7 @@ exports.handler = async function (event, context) {
           });
         }
 
-        // ---------- Global Bildirim Penceresi Kontrolü (Su ve Takviye bildirimleri için) ----------
+        // Global Bildirim Penceresi Kontrolü (Su ve Takviye için)
         let isWithinNotificationWindow = true;
         if (userData.notificationWindow) {
           const [nowHour, nowMinute] = now
@@ -312,7 +301,6 @@ exports.handler = async function (event, context) {
             .map(Number);
           const startTotal = startH * 60 + startM;
           const endTotal = endH * 60 + endM;
-
           if (startTotal < endTotal) {
             isWithinNotificationWindow =
               nowTotal >= startTotal && nowTotal <= endTotal;
@@ -320,17 +308,15 @@ exports.handler = async function (event, context) {
             isWithinNotificationWindow =
               nowTotal >= startTotal || nowTotal <= endTotal;
           }
-
           if (!isWithinNotificationWindow) {
             console.log(
               `Kullanıcı ${userDoc.id} için bildirim penceresi dışında: ${nowTotal} - ${startTotal}-${endTotal}`
             );
-            // Bildirim gönderimini atla
             return;
           }
         }
 
-        // ---------- Su Bildirimleri (Global bildirim penceresi kontrolü geçerse) ----------
+        // Su Bildirimleri
         if (isWithinNotificationWindow && waterSnap && waterSnap.exists) {
           const waterData = waterSnap.data();
           if (waterData && waterData.nextWaterReminderTime) {
@@ -361,7 +347,7 @@ exports.handler = async function (event, context) {
           }
         }
 
-        // ---------- Takviye Bildirimleri (Global bildirim penceresi kontrolü geçerse) ----------
+        // Takviye Bildirimleri
         if (isWithinNotificationWindow && suppSnapshot) {
           suppSnapshot.forEach((docSnap) => {
             const suppData = docSnap.data();
@@ -414,7 +400,6 @@ exports.handler = async function (event, context) {
           });
         }
 
-        // Kullanıcıya ait bildirimler varsa, kullanıcı ID'si ile birlikte ekle
         if (notificationsForThisUser.length > 0) {
           notificationsToSend.push({
             userId: userDoc.id,
@@ -424,7 +409,6 @@ exports.handler = async function (event, context) {
       })
     );
 
-    // Tüm bildirim mesajlarını, her token için ayrı ayrı gönder ve geçersiz tokenları temizle
     const sendResults = await Promise.all(
       notificationsToSend.map(async (userNotifications) => {
         try {
@@ -460,19 +444,15 @@ exports.handler = async function (event, context) {
 };
 
 // ─────────────────────────────────────────────────────────────
-// Aşağıdaki scheduledUpdateNotifications fonksiyonu, Cloud Scheduler
-// veya benzeri bir mekanizma kullanılarak periyodik (örneğin her 5 dakikada bir)
-// tetiklenebilir. Bu fonksiyon, su ve takviye bildirimlerinin zamanının geçmiş olup
-// olmadığını kontrol eder; geçmişse, ilgili saveNextWaterReminderTime veya saveNextSupplementReminderTime
-// fonksiyonlarını çağırarak güncelleme yapar.
-// Bu sayede, uygulama kapalı olsa dahi sunucuda sürekli mantıklı işlemler gerçekleştirilir.
-// ─────────────────────────────────────────────────────────────
+// Scheduled Update Fonksiyonu
+// Bu fonksiyon, Cloud Scheduler veya benzeri mekanizmalarla her dakika tetiklenir.
+// Su ve takviye bildirimlerinin zamanlarının geçmiş olup olmadığını kontrol eder.
+// Eğer geçmişse, ilgili saveNextWaterReminderTime veya saveNextSupplementReminderTime fonksiyonlarını çağırarak güncelleme yapar.
 exports.scheduledUpdateNotifications = async (event, context) => {
   try {
     const now = getTurkeyTime();
     console.log("Scheduled update tetiklendi. Şu anki Türkiye zamanı:", now);
 
-    // Tüm kullanıcıları al
     const userDocs = await getCachedUsers();
 
     await Promise.all(
@@ -489,15 +469,11 @@ exports.scheduledUpdateNotifications = async (event, context) => {
           const waterData = waterSnap.data();
           if (waterData.nextWaterReminderTime) {
             const nextReminderTime = new Date(waterData.nextWaterReminderTime);
-            // Eğer mevcut zaman, bildirim zamanından 1 dakika veya daha fazla geçmişse
             if (now.getTime() > nextReminderTime.getTime() + 60000) {
               console.log(
                 `Kullanıcı ${userId} için su bildirimi süresi geçmiş. Güncelleniyor...`
               );
-              // Su bildirim zamanını güncelle
-              await require("./NotificationScheduler").saveNextWaterReminderTime(
-                { uid: userId }
-              );
+              await saveNextWaterReminderTime({ uid: userId });
             }
           }
         }
@@ -514,8 +490,7 @@ exports.scheduledUpdateNotifications = async (event, context) => {
                 console.log(
                   `Kullanıcı ${userId}, Supplement ${docSnap.id} için bildirim süresi geçmiş. Güncelleniyor...`
                 );
-                // Takviye bildirim zamanını güncelle
-                await require("./SupplementNotificationScheduler").saveNextSupplementReminderTime(
+                await saveNextSupplementReminderTime(
                   { uid: userId },
                   { id: docSnap.id, ...suppData }
                 );
@@ -530,6 +505,111 @@ exports.scheduledUpdateNotifications = async (event, context) => {
     return null;
   } catch (error) {
     console.error("scheduledUpdateNotifications hatası:", error);
+    return null;
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
+// Yardımcı Fonksiyon: getNextSupplementReminderTime
+// Bu fonksiyon, suppData ve kullanıcı bilgilerine göre takviyeye ait gelecek bildirim zamanını hesaplar.
+// Örneğin; eğer suppData'da mevcut bir nextSupplementReminderTime varsa ve hala gelecekte ise onu döndürebilir,
+// aksi halde varsayılan olarak 1 saat sonraki zamanı hesaplayabilir.
+const getNextSupplementReminderTime = async (suppData, user) => {
+  const now = getTurkeyTime();
+  if (suppData.nextSupplementReminderTime) {
+    const scheduled = new Date(suppData.nextSupplementReminderTime);
+    if (scheduled.getTime() > now.getTime() + 60000) {
+      return scheduled;
+    }
+  }
+  // Varsayılan olarak, 1 saat sonrasını hesaplayalım
+  return new Date(now.getTime() + 3600000);
+};
+
+// ─────────────────────────────────────────────────────────────
+// Takviye Bildirim Zamanını Kaydeden Fonksiyon
+// Kullanıcı ve supplement verilerine göre gelecek takviye bildirimi zamanını hesaplar ve Firestore'a kaydeder.
+exports.saveNextSupplementReminderTime = async (user, suppData) => {
+  const nextReminder = await getNextSupplementReminderTime(suppData, user);
+  if (!nextReminder) {
+    console.warn(
+      "saveNextSupplementReminderTime - Sonraki bildirim zamanı hesaplanamadı"
+    );
+    return null;
+  }
+  const suppDocRef = doc(db, "users", user.uid, "supplements", suppData.id);
+  await setDoc(
+    suppDocRef,
+    {
+      nextSupplementReminderTime: nextReminder.toISOString(),
+      // İsterseniz buraya consumption veya trigger verilerini güncelleyebilirsiniz.
+    },
+    { merge: true }
+  );
+  console.log(
+    "saveNextSupplementReminderTime - Kaydedilen sonraki takviye bildirimi zamanı:",
+    nextReminder.toISOString()
+  );
+  return nextReminder;
+};
+
+// ─────────────────────────────────────────────────────────────
+// Su Bildirim Zamanını Kaydeden Fonksiyon
+// Kullanıcının su verilerinden, gelecek su bildirimi zamanını hesaplar ve Firestore'a kaydeder.
+exports.saveNextWaterReminderTime = async (user) => {
+  const waterRef = doc(db, "users", user.uid, "water", "current");
+  const waterSnap = await getDoc(waterRef);
+  let reminderTimes = [];
+  if (waterSnap.exists() && waterSnap.data().reminderTimes) {
+    reminderTimes = waterSnap.data().reminderTimes.map((r) => ({
+      ...r,
+      time: new Date(r.time),
+    }));
+  }
+
+  const now = getTurkeyTime();
+  reminderTimes = reminderTimes.filter(
+    (r) => r.time.getTime() > now.getTime() + 60000
+  );
+  if (reminderTimes.length === 0) {
+    console.log(
+      "saveNextWaterReminderTime - Reminders boş, yeniden hesaplanıyor."
+    );
+    // computeWaterReminderTimes fonksiyonunuz, su bildirim zamanlarını hesaplayıp döndüren fonksiyondur.
+    reminderTimes = await computeWaterReminderTimes(user);
+  }
+  if (reminderTimes.length > 0) {
+    const nextReminder = reminderTimes[0];
+    await setDoc(
+      waterRef,
+      {
+        nextWaterReminderTime: nextReminder.time.toISOString(),
+        nextWaterReminderMessage: nextReminder.message,
+        reminderTimes: reminderTimes.map((obj) => ({
+          time: obj.time.toISOString(),
+          message: obj.message,
+        })),
+      },
+      { merge: true }
+    );
+    console.log(
+      "saveNextWaterReminderTime - Kaydedilen sonraki bildirim zamanı:",
+      nextReminder
+    );
+    return nextReminder;
+  } else {
+    await setDoc(
+      waterRef,
+      {
+        nextWaterReminderTime: null,
+        nextWaterReminderMessage: null,
+        reminderTimes: [],
+      },
+      { merge: true }
+    );
+    console.warn(
+      "saveNextWaterReminderTime - Sonraki bildirim zamanı hesaplanamadı"
+    );
     return null;
   }
 };

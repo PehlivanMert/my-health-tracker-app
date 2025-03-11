@@ -57,7 +57,7 @@
 
 @media (max-width: 600px) {
   .fc .fc-toolbar .fc-button {
-    font-size: 0.6rem !important;
-    padding: 2px 4px !important;
+    font-size: 0.7rem !important;
+    padding: 10px 5px !important;
   }
 }

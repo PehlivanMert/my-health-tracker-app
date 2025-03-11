@@ -24,6 +24,7 @@ import {
   Chip,
   Select,
   MenuItem,
+  useMediaQuery,
 } from "@mui/material";
 import { Delete, Add, Edit } from "@mui/icons-material";
 import { toast } from "react-toastify";
@@ -601,6 +602,7 @@ const CalendarComponent = ({ user }) => {
     );
   };
 
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   return (
     <Paper ref={paperRef} sx={styles.container}>
       <Box sx={styles.controls}>
@@ -637,13 +639,14 @@ const CalendarComponent = ({ user }) => {
             multiMonthPlugin,
             rrulePlugin,
           ]}
-          initialView={window.innerWidth < 600 ? "timeGridDay" : "dayGridMonth"}
+          initialView={isMobile ? "timeGridDay" : "dayGridMonth"}
           firstDay={1}
           headerToolbar={{
             left: "prev,next today",
             center: "title",
-            right:
-              "dayGridMonth,timeGridWeek,timeGridDay,multiMonthYear,fullscreenButton",
+            right: isMobile
+              ? "dayGridMonth,timeGridWeek,timeGridDay,multiMonthYear"
+              : "dayGridMonth,timeGridWeek,timeGridDay,multiMonthYear,fullscreenButton",
           }}
           customButtons={{
             fullscreenButton: {

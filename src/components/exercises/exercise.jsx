@@ -25,6 +25,7 @@ import { Delete, Edit, FitnessCenter, Add, Close } from "@mui/icons-material";
 import axios from "axios";
 import { toast } from "react-toastify";
 
+// Çeviri nesnesi: bodyParts, equipment ve targets
 const TRANSLATIONS = {
   bodyParts: {
     chest: "Göğüs",
@@ -44,6 +45,31 @@ const TRANSLATIONS = {
     kettlebell: "Kettlebell",
     machine: "Ağırlık Makinesi",
   },
+  targets: {
+    abs: "Karın",
+    biceps: "Biseps",
+    triceps: "Triseps",
+    shoulders: "Omuzlar",
+    "upper back": "Üst Sırt",
+    "lower back": "Alt Sırt",
+    glutes: "Kalça",
+    quads: "Quadriceps",
+    hamstrings: "Arka Bacak",
+  },
+};
+
+// TARGETS dizisini, hedef kas grubu seçenekleri için oluşturuyoruz.
+const TARGETS = Object.keys(TRANSLATIONS.targets);
+
+// API'nin beklediği bodyPart değerlerine göre mapping
+const BODY_PART_MAPPING = {
+  chest: "chest",
+  back: "back",
+  legs: "lower legs", // API, "legs" yerine "lower legs" bekleyebilir.
+  shoulders: "shoulders",
+  arms: "upper arms", // API "arms" için "upper arms" bekleyebilir.
+  core: "waist", // "core" yerine "waist" kullanılması gerekebilir.
+  cardio: "cardio",
 };
 
 const float = keyframes`
@@ -101,6 +127,7 @@ const Exercises = ({ exercises, setExercises }) => {
     bodyPart: "",
     equipment: "",
     name: "",
+    target: "",
   });
   const [customExercise, setCustomExercise] = useState({
     id: null,
@@ -164,17 +191,76 @@ const Exercises = ({ exercises, setExercises }) => {
       setLoading(true);
       setError("");
 
-      // API'den ham veriyi al
-      const response = await axios.get(API_BASE_URL, {
-        ...API_OPTIONS,
-        params: { limit: 12, ...filters },
-      });
+      let url = API_BASE_URL;
+      let endpointUsed = "";
 
-      // Toplu çeviri yap
-      const translatedExercises = await translateExerciseBatch(response.data);
+      // Seçilen filtrelerden kaç tanesi dolu?
+      const activeFiltersCount = Object.values(filters).filter(
+        (val) => val !== ""
+      ).length;
 
-      // Çevrilen verileri işle
-      const processedExercises = response.data.map((ex, index) => ({
+      if (activeFiltersCount > 1) {
+        // Birden fazla filtre seçilmişse; genel endpoint ile tüm egzersizleri çekip, sonrasında client-side filtre uyguluyoruz.
+        url = API_BASE_URL;
+        endpointUsed = "general";
+      } else {
+        // Tek filtre seçilmişse, ilgili endpoint'i kullanıyoruz.
+        if (filters.name) {
+          url = `${API_BASE_URL}/name/${filters.name}`;
+          endpointUsed = "name";
+        } else if (filters.target) {
+          url = `${API_BASE_URL}/target/${filters.target}`;
+          endpointUsed = "target";
+        } else if (filters.equipment) {
+          url = `${API_BASE_URL}/equipment/${filters.equipment}`;
+          endpointUsed = "equipment";
+        } else if (filters.bodyPart) {
+          // UI'dan gelen bodyPart değerini API'nin beklediği değere dönüştürüyoruz.
+          const apiBodyPart =
+            BODY_PART_MAPPING[filters.bodyPart] || filters.bodyPart;
+          url = `${API_BASE_URL}/bodyPart/${apiBodyPart}`;
+          endpointUsed = "bodyPart";
+        }
+      }
+
+      const response = await axios.get(url, API_OPTIONS);
+      let exercisesData = response.data;
+
+      // Eğer endpoint "name" değilse, yani tek filtre veya genel endpoint kullanıldıysa,
+      // client-side filtreleme uyguluyoruz.
+      if (endpointUsed !== "name") {
+        if (filters.bodyPart) {
+          exercisesData = exercisesData.filter(
+            (ex) =>
+              (ex.bodyPart || "").toLowerCase() ===
+              (
+                BODY_PART_MAPPING[filters.bodyPart] || filters.bodyPart
+              ).toLowerCase()
+          );
+        }
+        if (filters.equipment) {
+          exercisesData = exercisesData.filter(
+            (ex) =>
+              (ex.equipment || "").toLowerCase() ===
+              filters.equipment.toLowerCase()
+          );
+        }
+        if (filters.target) {
+          exercisesData = exercisesData.filter(
+            (ex) =>
+              (ex.target || "").toLowerCase() === filters.target.toLowerCase()
+          );
+        }
+        if (filters.name) {
+          exercisesData = exercisesData.filter((ex) =>
+            (ex.name || "").toLowerCase().includes(filters.name.toLowerCase())
+          );
+        }
+      }
+
+      // Toplu çeviri işlemi (gerekirse)
+      const translatedExercises = await translateExerciseBatch(exercisesData);
+      const processedExercises = exercisesData.map((ex, index) => ({
         ...ex,
         name: translatedExercises[index]?.name || ex.name,
         target: translatedExercises[index]?.target || ex.target,
@@ -184,7 +270,12 @@ const Exercises = ({ exercises, setExercises }) => {
         gifUrl: ex.gifUrl,
       }));
 
-      setApiExercises(processedExercises);
+      // Egzersiz listesini rastgele sıraya koyuyoruz.
+      const shuffledExercises = processedExercises.sort(
+        () => Math.random() - 0.5
+      );
+
+      setApiExercises(shuffledExercises);
     } catch (err) {
       setError(
         "Egzersizler yüklenirken hata oluştu. Lütfen daha sonra tekrar deneyin."
@@ -465,7 +556,7 @@ const Exercises = ({ exercises, setExercises }) => {
               {modalType === "api" ? (
                 <>
                   <Grid container spacing={3} sx={{ mt: 2 }}>
-                    <Grid item xs={12} md={4}>
+                    <Grid item xs={12} md={3}>
                       <FormControl fullWidth>
                         <InputLabel>Vücut Bölgesi</InputLabel>
                         <Select
@@ -484,7 +575,7 @@ const Exercises = ({ exercises, setExercises }) => {
                       </FormControl>
                     </Grid>
 
-                    <Grid item xs={12} md={4}>
+                    <Grid item xs={12} md={3}>
                       <FormControl fullWidth>
                         <InputLabel>Ekipman</InputLabel>
                         <Select
@@ -506,7 +597,26 @@ const Exercises = ({ exercises, setExercises }) => {
                       </FormControl>
                     </Grid>
 
-                    <Grid item xs={12} md={4}>
+                    <Grid item xs={12} md={3}>
+                      <FormControl fullWidth>
+                        <InputLabel>Hedef Kas Grubu</InputLabel>
+                        <Select
+                          value={filters.target}
+                          onChange={(e) =>
+                            setFilters({ ...filters, target: e.target.value })
+                          }
+                          sx={{ background: "rgba(255,255,255,0.8)" }}
+                        >
+                          {TARGETS.map((tar) => (
+                            <MenuItem key={tar} value={tar}>
+                              {tar.charAt(0).toUpperCase() + tar.slice(1)}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+
+                    <Grid item xs={12} md={3}>
                       <TextField
                         label="Egzersiz Adı Ara"
                         value={filters.name}

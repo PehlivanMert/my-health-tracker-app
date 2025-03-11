@@ -504,7 +504,17 @@ const DailyRoutine = ({ user }) => {
         const currentMonth = `${nowTurkey.getFullYear()}-${nowTurkey.getMonth()}`;
 
         if (docSnap.exists()) {
-          const data = docSnap.data();
+          let data = docSnap.data();
+          // Eksik reset alanları varsa, güncelleme yapın
+          const updates = {};
+          if (!data.lastResetDaily) updates.lastResetDaily = today;
+          if (!data.lastResetWeekly)
+            updates.lastResetWeekly = String(currentWeek);
+          if (!data.lastResetMonthly) updates.lastResetMonthly = currentMonth;
+          if (Object.keys(updates).length > 0) {
+            await updateDoc(userDocRef, updates);
+            data = { ...data, ...updates };
+          }
           setRoutines(data.routines || initialRoutines);
           setWeeklyStats(data.weeklyStats || { added: 0, completed: 0 });
           setMonthlyStats(data.monthlyStats || { added: 0, completed: 0 });
@@ -537,7 +547,6 @@ const DailyRoutine = ({ user }) => {
         console.error("Rutin yükleme hatası:", error);
       }
     };
-
     loadRoutines();
   }, [user]);
 

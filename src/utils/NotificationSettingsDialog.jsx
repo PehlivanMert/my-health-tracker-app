@@ -12,8 +12,8 @@ import {
   Backdrop,
   LinearProgress,
 } from "@mui/material";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../auth/firebaseConfig";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { db } from "../components/auth/firebaseConfig";
 import CloseIcon from "@mui/icons-material/Close";
 import SaveIcon from "@mui/icons-material/Save";
 import { styled, alpha } from "@mui/material/styles";
@@ -101,9 +101,26 @@ const NotificationSettingsDialog = ({ open, onClose, user, onSave }) => {
   }, [open, user?.uid]);
 
   const handleSave = async () => {
+    if (!user || !user.uid) {
+      console.error("NotificationSettingsDialog - User tanımlı değil!");
+      return;
+    }
     setSaving(true);
+    console.log("handleSave tetiklendi:", { start, end });
     try {
-      await onSave({ start, end });
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, {
+        notificationWindow: { start, end },
+      });
+      console.log("updateDoc başarılı, notificationWindow güncellendi:", {
+        start,
+        end,
+      });
+      // Eğer parent'tan onSave callback'i sağlanmışsa, onu çağırıyoruz.
+      if (onSave) {
+        await onSave({ start, end });
+        console.log("onSave callback çağrıldı.");
+      }
       setSaving(false);
       onClose();
     } catch (error) {
@@ -121,7 +138,7 @@ const NotificationSettingsDialog = ({ open, onClose, user, onSave }) => {
     >
       <StyledDialogTitle component="div">
         <Typography variant="h6" component="span">
-          Global Bildirim Ayarları
+          Bildirim Aralığı
         </Typography>
         {!saving && (
           <IconButton
@@ -140,6 +157,10 @@ const NotificationSettingsDialog = ({ open, onClose, user, onSave }) => {
         )}
       </StyledDialogTitle>
       <StyledDialogContent dividers>
+        <Typography variant="body2" sx={{ color: "#555", mb: 2 }}>
+          Bildirim aralığınızı ayarlayın. Seçtiğiniz aralık dışında bildirim
+          gönderilmeyecektir.
+        </Typography>
         <TextField
           label="Başlangıç Saati"
           type="time"
@@ -159,6 +180,7 @@ const NotificationSettingsDialog = ({ open, onClose, user, onSave }) => {
           sx={{ mt: 2 }}
         />
       </StyledDialogContent>
+
       <DialogActions
         sx={{
           justifyContent: "space-between",

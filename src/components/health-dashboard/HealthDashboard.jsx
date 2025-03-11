@@ -242,7 +242,7 @@ Su Tüketimi:
 - Hedef: ${healthData.waterData?.target || 2000} ml
 - Bugünkü içilen: ${healthData.waterData?.currentIntake || 0} ml
 
-Takviyeler:
+Takviyeler:Kalan/Toplam Miktar:
 ${
   healthData.supplements
     ?.map((s) => `- ${s.name} (${s.quantity}/${s.initialQuantity})`)
@@ -263,7 +263,7 @@ Günlük Detaylı sağlık önerileri oluştur:
 5. Beslenme önerileri
 6. Sağlıklı ve dengeli bir yemek ya da içecek tarifi
 7. Özlü bir sağlık sözü
-Madde madde ve sade metin formatında max 2500 karakterle oluştur bilimsel ama eğlenceli bir dil kullan.`;
+Rakamlar ile maddelendirerek ve sade metin formatında max 2500 karakterle oluştur bilimsel ama eğlenceli bir dil kullan.`;
 
       const response = await fetch(API_URL, {
         method: "POST",

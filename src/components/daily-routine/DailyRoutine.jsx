@@ -523,6 +523,16 @@ const DailyRoutine = ({ user }) => {
     updateDataInFirestore();
   }, [routines, weeklyStats, monthlyStats, user]);
 
+  // Tüm bildirimlerin durumunu kontrol et
+  useEffect(() => {
+    if (routines.length > 0) {
+      const allEnabled = routines.every(
+        (routine) => routine.notificationEnabled
+      );
+      setAllNotifications(allEnabled);
+    }
+  }, [routines]);
+
   return (
     <Box
       sx={{

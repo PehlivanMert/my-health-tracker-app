@@ -45,8 +45,6 @@ import {
   Vaccines,
 } from "@mui/icons-material";
 import SupplementDialog from "./SupplementDialog";
-
-import NotificationSettingsDialog from "./NotificationSettingsDialog";
 import WaterTracker from "./WaterTracker";
 import WaterConsumptionChart from "./WaterConsumptionChart";
 import SupplementConsumptionChart from "./SupplementConsumptionChart";
@@ -323,24 +321,6 @@ const WellnessTracker = ({ user }) => {
     setOpenSupplementDialog(true);
   };
 
-  const handleSaveNotificationWindow = async (window) => {
-    const userRef = doc(db, "users", user.uid);
-    const waterRef = doc(db, "users", user.uid, "water", "current");
-    try {
-      // Global kullanıcı dokümanını güncelle
-      await setDoc(userRef, { notificationWindow: window }, { merge: true });
-      // Aynı ayarı water dokümanına da yansıt
-      await setDoc(waterRef, { notificationWindow: window }, { merge: true });
-
-      // Global bildirim penceresi değiştiğinde, tüm supplementler için bildirim zamanlarını yeniden hesaplayalım
-      supplements.forEach(async (supp) => {
-        await saveNextSupplementReminderTime(user, supp);
-      });
-    } catch (error) {
-      console.error("Bildirim ayarları güncelleme hatası:", error);
-    }
-  };
-
   const handleSaveSupplementNotifications = async (updatedSupplements) => {
     const ref = getSupplementsRef(); // Firestore'daki supplements koleksiyonuna erişim sağlayan fonksiyon
     try {
@@ -405,22 +385,6 @@ const WellnessTracker = ({ user }) => {
             />
             Takviye Takibi
           </Typography>
-          <Box>
-            <Tooltip title="Global Bildirim Ayarları">
-              <IconButton
-                onClick={() => setNotificationDialogOpen(true)}
-                sx={{
-                  color: "#fff",
-                  "&:hover": {
-                    color: "#FFD700",
-                    transform: "scale(1.1)",
-                  },
-                }}
-              >
-                <NotificationsIcon />
-              </IconButton>
-            </Tooltip>
-          </Box>
         </Box>
 
         <WaterTracker user={user} onWaterDataChange={setWaterData} />
@@ -775,12 +739,6 @@ const WellnessTracker = ({ user }) => {
           setOpenSupplementDialog={setOpenSupplementDialog}
           setEditingSupplement={setEditingSupplement}
           handleSaveSupplement={handleSaveSupplement}
-        />
-        <NotificationSettingsDialog
-          open={notificationDialogOpen}
-          onClose={() => setNotificationDialogOpen(false)}
-          user={user}
-          onSave={handleSaveNotificationWindow}
         />
         <SupplementNotificationSettingsDialog
           open={supplementNotificationDialogOpen}

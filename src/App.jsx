@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useContext,
+} from "react";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from "chart.js";
 import { styled, keyframes, alpha } from "@mui/material/styles";
 import { format } from "date-fns";
@@ -64,6 +70,9 @@ import HealthDashboard from "./components/health-dashboard/HealthDashboard";
 import { computeAge } from "../src/utils/dateHelpers";
 import BirthdayCelebration from "/src/utils/BirthdayCelebration.jsx";
 import { tr } from "date-fns/locale";
+import NotificationSettingsDialog from "../src/utils/NotificationSettingsDialog";
+import { GlobalStateContext } from "./components/context/GlobalStateContext";
+import { handleSaveNotificationWindow } from "./utils/notificationWindowUtils";
 
 // Animasyonlar
 const float = keyframes`
@@ -146,13 +155,26 @@ ChartJS.register(ArcElement, Tooltip, Legend, Title);
 // Bildirim izni
 
 function App() {
+  // Bildirim ayarları
+  const { user, setUser, supplements } = useContext(GlobalStateContext);
+  const [openNotificationSettings, setOpenNotificationSettings] =
+    useState(false);
+
+  const handleNotificationSettingsOpen = () => {
+    setOpenNotificationSettings(true);
+    setAnchorEl(null); // Menü kapansın
+  };
+
+  const handleNotificationSettingsClose = () => {
+    setOpenNotificationSettings(false);
+  };
+
   // Temel state'ler
   const [isLoading, setIsLoading] = useState(true);
   const [transition, setTransition] = useState(false);
   const [activeGlow, setActiveGlow] = useState("#2196F3");
 
   // Kullanıcı, oturum ve genel state’ler
-  const [user, setUser] = useState(null);
   const [lastEmailSent, setLastEmailSent] = useState(
     localStorage.getItem("lastEmailSent") || 0
   );
@@ -726,6 +748,9 @@ function App() {
                   onClose={handleMenuClose}
                 >
                   <MenuItem onClick={handleProfileOpen}>Profil</MenuItem>
+                  <MenuItem onClick={handleNotificationSettingsOpen}>
+                    Bildirim Ayarları
+                  </MenuItem>
                   <MenuItem onClick={handleSignOut}>Çıkış Yap</MenuItem>
                 </Menu>
               </Toolbar>
@@ -948,6 +973,25 @@ function App() {
                 </Button>
               </DialogActions>
             </Dialog>
+            {/* Bildirim Ayarları Dialog */}
+            <NotificationSettingsDialog
+              open={openNotificationSettings}
+              onClose={handleNotificationSettingsClose}
+              user={user}
+              onSave={(window) => {
+                console.log(
+                  "NotificationSettingsDialog onSave callback çağrıldı, window:",
+                  window
+                );
+                return handleSaveNotificationWindow(user, supplements, window)
+                  .then(() =>
+                    console.log("handleSaveNotificationWindow tamamlandı")
+                  )
+                  .catch((error) =>
+                    console.error("handleSaveNotificationWindow hatası:", error)
+                  );
+              }}
+            />
 
             {/* İçerik Alanı */}
             {isPWA ? (

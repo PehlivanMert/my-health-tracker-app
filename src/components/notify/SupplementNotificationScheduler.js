@@ -53,20 +53,38 @@ export const getGlobalNotificationWindow = async (user) => {
 
 const computeWindowTimes = (windowObj) => {
   const now = getTurkeyTime();
-  const todayStr = now.toISOString().split("T")[0];
+  // Yerel tarihi 'en-CA' formatıyla alarak Türkiye yerel tarihini elde ediyoruz.
+  const todayStr = now.toLocaleDateString("en-CA", {
+    timeZone: "Europe/Istanbul",
+  });
 
-  let start = new Date(`${todayStr}T${windowObj.start}:00`);
-  let end = new Date(`${todayStr}T${windowObj.end}:00`);
+  let start, end;
+  // Eğer pencere overnight ise (başlangıç saati bitiş saatinden sonra)
+  if (windowObj.start > windowObj.end) {
+    // Bugünkü pencere bitişini hesaplayalım
+    const todayEnd = new Date(`${todayStr}T${windowObj.end}:00`);
+    // Eğer şu an pencere bitişinden önceyse, bu demektir ki pencere dün başlamış.
+    if (now < todayEnd) {
+      // Dünün tarihi
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toLocaleDateString("en-CA", {
+        timeZone: "Europe/Istanbul",
+      });
+      start = new Date(`${yesterdayStr}T${windowObj.start}:00`);
+      end = todayEnd;
+    } else {
+      // Aksi halde, pencere bugünden başlayıp yarına kadar sürer.
+      start = new Date(`${todayStr}T${windowObj.start}:00`);
+      end = new Date(`${todayStr}T${windowObj.end}:00`);
+      end.setDate(end.getDate() + 1);
+    }
+  } else {
+    // Overnight değilse, normal şekilde bugünkü start ve end
+    start = new Date(`${todayStr}T${windowObj.start}:00`);
+    end = new Date(`${todayStr}T${windowObj.end}:00`);
+  }
 
-  // Overnight durumunda bitiş zamanını ertesi güne taşıyoruz.
-  if (start.getTime() > end.getTime()) {
-    end.setDate(end.getDate() + 1);
-  }
-  // Mevcut zaman pencere bitişinden sonra ise, pencereyi yarına taşıyoruz.
-  if (now.getTime() > end.getTime()) {
-    start.setDate(start.getDate() + 1);
-    end.setDate(end.getDate() + 1);
-  }
   console.log(
     "computeWindowTimes - Pencere başlangıcı:",
     start,

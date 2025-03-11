@@ -332,6 +332,8 @@ exports.handler = async function (event, context) {
         // ---------- Su Bildirimleri (Global bildirim penceresi kontrolü geçerse) ----------
         if (isWithinNotificationWindow && waterSnap && waterSnap.exists) {
           const waterData = waterSnap.data();
+
+          // Mevcut su bildirim zamanı (nextWaterReminderTime) için bildirim:
           if (waterData && waterData.nextWaterReminderTime) {
             const nextReminder = new Date(waterData.nextWaterReminderTime);
             const nextReminderTurkey = new Date(
@@ -357,6 +359,60 @@ exports.handler = async function (event, context) {
                 },
               });
             }
+          }
+
+          // GECE YARISI RESET BİLDİRİMİ: Eğer mevcut zaman gece yarısına yakınsa (±1 dakika)
+          const midnight = new Date(now);
+          midnight.setHours(0, 0, 0, 0);
+          if (Math.abs(now.getTime() - midnight.getTime()) < 60000) {
+            let resetMessage = "";
+            if (waterData.waterIntake >= waterData.dailyWaterTarget) {
+              // Başarı mesajları (10 adet)
+              const successMessages = [
+                "Harika! Bugün su hedefini gerçekleştirdin!",
+                "Mükemmel, su hedefin tamamlandı!",
+                "Tebrikler! Vücudun için gereken suyu aldın!",
+                "Su hedefine ulaştın, sağlığın için büyük bir adım!",
+                "Bugün suyu tamamlama başarın takdire şayan!",
+                "Su hedefini aştın, süper bir performans!",
+                "Bugün su içmeyi ihmal etmedin, tebrikler!",
+                "Sağlığın için harika bir gün, su hedefine ulaştın!",
+                "Günlük su hedefin tamamlandı, mükemmel!",
+                "Bugün su hedefine ulaşman motivasyonunu artırıyor!",
+              ];
+              resetMessage =
+                successMessages[
+                  Math.floor(Math.random() * successMessages.length)
+                ];
+            } else {
+              // Başarısız mesajlar (10 adet)
+              const failMessages = [
+                `Bugün ${waterData.waterIntake} ml su içtin, hedefin ${waterData.dailyWaterTarget} ml. Yarın daha iyi yapabilirsin!`,
+                `Su hedefin ${waterData.dailyWaterTarget} ml idi, ancak bugün sadece ${waterData.waterIntake} ml içtin.`,
+                `Hedefin ${waterData.dailyWaterTarget} ml, bugün ${waterData.waterIntake} ml su içtin. Biraz daha çabalayalım!`,
+                `Yeterince su içemedin: ${waterData.waterIntake} ml / ${waterData.dailyWaterTarget} ml.`,
+                `Bugün su hedefine ulaşamadın (${waterData.waterIntake} / ${waterData.dailyWaterTarget} ml). Yarın şansın daha iyi olsun!`,
+                `Hedefin ${waterData.dailyWaterTarget} ml, ancak bugün ${waterData.waterIntake} ml su içtin. Daha fazlasını dene!`,
+                `Su alımında eksik kaldın: ${waterData.waterIntake} ml içtin, hedefin ${waterData.dailyWaterTarget} ml.`,
+                `Günlük hedefin ${waterData.dailyWaterTarget} ml, bugün ${waterData.waterIntake} ml su içtin. Hedefe yaklaşabilirsin!`,
+                `Bugün su alımın hedefin altındaydı (${waterData.waterIntake} / ${waterData.dailyWaterTarget} ml). Yarın daha iyi yap!`,
+                `Su hedefin ${waterData.dailyWaterTarget} ml, fakat bugün sadece ${waterData.waterIntake} ml içtin. Bir sonraki sefer daha dikkatli!`,
+              ];
+              resetMessage =
+                failMessages[Math.floor(Math.random() * failMessages.length)];
+            }
+            console.log(
+              `sendPushNotification - Kullanıcı ${userDoc.id} için gece yarısı su reset bildirimi zamanı:`,
+              now
+            );
+            notificationsForThisUser.push({
+              tokens: fcmTokens,
+              data: {
+                title: "Günlük Su Reset Bildirimi",
+                body: resetMessage,
+                type: "water-reset",
+              },
+            });
           }
         }
 

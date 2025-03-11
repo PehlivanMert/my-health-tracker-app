@@ -188,6 +188,11 @@ const DailyRoutine = ({ user }) => {
   const [routines, setRoutines] = useState([]);
   const isInitialLoad = useRef(true);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [resetData, setResetData] = useState({
+    daily: "",
+    weekly: "",
+    monthly: "",
+  });
 
   useEffect(() => {
     const initialNotifications = {};
@@ -230,30 +235,21 @@ const DailyRoutine = ({ user }) => {
     const getTurkeyTime = (date = new Date()) =>
       new Date(date.toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
 
-    const checkReset = () => {
+    const resetIfNeeded = async () => {
+      if (!user) return;
       const nowTurkey = getTurkeyTime();
+      const today = nowTurkey.toISOString().split("T")[0];
+      const currentWeek = getWeekNumber(nowTurkey);
+      const currentMonth = `${nowTurkey.getFullYear()}-${nowTurkey.getMonth()}`;
 
-      // Türkiye saatine göre yarın 00:00'ı hesapla
-      const tomorrowTurkey = new Date(nowTurkey);
-      tomorrowTurkey.setDate(nowTurkey.getDate() + 1);
-      tomorrowTurkey.setHours(0, 0, 0, 0);
+      // Eğer resetData henüz yüklenmediyse işlem yapmayın
+      if (!resetData.daily || !resetData.weekly || !resetData.monthly) return;
 
-      // Türkiye saatine göre sonraki Pazartesi
-      const nextMondayTurkey = new Date(nowTurkey);
-      nextMondayTurkey.setDate(
-        nowTurkey.getDate() + ((1 + 7 - nowTurkey.getDay()) % 7)
-      );
-      nextMondayTurkey.setHours(0, 0, 0, 0);
+      let updateRequired = false;
+      const newResetData = { ...resetData };
 
-      // Türkiye saatine göre sonraki ayın ilk günü
-      const nextMonthTurkey = new Date(
-        nowTurkey.getFullYear(),
-        nowTurkey.getMonth() + 1,
-        1
-      );
-
-      // Günlük reset: UI'daki check'leri Türkiye saatine göre yarın 00:00'da sıfırla
-      const timeoutDaily = setTimeout(() => {
+      // Günlük reset: Eğer Firestore'daki son reset tarihi bugünden farklıysa
+      if (resetData.daily !== today) {
         setRoutines((prevRoutines) =>
           prevRoutines.map((r) => ({
             ...r,
@@ -261,36 +257,54 @@ const DailyRoutine = ({ user }) => {
             completionDate: null,
           }))
         );
-      }, tomorrowTurkey - nowTurkey);
+        newResetData.daily = today;
+        updateRequired = true;
+      }
 
-      // Haftalık reset: Türkiye saatine göre sonraki Pazartesi'de kümülatif sayaçları sıfırla
-      const timeoutWeekly = setTimeout(() => {
+      // Haftalık reset: Eğer Firestore'daki hafta numarası farklıysa
+      if (resetData.weekly !== String(currentWeek)) {
         setWeeklyStats({ added: 0, completed: 0 });
-      }, nextMondayTurkey - nowTurkey);
+        newResetData.weekly = String(currentWeek);
+        updateRequired = true;
+      }
 
-      // Aylık reset: Türkiye saatine göre sonraki ayın ilk gününde kümülatif sayaçları sıfırla
-      const timeoutMonthly = setTimeout(() => {
+      // Aylık reset: Eğer Firestore'daki ay bilgisi farklıysa
+      if (resetData.monthly !== currentMonth) {
         setMonthlyStats({ added: 0, completed: 0 });
-      }, nextMonthTurkey - nowTurkey);
+        newResetData.monthly = currentMonth;
+        updateRequired = true;
+      }
 
-      return () => {
-        clearTimeout(timeoutDaily);
-        clearTimeout(timeoutWeekly);
-        clearTimeout(timeoutMonthly);
-      };
+      if (updateRequired) {
+        try {
+          const userDocRef = doc(db, "users", user.uid);
+          await updateDoc(userDocRef, {
+            lastResetDaily: newResetData.daily,
+            lastResetWeekly: newResetData.weekly,
+            lastResetMonthly: newResetData.monthly,
+          });
+          setResetData(newResetData);
+        } catch (error) {
+          console.error("Reset bilgileri güncellenirken hata:", error);
+        }
+      }
     };
 
-    const cleanup = checkReset();
-    const timer = setInterval(() => {
-      // Her saat kontrol edip yeni zamanlamaları ayarla
-      cleanup();
-      checkReset();
-    }, 3600000);
+    // İlk sayfa yüklemesinde reset kontrolü
+    resetIfNeeded();
 
+    // Kullanıcı sekmeye geri döndüğünde reset kontrolü
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        resetIfNeeded();
+      }
+    };
+
+    window.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
-      clearInterval(timer);
+      window.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, []);
+  }, [resetData, user]);
 
   // Rutin kaydetme işlemi
   const handleSaveRoutine = () => {
@@ -482,30 +496,48 @@ const DailyRoutine = ({ user }) => {
       try {
         const userDocRef = doc(db, "users", user.uid);
         const docSnap = await getDoc(userDocRef);
+        const nowTurkey = new Date(
+          new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
+        );
+        const today = nowTurkey.toISOString().split("T")[0];
+        const currentWeek = getWeekNumber(nowTurkey);
+        const currentMonth = `${nowTurkey.getFullYear()}-${nowTurkey.getMonth()}`;
 
         if (docSnap.exists()) {
           const data = docSnap.data();
-          // Eğer routines alanı tanımlı değilse, default rutinleri kullan
           setRoutines(data.routines || initialRoutines);
           setWeeklyStats(data.weeklyStats || { added: 0, completed: 0 });
           setMonthlyStats(data.monthlyStats || { added: 0, completed: 0 });
+          setResetData({
+            daily: data.lastResetDaily || today,
+            weekly: data.lastResetWeekly || String(currentWeek),
+            monthly: data.lastResetMonthly || currentMonth,
+          });
         } else {
-          // Kullanıcıya ait belge yoksa, default rutinlerle ve sıfırlanmış istatistiklerle yeni belge oluştur
           const initialData = {
             routines: initialRoutines,
             weeklyStats: { added: 0, completed: 0 },
             monthlyStats: { added: 0, completed: 0 },
+            lastResetDaily: today,
+            lastResetWeekly: String(currentWeek),
+            lastResetMonthly: currentMonth,
           };
           await setDoc(userDocRef, initialData);
           setRoutines(initialRoutines);
           setWeeklyStats({ added: 0, completed: 0 });
           setMonthlyStats({ added: 0, completed: 0 });
+          setResetData({
+            daily: today,
+            weekly: String(currentWeek),
+            monthly: currentMonth,
+          });
         }
         isInitialLoad.current = false;
       } catch (error) {
         console.error("Rutin yükleme hatası:", error);
       }
     };
+
     loadRoutines();
   }, [user]);
 

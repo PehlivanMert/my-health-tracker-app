@@ -187,6 +187,7 @@ const sendEachForMulticast = async (msg, userId) => {
   return results;
 };
 
+// ─── Ana Push Bildirim Gönderim Fonksiyonu ─────────────────────────────
 exports.handler = async function (event, context) {
   try {
     const now = getTurkeyTime();
@@ -214,7 +215,7 @@ exports.handler = async function (event, context) {
               .map(Number);
             const routineTime = new Date(now);
             routineTime.setHours(routineHour, routineMinute, 0, 0);
-            if (Math.abs(now - routineTime) / 60000 < 0.3) {
+            if (Math.abs(now - routineTime) / 60000 < 0.5) {
               console.log(
                 `sendPushNotification - Kullanıcı ${userDoc.id} için rutin bildirimi zamanı:`,
                 routineTime
@@ -274,7 +275,7 @@ exports.handler = async function (event, context) {
             const triggerTime = new Date(
               eventStartTurkey.getTime() - offsetMinutes * 60000
             );
-            if (Math.abs(now - triggerTime) / 60000 < 0.3) {
+            if (Math.abs(now - triggerTime) / 60000 < 0.5) {
               console.log(
                 `sendPushNotification - Kullanıcı ${userDoc.id} için takvim bildirimi zamanı:`,
                 triggerTime
@@ -343,7 +344,7 @@ exports.handler = async function (event, context) {
               `sendPushNotification - Kullanıcı ${userDoc.id} için su bildirimi zamanı:`,
               nextReminderTurkey
             );
-            if (Math.abs(now - nextReminderTurkey) / 60000 < 0.3) {
+            if (Math.abs(now - nextReminderTurkey) / 60000 < 0.5) {
               notificationsForThisUser.push({
                 tokens: fcmTokens,
                 data: {
@@ -381,7 +382,7 @@ exports.handler = async function (event, context) {
                 `sendPushNotification - Kullanıcı ${userDoc.id} için takviye bildirimi zamanı:`,
                 nextReminderTurkey
               );
-              if (Math.abs(now - nextReminderTurkey) / 60000 < 0.3) {
+              if (Math.abs(now - nextReminderTurkey) / 60000 < 0.5) {
                 const estimatedRemainingDays = Math.floor(
                   suppData.quantity / suppData.dailyUsage
                 );
@@ -455,5 +456,80 @@ exports.handler = async function (event, context) {
       error
     );
     return { statusCode: 500, body: error.toString() };
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
+// Aşağıdaki scheduledUpdateNotifications fonksiyonu, Cloud Scheduler
+// veya benzeri bir mekanizma kullanılarak periyodik (örneğin her 5 dakikada bir)
+// tetiklenebilir. Bu fonksiyon, su ve takviye bildirimlerinin zamanının geçmiş olup
+// olmadığını kontrol eder; geçmişse, ilgili saveNextWaterReminderTime veya saveNextSupplementReminderTime
+// fonksiyonlarını çağırarak güncelleme yapar.
+// Bu sayede, uygulama kapalı olsa dahi sunucuda sürekli mantıklı işlemler gerçekleştirilir.
+// ─────────────────────────────────────────────────────────────
+exports.scheduledUpdateNotifications = async (event, context) => {
+  try {
+    const now = getTurkeyTime();
+    console.log("Scheduled update tetiklendi. Şu anki Türkiye zamanı:", now);
+
+    // Tüm kullanıcıları al
+    const userDocs = await getCachedUsers();
+
+    await Promise.all(
+      userDocs.map(async (userDoc) => {
+        const userId = userDoc.id;
+        // Su bildirimlerini kontrol et
+        const waterRef = db
+          .collection("users")
+          .doc(userId)
+          .collection("water")
+          .doc("current");
+        const waterSnap = await getDoc(waterRef);
+        if (waterSnap.exists()) {
+          const waterData = waterSnap.data();
+          if (waterData.nextWaterReminderTime) {
+            const nextReminderTime = new Date(waterData.nextWaterReminderTime);
+            // Eğer mevcut zaman, bildirim zamanından 1 dakika veya daha fazla geçmişse
+            if (now.getTime() > nextReminderTime.getTime() + 60000) {
+              console.log(
+                `Kullanıcı ${userId} için su bildirimi süresi geçmiş. Güncelleniyor...`
+              );
+              // Su bildirim zamanını güncelle
+              await require("./NotificationScheduler").saveNextWaterReminderTime(
+                { uid: userId }
+              );
+            }
+          }
+        }
+        // Takviye bildirimlerini kontrol et
+        const suppSnapshot = await getCachedSupplements(userId);
+        if (suppSnapshot) {
+          suppSnapshot.forEach(async (docSnap) => {
+            const suppData = docSnap.data();
+            if (suppData.nextSupplementReminderTime) {
+              const nextSuppReminder = new Date(
+                suppData.nextSupplementReminderTime
+              );
+              if (now.getTime() > nextSuppReminder.getTime() + 60000) {
+                console.log(
+                  `Kullanıcı ${userId}, Supplement ${docSnap.id} için bildirim süresi geçmiş. Güncelleniyor...`
+                );
+                // Takviye bildirim zamanını güncelle
+                await require("./SupplementNotificationScheduler").saveNextSupplementReminderTime(
+                  { uid: userId },
+                  { id: docSnap.id, ...suppData }
+                );
+              }
+            }
+          });
+        }
+      })
+    );
+
+    console.log("Scheduled update tamamlandı.");
+    return null;
+  } catch (error) {
+    console.error("scheduledUpdateNotifications hatası:", error);
+    return null;
   }
 };

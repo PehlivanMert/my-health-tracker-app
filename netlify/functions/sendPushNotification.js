@@ -209,24 +209,49 @@ exports.handler = async function (event, context) {
         if (userData.routines && Array.isArray(userData.routines)) {
           userData.routines.forEach((routine) => {
             if (!routine.notificationEnabled || routine.checked) return;
-            const [routineHour, routineMinute] = routine.time
+
+            // Başlangıç zamanına bildirim
+            const [startHour, startMinute] = routine.time
               .split(":")
               .map(Number);
-            const routineTime = new Date(now);
-            routineTime.setHours(routineHour, routineMinute, 0, 0);
-            if (Math.abs(now - routineTime) / 60000 < 0.5) {
+            const startTime = new Date(now);
+            startTime.setHours(startHour, startMinute, 0, 0);
+            if (Math.abs(now - startTime) / 60000 < 0.5) {
               console.log(
-                `sendPushNotification - Kullanıcı ${userDoc.id} için rutin bildirimi zamanı:`,
-                routineTime
+                `sendPushNotification - Kullanıcı ${userDoc.id} için başlangıç zamanı bildirimi:`,
+                startTime
               );
               notificationsForThisUser.push({
                 tokens: fcmTokens,
                 data: {
-                  title: "Rutin Hatırlatması",
-                  body: `Şimdi ${routine.title} rutininin zamanı geldi!`,
+                  title: "Rutin Başlangıç Hatırlatması",
+                  body: `Şimdi ${routine.title} rutini başlayacak!`,
                   routineId: routine.id || "",
                 },
               });
+            }
+
+            // Bitiş zamanı varsa, bitiş zamanına bildirim
+            if (routine.endTime) {
+              const [endHour, endMinute] = routine.endTime
+                .split(":")
+                .map(Number);
+              const endTime = new Date(now);
+              endTime.setHours(endHour, endMinute, 0, 0);
+              if (Math.abs(now - endTime) / 60000 < 0.5) {
+                console.log(
+                  `sendPushNotification - Kullanıcı ${userDoc.id} için bitiş zamanı bildirimi:`,
+                  endTime
+                );
+                notificationsForThisUser.push({
+                  tokens: fcmTokens,
+                  data: {
+                    title: "Rutin Bitiş Hatırlatması",
+                    body: `Şimdi ${routine.title} rutini sona erecek!`,
+                    routineId: routine.id || "",
+                  },
+                });
+              }
             }
           });
         }

@@ -20,11 +20,12 @@ import {
   keyframes,
   CircularProgress,
   LinearProgress,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import {
   DeleteForever,
-  EventNote,
-  NotificationImportant,
   NotificationsOff,
   DoneAll,
   HighlightOff,
@@ -35,7 +36,9 @@ import {
   RadioButtonUnchecked,
   NotificationsActive,
   NotificationsNone,
+  EventNote,
 } from "@mui/icons-material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloseIcon from "@mui/icons-material/Close";
 import { motion, AnimatePresence } from "framer-motion";
 import { showToast } from "../../utils/weather-theme-notify/NotificationManager";
@@ -50,10 +53,16 @@ const float = keyframes`
   100% { transform: translateY(0px); }
 `;
 
-const pulse = keyframes`
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
+const gradient = keyframes`
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 `;
 
 // Stilize Bileşenler
@@ -177,7 +186,12 @@ const ActionButton = styled(Button)(({ theme }) => ({
 const DailyRoutine = ({ user }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const [newRoutine, setNewRoutine] = useState({ title: "", time: "" });
+  // newRoutine artık endTime (bitiş saati) alanını da içeriyor
+  const [newRoutine, setNewRoutine] = useState({
+    title: "",
+    time: "",
+    endTime: "",
+  });
   const [editRoutineId, setEditRoutineId] = useState(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState({});
   // Kümülatif sayaçlar: haftalık ve aylık (eklenen ve tamamlanan)
@@ -193,6 +207,40 @@ const DailyRoutine = ({ user }) => {
     weekly: "",
     monthly: "",
   });
+  // currentTime, rutinlerin zaman hesaplamaları ve geri sayım için güncellenecek
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // currentTime'ı her saniye güncelle
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Rutinlerin otomatik tamamlanması ve bildirim tetikleme (bitiş saati geçtiğinde)
+  useEffect(() => {
+    setRoutines((prevRoutines) =>
+      prevRoutines.map((routine) => {
+        if (routine.endTime && !routine.notified) {
+          const [endHour, endMinute] = routine.endTime.split(":").map(Number);
+          const endDate = new Date(currentTime);
+          endDate.setHours(endHour, endMinute, 0, 0);
+          if (currentTime >= endDate) {
+            showToast(`"${routine.title}" tamamlandı!`, "success");
+            return {
+              ...routine,
+              checked: true,
+              notified: true,
+              completionDate: new Date().toISOString(),
+            };
+          }
+        }
+        return routine;
+      })
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTime]);
 
   useEffect(() => {
     const initialNotifications = {};
@@ -216,14 +264,6 @@ const DailyRoutine = ({ user }) => {
     return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
   };
 
-  // Aynı ay kontrolü
-  const isSameMonth = (date1, date2) => {
-    return (
-      date1.getFullYear() === date2.getFullYear() &&
-      date1.getMonth() === date2.getMonth()
-    );
-  };
-
   // Günlük istatistikler (UI tabanlı, resetlenecek)
   const dailyStats = {
     completed: routines.filter((r) => r.checked).length,
@@ -242,13 +282,11 @@ const DailyRoutine = ({ user }) => {
       const currentWeek = getWeekNumber(nowTurkey);
       const currentMonth = `${nowTurkey.getFullYear()}-${nowTurkey.getMonth()}`;
 
-      // Eğer resetData henüz yüklenmediyse işlem yapmayın
       if (!resetData.daily || !resetData.weekly || !resetData.monthly) return;
 
       let updateRequired = false;
       const newResetData = { ...resetData };
 
-      // Günlük reset: Eğer Firestore'daki son reset tarihi bugünden farklıysa
       if (resetData.daily !== today) {
         setRoutines((prevRoutines) =>
           prevRoutines.map((r) => ({
@@ -261,14 +299,12 @@ const DailyRoutine = ({ user }) => {
         updateRequired = true;
       }
 
-      // Haftalık reset: Eğer Firestore'daki hafta numarası farklıysa
       if (resetData.weekly !== String(currentWeek)) {
         setWeeklyStats({ added: 0, completed: 0 });
         newResetData.weekly = String(currentWeek);
         updateRequired = true;
       }
 
-      // Aylık reset: Eğer Firestore'daki ay bilgisi farklıysa
       if (resetData.monthly !== currentMonth) {
         setMonthlyStats({ added: 0, completed: 0 });
         newResetData.monthly = currentMonth;
@@ -290,10 +326,8 @@ const DailyRoutine = ({ user }) => {
       }
     };
 
-    // İlk sayfa yüklemesinde reset kontrolü
     resetIfNeeded();
 
-    // Kullanıcı sekmeye geri döndüğünde reset kontrolü
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         resetIfNeeded();
@@ -306,7 +340,7 @@ const DailyRoutine = ({ user }) => {
     };
   }, [resetData, user]);
 
-  // Rutin kaydetme işlemi
+  // Rutin kaydetme işlemi (yeni rutin eklerken veya düzenlerken endTime alanı da aktarılıyor)
   const handleSaveRoutine = () => {
     if (!newRoutine.title || !newRoutine.time) return;
 
@@ -319,6 +353,7 @@ const DailyRoutine = ({ user }) => {
               ...newRoutine,
               id: r.id,
               notificationEnabled: r.notificationEnabled || false,
+              notified: false,
             }
           : r
       );
@@ -332,9 +367,9 @@ const DailyRoutine = ({ user }) => {
           completionDate: null,
           checked: false,
           notificationEnabled: false,
+          notified: false,
         },
       ];
-      // Yeni rutin eklendiğinde kümülatif sayaçlar güncellenir
       setWeeklyStats((prev) => ({ ...prev, added: prev.added + 1 }));
       setMonthlyStats((prev) => ({ ...prev, added: prev.added + 1 }));
     }
@@ -343,22 +378,21 @@ const DailyRoutine = ({ user }) => {
 
     setRoutines(updatedRoutines);
     setModalOpen(false);
-    setNewRoutine({ title: "", time: "" });
+    setNewRoutine({ title: "", time: "", endTime: "" });
     setEditRoutineId(null);
   };
 
-  // Rutin silme işlemi (kümülatif sayaçlar dokunulmaz)
+  // Rutin silme işlemi
   const deleteRoutine = (id) => {
     setRoutines(routines.filter((routine) => routine.id !== id));
   };
 
-  // Rutin işaretleme işlemi
+  // Rutin işaretleme işlemi (manuel kontrol)
   const handleCheckboxChange = (routineId) => {
     setRoutines((prevRoutines) =>
       prevRoutines.map((r) => {
         if (r.id === routineId) {
           if (!r.checked) {
-            // Manuel check yapıldığında tamamlanma sayaçları artar
             setWeeklyStats((prev) => ({
               ...prev,
               completed: prev.completed + 1,
@@ -368,7 +402,6 @@ const DailyRoutine = ({ user }) => {
               completed: prev.completed + 1,
             }));
           } else {
-            // Check kaldırılırsa sayaçlar düşer
             setWeeklyStats((prev) => ({
               ...prev,
               completed: Math.max(prev.completed - 1, 0),
@@ -440,7 +473,7 @@ const DailyRoutine = ({ user }) => {
     }
   };
 
-  // Her rutinin Firestore'daki "notificationEnabled" alanını güncelleme
+  // Bildirim durumunu güncelleme
   const handleNotificationChange = (routineId) => {
     const routine = routines.find((r) => r.id === routineId);
     if (!routine) return;
@@ -505,7 +538,6 @@ const DailyRoutine = ({ user }) => {
 
         if (docSnap.exists()) {
           let data = docSnap.data();
-          // Eksik reset alanları varsa, güncelleme yapın
           const updates = {};
           if (!data.lastResetDaily) updates.lastResetDaily = today;
           if (!data.lastResetWeekly)
@@ -550,7 +582,7 @@ const DailyRoutine = ({ user }) => {
     loadRoutines();
   }, [user]);
 
-  // Firestore'a rutinleri ve istatistikleri kaydet (state değiştikçe güncelle)
+  // Firestore'a rutinleri ve istatistikleri kaydet
   useEffect(() => {
     if (!user || isInitialLoad.current) return;
     const updateDataInFirestore = async () => {
@@ -573,6 +605,54 @@ const DailyRoutine = ({ user }) => {
       setAllNotifications(allEnabled);
     }
   }, [routines]);
+
+  // Aktif ve tamamlanan rutinleri ayır
+  const activeRoutines = routines.filter((r) => !r.checked);
+  const completedRoutines = routines.filter((r) => r.checked);
+
+  // Fonksiyon: verilen HH:MM değerini dakikaya çevirir
+  const getMinutesFromTime = (timeStr) => {
+    const [hour, minute] = timeStr.split(":").map(Number);
+    return hour * 60 + minute;
+  };
+
+  // Fonksiyon: kalan süreyi hh:mm:ss formatında döndürür
+  // Hedef saate kalan süreyi hesaplar
+  const formatTimeCountdown = (targetTimeStr) => {
+    const [targetHour, targetMinute] = targetTimeStr.split(":").map(Number);
+    const targetDate = new Date(currentTime);
+    targetDate.setHours(targetHour, targetMinute, 0, 0);
+    let remainingSeconds = Math.floor((targetDate - currentTime) / 1000);
+    remainingSeconds = remainingSeconds > 0 ? remainingSeconds : 0;
+    const hours = String(Math.floor(remainingSeconds / 3600)).padStart(2, "0");
+    const minutes = String(Math.floor((remainingSeconds % 3600) / 60)).padStart(
+      2,
+      "0"
+    );
+    const seconds = String(remainingSeconds % 60).padStart(2, "0");
+    return `${hours}:${minutes}:${seconds}`;
+  };
+
+  // Rutin durumuna göre mesaj döndürür
+  const getCountdownMessage = (routine) => {
+    const currentMin = currentTime.getHours() * 60 + currentTime.getMinutes();
+    const startMin = getMinutesFromTime(routine.time);
+    if (!routine.endTime) {
+      // Bitiş zamanı yoksa, henüz başlamadıysa başlangıca kalan süreyi göster
+      return currentMin < startMin
+        ? `Başlamaya Kalan Süre: ${formatTimeCountdown(routine.time)}`
+        : "";
+    } else {
+      const endMin = getMinutesFromTime(routine.endTime);
+      if (currentMin < startMin) {
+        return `Başlamasına Kalan Süre: ${formatTimeCountdown(routine.time)}`;
+      } else if (currentMin >= startMin && currentMin < endMin) {
+        return `Bitmesine Kalan Süre: ${formatTimeCountdown(routine.endTime)}`;
+      } else {
+        return "Süre Doldu";
+      }
+    }
+  };
 
   return (
     <Box
@@ -645,20 +725,6 @@ const DailyRoutine = ({ user }) => {
                   },
                 }}
               >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: "30%",
-                    background: `linear-gradient(transparent 20%, ${stat.color}20)`,
-                    maskImage:
-                      "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 100 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 15 Q25 5 50 15 T100 15 L100 20 L0 20 Z' fill='white'/%3E%3C/svg%3E\")",
-                    animation: "wave 8s linear infinite",
-                    opacity: { xs: 0.3, sm: 0.6 },
-                  }}
-                />
                 <Box
                   sx={{
                     display: "flex",
@@ -737,7 +803,7 @@ const DailyRoutine = ({ user }) => {
                       </Box>
                     </Box>
                   )}
-                  <Box sx={{ textAlign: { xs: "center", sm: "left" } }}>
+                  <Box sx={{ flex: 1 }}>
                     <Typography
                       variant="subtitle2"
                       sx={{
@@ -746,6 +812,7 @@ const DailyRoutine = ({ user }) => {
                         textTransform: "uppercase",
                         letterSpacing: "0.5px",
                         fontSize: { xs: "0.7rem", sm: "0.875rem" },
+                        textAlign: "center",
                       }}
                     >
                       {stat.title}
@@ -758,6 +825,7 @@ const DailyRoutine = ({ user }) => {
                         background: `linear-gradient(45deg, ${stat.color} 0%, ${stat.color}cc 100%)`,
                         WebkitBackgroundClip: "text",
                         WebkitTextFillColor: "transparent",
+                        textAlign: "center",
                         fontSize: { xs: "1.5rem", sm: "2.125rem" },
                       }}
                     >
@@ -781,6 +849,7 @@ const DailyRoutine = ({ user }) => {
                         display: "block",
                         color: "text.secondary",
                         mt: 0.5,
+                        textAlign: "center",
                         fontSize: { xs: "0.7rem", sm: "0.875rem" },
                       }}
                     >
@@ -842,103 +911,415 @@ const DailyRoutine = ({ user }) => {
             Yeni Rutin Ekle
           </AnimatedButton>
 
+          {/* Aktif Rutinler – Modern Düzen */}
+          <Typography
+            variant="h6"
+            sx={{
+              color: "#fff",
+              mb: 1,
+              textAlign: "center",
+              fontWeight: "bold",
+            }}
+          >
+            Aktif Rutinler
+          </Typography>
+
           <AnimatePresence>
-            {routines.length === 0 ? (
+            {activeRoutines.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                style={{ textAlign: "center", py: 4 }}
+                style={{ textAlign: "center", padding: "16px 0" }}
               >
                 <Typography
                   variant="body1"
                   sx={{ color: "#fff", opacity: 0.8 }}
                 >
-                  Henüz rutin eklenmedi
+                  Henüz aktif rutin yok.
                 </Typography>
+                <Box sx={{ mt: 2 }}>
+                  <img
+                    src="/empty-state.svg"
+                    alt="Empty State"
+                    style={{ maxWidth: "20%", height: "auto" }}
+                  />
+                </Box>
               </motion.div>
             ) : (
-              routines.map((routine) => (
-                <motion.div
-                  key={routine.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      p: 2,
-                      mb: 2,
-                      background: "rgba(255,255,255,0.1)",
-                      borderRadius: 3,
-                      transition: "all 0.3s ease",
-                      "&:hover": {
-                        background: "rgba(255,255,255,0.15)",
-                        transform: "translateX(10px)",
-                      },
-                    }}
+              activeRoutines.map((routine) => {
+                const startMin = getMinutesFromTime(routine.time);
+                const hasEnd = !!routine.endTime;
+                const endMin = hasEnd
+                  ? getMinutesFromTime(routine.endTime)
+                  : null;
+                let progress = 0;
+                if (hasEnd) {
+                  const currentMin =
+                    currentTime.getHours() * 60 + currentTime.getMinutes();
+                  if (currentMin < startMin) {
+                    progress = 0;
+                  } else if (currentMin >= endMin) {
+                    progress = 100;
+                  } else {
+                    progress =
+                      ((currentMin - startMin) / (endMin - startMin)) * 100;
+                  }
+                }
+                return (
+                  <motion.div
+                    key={routine.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
                   >
-                    <Checkbox
-                      checked={routine.checked}
-                      onChange={() => handleCheckboxChange(routine.id)}
-                      icon={<RadioButtonUnchecked sx={{ color: "#fff" }} />}
-                      checkedIcon={
-                        <CheckCircleOutline sx={{ color: "#4CAF50" }} />
-                      }
-                    />
-                    <Box sx={{ flex: 1, ml: 2 }}>
-                      <Typography
-                        variant="body1"
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        p: 2,
+                        mb: 1.5,
+                        background: "rgba(255,255,255,0.15)",
+                        borderRadius: 3,
+                        boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
+                        transition: "all 0.3s ease",
+                        "&:hover": {
+                          background: "rgba(255,255,255,0.2)",
+                          transform: "translateY(-3px)",
+                        },
+                      }}
+                    >
+                      {/* Üst Satır: Checkbox, Rutin Adı ve Zaman Bilgisi */}
+                      <Box
                         sx={{
-                          color: "#fff",
-                          textDecoration: routine.checked
-                            ? "line-through"
-                            : "none",
-                          opacity: routine.checked ? 0.7 : 1,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
                         }}
                       >
-                        {routine.time} - {routine.title}
-                      </Typography>
-                    </Box>
-                    <IconButton
-                      onClick={() => {
-                        setNewRoutine(routine);
-                        setEditRoutineId(routine.id);
-                        setModalOpen(true);
-                      }}
-                      size="small"
-                      sx={{ color: "#9C27B0" }}
-                    >
-                      <EventNote fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      onClick={() => handleNotificationChange(routine.id)}
-                      sx={{
-                        color: notificationsEnabled[routine.id]
-                          ? "#FFA726"
-                          : "#fff",
-                      }}
-                    >
-                      {notificationsEnabled[routine.id] ? (
-                        <NotificationsActive />
-                      ) : (
-                        <NotificationsOff />
+                        <Box sx={{ display: "flex", alignItems: "center" }}>
+                          <Checkbox
+                            checked={routine.checked}
+                            onChange={() => handleCheckboxChange(routine.id)}
+                            icon={
+                              <RadioButtonUnchecked
+                                sx={{ color: "#fff", fontSize: "1.2rem" }}
+                              />
+                            }
+                            checkedIcon={
+                              <CheckCircleOutline
+                                sx={{ color: "#4CAF50", fontSize: "1.2rem" }}
+                              />
+                            }
+                            sx={{ p: 0 }}
+                          />
+                          <Typography
+                            variant="h6"
+                            sx={{
+                              fontFamily: "Poppins, sans-serif",
+                              fontWeight: 600,
+                              fontSize: "0.9rem",
+                              color: "#fff",
+                              ml: 1,
+                            }}
+                          >
+                            {routine.title}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ textAlign: "center" }}>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              fontFamily: "Poppins, sans-serif",
+                              color: "#fff",
+                              fontWeight: 500,
+                              fontSize: "0.75rem",
+                              mt: 0.25,
+                              display: "block",
+                              textAlign: "center",
+                            }}
+                          >
+                            {getCountdownMessage(routine)}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ textAlign: "right" }}>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              fontFamily: "Poppins, sans-serif",
+                              color: "#f5f5f5",
+                              fontWeight: "500",
+                              fontSize: "0.75rem",
+                              opacity: 0.8,
+                            }}
+                          >
+                            {routine.time}{" "}
+                            {routine.endTime && `- ${routine.endTime}`}
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      {/* Zaman Çubuğu */}
+                      {routine.endTime && !routine.checked && (
+                        <Box sx={{ mt: 1 }}>
+                          <Box
+                            sx={{
+                              position: "relative",
+                              height: "8px",
+                              background: "#fff",
+                              borderRadius: "4px",
+                              overflow: "hidden",
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                width: `${progress}%`,
+                                height: "100%",
+                                background:
+                                  "linear-gradient(90deg, #4caf50, #2196f3, #f44336, #ff9800, #9c27b0, #5e35b1, #009688, #ffeb3b, #ff5722, #795548, #607d8b, #00bcd4)",
+                                backgroundSize: "300% 300%",
+                                animation: `${gradient} 30s ease infinite`,
+                                transition: "width 0.5s ease",
+                              }}
+                            />
+                          </Box>
+                        </Box>
                       )}
-                    </IconButton>
-                    <IconButton
-                      onClick={() => deleteRoutine(routine.id)}
-                      sx={{ color: "#FF5252" }}
-                    >
-                      <DeleteForever />
-                    </IconButton>
-                  </Box>
-                </motion.div>
-              ))
+
+                      {/* İkonlar */}
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "flex-end",
+                          mt: 1,
+                        }}
+                      >
+                        <IconButton
+                          onClick={() => {
+                            setNewRoutine(routine);
+                            setEditRoutineId(routine.id);
+                            setModalOpen(true);
+                          }}
+                          size="small"
+                          sx={{ color: "#9C27B0", p: 0.5 }}
+                        >
+                          <EventNote fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          onClick={() => handleNotificationChange(routine.id)}
+                          size="small"
+                          sx={{
+                            color: notificationsEnabled[routine.id]
+                              ? "#FFA726"
+                              : "#fff",
+                            p: 0.5,
+                          }}
+                        >
+                          {notificationsEnabled[routine.id] ? (
+                            <NotificationsActive fontSize="small" />
+                          ) : (
+                            <NotificationsOff fontSize="small" />
+                          )}
+                        </IconButton>
+                        <IconButton
+                          onClick={() => deleteRoutine(routine.id)}
+                          size="small"
+                          sx={{ color: "#FF5252", p: 0.5 }}
+                        >
+                          <DeleteForever fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </Box>
+                  </motion.div>
+                );
+              })
             )}
           </AnimatePresence>
+
+          {/* Tamamlanan Rutinler Accordion – Modern Buton Görünümü */}
+          <Accordion
+            defaultExpanded={false}
+            sx={{
+              background: "transparent",
+              boxShadow: "none",
+              color: "#fff",
+              mt: 4,
+              "&::before": { display: "none" },
+            }}
+          >
+            <AccordionSummary
+              expandIcon={<ExpandMoreIcon sx={{ color: "#fff" }} />}
+              sx={{
+                background: "transparent",
+                color: "#fff",
+                padding: "12px 24px",
+                "& .MuiAccordionSummary-content": {
+                  margin: 0,
+                  justifyContent: "center",
+                },
+              }}
+            >
+              <Typography
+                variant="h6"
+                sx={{ fontWeight: 600, textAlign: "center", width: "100%" }}
+              >
+                Tamamlanan Rutinler
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails
+              sx={{
+                background: "transparent",
+                padding: "16px",
+              }}
+            >
+              <AnimatePresence>
+                {completedRoutines.length === 0 ? (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    style={{ textAlign: "center", padding: "16px 0" }}
+                  >
+                    <Typography
+                      variant="body1"
+                      sx={{ color: "#fff", opacity: 0.8 }}
+                    >
+                      Henüz tamamlanan rutin yok.
+                    </Typography>
+                    <Box sx={{ mt: 2 }}>
+                      <img
+                        src="/empty-state.svg"
+                        alt="Empty State"
+                        style={{ maxWidth: "20%", height: "auto" }}
+                      />
+                    </Box>
+                  </motion.div>
+                ) : (
+                  completedRoutines.map((routine) => (
+                    <motion.div
+                      key={routine.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          p: 2,
+                          mb: 2,
+                          background: "rgba(255,255,255,0.1)",
+                          borderRadius: 3,
+                          transition: "all 0.3s ease",
+                          "&:hover": {
+                            background: "rgba(255,255,255,0.15)",
+                            transform: "translateX(10px)",
+                          },
+                        }}
+                      >
+                        <Box sx={{ display: "flex", alignItems: "center" }}>
+                          <Checkbox
+                            checked={routine.checked}
+                            onChange={() => handleCheckboxChange(routine.id)}
+                            icon={
+                              <RadioButtonUnchecked sx={{ color: "#fff" }} />
+                            }
+                            checkedIcon={
+                              <CheckCircleOutline sx={{ color: "#4CAF50" }} />
+                            }
+                          />
+                          <Box
+                            sx={{
+                              flex: 1,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              ml: 1,
+                            }}
+                          >
+                            <Typography
+                              variant="body1"
+                              sx={{
+                                fontWeight: "bold",
+                                width: "20%",
+                                textAlign: "left",
+                                color: "#fff",
+                              }}
+                            >
+                              {routine.time}
+                            </Typography>
+                            <Typography
+                              variant="body1"
+                              sx={{
+                                width: "60%",
+                                textAlign: "center",
+                                color: "#fff",
+                              }}
+                            >
+                              {routine.title}
+                            </Typography>
+                            <Box sx={{ width: "20%", textAlign: "right" }}>
+                              {routine.endTime && (
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    display: "block",
+                                    fontWeight: "medium",
+                                    color: "#fff",
+                                  }}
+                                >
+                                  {routine.endTime}
+                                </Typography>
+                              )}
+                              <Box>
+                                <IconButton
+                                  onClick={() => {
+                                    setNewRoutine(routine);
+                                    setEditRoutineId(routine.id);
+                                    setModalOpen(true);
+                                  }}
+                                  size="small"
+                                  sx={{ color: "#9C27B0" }}
+                                >
+                                  <EventNote fontSize="small" />
+                                </IconButton>
+                                <IconButton
+                                  onClick={() =>
+                                    handleNotificationChange(routine.id)
+                                  }
+                                  size="small"
+                                  sx={{
+                                    color: notificationsEnabled[routine.id]
+                                      ? "#FFA726"
+                                      : "#fff",
+                                  }}
+                                >
+                                  {notificationsEnabled[routine.id] ? (
+                                    <NotificationsActive fontSize="small" />
+                                  ) : (
+                                    <NotificationsOff fontSize="small" />
+                                  )}
+                                </IconButton>
+                                <IconButton
+                                  onClick={() => deleteRoutine(routine.id)}
+                                  size="small"
+                                  sx={{ color: "#FF5252" }}
+                                >
+                                  <DeleteForever fontSize="small" />
+                                </IconButton>
+                              </Box>
+                            </Box>
+                          </Box>
+                        </Box>
+                      </Box>
+                    </motion.div>
+                  ))
+                )}
+              </AnimatePresence>
+            </AccordionDetails>
+          </Accordion>
         </GlowingCard>
 
         <Dialog
@@ -966,6 +1347,18 @@ const DailyRoutine = ({ user }) => {
               value={newRoutine.time}
               onChange={(e) =>
                 setNewRoutine({ ...newRoutine, time: e.target.value })
+              }
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              fullWidth
+              margin="dense"
+              label="Bitiş Saati (opsiyonel)"
+              type="time"
+              InputLabelProps={{ shrink: true }}
+              value={newRoutine.endTime || ""}
+              onChange={(e) =>
+                setNewRoutine({ ...newRoutine, endTime: e.target.value })
               }
               sx={{ mb: 2 }}
             />

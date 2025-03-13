@@ -772,6 +772,13 @@ const Exercises = ({ exercises, setExercises }) => {
               <Typography variant="h6" sx={{ color: "#fff", opacity: 0.8 }}>
                 Henüz egzersiz eklenmemiş
               </Typography>
+              <Box sx={{ mt: 2 }}>
+                <img
+                  src="/empty-state.svg"
+                  alt="Empty State"
+                  style={{ maxWidth: "20%", height: "auto" }}
+                />
+              </Box>
             </Box>
           ) : (
             <Grid container spacing={3}>

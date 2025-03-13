@@ -320,6 +320,7 @@ const DailyRoutine = ({ user }) => {
             lastResetMonthly: newResetData.monthly,
           });
           setResetData(newResetData);
+          setCurrentTime(new Date());
         } catch (error) {
           console.error("Reset bilgileri güncellenirken hata:", error);
         }
@@ -464,6 +465,7 @@ const DailyRoutine = ({ user }) => {
         completionDate: null,
       }))
     );
+    setCurrentTime(new Date());
   };
 
   // Tüm rutinleri sil
@@ -616,13 +618,17 @@ const DailyRoutine = ({ user }) => {
     return hour * 60 + minute;
   };
 
-  // Fonksiyon: kalan süreyi hh:mm:ss formatında döndürür
-  // Hedef saate kalan süreyi hesaplar
-  const formatTimeCountdown = (targetTimeStr) => {
+  // Hedef saate kalan süreyi hesaplar – currentTime state yerine anlık new Date() kullanır
+  // Varsayılan now değeri new Date() olarak atanır.
+  const formatTimeCountdown = (targetTimeStr, now = new Date()) => {
     const [targetHour, targetMinute] = targetTimeStr.split(":").map(Number);
-    const targetDate = new Date(currentTime);
+    const targetDate = new Date(now);
     targetDate.setHours(targetHour, targetMinute, 0, 0);
-    let remainingSeconds = Math.floor((targetDate - currentTime) / 1000);
+    // Eğer hedef zaman bugünkü zamandan önceyse, ertesi güne ayarla
+    if (targetDate < now) {
+      targetDate.setDate(targetDate.getDate() + 1);
+    }
+    let remainingSeconds = Math.floor((targetDate - now) / 1000);
     remainingSeconds = remainingSeconds > 0 ? remainingSeconds : 0;
     const hours = String(Math.floor(remainingSeconds / 3600)).padStart(2, "0");
     const minutes = String(Math.floor((remainingSeconds % 3600) / 60)).padStart(
@@ -633,22 +639,33 @@ const DailyRoutine = ({ user }) => {
     return `${hours}:${minutes}:${seconds}`;
   };
 
-  // Rutin durumuna göre mesaj döndürür
-  const getCountdownMessage = (routine) => {
-    const currentMin = currentTime.getHours() * 60 + currentTime.getMinutes();
+  const getCountdownMessage = (routine, now = new Date()) => {
+    const currentMin = now.getHours() * 60 + now.getMinutes();
     const startMin = getMinutesFromTime(routine.time);
     if (!routine.endTime) {
-      // Bitiş zamanı yoksa, henüz başlamadıysa başlangıca kalan süreyi göster
       return currentMin < startMin
-        ? `Başlamaya Kalan Süre: ${formatTimeCountdown(routine.time)}`
+        ? `Başlamaya Kalan Süre: ${formatTimeCountdown(routine.time, now)}`
         : "";
     } else {
       const endMin = getMinutesFromTime(routine.endTime);
       if (currentMin < startMin) {
-        return `Başlamasına Kalan Süre: ${formatTimeCountdown(routine.time)}`;
+        return `Başlamasına Kalan Süre: ${formatTimeCountdown(
+          routine.time,
+          now
+        )}`;
       } else if (currentMin >= startMin && currentMin < endMin) {
-        return `Bitmesine Kalan Süre: ${formatTimeCountdown(routine.endTime)}`;
+        return `Bitmesine Kalan Süre: ${formatTimeCountdown(
+          routine.endTime,
+          now
+        )}`;
       } else {
+        // Eğer rutin unchecked ise, ertesi gün için başlangıca kalan süreyi hesapla.
+        if (!routine.checked) {
+          return `Başlamaya Kalan Süre: ${formatTimeCountdown(
+            routine.time,
+            now
+          )}`;
+        }
         return "Süre Doldu";
       }
     }
@@ -1027,22 +1044,7 @@ const DailyRoutine = ({ user }) => {
                             {routine.title}
                           </Typography>
                         </Box>
-                        <Box sx={{ textAlign: "center" }}>
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              fontFamily: "Poppins, sans-serif",
-                              color: "#fff",
-                              fontWeight: 500,
-                              fontSize: "0.75rem",
-                              mt: 0.25,
-                              display: "block",
-                              textAlign: "center",
-                            }}
-                          >
-                            {getCountdownMessage(routine)}
-                          </Typography>
-                        </Box>
+
                         <Box sx={{ textAlign: "right" }}>
                           <Typography
                             variant="caption"
@@ -1088,47 +1090,66 @@ const DailyRoutine = ({ user }) => {
                       )}
 
                       {/* İkonlar */}
+
                       <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "flex-end",
-                          mt: 1,
-                        }}
+                        sx={{ display: "flex", alignItems: "center", mt: 1 }}
                       >
-                        <IconButton
-                          onClick={() => {
-                            setNewRoutine(routine);
-                            setEditRoutineId(routine.id);
-                            setModalOpen(true);
-                          }}
-                          size="small"
-                          sx={{ color: "#9C27B0", p: 0.5 }}
-                        >
-                          <EventNote fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          onClick={() => handleNotificationChange(routine.id)}
-                          size="small"
+                        <Typography
+                          variant="caption"
                           sx={{
-                            color: notificationsEnabled[routine.id]
-                              ? "#FFA726"
-                              : "#fff",
-                            p: 0.5,
+                            fontFamily: "Poppins, sans-serif",
+                            color: "#fff",
+                            fontWeight: 500,
+                            fontSize: "0.75rem",
+                            mt: 0.25,
+                            display: "block",
+                            textAlign: "left",
                           }}
                         >
-                          {notificationsEnabled[routine.id] ? (
-                            <NotificationsActive fontSize="small" />
-                          ) : (
-                            <NotificationsOff fontSize="small" />
-                          )}
-                        </IconButton>
-                        <IconButton
-                          onClick={() => deleteRoutine(routine.id)}
-                          size="small"
-                          sx={{ color: "#FF5252", p: 0.5 }}
+                          {getCountdownMessage(routine, currentTime)}
+                        </Typography>
+                        <Box
+                          sx={{
+                            ml: "auto",
+                            display: "flex",
+                            alignItems: "center",
+                          }}
                         >
-                          <DeleteForever fontSize="small" />
-                        </IconButton>
+                          <IconButton
+                            onClick={() => {
+                              setNewRoutine(routine);
+                              setEditRoutineId(routine.id);
+                              setModalOpen(true);
+                            }}
+                            size="small"
+                            sx={{ color: "#9C27B0", p: 0.5 }}
+                          >
+                            <EventNote fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            onClick={() => handleNotificationChange(routine.id)}
+                            size="small"
+                            sx={{
+                              color: notificationsEnabled[routine.id]
+                                ? "#FFA726"
+                                : "#fff",
+                              p: 0.5,
+                            }}
+                          >
+                            {notificationsEnabled[routine.id] ? (
+                              <NotificationsActive fontSize="small" />
+                            ) : (
+                              <NotificationsOff fontSize="small" />
+                            )}
+                          </IconButton>
+                          <IconButton
+                            onClick={() => deleteRoutine(routine.id)}
+                            size="small"
+                            sx={{ color: "#FF5252", p: 0.5 }}
+                          >
+                            <DeleteForever fontSize="small" />
+                          </IconButton>
+                        </Box>
                       </Box>
                     </Box>
                   </motion.div>
@@ -1191,7 +1212,7 @@ const DailyRoutine = ({ user }) => {
                       <img
                         src="/empty-state.svg"
                         alt="Empty State"
-                        style={{ maxWidth: "20%", height: "auto" }}
+                        style={{ maxWidth: "5%", height: "auto" }}
                       />
                     </Box>
                   </motion.div>
@@ -1260,6 +1281,7 @@ const DailyRoutine = ({ user }) => {
                             >
                               {routine.title}
                             </Typography>
+
                             <Box sx={{ width: "20%", textAlign: "right" }}>
                               {routine.endTime && (
                                 <Typography
@@ -1270,6 +1292,9 @@ const DailyRoutine = ({ user }) => {
                                     color: "#fff",
                                   }}
                                 >
+                                  {getCountdownMessage(routine, currentTime)} {}
+                                  🕒
+                                  {`  `}
                                   {routine.endTime}
                                 </Typography>
                               )}

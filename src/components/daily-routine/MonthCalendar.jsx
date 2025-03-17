@@ -43,6 +43,7 @@ const MonthCalendar = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
+
   // Seçilen gün için dialog state
   const [selectedDay, setSelectedDay] = useState(null);
 
@@ -181,7 +182,7 @@ const MonthCalendar = ({
     return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
   };
 
-  // Rutin kartı bileşeni
+  // RoutineCard bileşeni (responsive font-size, padding ve whiteSpace ayarlandı)
   const RoutineCard = ({ routine, isCompact = false }) => (
     <Tooltip title={`${routine.time} - ${routine.title}`} arrow placement="top">
       <motion.div
@@ -197,14 +198,14 @@ const MonthCalendar = ({
             categoryColors[routine.category] || categoryColors.Default,
             0.2
           ),
-          padding: isCompact ? "1px 3px" : "2px 4px",
+          padding: isMobile ? "1px 2px" : isCompact ? "1px 3px" : "2px 4px",
           borderRadius: "4px",
-          fontSize: isCompact ? "0.6rem" : "0.7rem",
+          fontSize: isMobile ? "0.55rem" : isCompact ? "0.6rem" : "0.7rem",
           color: categoryColors[routine.category] || categoryColors.Default,
           marginBottom: "2px",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
+          whiteSpace: isMobile ? "normal" : "nowrap",
           overflow: "hidden",
+          wordBreak: isMobile ? "break-word" : "normal",
           cursor: "pointer",
           borderLeft: `2px solid ${
             categoryColors[routine.category] || categoryColors.Default
@@ -216,7 +217,7 @@ const MonthCalendar = ({
     </Tooltip>
   );
 
-  // Gün hücre bileşeni
+  // Gün hücre bileşeni (responsive padding, gap ve height ayarlandı)
   const CalendarDayCell = ({ day }) => {
     const visibleRoutinesCount = isMobile ? 1 : isTablet ? 2 : 3;
     const remainingRoutines = day.routines.length - visibleRoutinesCount;
@@ -236,7 +237,7 @@ const MonthCalendar = ({
           onClick={handleDayClick}
           style={{
             height: "100%",
-            padding: isMobile ? "4px" : "8px",
+            padding: isMobile ? "2px" : isTablet ? "4px" : "8px",
             backgroundColor: day.isToday
               ? colors.today
               : day.isWeekend && day.isCurrentMonth
@@ -247,7 +248,7 @@ const MonthCalendar = ({
             borderRadius: "12px",
             display: "flex",
             flexDirection: "column",
-            gap: 0.5,
+            gap: isMobile ? "2px" : "4px",
             border: day.isToday
               ? `1px solid ${colors.primary}`
               : `1px solid ${alpha(colors.surface, 0.2)}`,

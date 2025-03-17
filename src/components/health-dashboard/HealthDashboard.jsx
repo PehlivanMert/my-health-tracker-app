@@ -257,17 +257,17 @@ Tarih ve Saat: ${currentDateTime}
 
 🌟 *Bilimsel ama Eğlenceli Öneriler İstiyorum* 🌟
 Aşağıdaki başlıkları içeren kesinlikle 3000 karakteri geçmeyen bir rehber hazırla:
-1️⃣ Su Tüketimi: Hidrasyon analizi ve yaratıcı su içme taktikleri
-2️⃣ Takviyeler: Kullanım trendleri ve uzman görüşü
-3️⃣ VKİ Yorumu: Mevcut değerinin bilimsel analizi
-4️⃣ Hareket Planı: Kişiye özel 3 aşamalı egzersiz programı
-5️⃣ Beslenme: Eğlenceli besin kombinasyonları
-6️⃣ Şefin Önerisi: Sağlıklı bir tarif (malzeme listeli)
-7️⃣ Motivasyon: Günün bilimsel ilham sözü
+1 Su Tüketimi: Hidrasyon analizi ve yaratıcı su içme taktikleri
+2 Takviyeler: Kullanım trendleri ve uzman görüşü
+3 VKİ Yorumu: Mevcut değerinin bilimsel analizi
+4 Hareket Planı: Kişiye özel 3 aşamalı egzersiz programı
+5 Beslenme: Eğlenceli besin kombinasyonları
+6 Şefin Önerisi: Sağlıklı bir tarif (malzeme listeli)
+7️ Motivasyon: Günün bilimsel ilham sözü
 
 🔍 *İstenen Format:*
-▸ Ana başlıkları Rakamlar ile maddelendirerek ve sade metin formatında yaz (Örn: "1. Su Tüketimi:")
-▸ Her başlığı 300-500 karakter arasında tut
+▸ Ana başlıkları normal Rakamlar ile maddelendirerek ve sade metin formatında yaz (Örn: "1. Su Tüketimi:")
+▸ Her başlığı 300-400 karakter arasında tut
 ▸ Her maddeyi 🧊💡🏋️♀️ gibi emojilerle süsle
 ▸ Bilimsel terimleri günlük dile çevir (Örn: "Hidrasyon" yerine "Su Dostluğu")
 ▸ Kullanıcıya özel metaforlar kullan (Örn: "Su içmeyi unutuyorsan telefonuna 'Susuzluk Alarmı' kuralım!")

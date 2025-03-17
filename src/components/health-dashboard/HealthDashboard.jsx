@@ -256,7 +256,7 @@ Tarih ve Saat: ${currentDateTime}
 
 
 🌟 *Bilimsel ama Eğlenceli Öneriler İstiyorum* 🌟
-Aşağıdaki başlıkları içeren 3000 karakteri geçmeyen bir rehber hazırla:
+Aşağıdaki başlıkları içeren kesinlikle 3000 karakteri geçmeyen bir rehber hazırla:
 1️⃣ Su Tüketimi: Hidrasyon analizi ve yaratıcı su içme taktikleri
 2️⃣ Takviyeler: Kullanım trendleri ve uzman görüşü
 3️⃣ VKİ Yorumu: Mevcut değerinin bilimsel analizi
@@ -266,7 +266,8 @@ Aşağıdaki başlıkları içeren 3000 karakteri geçmeyen bir rehber hazırla:
 7️⃣ Motivasyon: Günün bilimsel ilham sözü
 
 🔍 *İstenen Format:*
-▸ Rakamlar ile maddelendirerek ve sade metin formatında
+▸ Ana başlıkları Rakamlar ile maddelendirerek ve sade metin formatında yaz (Örn: "1. Su Tüketimi:")
+▸ Her başlığı 300-500 karakter arasında tut
 ▸ Her maddeyi 🧊💡🏋️♀️ gibi emojilerle süsle
 ▸ Bilimsel terimleri günlük dile çevir (Örn: "Hidrasyon" yerine "Su Dostluğu")
 ▸ Kullanıcıya özel metaforlar kullan (Örn: "Su içmeyi unutuyorsan telefonuna 'Susuzluk Alarmı' kuralım!")
@@ -279,7 +280,7 @@ Aşağıdaki başlıkları içeren 3000 karakteri geçmeyen bir rehber hazırla:
         body: JSON.stringify({
           model: "qwen-max",
           messages: [{ role: "user", content: prompt }],
-          max_tokens: 3000,
+          max_tokens: 3500,
           temperature: 0.6,
         }),
       });

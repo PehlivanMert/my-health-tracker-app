@@ -1,4 +1,3 @@
-// src/components/daily-routine/FilterBar.jsx
 import React, { useState } from "react";
 import {
   Box,
@@ -42,6 +41,10 @@ import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import PaletteIcon from "@mui/icons-material/Palette";
 import GroupIcon from "@mui/icons-material/Group";
+
+// Yeni: Bildirim ikonları
+import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
+import NotificationsOffIcon from "@mui/icons-material/NotificationsOff";
 
 // Glassmorphism stil
 const GlassInput = styled(TextField)(({ theme }) => ({
@@ -183,6 +186,8 @@ const FilterBar = ({
   setSearchQuery,
   timeFilter,
   setTimeFilter,
+  toggleAllNotifications,
+  allNotificationsEnabled,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -414,12 +419,13 @@ const FilterBar = ({
             </Collapse>
           </Box>
 
-          {/* Zaman filtreleri */}
+          {/* Zaman filtreleri ve Bildirim butonu */}
           <Box
             component={motion.div}
             variants={itemVariants}
             sx={{
               display: "flex",
+              alignItems: "center",
               flexWrap: "wrap",
               gap: 1,
               justifyContent: isTablet ? "flex-start" : "flex-end",
@@ -443,6 +449,18 @@ const FilterBar = ({
                 {isMobile ? tf.icon : tf.label}
               </FilterButton>
             ))}
+            <Tooltip title="Tüm Bildirimleri Aç/Kapat">
+              <IconButton
+                onClick={toggleAllNotifications}
+                sx={{ color: "#fff" }}
+              >
+                {allNotificationsEnabled ? (
+                  <NotificationsActiveIcon />
+                ) : (
+                  <NotificationsOffIcon />
+                )}
+              </IconButton>
+            </Tooltip>
           </Box>
         </Box>
       )}

@@ -466,7 +466,7 @@ const DailyRoutine = ({ user }) => {
       }));
       setMonthlyStats((prev) => ({
         ...prev,
-        completed: Math.max(prev.completed - count, 0),
+        completed: Math.max(prev.completed - 1, 0),
       }));
     }
     setRoutines((prev) =>
@@ -478,10 +478,13 @@ const DailyRoutine = ({ user }) => {
     setOpenDeleteFilteredDialog(true);
   };
 
+  // DÜZENLENEN: Tüm bildirimleri aç/kapat fonksiyonu
   const toggleAllNotifications = () => {
-    const newState = !notificationsEnabled.all;
+    const allEnabled =
+      routines.length > 0 && routines.every((r) => r.notificationEnabled);
+    const newState = !allEnabled;
     showToast(
-      newState ? "Tüm bildirimler açıldı 🔔" : "Tüm bildirimler kapatıldı 🔕",
+      newState ? "Bildirimler açıldı 🔔" : "Bildirimler kapatıldı 🔕",
       newState ? "success" : "error"
     );
     setRoutines(routines.map((r) => ({ ...r, notificationEnabled: newState })));
@@ -521,6 +524,10 @@ const DailyRoutine = ({ user }) => {
           setSearchQuery={setSearchQuery}
           timeFilter={timeFilter}
           setTimeFilter={setTimeFilter}
+          toggleAllNotifications={toggleAllNotifications}
+          allNotificationsEnabled={
+            routines.length > 0 && routines.every((r) => r.notificationEnabled)
+          }
         />
         {timeFilter === "Monthly" ? (
           <MonthlyRoutines
@@ -535,7 +542,7 @@ const DailyRoutine = ({ user }) => {
             timeFilter={timeFilter}
             onDayClick={(date) => {
               setNewRoutineDate(getTurkeyLocalDateString(date));
-              setEditingRoutine(null); // Eklemeyi tetiklerken düzenleme verilerini temizle
+              setEditingRoutine(null);
               setModalOpen(true);
             }}
           />

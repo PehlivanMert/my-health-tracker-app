@@ -34,11 +34,6 @@ const isSameDay = (d1, d2) =>
   d1.getMonth() === d2.getMonth() &&
   d1.getDate() === d2.getDate();
 
-const routineOccursOn = (r, date) => {
-  if (!r.date) return false;
-  return isSameDay(new Date(r.date), date);
-};
-
 const routineOccursOnDate = (routine, date) => {
   if (!routine.date) return false;
   const cellDate = normalizeDate(date);
@@ -104,10 +99,9 @@ const MonthlyRoutines = ({
   onDelete,
   onToggleNotification,
   notificationsEnabled,
-  // categoryColors burada dışarıdan veriliyor (örneğin neon tonlar içeren)
   categoryColors,
   timeFilter,
-  onDayClick, // Gün hücresine tıklandığında yeni rutin ekleme fonksiyonu
+  onDayClick,
 }) => {
   const theme = useTheme();
   const colors = {
@@ -124,7 +118,6 @@ const MonthlyRoutines = ({
   const [currentYear, setCurrentYear] = useState(currentDate.getFullYear());
   const [filteredRoutines, setFilteredRoutines] = useState([]);
 
-  // Liste veya grid görünüm için zaman filtresine göre rutinleri hesaplıyoruz
   useEffect(() => {
     const firstDay = normalizeDate(new Date(currentYear, currentMonth, 1));
     const lastDay = normalizeDate(new Date(currentYear, currentMonth + 1, 0));
@@ -144,7 +137,6 @@ const MonthlyRoutines = ({
         routineOccursOnDate(routine, targetDate)
       );
     } else {
-      // List veya grid görünümde aylık filtreleme için
       filtered = routines.filter((routine) => {
         if (!routine.date) return false;
         if (!routine.repeat || routine.repeat === "none") {
@@ -162,7 +154,6 @@ const MonthlyRoutines = ({
     setFilteredRoutines(filtered);
   }, [routines, currentMonth, currentYear, timeFilter]);
 
-  // Takvim görünümü için tüm rutinleri (filtrelenmemiş) kullanıyoruz
   const calendarRoutines = routines;
 
   const goToPreviousMonth = () => {
@@ -284,11 +275,7 @@ const MonthlyRoutines = ({
           }}
         >
           <IconButton
-            onClick={() => {
-              const newDate = new Date(currentYear, currentMonth - 1, 1);
-              setCurrentMonth(newDate.getMonth());
-              setCurrentYear(newDate.getFullYear());
-            }}
+            onClick={goToPreviousMonth}
             sx={{
               color: colors.text.primary,
               backgroundColor: alpha(colors.surface, 0.3),
@@ -300,8 +287,7 @@ const MonthlyRoutines = ({
           <Box sx={{ textAlign: "center" }}>
             <Typography
               variant="h5"
-              component={motion.h5}
-              whileHover={{ scale: 1.05 }}
+              component="div"
               sx={{
                 color: colors.text.primary,
                 fontWeight: 600,
@@ -309,21 +295,13 @@ const MonthlyRoutines = ({
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
               }}
-              onClick={() => {
-                const today = new Date();
-                setCurrentMonth(today.getMonth());
-                setCurrentYear(today.getFullYear());
-              }}
+              onClick={goToCurrentMonth}
             >
               {MONTHS[currentMonth]} {currentYear}
             </Typography>
           </Box>
           <IconButton
-            onClick={() => {
-              const newDate = new Date(currentYear, currentMonth + 1, 1);
-              setCurrentMonth(newDate.getMonth());
-              setCurrentYear(newDate.getFullYear());
-            }}
+            onClick={goToNextMonth}
             sx={{
               color: colors.text.primary,
               backgroundColor: alpha(colors.surface, 0.3),

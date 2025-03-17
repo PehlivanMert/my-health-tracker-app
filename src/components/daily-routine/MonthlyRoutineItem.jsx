@@ -41,10 +41,8 @@ const MonthlyRoutineItem = ({
   categoryColors,
   gridView,
 }) => {
-  // Yerel hover state ekliyoruz:
   const [hovered, setHovered] = useState(false);
 
-  // Zaman hesaplamaları:
   const getMinutesFromTime = (timeStr) => {
     const [hour, minute] = timeStr.split(":").map(Number);
     return hour * 60 + minute;
@@ -66,7 +64,6 @@ const MonthlyRoutineItem = ({
     return `${hours}:${minutes}:${seconds}`;
   };
 
-  const todayStr = getTurkeyLocalDateString(new Date());
   const isRoutineCompleted = routine.completed;
 
   const getCountdownMessage = () => {
@@ -129,9 +126,10 @@ const MonthlyRoutineItem = ({
     }
   };
 
+  // Overlay animasyonunda y ekseni kaymasını kaldırdık
   const overlayVariants = {
-    hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { duration: 0.3 } },
   };
 
   return (
@@ -236,8 +234,9 @@ const MonthlyRoutineItem = ({
             alignItems: "center",
             justifyContent: "center",
             boxShadow: `0px 4px 10px ${
-              categoryColors[routine.category] || categoryColors.Default
-            }80`,
+              (categoryColors[routine.category] || categoryColors.Default) +
+              "80"
+            }`,
           }}
         >
           {getCategoryIcon(routine.category)}

@@ -65,6 +65,12 @@ const StyledCard = styled(motion.div, {
         : `radial-gradient(circle at 100% 100%, ${bordercolor}15 0%, transparent 60%)`,
     pointerEvents: "none",
   },
+  // Mobil ekranlar için responsive ayarlamalar
+  [theme.breakpoints.down("sm")]: {
+    padding: theme.spacing(1.5),
+    marginBottom: theme.spacing(1.5),
+    borderLeft: `3px solid ${bordercolor}`,
+  },
 }));
 
 const CategoryChip = styled(Box)(({ theme, color }) => ({
@@ -96,6 +102,9 @@ const RoutineCard = ({
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
   const [hovered, setHovered] = useState(false);
+
+  // Mobil için ikon boyutunu ayarlıyoruz
+  const iconSize = isMobile ? "1rem" : "1.2rem";
 
   // routine.completed ile tamamlanma durumu
   const isRoutineCompleted = routine.completed;
@@ -187,35 +196,36 @@ const RoutineCard = ({
   };
 
   const getCategoryIcon = (category) => {
+    const iconProps = { sx: { fontSize: iconSize, color: "#fff" } };
     switch (category) {
       case "Work":
-        return <WorkOutlineIcon sx={{ fontSize: "1.2rem", color: "#fff" }} />;
+        return <WorkOutlineIcon {...iconProps} />;
       case "Personal":
-        return <PersonIcon sx={{ fontSize: "1.2rem", color: "#fff" }} />;
+        return <PersonIcon {...iconProps} />;
       case "Exercise":
-        return <FitnessCenterIcon sx={{ fontSize: "1.2rem", color: "#fff" }} />;
+        return <FitnessCenterIcon {...iconProps} />;
       case "Study":
-        return <SchoolIcon sx={{ fontSize: "1.2rem", color: "#fff" }} />;
+        return <SchoolIcon {...iconProps} />;
       case "Other":
-        return <MoreHorizIcon sx={{ fontSize: "1.2rem", color: "#fff" }} />;
+        return <MoreHorizIcon {...iconProps} />;
       case "Travel":
-        return <TravelExploreIcon sx={{ fontSize: "1.2rem", color: "#fff" }} />;
+        return <TravelExploreIcon {...iconProps} />;
       case "Shopping":
-        return <ShoppingCartIcon sx={{ fontSize: "1.2rem", color: "#fff" }} />;
+        return <ShoppingCartIcon {...iconProps} />;
       case "Entertainment":
-        return <MovieIcon sx={{ fontSize: "1.2rem", color: "#fff" }} />;
+        return <MovieIcon {...iconProps} />;
       case "Food":
-        return <RestaurantIcon sx={{ fontSize: "1.2rem", color: "#fff" }} />;
+        return <RestaurantIcon {...iconProps} />;
       case "Health":
-        return <LocalHospitalIcon sx={{ fontSize: "1.2rem", color: "#fff" }} />;
+        return <LocalHospitalIcon {...iconProps} />;
       case "Finance":
-        return <AttachMoneyIcon sx={{ fontSize: "1.2rem", color: "#fff" }} />;
+        return <AttachMoneyIcon {...iconProps} />;
       case "Hobby":
-        return <PaletteIcon sx={{ fontSize: "1.2rem", color: "#fff" }} />;
+        return <PaletteIcon {...iconProps} />;
       case "Social":
-        return <GroupIcon sx={{ fontSize: "1.2rem", color: "#fff" }} />;
+        return <GroupIcon {...iconProps} />;
       default:
-        return <MoreHorizIcon sx={{ fontSize: "1.2rem", color: "#fff" }} />;
+        return <MoreHorizIcon {...iconProps} />;
     }
   };
 
@@ -237,6 +247,7 @@ const RoutineCard = ({
         damping: 25,
         duration: 0.4,
       }}
+      // Mobil cihazlarda hover efekti genellikle çalışmadığından, yine de dokunmaya duyarlı bırakıyoruz
       whileHover={{ x: 10, scale: 1.015 }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -250,7 +261,7 @@ const RoutineCard = ({
               <RadioButtonUnchecked
                 sx={{
                   color: isActive ? cardColor : "#fff",
-                  fontSize: "1.5rem",
+                  fontSize: isMobile ? "1.3rem" : "1.5rem",
                   filter: isActive
                     ? `drop-shadow(0 0 5px ${cardColor}80)`
                     : "none",
@@ -262,7 +273,7 @@ const RoutineCard = ({
               <CheckCircleOutline
                 sx={{
                   color: "#4CAF50",
-                  fontSize: "1.5rem",
+                  fontSize: isMobile ? "1.3rem" : "1.5rem",
                   filter: "drop-shadow(0 0 3px rgba(76,175,80,0.6))",
                 }}
               />
@@ -337,7 +348,7 @@ const RoutineCard = ({
           animate={hovered ? "visible" : "hidden"}
           style={{
             position: "absolute",
-            bottom: 10,
+            bottom: isMobile ? 8 : 10,
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 2,
@@ -346,8 +357,8 @@ const RoutineCard = ({
           <Box
             sx={{
               backgroundColor: cardColor,
-              width: 40,
-              height: 40,
+              width: isMobile ? 30 : 40,
+              height: isMobile ? 30 : 40,
               borderRadius: "50%",
               display: "flex",
               alignItems: "center",

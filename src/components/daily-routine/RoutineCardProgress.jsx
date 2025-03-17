@@ -12,6 +12,9 @@ const ProgressBarContainer = styled(Box)(({ theme }) => ({
   bottom: 0, // Kartın altına sabitlenecek
   left: 0,
   right: 0,
+  [theme.breakpoints.down("sm")]: {
+    height: 3, // Mobil cihazlarda daha ince gösterim
+  },
 }));
 
 const ProgressFiller = styled(Box)(({ progress, color }) => ({

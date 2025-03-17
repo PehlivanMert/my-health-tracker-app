@@ -26,6 +26,10 @@ const ActionButton = styled(IconButton)(({ theme, color }) => ({
   "&:active": {
     transform: "scale(0.95)",
   },
+  [theme.breakpoints.down("sm")]: {
+    padding: theme.spacing(0.5),
+    marginLeft: theme.spacing(0.5),
+  },
 }));
 
 const CountdownDisplay = styled(Box)(({ theme, isActive, color }) => ({
@@ -40,6 +44,9 @@ const CountdownDisplay = styled(Box)(({ theme, isActive, color }) => ({
   boxShadow: isActive ? `0 0 15px ${color}30` : "0 0 10px rgba(0,0,0,0.2)",
   border: isActive ? `1px solid ${color}30` : "1px solid rgba(255,255,255,0.1)",
   transition: "all 0.3s ease",
+  [theme.breakpoints.down("sm")]: {
+    padding: "2px 8px",
+  },
 }));
 
 const RoutineCardActions = ({
@@ -74,7 +81,7 @@ const RoutineCardActions = ({
       display="flex"
       alignItems="center"
       justifyContent="space-between"
-      mt={2.5}
+      mt={isMobile ? 1.5 : 2.5}
       sx={{
         opacity: routine.checked ? 0.7 : 1,
         transition: "opacity 0.3s ease",

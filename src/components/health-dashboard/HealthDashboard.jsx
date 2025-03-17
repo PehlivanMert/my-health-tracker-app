@@ -229,42 +229,76 @@ const HealthDashboard = ({ user }) => {
         timeStyle: "short",
       });
 
-      const prompt = `Kullanıcı bilgileri:
-İsim: ${profileData.firstName || "Belirtilmemiş"},
-Yaş: ${age || "Belirtilmemiş"},
-Cinsiyet: ${profileData.gender || "Belirtilmemiş"},
-Boy: ${profileData.height || "Belirtilmemiş"} cm,
-Kilo: ${profileData.weight || "Belirtilmemiş"} kg,
-${bmi ? `VKİ: ${bmi.value} (${bmi.status})` : ""}
+      const prompt = `
+**${profileData.firstName || "Değerli Kullanıcı"} ${
+        profileData.gender === "male" ? "Bey" : "Hanım"
+      }'nin Kişiselleştirilmiş Sağlık Panosu - ${currentDateTime}**
 
-Su Tüketimi:
-- Dün içilen: ${healthData.waterData?.yesterday || 0} ml
-- Hedef: ${healthData.waterData?.target || 2000} ml
-- Bugünkü içilen: ${healthData.waterData?.currentIntake || 0} ml
+🏃‍♂️ *Temel Bilgilerim* 🩺
+"${profileData.firstName || "İsimsiz Kahraman"}" olarak kayıtlı
+📏 Boy: ${profileData.height || "?"} cm | ⚖️ Kilo: ${
+        profileData.weight || "?"
+      } kg
+🎂 Yaş: ${age || "Gizemli"} | 🌈 Cinsiyet: ${
+        profileData.gender || "Belirtilmemiş"
+      }
+${bmi ? `📊 VKİ: ${bmi.value} - "${bmi.status}" kategorisindesiniz` : ""}
 
-Takviyeler:Kalan/Toplam Miktar:
+💧 *Hidrasyon Karnem* (Son 24 Saat)
+✅ Hedef: ${healthData.waterData?.target || 2000} ml
+📌 Dün: ${healthData.waterData?.yesterday || 0} ml | 🎯 Bugün: ${
+        healthData.waterData?.currentIntake || 0
+      } ml
 ${
-  healthData.supplements
-    ?.map((s) => `- ${s.name} (${s.quantity}/${s.initialQuantity})`)
-    .join("\n") || "Kayıtlı takviye yok"
+  healthData.waterData?.currentIntake >= (healthData.waterData?.target || 2000)
+    ? "🎉 Bravo! Hedefe ulaştın!"
+    : "💦 Yolun yarısına geldin, devam!"
 }
 
-Son 7 Gün Takviye Kullanımı:
-${JSON.stringify(healthData.supplementStats, null, 2) || "Veri yok"}
+💊 *Takviye Performansım* 
+${
+  healthData.supplements?.length > 0
+    ? healthData.supplements
+        .map(
+          (s) =>
+            `▸ ${s.name}: ${s.quantity}/${
+              s.initialQuantity
+            } kalan (${Math.round(
+              ((s.initialQuantity - s.quantity) / s.initialQuantity) * 100
+            )}% tüketildi)`
+        )
+        .join("\n")
+    : "📭 Aktif takviye bulunmamaktadır"
+}
 
-Tarih ve Saat: ${currentDateTime}
+📅 *7 Günlük Takviye Trendi*
+${
+  healthData.supplementStats
+    ? Object.entries(healthData.supplementStats)
+        .map(([day, stats]) => `▸ ${day}: ${stats.join(", ")}`)
+        .join("\n")
+    : "📊 Henüz yeterli veri yok"
+}
 
-Günlük Detaylı sağlık önerileri oluştur:
-İsim Bey'e/Hanıma Özel Sağlık Önerileri - 26 Şubat 2025
-1. Su tüketim analizi ve öneriler
-2. Takviye kullanım değerlendirmesi
-3. VKİ analizi ve yorumu
-4. Günlük aktivite ve egzersiz planı
-5. Beslenme önerileri
-6. Sağlıklı ve dengeli bir yemek ya da içecek tarifi
-7. Özlü bir sağlık sözü
-Rakamlar ile maddelendirerek ve sade metin formatında max 2500 karakterle oluştur bilimsel ama eğlenceli bir dil kullan.`;
+🌟 *Bilimsel ama Eğlenceli Öneriler İstiyorum* 🌟
+Aşağıdaki başlıkları içeren 3000 tokenı geçmeyen bir rehber hazırla:
+1️⃣ Su Tüketimi: Hidrasyon analizi ve yaratıcı su içme taktikleri
+2️⃣ Takviyeler: Kullanım trendleri ve uzman görüşü
+3️⃣ VKİ Yorumu: Mevcut değerinin bilimsel analizi
+4️⃣ Hareket Planı: Kişiye özel 3 aşamalı egzersiz programı
+5️⃣ Beslenme: Eğlenceli besin kombinasyonları
+6️⃣ Şefin Önerisi: Sağlıklı bir tarif (malzeme listeli)
+7️⃣ Motivasyon: Günün bilimsel ilham sözü
 
+🔍 *İstenen Format:*
+Her maddeyi numaralandır
+▸ Her maddeyi 🧊💡🏋️♀️ gibi emojilerle süsle
+▸ Bilimsel terimleri günlük dile çevir (Örn: "Hidrasyon" yerine "Su Dostluğu")
+▸ Kullanıcıya özel metaforlar kullan (Örn: "Su içmeyi unutuyorsan telefonuna 'Susuzluk Alarmı' kuralım!")
+▸ Pozitif vurgu yap (Eleştirel değil teşvik edici dil)
+`;
+
+      // API isteği aynı kalacak
       const response = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

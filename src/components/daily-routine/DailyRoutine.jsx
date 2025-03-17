@@ -535,6 +535,7 @@ const DailyRoutine = ({ user }) => {
             timeFilter={timeFilter}
             onDayClick={(date) => {
               setNewRoutineDate(getTurkeyLocalDateString(date));
+              setEditingRoutine(null); // Eklemeyi tetiklerken düzenleme verilerini temizle
               setModalOpen(true);
             }}
           />

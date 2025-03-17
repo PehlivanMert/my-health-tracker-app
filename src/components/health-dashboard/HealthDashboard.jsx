@@ -254,8 +254,9 @@ ${JSON.stringify(healthData.supplementStats, null, 2) || "Veri yok"}
 
 Tarih ve Saat: ${currentDateTime}
 
+
 🌟 *Bilimsel ama Eğlenceli Öneriler İstiyorum* 🌟
-Aşağıdaki başlıkları içeren 3000 tokenı geçmeyen bir rehber hazırla:
+Aşağıdaki başlıkları içeren 3000 karakteri geçmeyen bir rehber hazırla:
 1️⃣ Su Tüketimi: Hidrasyon analizi ve yaratıcı su içme taktikleri
 2️⃣ Takviyeler: Kullanım trendleri ve uzman görüşü
 3️⃣ VKİ Yorumu: Mevcut değerinin bilimsel analizi
@@ -265,12 +266,13 @@ Aşağıdaki başlıkları içeren 3000 tokenı geçmeyen bir rehber hazırla:
 7️⃣ Motivasyon: Günün bilimsel ilham sözü
 
 🔍 *İstenen Format:*
-Her maddeyi numaralandır
+▸ Rakamlar ile maddelendirerek ve sade metin formatında
 ▸ Her maddeyi 🧊💡🏋️♀️ gibi emojilerle süsle
 ▸ Bilimsel terimleri günlük dile çevir (Örn: "Hidrasyon" yerine "Su Dostluğu")
 ▸ Kullanıcıya özel metaforlar kullan (Örn: "Su içmeyi unutuyorsan telefonuna 'Susuzluk Alarmı' kuralım!")
 ▸ Pozitif vurgu yap (Eleştirel değil teşvik edici dil)
 `;
+
       const response = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

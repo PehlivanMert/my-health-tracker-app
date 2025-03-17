@@ -776,7 +776,11 @@ const Exercises = ({ exercises, setExercises }) => {
                 <img
                   src="/empty-state.svg"
                   alt="Empty State"
-                  style={{ maxWidth: "20%", height: "auto" }}
+                  style={{
+                    maxWidth: "20%",
+                    height: "auto",
+                    minWidth: "100px", // Küçük ekranlarda çok küçülmesini önler
+                  }}
                 />
               </Box>
             </Box>

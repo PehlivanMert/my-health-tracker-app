@@ -222,7 +222,12 @@ const MonthCalendar = ({
     const remainingRoutines = day.routines.length - visibleRoutinesCount;
 
     const handleDayClick = () => {
-      setSelectedDay(day);
+      // Eğer gün boşsa, doğrudan yeni rutin ekleme ekranını aç
+      if (day.routines.length === 0) {
+        onDayClick(day.date);
+      } else {
+        setSelectedDay(day);
+      }
     };
 
     return (
@@ -354,8 +359,8 @@ const MonthCalendar = ({
         PaperProps={{
           sx: {
             backgroundColor: colors.background,
-            borderRadius: "16px",
-            boxShadow: "0 6px 30px rgba(0,0,0,0.3)",
+            borderRadius: "20px",
+            boxShadow: "0 8px 40px rgba(0,0,0,0.4)",
             border: `1px solid ${alpha(colors.primary, 0.5)}`,
             p: 2,
             width: isMobile ? "90%" : isTablet ? "70%" : "50%",
@@ -373,6 +378,7 @@ const MonthCalendar = ({
                 mb: 1,
                 borderBottom: `1px solid ${alpha(colors.surface, 0.5)}`,
                 pb: 1,
+                px: 1,
               }}
             >
               <Typography
@@ -384,13 +390,18 @@ const MonthCalendar = ({
               >
                 Rutinler
               </Typography>
-              <IconButton onClick={handleCloseDialog}>
+              <IconButton onClick={handleCloseDialog} sx={{ p: 0 }}>
                 <CloseIcon sx={{ color: colors.text.secondary }} />
               </IconButton>
             </Box>
             <Typography
               variant="caption"
-              sx={{ color: colors.text.secondary, mb: 2, display: "block" }}
+              sx={{
+                color: colors.text.secondary,
+                mb: 2,
+                display: "block",
+                textAlign: "center",
+              }}
             >
               {selectedDay.date.toLocaleDateString("tr-TR", {
                 day: "numeric",
@@ -398,7 +409,22 @@ const MonthCalendar = ({
                 year: "numeric",
               })}
             </Typography>
-            <DialogContent sx={{ p: 0 }}>
+            <DialogContent
+              sx={{
+                p: 0,
+                maxHeight: 300,
+                overflowY: "auto",
+                "&::-webkit-scrollbar": { width: "8px" },
+                "&::-webkit-scrollbar-track": {
+                  background: alpha(colors.surface, 0.2),
+                  borderRadius: "4px",
+                },
+                "&::-webkit-scrollbar-thumb": {
+                  background: alpha(colors.primary, 0.6),
+                  borderRadius: "4px",
+                },
+              }}
+            >
               {selectedDay.routines.length > 0 ? (
                 <>
                   <Box

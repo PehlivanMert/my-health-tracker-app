@@ -1,3 +1,4 @@
+// src/components/daily-routine/AdvancedTimer.jsx
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Box,
@@ -7,8 +8,6 @@ import {
   FormControl,
   InputLabel,
   Typography,
-  TextField,
-  Paper,
   CircularProgress,
   IconButton,
   Snackbar,
@@ -22,15 +21,14 @@ import {
   DialogActions,
   Tabs,
   Tab,
-  useMediaQuery,
   Divider,
   Slider,
   Grid,
   Badge,
   Chip,
-  LinearProgress,
+  Paper,
 } from "@mui/material";
-import { ThemeProvider, createTheme } from "@mui/material/styles";
+import { ThemeProvider, createTheme, alpha } from "@mui/material/styles";
 import {
   PlayArrow,
   Pause,
@@ -48,13 +46,14 @@ import {
   Save,
   SkipNext,
   Timer,
-  BarChart,
-  Cake,
 } from "@mui/icons-material";
 import { motion, AnimatePresence } from "framer-motion";
 import Confetti from "react-confetti";
+import { db } from "../auth/firebaseConfig";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { NOTIFICATION_SOUNDS } from "../../utils/notificationSound";
 
-// Temel zamanlaycı sabitleri
+// Zamanlayıcı modları ve sabitleri
 const TIMER_MODES = {
   POMODORO: "Pomodoro",
   FLOWTIME: "Flowtime",
@@ -63,34 +62,12 @@ const TIMER_MODES = {
   NINETY_THIRTY: "90/30",
 };
 
-// LocalStorage anahtarları
 const STORAGE_KEYS = {
   SETTINGS: "advanced_timer_settings",
   HISTORY: "advanced_timer_history",
   THEME: "advanced_timer_theme",
 };
 
-// Bildirim seslerini tanımla
-const NOTIFICATION_SOUNDS = {
-  BELL: {
-    name: "Bell",
-    url: "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3",
-  },
-  CHIME: {
-    name: "Chime",
-    url: "https://assets.mixkit.co/active_storage/sfx/2871/2871-preview.mp3",
-  },
-  ALERT: {
-    name: "Alert",
-    url: "https://assets.mixkit.co/active_storage/sfx/2866/2866-preview.mp3",
-  },
-  NONE: {
-    name: "None",
-    url: null,
-  },
-};
-
-// Önceden tanımlanmış temalar (presets)
 const PRESET_SETTINGS = {
   CLASSIC_POMODORO: {
     name: "Klasik Pomodoro",
@@ -114,37 +91,35 @@ const PRESET_SETTINGS = {
   },
 };
 
-const AdvancedTimer = () => {
-  // Referanslar
+const AdvancedTimer = ({ user }) => {
+  // REFERANSLAR ve STATE tanımlamaları
+  const userId = user ? user.uid : null;
   const timerRef = useRef(null);
   const audioRef = useRef(new Audio());
   const windowFocusRef = useRef(true);
   const notificationPermissionRef = useRef("default");
   const confettiRef = useRef(null);
+  const debounceTimeoutRef = useRef(null);
 
-  // Tema state'i
   const [darkMode, setDarkMode] = useState(() => {
     const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME);
     return savedTheme
       ? JSON.parse(savedTheme)
       : window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
-
-  // Ana timer state'leri
   const [mode, setMode] = useState(TIMER_MODES.POMODORO);
   const [workDuration, setWorkDuration] = useState(25 * 60);
   const [breakDuration, setBreakDuration] = useState(5 * 60);
   const [longBreakDuration, setLongBreakDuration] = useState(15 * 60);
   const [sessionsBeforeLongBreak, setSessionsBeforeLongBreak] = useState(4);
   const [timer, setTimer] = useState(workDuration);
-  const [initialTimer, setInitialTimer] = useState(workDuration); // Kullanılan fazın başlangıç değeri
+  const [initialTimer, setInitialTimer] = useState(workDuration);
   const [isWorking, setIsWorking] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [completedSessions, setCompletedSessions] = useState(0);
   const [isLongBreak, setIsLongBreak] = useState(false);
-
-  // UI state'leri
+  const [targetTime, setTargetTime] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState(0);
   const [showHistory, setShowHistory] = useState(false);
@@ -159,26 +134,18 @@ const AdvancedTimer = () => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [currentSound, setCurrentSound] = useState(NOTIFICATION_SOUNDS.BELL);
   const [selectedPreset, setSelectedPreset] = useState("CLASSIC_POMODORO");
-
-  // İstatistik verileri
   const [history, setHistory] = useState(() => {
     const savedHistory = localStorage.getItem(STORAGE_KEYS.HISTORY);
     return savedHistory ? JSON.parse(savedHistory) : [];
   });
 
-  // Tema oluştur
+  // MUI tema tanımlaması
   const theme = createTheme({
     palette: {
       mode: darkMode ? "dark" : "light",
-      primary: {
-        main: "#1976d2",
-      },
-      secondary: {
-        main: "#dc004e",
-      },
-      success: {
-        main: "#4caf50",
-      },
+      primary: { main: "#1976d2" },
+      secondary: { main: "#dc004e" },
+      success: { main: "#4caf50" },
       background: {
         default: darkMode ? "#121212" : "#f5f5f5",
         paper: darkMode ? "#1e1e1e" : "#ffffff",
@@ -186,9 +153,7 @@ const AdvancedTimer = () => {
     },
     typography: {
       fontFamily: "'Roboto', 'Helvetica', 'Arial', sans-serif",
-      h4: {
-        fontWeight: 600,
-      },
+      h4: { fontWeight: 600 },
     },
     components: {
       MuiPaper: {
@@ -214,8 +179,25 @@ const AdvancedTimer = () => {
     },
   });
 
-  // LocalStorage işlemleri
-  const saveToLocalStorage = useCallback(() => {
+  // Firestore’a kaydetme yardımcı fonksiyonu (merge ile güncelleme)
+  const saveToFirestore = async (settings) => {
+    if (!user || !user.uid) {
+      console.warn("Kullanıcı bilgisi yok, Firestore kaydı atlanıyor.");
+      return;
+    }
+    try {
+      await setDoc(
+        doc(db, "users", user.uid, "advancedTimer", "state"),
+        settings,
+        { merge: true }
+      );
+    } catch (error) {
+      console.error("Firestore kaydetme hatası:", error);
+    }
+  };
+
+  // STATE'i hem localStorage'a hem de Firestore'a debounce ile kaydetme
+  const saveState = useCallback(() => {
     const settings = {
       mode,
       workDuration,
@@ -228,16 +210,25 @@ const AdvancedTimer = () => {
       soundEnabled,
       currentSound: currentSound.name,
       isRunning,
-      timer,
       isWorking,
       completedSessions,
       isLongBreak,
       selectedPreset,
+      targetTime,
+      history,
+      darkMode,
     };
-
+    if (!isRunning) {
+      settings.remainingTime = timer;
+    }
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
     localStorage.setItem(STORAGE_KEYS.THEME, JSON.stringify(darkMode));
     localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(history));
+
+    if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+    debounceTimeoutRef.current = setTimeout(() => {
+      saveToFirestore(settings);
+    }, 2000);
   }, [
     mode,
     workDuration,
@@ -250,52 +241,215 @@ const AdvancedTimer = () => {
     soundEnabled,
     currentSound,
     isRunning,
-    timer,
     isWorking,
     completedSessions,
     isLongBreak,
     darkMode,
     history,
-    selectedPreset,
+    darkMode,
   ]);
 
-  // Bildirim gönderme
-  const sendNotification = useCallback(
-    (title, options = {}) => {
-      if (!notificationsEnabled) return;
+  useEffect(() => {
+    saveState();
+  }, [
+    mode,
+    workDuration,
+    breakDuration,
+    longBreakDuration,
+    sessionsBeforeLongBreak,
+    autoStartBreaks,
+    autoStartPomodoros,
+    notificationsEnabled,
+    soundEnabled,
+    currentSound,
+    isRunning,
+    isWorking,
+    completedSessions,
+    isLongBreak,
+    selectedPreset,
+    targetTime,
+    history,
+    darkMode,
+    saveState,
+  ]);
 
-      // Web bildirimlerini kontrol et
-      if (notificationPermissionRef.current === "granted") {
-        const notification = new Notification(title, {
-          icon: "https://img.icons8.com/color/96/000000/alarm-clock--v1.png",
-          ...options,
-        });
-
-        notification.onclick = () => {
-          window.focus();
-          notification.close();
+  // Sayfa kapanmadan önce son durumu Firestore'a anında kaydet
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+        const settings = {
+          mode,
+          workDuration,
+          breakDuration,
+          longBreakDuration,
+          sessionsBeforeLongBreak,
+          autoStartBreaks,
+          autoStartPomodoros,
+          notificationsEnabled,
+          soundEnabled,
+          currentSound: currentSound.name,
+          isRunning,
+          isWorking,
+          completedSessions,
+          isLongBreak,
+          selectedPreset,
+          targetTime,
+          history,
+          darkMode,
         };
+        if (!isRunning) {
+          settings.remainingTime = timer;
+        }
+        saveToFirestore(settings);
       }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [
+    mode,
+    workDuration,
+    breakDuration,
+    longBreakDuration,
+    sessionsBeforeLongBreak,
+    autoStartBreaks,
+    autoStartPomodoros,
+    notificationsEnabled,
+    soundEnabled,
+    currentSound,
+    isRunning,
+    isWorking,
+    completedSessions,
+    isLongBreak,
+    selectedPreset,
+    targetTime,
+    history,
+    darkMode,
+    timer,
+  ]);
 
-      // Ses çal
-      if (soundEnabled && currentSound.url) {
-        audioRef.current.src = currentSound.url;
-        audioRef.current
-          .play()
-          .catch((e) => console.error("Ses çalma hatası:", e));
+  // Firestore’dan state’i tek seferlik okuma
+  useEffect(() => {
+    if (!user || !user.uid) return;
+    const loadStateFromFirestore = async () => {
+      try {
+        const docRef = doc(db, "users", user.uid, "advancedTimer", "state");
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const settings = docSnap.data();
+          setMode(settings.mode || TIMER_MODES.POMODORO);
+          setWorkDuration(settings.workDuration || 25 * 60);
+          setBreakDuration(settings.breakDuration || 5 * 60);
+          setLongBreakDuration(settings.longBreakDuration || 15 * 60);
+          setSessionsBeforeLongBreak(settings.sessionsBeforeLongBreak || 4);
+          setAutoStartBreaks(
+            settings.autoStartBreaks !== undefined
+              ? settings.autoStartBreaks
+              : true
+          );
+          setAutoStartPomodoros(settings.autoStartPomodoros || false);
+          setNotificationsEnabled(
+            settings.notificationsEnabled !== undefined
+              ? settings.notificationsEnabled
+              : true
+          );
+          setSoundEnabled(
+            settings.soundEnabled !== undefined ? settings.soundEnabled : true
+          );
+          const savedSound = settings.currentSound || "Bell";
+          const foundSound = Object.values(NOTIFICATION_SOUNDS).find(
+            (sound) => sound.name === savedSound
+          );
+          setCurrentSound(foundSound || NOTIFICATION_SOUNDS.BELL);
+          setSelectedPreset(settings.selectedPreset || "CLASSIC_POMODORO");
+          setHistory(settings.history || []);
+          setDarkMode(
+            settings.darkMode !== undefined ? settings.darkMode : darkMode
+          );
+          if (settings.isRunning && settings.targetTime) {
+            const remaining = Math.round(
+              (settings.targetTime - Date.now()) / 1000
+            );
+            setTimer(remaining > 0 ? remaining : 0);
+            setTargetTime(settings.targetTime);
+            setIsRunning(true);
+            setIsWorking(
+              settings.isWorking !== undefined ? settings.isWorking : true
+            );
+            setCompletedSessions(settings.completedSessions || 0);
+            setIsLongBreak(settings.isLongBreak || false);
+          } else if (settings.remainingTime !== undefined) {
+            setTimer(settings.remainingTime);
+            setTargetTime(null);
+            setIsRunning(false);
+          } else {
+            resetTimer();
+          }
+        } else {
+          const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+          if (savedSettings) {
+            const settings = JSON.parse(savedSettings);
+            setMode(settings.mode || TIMER_MODES.POMODORO);
+            setWorkDuration(settings.workDuration || 25 * 60);
+            setBreakDuration(settings.breakDuration || 5 * 60);
+            setLongBreakDuration(settings.longBreakDuration || 15 * 60);
+            setSessionsBeforeLongBreak(settings.sessionsBeforeLongBreak || 4);
+            setAutoStartBreaks(
+              settings.autoStartBreaks !== undefined
+                ? settings.autoStartBreaks
+                : true
+            );
+            setAutoStartPomodoros(settings.autoStartPomodoros || false);
+            setNotificationsEnabled(
+              settings.notificationsEnabled !== undefined
+                ? settings.notificationsEnabled
+                : true
+            );
+            setSoundEnabled(
+              settings.soundEnabled !== undefined ? settings.soundEnabled : true
+            );
+            const savedSound = settings.currentSound || "Bell";
+            const foundSound = Object.values(NOTIFICATION_SOUNDS).find(
+              (sound) => sound.name === savedSound
+            );
+            setCurrentSound(foundSound || NOTIFICATION_SOUNDS.BELL);
+            setSelectedPreset(settings.selectedPreset || "CLASSIC_POMODORO");
+            setHistory(settings.history || []);
+            setDarkMode(
+              settings.darkMode !== undefined ? settings.darkMode : darkMode
+            );
+            if (settings.isRunning && settings.targetTime) {
+              const remaining = Math.round(
+                (settings.targetTime - Date.now()) / 1000
+              );
+              setTimer(remaining > 0 ? remaining : 0);
+              setTargetTime(settings.targetTime);
+              setIsRunning(true);
+              setIsWorking(
+                settings.isWorking !== undefined ? settings.isWorking : true
+              );
+              setCompletedSessions(settings.completedSessions || 0);
+              setIsLongBreak(settings.isLongBreak || false);
+            } else if (settings.remainingTime !== undefined) {
+              setTimer(settings.remainingTime);
+              setTargetTime(null);
+              setIsRunning(false);
+            } else {
+              resetTimer();
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Firestore okuma hatası:", error);
       }
+    };
 
-      // Uygulama içi bildirim
-      setSnackbar({
-        open: true,
-        message: title,
-        severity: options.severity || "info",
-      });
-    },
-    [notificationsEnabled, soundEnabled, currentSound]
-  );
+    loadStateFromFirestore();
+  }, [user]);
 
-  // Bildirim izinlerini kontrol et
+  // Bildirim izinleri ve sayfa görünürlüğü
   useEffect(() => {
     const checkNotificationPermission = async () => {
       if ("Notification" in window) {
@@ -303,113 +457,26 @@ const AdvancedTimer = () => {
         notificationPermissionRef.current = permission;
       }
     };
-
     checkNotificationPermission();
   }, []);
 
-  // Sayfa arkaplan/ön plan kontrol
   useEffect(() => {
     const handleVisibilityChange = () => {
       windowFocusRef.current = document.visibilityState === "visible";
     };
-
     document.addEventListener("visibilitychange", handleVisibilityChange);
-
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 
-  // LocalStorage'dan ayarları yükle
-  useEffect(() => {
-    const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-
-    if (savedSettings) {
-      const settings = JSON.parse(savedSettings);
-
-      // Timer modunu ayarla
-      setMode(settings.mode || TIMER_MODES.POMODORO);
-
-      // Süre ayarlarını yükle
-      setWorkDuration(settings.workDuration || 25 * 60);
-      setBreakDuration(settings.breakDuration || 5 * 60);
-      setLongBreakDuration(settings.longBreakDuration || 15 * 60);
-      setSessionsBeforeLongBreak(settings.sessionsBeforeLongBreak || 4);
-
-      // Otomatik başlatma ayarları
-      setAutoStartBreaks(
-        settings.autoStartBreaks !== undefined ? settings.autoStartBreaks : true
-      );
-      setAutoStartPomodoros(settings.autoStartPomodoros || false);
-
-      // Bildirim ayarları
-      setNotificationsEnabled(
-        settings.notificationsEnabled !== undefined
-          ? settings.notificationsEnabled
-          : true
-      );
-      setSoundEnabled(
-        settings.soundEnabled !== undefined ? settings.soundEnabled : true
-      );
-
-      // Ses ayarı
-      const savedSound = settings.currentSound || "Bell";
-      const foundSound = Object.values(NOTIFICATION_SOUNDS).find(
-        (sound) => sound.name === savedSound
-      );
-      setCurrentSound(foundSound || NOTIFICATION_SOUNDS.BELL);
-
-      // Preset seçimi
-      setSelectedPreset(settings.selectedPreset || "CLASSIC_POMODORO");
-
-      // Devam eden timer varsa kaldığı yerden devam et
-      if (settings.isRunning) {
-        setTimer(settings.timer || workDuration);
-        setIsWorking(
-          settings.isWorking !== undefined ? settings.isWorking : true
-        );
-        setCompletedSessions(settings.completedSessions || 0);
-        setIsLongBreak(settings.isLongBreak || false);
-        setIsRunning(true);
-      } else {
-        resetTimer();
-      }
-    }
-  }, []);
-
-  // Ayarları her değiştiğinde kaydet
-  useEffect(() => {
-    saveToLocalStorage();
-  }, [
-    mode,
-    workDuration,
-    breakDuration,
-    longBreakDuration,
-    sessionsBeforeLongBreak,
-    autoStartBreaks,
-    autoStartPomodoros,
-    notificationsEnabled,
-    soundEnabled,
-    currentSound,
-    isRunning,
-    timer,
-    isWorking,
-    completedSessions,
-    isLongBreak,
-    darkMode,
-    history,
-    selectedPreset,
-    saveToLocalStorage,
-  ]);
-
-  // Timer'ı sıfırla
+  // TIMER'ı sıfırlama fonksiyonu
   const resetTimer = useCallback(() => {
     clearInterval(timerRef.current);
     setIsRunning(false);
     setIsWorking(true);
     setIsLongBreak(false);
-
-    // Mod'a göre sıfırlama
+    setTargetTime(null);
     switch (mode) {
       case TIMER_MODES.FLOWTIME:
         setTimer(0);
@@ -422,55 +489,69 @@ const AdvancedTimer = () => {
     }
   }, [mode, workDuration]);
 
-  // Mod veya süreler değiştiğinde timer'ı sıfırla
-  useEffect(() => {
-    resetTimer();
-  }, [mode, workDuration, breakDuration, resetTimer]);
-
-  // Preset işlemleri
+  // Preset uygulama fonksiyonu
   const applyPreset = (presetKey) => {
     const preset = PRESET_SETTINGS[presetKey];
     if (preset) {
       setMode(preset.mode);
       setWorkDuration(preset.workDuration);
       setBreakDuration(preset.breakDuration);
-      if (preset.longBreakDuration) {
+      if (preset.longBreakDuration)
         setLongBreakDuration(preset.longBreakDuration);
-      }
-      if (preset.sessionsBeforeLongBreak) {
+      if (preset.sessionsBeforeLongBreak)
         setSessionsBeforeLongBreak(preset.sessionsBeforeLongBreak);
-      }
       setSelectedPreset(presetKey);
       resetTimer();
     }
   };
 
-  // Fazı değiştir (çalışma <-> mola)
+  // Bildirim gönderme fonksiyonu
+  const sendNotification = useCallback(
+    (title, options = {}) => {
+      if (!notificationsEnabled) return;
+      if (notificationPermissionRef.current === "granted") {
+        const notification = new Notification(title, {
+          icon: "https://img.icons8.com/color/96/000000/alarm-clock--v1.png",
+          ...options,
+        });
+        notification.onclick = () => {
+          window.focus();
+          notification.close();
+        };
+      }
+      if (soundEnabled && currentSound.url) {
+        audioRef.current.src = currentSound.url;
+        audioRef.current
+          .play()
+          .catch((e) => console.error("Ses çalma hatası:", e));
+      }
+      setSnackbar({
+        open: true,
+        message: title,
+        severity: options.severity || "info",
+      });
+    },
+    [notificationsEnabled, soundEnabled, currentSound]
+  );
+
+  // Çalışma/mola fazı geçiş fonksiyonu
   const handlePhaseSwitch = useCallback(() => {
     let nextPhase = {};
     const currentDate = new Date();
-
     if (isWorking) {
-      // Çalışma fazı bitti, mola fazına geç
       const sessionRecord = {
         date: currentDate.toISOString(),
         duration: mode === TIMER_MODES.FLOWTIME ? timer : workDuration,
         mode: mode,
         type: "work",
       };
-
       setHistory((prev) => [...prev, sessionRecord]);
       setCompletedSessions((prev) => prev + 1);
-
-      // Konfeti efekti
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 3000);
-
-      // Uzun mola kontrolü
       const shouldTakeLongBreak =
         mode === TIMER_MODES.POMODORO &&
         (completedSessions + 1) % sessionsBeforeLongBreak === 0;
-
       if (shouldTakeLongBreak) {
         nextPhase = {
           isWorking: false,
@@ -494,119 +575,114 @@ const AdvancedTimer = () => {
           severity: "success",
         });
       }
-
       if (!windowFocusRef.current) {
         sendNotification("Mola zamanı!", {
           body: "Çalışma süreniz tamamlandı. Şimdi dinlenme zamanı.",
         });
       }
-
-      // Mola fazını otomatik başlat
-      if (autoStartBreaks) {
-        nextPhase.isRunning = true;
-      } else {
-        nextPhase.isRunning = false;
-      }
+      nextPhase.isRunning = autoStartBreaks ? true : false;
     } else {
-      // Mola fazı bitti, çalışma fazına geç
       const sessionRecord = {
         date: currentDate.toISOString(),
         duration: isLongBreak ? longBreakDuration : breakDuration,
         mode: mode,
         type: isLongBreak ? "longBreak" : "break",
       };
-
       setHistory((prev) => [...prev, sessionRecord]);
-
       nextPhase = {
         isWorking: true,
         isLongBreak: false,
         timer: workDuration,
         initialTimer: workDuration,
       };
-
       sendNotification("Çalışma zamanı!", {
         body: "Mola süreniz tamamlandı. Şimdi çalışma zamanı.",
         severity: "info",
       });
-
       if (!windowFocusRef.current) {
         sendNotification("Çalışma zamanı!", {
           body: "Mola süreniz tamamlandı. Şimdi çalışma zamanı.",
         });
       }
-
-      // Çalışma fazını otomatik başlat
-      if (autoStartPomodoros) {
-        nextPhase.isRunning = true;
-      } else {
-        nextPhase.isRunning = false;
-      }
+      nextPhase.isRunning = autoStartPomodoros ? true : false;
     }
-
-    // Yeni fazı ayarla
     setIsWorking(nextPhase.isWorking);
     setIsLongBreak(nextPhase.isLongBreak);
     setTimer(nextPhase.timer);
     setInitialTimer(nextPhase.initialTimer);
     setIsRunning(nextPhase.isRunning);
+    if (nextPhase.isRunning) {
+      setTargetTime(Date.now() + nextPhase.timer * 1000);
+    } else {
+      setTargetTime(null);
+    }
   }, [
     isWorking,
     mode,
-    timer,
     workDuration,
-    completedSessions,
-    sessionsBeforeLongBreak,
-    longBreakDuration,
     breakDuration,
+    longBreakDuration,
+    sessionsBeforeLongBreak,
     autoStartBreaks,
     autoStartPomodoros,
     isLongBreak,
+    completedSessions,
     sendNotification,
   ]);
 
-  // Timer sayaç mantığı
+  // TIMER mantığı: targetTime varsa onun üzerinden, yoksa Flowtime mantığı
   useEffect(() => {
     if (isRunning) {
       timerRef.current = setInterval(() => {
-        setTimer((prev) => {
-          if (mode === TIMER_MODES.FLOWTIME && isWorking) {
-            // Flowtime modunda çalışma süresi artar
-            return prev + 1;
-          } else if (
-            mode === TIMER_MODES.POMODORO ||
-            mode === TIMER_MODES.CUSTOM ||
-            mode === TIMER_MODES.FIFTY_TWO_SEVENTEEN ||
-            mode === TIMER_MODES.NINETY_THIRTY ||
-            (mode === TIMER_MODES.FLOWTIME && !isWorking)
-          ) {
-            // Diğer modlarda ve Flowtime'ın mola aşamasında süre azalır
-            if (prev > 0) {
-              return prev - 1;
-            } else {
-              clearInterval(timerRef.current);
-              handlePhaseSwitch();
-              return 0;
-            }
+        if (targetTime) {
+          const remaining = Math.round((targetTime - Date.now()) / 1000);
+          if (remaining <= 0) {
+            clearInterval(timerRef.current);
+            handlePhaseSwitch();
+          } else {
+            setTimer(remaining);
           }
-          return prev;
-        });
+        } else {
+          setTimer((prev) => {
+            if (mode === TIMER_MODES.FLOWTIME && isWorking) {
+              return prev + 1;
+            } else if (
+              mode === TIMER_MODES.POMODORO ||
+              mode === TIMER_MODES.CUSTOM ||
+              mode === TIMER_MODES.FIFTY_TWO_SEVENTEEN ||
+              mode === TIMER_MODES.NINETY_THIRTY ||
+              (mode === TIMER_MODES.FLOWTIME && !isWorking)
+            ) {
+              if (prev > 0) {
+                return prev - 1;
+              } else {
+                clearInterval(timerRef.current);
+                handlePhaseSwitch();
+                return 0;
+              }
+            }
+            return prev;
+          });
+        }
       }, 1000);
-
       return () => clearInterval(timerRef.current);
     }
-  }, [isRunning, mode, isWorking, handlePhaseSwitch]);
+  }, [isRunning, targetTime, mode, isWorking, handlePhaseSwitch]);
 
-  // Başlat/Durdur butonuna basıldığında
+  // Başlat/Durdur buton işlevi
   const handleStartPause = () => {
     if (isRunning) {
       clearInterval(timerRef.current);
       setIsRunning(false);
+      setTargetTime(null);
       sendNotification(
         isWorking ? "Çalışma duraklatıldı" : "Mola duraklatıldı",
-        { severity: "warning" }
+        {
+          severity: "warning",
+        }
       );
     } else {
+      setTargetTime(Date.now() + timer * 1000);
       setIsRunning(true);
       sendNotification(isWorking ? "Çalışma başlatıldı" : "Mola başlatıldı", {
         severity: "info",
@@ -614,34 +690,29 @@ const AdvancedTimer = () => {
     }
   };
 
-  // Flowtime modunda çalışmayı bitir
+  // Flowtime modunda çalışma bitirme
   const handleFinishWorkFlowtime = () => {
     if (mode === TIMER_MODES.FLOWTIME && isWorking) {
       handlePhaseSwitch();
     }
   };
 
-  // Geçmişi temizle
+  // Geçmişi temizleme
   const clearHistory = () => {
     setHistory([]);
-    setSnackbar({
-      open: true,
-      message: "Geçmiş temizlendi",
-      severity: "info",
-    });
+    setSnackbar({ open: true, message: "Geçmiş temizlendi", severity: "info" });
   };
 
-  // Atlama işlemi
+  // Atla butonu
   const handleSkip = () => {
     handlePhaseSwitch();
   };
 
-  // Saniye cinsindeki süreyi MM:SS formatına çevirir
+  // Saniyeyi MM:SS formatına çevirme
   const formatTime = (seconds) => {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
-
     if (h > 0) {
       return `${h}:${m.toString().padStart(2, "0")}:${s
         .toString()
@@ -650,13 +721,12 @@ const AdvancedTimer = () => {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  // Günlük toplam çalışma süresini hesapla
+  // Günlük toplam çalışma süresi hesaplama
   const calculateDailyTotal = () => {
     const today = new Date().toISOString().split("T")[0];
     const todayHistory = history.filter(
       (entry) => entry.date.split("T")[0] === today && entry.type === "work"
     );
-
     const totalSeconds = todayHistory.reduce(
       (sum, entry) => sum + entry.duration,
       0
@@ -664,7 +734,7 @@ const AdvancedTimer = () => {
     return formatTime(totalSeconds);
   };
 
-  // UI Render
+  // UI render kısmı
   return (
     <ThemeProvider theme={theme}>
       <AnimatePresence>
@@ -679,23 +749,20 @@ const AdvancedTimer = () => {
           />
         )}
       </AnimatePresence>
-
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <Paper
+        <Box
           sx={{
             p: 3,
             maxWidth: 450,
             mx: "auto",
             mt: 4,
-            position: "relative",
-            borderRadius: 3,
-            overflow: "hidden",
+            bgcolor: theme.palette.background.paper, // EKLENDİ
+            color: theme.palette.text.primary, // EKLENDİ
           }}
-          elevation={6}
         >
           {/* Header */}
           <Box
@@ -713,7 +780,6 @@ const AdvancedTimer = () => {
                 ? "Uzun Mola"
                 : "Mola Zamanı"}
             </Typography>
-
             <Box>
               <Tooltip title="Geçmiş">
                 <IconButton
@@ -726,7 +792,6 @@ const AdvancedTimer = () => {
                   </Badge>
                 </IconButton>
               </Tooltip>
-
               <Tooltip title="Ayarlar">
                 <IconButton onClick={() => setShowSettings(true)} size="small">
                   <Settings />
@@ -734,8 +799,7 @@ const AdvancedTimer = () => {
               </Tooltip>
             </Box>
           </Box>
-
-          {/* Mode bilgisi */}
+          {/* Mode Bilgisi */}
           <Box sx={{ mb: 3, display: "flex", justifyContent: "center" }}>
             <Chip
               label={mode}
@@ -743,7 +807,6 @@ const AdvancedTimer = () => {
               variant="outlined"
               icon={<Timer fontSize="small" />}
             />
-
             {mode === TIMER_MODES.POMODORO && (
               <Chip
                 label={`${
@@ -756,8 +819,7 @@ const AdvancedTimer = () => {
               />
             )}
           </Box>
-
-          {/* Günlük toplam çalışma süresi */}
+          {/* Günlük Toplam Çalışma Süresi */}
           <Typography
             variant="caption"
             color="text.secondary"
@@ -766,7 +828,6 @@ const AdvancedTimer = () => {
           >
             Bugün Toplam: {calculateDailyTotal()}
           </Typography>
-
           {/* Timer Görseli */}
           <Box
             sx={{
@@ -784,7 +845,6 @@ const AdvancedTimer = () => {
                 thickness={4}
                 sx={{ position: "absolute", color: theme.palette.divider }}
               />
-
               <CircularProgress
                 variant={
                   mode === TIMER_MODES.FLOWTIME && isWorking
@@ -808,7 +868,6 @@ const AdvancedTimer = () => {
                   animation: "none",
                 }}
               />
-
               <Box
                 sx={{
                   position: "absolute",
@@ -832,7 +891,6 @@ const AdvancedTimer = () => {
                     {formatTime(timer)}
                   </Typography>
                 </motion.div>
-
                 <Typography
                   variant="body2"
                   color="text.secondary"
@@ -847,7 +905,6 @@ const AdvancedTimer = () => {
               </Box>
             </Box>
           </Box>
-
           {/* Kontrol Butonları */}
           <Box
             sx={{
@@ -875,7 +932,6 @@ const AdvancedTimer = () => {
                 {isRunning ? "Duraklat" : "Başlat"}
               </Button>
             </motion.div>
-
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button
                 variant="outlined"
@@ -886,7 +942,6 @@ const AdvancedTimer = () => {
                 Atla
               </Button>
             </motion.div>
-
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button
                 variant="outlined"
@@ -897,7 +952,6 @@ const AdvancedTimer = () => {
                 Sıfırla
               </Button>
             </motion.div>
-
             {mode === TIMER_MODES.FLOWTIME && isWorking && (
               <motion.div
                 whileHover={{ scale: 1.05 }}
@@ -914,8 +968,7 @@ const AdvancedTimer = () => {
               </motion.div>
             )}
           </Box>
-
-          {/* Tema değiştirme butonu */}
+          {/* Tema/Ses/Bildirim Düğmeleri */}
           <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
             <Tooltip title={darkMode ? "Açık Tema" : "Koyu Tema"}>
               <IconButton
@@ -930,7 +983,6 @@ const AdvancedTimer = () => {
                 )}
               </IconButton>
             </Tooltip>
-
             <Tooltip title={soundEnabled ? "Sesi Kapat" : "Sesi Aç"}>
               <IconButton
                 onClick={() => setSoundEnabled(!soundEnabled)}
@@ -944,7 +996,6 @@ const AdvancedTimer = () => {
                 )}
               </IconButton>
             </Tooltip>
-
             <Tooltip
               title={
                 notificationsEnabled ? "Bildirimleri Kapat" : "Bildirimleri Aç"
@@ -963,8 +1014,7 @@ const AdvancedTimer = () => {
               </IconButton>
             </Tooltip>
           </Box>
-        </Paper>
-
+        </Box>
         {/* Ayarlar Dialog */}
         <Dialog
           open={showSettings}
@@ -986,7 +1036,6 @@ const AdvancedTimer = () => {
               </IconButton>
             </Box>
           </DialogTitle>
-
           <DialogContent>
             <Tabs
               value={settingsTab}
@@ -1000,7 +1049,6 @@ const AdvancedTimer = () => {
               <Tab label="Süre" />
               <Tab label="Bildirimler" />
             </Tabs>
-
             {settingsTab === 0 && (
               <Box>
                 <FormControl fullWidth sx={{ mb: 3 }}>
@@ -1025,7 +1073,6 @@ const AdvancedTimer = () => {
                     <MenuItem value={TIMER_MODES.CUSTOM}>Özel</MenuItem>
                   </Select>
                 </FormControl>
-
                 <FormControl fullWidth sx={{ mb: 3 }}>
                   <InputLabel id="preset-select-label">
                     Hazır Ayarlar
@@ -1046,9 +1093,7 @@ const AdvancedTimer = () => {
                     <MenuItem value="NINETY_THIRTY">90/30 Bloklama</MenuItem>
                   </Select>
                 </FormControl>
-
                 <Divider sx={{ my: 2 }} />
-
                 <FormControlLabel
                   control={
                     <Switch
@@ -1058,7 +1103,6 @@ const AdvancedTimer = () => {
                   }
                   label="Molaları otomatik başlat"
                 />
-
                 <FormControlLabel
                   control={
                     <Switch
@@ -1070,7 +1114,6 @@ const AdvancedTimer = () => {
                 />
               </Box>
             )}
-
             {settingsTab === 1 && (
               <Box>
                 {(mode === TIMER_MODES.POMODORO ||
@@ -1092,7 +1135,6 @@ const AdvancedTimer = () => {
                       ]}
                       sx={{ mb: 4 }}
                     />
-
                     <Typography id="break-duration-slider" gutterBottom>
                       Mola Süresi: {Math.floor(breakDuration / 60)} dakika
                     </Typography>
@@ -1109,7 +1151,6 @@ const AdvancedTimer = () => {
                       ]}
                       sx={{ mb: 4 }}
                     />
-
                     <Typography id="long-break-duration-slider" gutterBottom>
                       Uzun Mola Süresi: {Math.floor(longBreakDuration / 60)}{" "}
                       dakika
@@ -1126,7 +1167,6 @@ const AdvancedTimer = () => {
                       ]}
                       sx={{ mb: 4 }}
                     />
-
                     <Typography
                       id="sessions-before-long-break-slider"
                       gutterBottom
@@ -1149,7 +1189,6 @@ const AdvancedTimer = () => {
                     />
                   </>
                 )}
-
                 {(mode === TIMER_MODES.FIFTY_TWO_SEVENTEEN ||
                   mode === TIMER_MODES.NINETY_THIRTY) && (
                   <Typography
@@ -1160,7 +1199,6 @@ const AdvancedTimer = () => {
                     Bu mod için önceden tanımlanmış süreler kullanılmaktadır.
                   </Typography>
                 )}
-
                 {mode === TIMER_MODES.FLOWTIME && (
                   <Typography
                     variant="body2"
@@ -1193,7 +1231,6 @@ const AdvancedTimer = () => {
                 )}
               </Box>
             )}
-
             {settingsTab === 2 && (
               <Box>
                 <FormControlLabel
@@ -1208,7 +1245,6 @@ const AdvancedTimer = () => {
                   label="Bildirimler"
                   sx={{ mb: 2, display: "block" }}
                 />
-
                 <FormControlLabel
                   control={
                     <Switch
@@ -1219,7 +1255,6 @@ const AdvancedTimer = () => {
                   label="Sesli Bildirimler"
                   sx={{ mb: 2, display: "block" }}
                 />
-
                 <FormControl fullWidth sx={{ mt: 2 }}>
                   <InputLabel id="sound-select-label">Bildirim Sesi</InputLabel>
                   <Select
@@ -1244,7 +1279,6 @@ const AdvancedTimer = () => {
                     ))}
                   </Select>
                 </FormControl>
-
                 <Box sx={{ mt: 3, display: "flex", justifyContent: "center" }}>
                   <Button
                     variant="outlined"
@@ -1265,7 +1299,6 @@ const AdvancedTimer = () => {
               </Box>
             )}
           </DialogContent>
-
           <DialogActions>
             <Button onClick={() => setShowSettings(false)} color="primary">
               Kapat
@@ -1283,7 +1316,6 @@ const AdvancedTimer = () => {
             </Button>
           </DialogActions>
         </Dialog>
-
         {/* Geçmiş Dialog */}
         <Dialog
           open={showHistory}
@@ -1305,7 +1337,6 @@ const AdvancedTimer = () => {
               </IconButton>
             </Box>
           </DialogTitle>
-
           <DialogContent>
             {history.length === 0 ? (
               <Typography
@@ -1333,7 +1364,6 @@ const AdvancedTimer = () => {
                         </Typography>
                       </Paper>
                     </Grid>
-
                     <Grid item xs={12} sm={4}>
                       <Paper sx={{ p: 2, textAlign: "center" }} elevation={2}>
                         <Typography variant="h6" gutterBottom>
@@ -1355,7 +1385,6 @@ const AdvancedTimer = () => {
                         </Typography>
                       </Paper>
                     </Grid>
-
                     <Grid item xs={12} sm={4}>
                       <Paper sx={{ p: 2, textAlign: "center" }} elevation={2}>
                         <Typography variant="h6" gutterBottom>
@@ -1374,7 +1403,6 @@ const AdvancedTimer = () => {
                     </Grid>
                   </Grid>
                 </Box>
-
                 <Paper sx={{ overflowX: "auto" }} elevation={1}>
                   <Box sx={{ minWidth: 500 }}>
                     <Box
@@ -1392,7 +1420,6 @@ const AdvancedTimer = () => {
                       <Box sx={{ flex: 1 }}>Mod</Box>
                       <Box sx={{ flex: 1, textAlign: "right" }}>Süre</Box>
                     </Box>
-
                     <Box sx={{ maxHeight: 400, overflow: "auto" }}>
                       {[...history].reverse().map((entry, index) => (
                         <Box
@@ -1408,9 +1435,7 @@ const AdvancedTimer = () => {
                                 : entry.type === "longBreak"
                                 ? alpha(theme.palette.success.light, 0.05)
                                 : alpha(theme.palette.secondary.light, 0.05),
-                            "&:hover": {
-                              bgcolor: theme.palette.action.hover,
-                            },
+                            "&:hover": { bgcolor: theme.palette.action.hover },
                           }}
                         >
                           <Box sx={{ flex: 2 }}>
@@ -1448,7 +1473,6 @@ const AdvancedTimer = () => {
               </>
             )}
           </DialogContent>
-
           <DialogActions>
             <Button
               onClick={clearHistory}
@@ -1463,7 +1487,6 @@ const AdvancedTimer = () => {
             </Button>
           </DialogActions>
         </Dialog>
-
         {/* Bildirim Snackbar */}
         <Snackbar
           open={snackbar.open}

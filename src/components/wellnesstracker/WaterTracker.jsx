@@ -42,39 +42,102 @@ const fadeIn = keyframes`
   to { opacity: 1; }
 `;
 
-const AchievementOverlay = styled(Box)({
+const particleFloat = keyframes`
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+`;
+
+const AchievementOverlay = styled(Box)(({ theme }) => ({
   position: "fixed",
   top: 0,
   left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: "rgba(0,0,0,0.9)",
+  width: "100vw",
+  height: "100vh",
+  background: "radial-gradient(circle at center, #000814 0%, #001220 100%)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   zIndex: 9999,
-  backdropFilter: "blur(10px)",
-  animation: `${fadeIn} 0.5s ease-out`,
-});
-
-const AchievementText = styled(Typography)({
-  background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
-  WebkitBackgroundClip: "text",
-  WebkitTextFillColor: "transparent",
-  animation: `${pulse} 2s infinite`,
-  textAlign: "center",
-  padding: "40px",
-  borderRadius: "20px",
-  border: "2px solid rgba(33,150,243,0.5)",
-  boxShadow: "0 0 50px rgba(33,150,243,0.3)",
-  position: "relative",
   overflow: "hidden",
-});
+  "&::before": {
+    content: '""',
+    position: "absolute",
+    width: "150%",
+    height: "150%",
+    background: `linear-gradient(
+      45deg,
+      ${alpha(theme.palette.primary.main, 0.1)} 0%,
+      ${alpha(theme.palette.secondary.main, 0.1)} 100%
+    )`,
+    animation: `${particleFloat} 20s linear infinite`,
+    pointerEvents: "none",
+  },
+}));
+
+const NeonText = styled(Typography)(({ theme }) => ({
+  textAlign: "center",
+  position: "relative",
+  "&::before": {
+    content: "attr(data-text)",
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    filter: "blur(15px)",
+    color: theme.palette.primary.main,
+    mixBlendMode: "screen",
+  },
+}));
 
 const AchievementAnimation = ({ message, onComplete }) => {
+  const theme = useTheme();
   return (
-    <AchievementOverlay>
-      <AchievementText variant="h2">{message}</AchievementText>
+    <AchievementOverlay onClick={onComplete}>
+      <Box sx={{ position: "relative", textAlign: "center" }}>
+        {/* Particle System */}
+        {[...Array(50)].map((_, i) => (
+          <Box
+            key={i}
+            sx={{
+              position: "absolute",
+              top: Math.random() * 100 + "%",
+              left: Math.random() * 100 + "%",
+              width: 8,
+              height: 8,
+              background: `radial-gradient(${theme.palette.primary.main}, transparent)`,
+              borderRadius: "50%",
+              animation: `${particleFloat} ${
+                5 + Math.random() * 10
+              }s linear infinite`,
+              opacity: 0.6,
+            }}
+          />
+        ))}
+
+        <NeonText
+          data-text={message}
+          variant="h2"
+          sx={{
+            background: `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.secondary.main} 90%)`,
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            animation: `${pulse} 1.5s ease-in-out infinite`,
+            fontSize: "3.5rem",
+            textShadow: `0 0 10px ${alpha(theme.palette.primary.main, 0.5)}`,
+            px: 4,
+            py: 6,
+            borderRadius: 4,
+            cursor: "pointer",
+            transition: "transform 0.3s ease",
+            "&:hover": {
+              transform: "scale(1.05)",
+            },
+          }}
+        >
+          {message}
+        </NeonText>
+      </Box>
     </AchievementOverlay>
   );
 };
@@ -267,13 +330,12 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     }
     if (isGoalAchieved) {
       setShowConfetti(true);
-      setAchievement(
-        "🚀 Harika! Bugün su hedefini gerçekleştirdin, sağlığın için büyük bir adım attın!"
-      );
+      setAchievement("💧🚀 Su Hedefini Aştın! 🎉🌊");
+      // Otomatik kapatma süresini 7 saniyeye çıkar
       setTimeout(() => {
         setShowConfetti(false);
         setAchievement(null);
-      }, 5000);
+      }, 7000);
     }
   };
 
@@ -378,13 +440,37 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
 
   return (
     <Box sx={{ textAlign: "center", mb: 6 }}>
+      {showConfetti && (
+        <Confetti
+          recycle={false}
+          numberOfPieces={1200}
+          colors={["#2196F3", "#64B5F6", "#BBDEFB", "#E3F2FD", "#FFFFFF"]}
+          drawShape={(ctx) => {
+            ctx.beginPath();
+            ctx.arc(0, 0, 5, 0, 2 * Math.PI);
+            ctx.fill();
+          }}
+          gravity={0.15}
+          wind={0.02}
+          initialVelocityY={15}
+          confettiSource={{
+            x: window.innerWidth / 2,
+            y: window.innerHeight,
+            w: 0,
+            h: 0,
+          }}
+          onConfettiComplete={() => setShowConfetti(false)}
+          tweenDuration={5000}
+          style={{ pointerEvents: "none" }}
+        />
+      )}
       {achievement && (
         <AchievementAnimation
           message={achievement}
           onComplete={() => setAchievement(null)}
         />
       )}
-      {showConfetti && <Confetti recycle={false} numberOfPieces={800} />}
+
       <Typography
         variant="h4"
         sx={{

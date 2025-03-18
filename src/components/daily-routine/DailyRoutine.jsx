@@ -506,12 +506,14 @@ const DailyRoutine = ({ user }) => {
     >
       <Container maxWidth="lg">
         <RoutineHeader
+          user={user}
           onNewRoutine={() => {
             setNewRoutineDate("");
             setEditingRoutine(null);
             setModalOpen(true);
           }}
         />
+
         <StatsPanel
           routines={routines}
           weeklyStats={weeklyStats}

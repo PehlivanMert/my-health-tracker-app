@@ -4,7 +4,8 @@ import { Box, Typography, Button, Dialog, DialogContent } from "@mui/material";
 import { AccessTime, Add, Timer } from "@mui/icons-material";
 import AdvancedTimer from "./AdvancedTimer";
 
-const RoutineHeader = ({ onNewRoutine }) => {
+const RoutineHeader = ({ onNewRoutine, user }) => {
+  // user prop'u eklendi
   const [openTimer, setOpenTimer] = useState(false);
 
   const handleOpenTimer = () => setOpenTimer(true);
@@ -48,9 +49,23 @@ const RoutineHeader = ({ onNewRoutine }) => {
         onClose={handleCloseTimer}
         fullWidth
         maxWidth="sm"
+        PaperProps={{
+          sx: {
+            backgroundColor: "transparent", // Arka planı şeffaf yapar
+            boxShadow: "none", // Gölgeyi kaldırır
+            border: "none", // Kenarlığı kaldırır
+            overflow: "hidden", // İçeriğin taşmasını engeller
+          },
+        }}
+        BackdropProps={{
+          sx: {
+            backgroundColor: "rgba(0, 0, 0, 0.5)", // Koyu arka plan, opaklığı artırıldı
+            backdropFilter: "blur(15px)", // Blur değeri artırıldı
+          },
+        }}
       >
-        <DialogContent>
-          <AdvancedTimer />
+        <DialogContent sx={{ p: 0, backgroundColor: "transparent" }}>
+          <AdvancedTimer user={user} />
         </DialogContent>
       </Dialog>
     </Box>

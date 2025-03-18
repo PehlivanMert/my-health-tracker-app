@@ -265,6 +265,47 @@ exports.handler = async function (event, context) {
           });
         }
 
+        // ---------- Pomodoro Bildirimleri (Advanced Timer targetTime kullanarak) ----------
+        const advancedTimerDoc = await db
+          .collection("users")
+          .doc(userDoc.id)
+          .collection("advancedTimer")
+          .doc("state")
+          .get();
+
+        if (advancedTimerDoc.exists) {
+          const timerState = advancedTimerDoc.data();
+          if (timerState.targetTime) {
+            // targetTime Firestore'da saklanan milisaniye değeri (ör. 1742257035585)
+            const targetTimeDate = new Date(timerState.targetTime);
+            // Türkiye saatine dönüştürün
+            const targetTimeTurkey = new Date(
+              targetTimeDate.toLocaleString("en-US", {
+                timeZone: "Europe/Istanbul",
+              })
+            );
+            // Şu anki Türkiye zamanı
+            const nowTurkey = new Date(
+              now.toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
+            );
+            // Eğer fark 0.5 dakika (30 saniye) içindeyse bildirim gönder
+            if (Math.abs(nowTurkey - targetTimeTurkey) / 60000 < 0.5) {
+              console.log(
+                `sendPushNotification - Kullanıcı ${userDoc.id} için Pomodoro hedef zamanı bildirimi:`,
+                targetTimeTurkey
+              );
+              notificationsForThisUser.push({
+                tokens: fcmTokens,
+                data: {
+                  title: "Pomodoro Bildirimi",
+                  body: "Pomodoro süreniz tamamlandı!",
+                  type: "pomodoro",
+                },
+              });
+            }
+          }
+        }
+
         // ---------- Cache'lenmiş Subcollection Sorgularını Paralel Çalıştırma ----------
         const [calendarSnapshot, waterSnap, suppSnapshot] = await Promise.all([
           getCachedCalendarEvents(userDoc.id).catch((err) => {

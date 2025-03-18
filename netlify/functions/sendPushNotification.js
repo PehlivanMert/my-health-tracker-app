@@ -275,24 +275,34 @@ exports.handler = async function (event, context) {
 
         if (advancedTimerDoc.exists) {
           const timerState = advancedTimerDoc.data();
+          console.log(
+            `Kullanıcı ${userDoc.id} advancedTimer state:`,
+            timerState
+          );
+
           if (timerState.targetTime) {
-            // targetTime Firestore'da saklanan milisaniye değeri (ör. 1742257035585)
+            // Firestore'dan gelen targetTime (UTC milisaniye değeri)
             const targetTimeDate = new Date(timerState.targetTime);
-            // Türkiye saatine dönüştürün
-            const targetTimeTurkey = new Date(
-              targetTimeDate.toLocaleString("en-US", {
-                timeZone: "Europe/Istanbul",
-              })
+            console.log(
+              `Firestore targetTime (raw): ${timerState.targetTime}, Date:`,
+              targetTimeDate
             );
-            // Şu anki Türkiye zamanı
-            const nowTurkey = new Date(
-              now.toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
+
+            // getTurkeyTime fonksiyonu zaten Türkiye saatini veriyor
+            const nowTurkey = getTurkeyTime();
+            console.log(`Şu anki Türkiye zamanı:`, nowTurkey);
+
+            // İki tarih arasındaki farkı dakika cinsinden hesaplayın
+            const diffMinutes = Math.abs((nowTurkey - targetTimeDate) / 60000);
+            console.log(
+              `targetTime ile şimdi arasındaki fark: ${diffMinutes} dakika`
             );
-            // Eğer fark 0.5 dakika (30 saniye) içindeyse bildirim gönder
-            if (Math.abs(nowTurkey - targetTimeTurkey) / 60000 < 0.5) {
+
+            // Eğer fark 0.5 dakika (veya test için 1 dakika) içindeyse bildirim gönder
+            if (diffMinutes < 0.6) {
+              // Gerekirse 0.5 yerine 1 dakika da deneyebilirsiniz
               console.log(
-                `sendPushNotification - Kullanıcı ${userDoc.id} için Pomodoro hedef zamanı bildirimi:`,
-                targetTimeTurkey
+                `sendPushNotification - Kullanıcı ${userDoc.id} için Pomodoro hedef zamanı bildirimi gönderiliyor.`
               );
               notificationsForThisUser.push({
                 tokens: fcmTokens,

@@ -284,23 +284,36 @@ exports.handler = async function (event, context) {
             // Firestore'dan gelen targetTime (UTC milisaniye değeri)
             const targetTimeDate = new Date(timerState.targetTime);
             console.log(
-              `Firestore targetTime (raw): ${timerState.targetTime}, Date:`,
+              "Firestore targetTime (raw):",
+              timerState.targetTime,
+              "Date:",
               targetTimeDate
             );
 
-            // getTurkeyTime fonksiyonu zaten Türkiye saatini veriyor
+            // targetTime'ı Türkiye saatine çevirmek için:
+            const targetTimeTurkey = new Date(
+              targetTimeDate.toLocaleString("en-US", {
+                timeZone: "Europe/Istanbul",
+              })
+            );
+            console.log("targetTimeTurkey:", targetTimeTurkey);
+
+            // getTurkeyTime fonksiyonu zaten Türkiye saatini veriyor, bu yüzden tekrar çevirmeye gerek yok:
             const nowTurkey = getTurkeyTime();
-            console.log(`Şu anki Türkiye zamanı:`, nowTurkey);
+            console.log("Şu anki Türkiye zamanı:", nowTurkey);
 
             // İki tarih arasındaki farkı dakika cinsinden hesaplayın
-            const diffMinutes = Math.abs((nowTurkey - targetTimeDate) / 60000);
+            const diffMinutes = Math.abs(
+              (nowTurkey - targetTimeTurkey) / 60000
+            );
             console.log(
-              `targetTime ile şimdi arasındaki fark: ${diffMinutes} dakika`
+              "targetTime ile şimdi arasındaki fark:",
+              diffMinutes,
+              "dakika"
             );
 
-            // Eğer fark 0.5 dakika (veya test için 1 dakika) içindeyse bildirim gönder
-            if (diffMinutes < 0.6) {
-              // Gerekirse 0.5 yerine 1 dakika da deneyebilirsiniz
+            // Eğer fark 0.5 dakika (30 saniye) içindeyse bildirim gönder
+            if (diffMinutes < 0.5) {
               console.log(
                 `sendPushNotification - Kullanıcı ${userDoc.id} için Pomodoro hedef zamanı bildirimi gönderiliyor.`
               );

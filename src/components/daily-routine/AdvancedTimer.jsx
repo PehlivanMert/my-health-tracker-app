@@ -539,9 +539,13 @@ const AdvancedTimer = ({ user }) => {
     let nextPhase = {};
     const currentDate = new Date();
     if (isWorking) {
+      // Çalışma modunda; FLOWTIME'da timer zaten harcanan süreyi gösteriyorsa,
+      // diğer modlarda ise harcanan süre = workDuration - timer
+      const elapsed =
+        mode === TIMER_MODES.FLOWTIME ? timer : workDuration - timer;
       const sessionRecord = {
         date: currentDate.toISOString(),
-        duration: mode === TIMER_MODES.FLOWTIME ? timer : workDuration,
+        duration: elapsed,
         mode: mode,
         type: "work",
       };
@@ -582,9 +586,12 @@ const AdvancedTimer = ({ user }) => {
       }
       nextPhase.isRunning = autoStartBreaks ? true : false;
     } else {
+      // Mola modunda; harcanan süre = planned break duration - timer
+      const plannedDuration = isLongBreak ? longBreakDuration : breakDuration;
+      const elapsed = plannedDuration - timer;
       const sessionRecord = {
         date: currentDate.toISOString(),
-        duration: isLongBreak ? longBreakDuration : breakDuration,
+        duration: elapsed,
         mode: mode,
         type: isLongBreak ? "longBreak" : "break",
       };
@@ -606,6 +613,7 @@ const AdvancedTimer = ({ user }) => {
       }
       nextPhase.isRunning = autoStartPomodoros ? true : false;
     }
+
     setIsWorking(nextPhase.isWorking);
     setIsLongBreak(nextPhase.isLongBreak);
     setTimer(nextPhase.timer);

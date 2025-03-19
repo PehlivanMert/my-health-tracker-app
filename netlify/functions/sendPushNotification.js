@@ -208,7 +208,8 @@ exports.handler = async function (event, context) {
         // ---------- Rutin Bildirimleri ----------
         if (userData.routines && Array.isArray(userData.routines)) {
           // Bugünün tarihini YYYY-MM-DD formatında alıyoruz.
-          const currentDateStr = new Date().toISOString().split("T")[0];
+          const turkeyTime = getTurkeyTime();
+          const currentDateStr = turkeyTime.toISOString().split("T")[0];
 
           userData.routines.forEach((routine) => {
             // Eğer bildirimler kapalıysa, rutin tamamlanmışsa veya rutinin tarihi bugünün tarihi değilse bildirim gönderme.

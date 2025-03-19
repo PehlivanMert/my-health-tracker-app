@@ -103,7 +103,9 @@ const DailyRoutine = ({ user }) => {
       return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
     };
     const nowTurkey = getTurkeyTime();
-    const todayStr = nowTurkey.toISOString().split("T")[0];
+    const todayStr = getTurkeyLocalDateString(new Date());
+    console.log("todayStr", todayStr);
+
     const currentWeek = getWeekNumber(nowTurkey);
     const currentMonthStr = `${nowTurkey.getFullYear()}-${nowTurkey.getMonth()}`;
     if (!resetData.daily || !resetData.weekly || !resetData.monthly) return;

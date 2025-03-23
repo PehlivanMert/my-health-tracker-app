@@ -535,108 +535,113 @@ const AdvancedTimer = ({ user }) => {
   );
 
   // Çalışma/mola fazı geçiş fonksiyonu
-  const handlePhaseSwitch = useCallback(() => {
-    let nextPhase = {};
-    const currentDate = new Date();
-    if (isWorking) {
-      // Çalışma modunda; FLOWTIME'da timer zaten harcanan süreyi gösteriyorsa,
-      // diğer modlarda ise harcanan süre = workDuration - timer
-      const elapsed =
-        mode === TIMER_MODES.FLOWTIME ? timer : workDuration - timer;
-      const sessionRecord = {
-        date: currentDate.toISOString(),
-        duration: elapsed,
-        mode: mode,
-        type: "work",
-      };
-      setHistory((prev) => [...prev, sessionRecord]);
-      setCompletedSessions((prev) => prev + 1);
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 3000);
-      const shouldTakeLongBreak =
-        mode === TIMER_MODES.POMODORO &&
-        (completedSessions + 1) % sessionsBeforeLongBreak === 0;
-      if (shouldTakeLongBreak) {
-        nextPhase = {
-          isWorking: false,
-          isLongBreak: true,
-          timer: longBreakDuration,
-          initialTimer: longBreakDuration,
+  const handlePhaseSwitch = useCallback(
+    (currentTimer = timer) => {
+      let nextPhase = {};
+      const currentDate = new Date();
+      if (isWorking) {
+        // Geçen süreyi hesaplamak için currentTimer kullanılıyor
+        const elapsed =
+          mode === TIMER_MODES.FLOWTIME
+            ? currentTimer
+            : workDuration - currentTimer;
+        const sessionRecord = {
+          date: currentDate.toISOString(),
+          duration: elapsed,
+          mode: mode,
+          type: "work",
         };
-        sendNotification("Uzun mola zamanı!", {
-          body: `Tebrikler! ${sessionsBeforeLongBreak} pomodoro tamamladınız.`,
-          severity: "success",
-        });
+        setHistory((prev) => [...prev, sessionRecord]);
+        setCompletedSessions((prev) => prev + 1);
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
+        const shouldTakeLongBreak =
+          mode === TIMER_MODES.POMODORO &&
+          (completedSessions + 1) % sessionsBeforeLongBreak === 0;
+        if (shouldTakeLongBreak) {
+          nextPhase = {
+            isWorking: false,
+            isLongBreak: true,
+            timer: longBreakDuration,
+            initialTimer: longBreakDuration,
+          };
+          sendNotification("Uzun mola zamanı!", {
+            body: `Tebrikler! ${sessionsBeforeLongBreak} pomodoro tamamladınız.`,
+            severity: "success",
+          });
+        } else {
+          nextPhase = {
+            isWorking: false,
+            isLongBreak: false,
+            timer: breakDuration,
+            initialTimer: breakDuration,
+          };
+          sendNotification("Mola zamanı!", {
+            body: "Çalışma süreniz tamamlandı. Şimdi dinlenme zamanı.",
+            severity: "success",
+          });
+        }
+        if (!windowFocusRef.current) {
+          sendNotification("Mola zamanı!", {
+            body: "Çalışma süreniz tamamlandı. Şimdi dinlenme zamanı.",
+          });
+        }
+        nextPhase.isRunning = autoStartBreaks ? true : false;
       } else {
-        nextPhase = {
-          isWorking: false,
-          isLongBreak: false,
-          timer: breakDuration,
-          initialTimer: breakDuration,
+        // Mola modunda; harcanan süreyi hesaplamak için currentTimer kullanıyoruz
+        const plannedDuration = isLongBreak ? longBreakDuration : breakDuration;
+        const elapsed = plannedDuration - currentTimer;
+        const sessionRecord = {
+          date: currentDate.toISOString(),
+          duration: elapsed,
+          mode: mode,
+          type: isLongBreak ? "longBreak" : "break",
         };
-        sendNotification("Mola zamanı!", {
-          body: "Çalışma süreniz tamamlandı. Şimdi dinlenme zamanı.",
-          severity: "success",
-        });
-      }
-      if (!windowFocusRef.current) {
-        sendNotification("Mola zamanı!", {
-          body: "Çalışma süreniz tamamlandı. Şimdi dinlenme zamanı.",
-        });
-      }
-      nextPhase.isRunning = autoStartBreaks ? true : false;
-    } else {
-      // Mola modunda; harcanan süre = planned break duration - timer
-      const plannedDuration = isLongBreak ? longBreakDuration : breakDuration;
-      const elapsed = plannedDuration - timer;
-      const sessionRecord = {
-        date: currentDate.toISOString(),
-        duration: elapsed,
-        mode: mode,
-        type: isLongBreak ? "longBreak" : "break",
-      };
-      setHistory((prev) => [...prev, sessionRecord]);
-      nextPhase = {
-        isWorking: true,
-        isLongBreak: false,
-        timer: workDuration,
-        initialTimer: workDuration,
-      };
-      sendNotification("Çalışma zamanı!", {
-        body: "Mola süreniz tamamlandı. Şimdi çalışma zamanı.",
-        severity: "info",
-      });
-      if (!windowFocusRef.current) {
+        setHistory((prev) => [...prev, sessionRecord]);
+        nextPhase = {
+          isWorking: true,
+          isLongBreak: false,
+          timer: workDuration,
+          initialTimer: workDuration,
+        };
         sendNotification("Çalışma zamanı!", {
           body: "Mola süreniz tamamlandı. Şimdi çalışma zamanı.",
+          severity: "info",
         });
+        if (!windowFocusRef.current) {
+          sendNotification("Çalışma zamanı!", {
+            body: "Mola süreniz tamamlandı. Şimdi çalışma zamanı.",
+          });
+        }
+        nextPhase.isRunning = autoStartPomodoros ? true : false;
       }
-      nextPhase.isRunning = autoStartPomodoros ? true : false;
-    }
 
-    setIsWorking(nextPhase.isWorking);
-    setIsLongBreak(nextPhase.isLongBreak);
-    setTimer(nextPhase.timer);
-    setInitialTimer(nextPhase.initialTimer);
-    setIsRunning(nextPhase.isRunning);
-    if (nextPhase.isRunning) {
-      setTargetTime(Date.now() + nextPhase.timer * 1000);
-    } else {
-      setTargetTime(null);
-    }
-  }, [
-    isWorking,
-    mode,
-    workDuration,
-    breakDuration,
-    longBreakDuration,
-    sessionsBeforeLongBreak,
-    autoStartBreaks,
-    autoStartPomodoros,
-    isLongBreak,
-    completedSessions,
-    sendNotification,
-  ]);
+      setIsWorking(nextPhase.isWorking);
+      setIsLongBreak(nextPhase.isLongBreak);
+      setTimer(nextPhase.timer);
+      setInitialTimer(nextPhase.initialTimer);
+      setIsRunning(nextPhase.isRunning);
+      if (nextPhase.isRunning) {
+        setTargetTime(Date.now() + nextPhase.timer * 1000);
+      } else {
+        setTargetTime(null);
+      }
+    },
+    [
+      isWorking,
+      mode,
+      workDuration,
+      breakDuration,
+      longBreakDuration,
+      sessionsBeforeLongBreak,
+      autoStartBreaks,
+      autoStartPomodoros,
+      isLongBreak,
+      completedSessions,
+      sendNotification,
+      timer, // gerekliyse eklenebilir
+    ]
+  );
 
   // TIMER mantığı: targetTime varsa onun üzerinden, yoksa Flowtime mantığı
   useEffect(() => {
@@ -646,7 +651,8 @@ const AdvancedTimer = ({ user }) => {
           const remaining = Math.round((targetTime - Date.now()) / 1000);
           if (remaining <= 0) {
             clearInterval(timerRef.current);
-            handlePhaseSwitch();
+            // Doğal bitişte currentTimer değeri 0 olarak geçiliyor
+            handlePhaseSwitch(0);
           } else {
             setTimer(remaining);
           }
@@ -665,7 +671,7 @@ const AdvancedTimer = ({ user }) => {
                 return prev - 1;
               } else {
                 clearInterval(timerRef.current);
-                handlePhaseSwitch();
+                handlePhaseSwitch(0);
                 return 0;
               }
             }
@@ -713,7 +719,7 @@ const AdvancedTimer = ({ user }) => {
 
   // Atla butonu
   const handleSkip = () => {
-    handlePhaseSwitch();
+    handlePhaseSwitch(timer);
   };
 
   // Saniyeyi MM:SS formatına çevirme

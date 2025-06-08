@@ -2,7 +2,7 @@
 
 ![Proje Logo](/public/logo4.jpeg)
 
-Türkçe dil desteğiyle kişisel sağlık, fitness ve wellness takip platformu. Firebase tabanlı, PWA destekli ve AI entegreli modern bir React uygulaması.
+Türkçe kişisel sağlık, fitness ve wellness takip platformu. Firebase tabanlı, PWA destekli ve AI entegreli modern bir React uygulaması.
 
 ## 🌟 Temel Özellikler
 

@@ -1,3 +1,17 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
-Disallow:
+Allow: /
+Allow: /sitemap.xml
+Allow: /manifest.json
+
+# Disallow admin and private routes
+Disallow: /admin/
+Disallow: /private/
+Disallow: /api/
+Disallow: /auth/
+
+# Crawl-delay
+Crawl-delay: 10
+
+# Sitemap
+Sitemap: https://my-health-tracker-app.netlify.app/sitemap.xml

@@ -9,6 +9,7 @@ import {
   Box,
   Typography,
   alpha,
+  Button,
 } from "@mui/material";
 import { styled } from "@mui/material";
 import WorkOutlineIcon from "@mui/icons-material/WorkOutline";
@@ -93,24 +94,50 @@ const CancelButton = styled("button")({
   },
 });
 
-const StyledTextField = styled(TextField)({
-  "& label.Mui-focused": {
-    color: colors.primary,
+const StyledDialog = styled(Dialog)(({ theme }) => ({
+  '& .MuiDialog-paper': {
+    background: 'rgba(25, 25, 35, 0.85)',
+    backdropFilter: 'blur(20px)',
+    borderRadius: '24px',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+    overflow: 'hidden',
   },
-  "& .MuiOutlinedInput-root": {
-    "& fieldset": {
-      borderColor: alpha(colors.primary, 0.3),
-      borderRadius: 12,
+}));
+
+const DialogHeader = styled(Box)(({ theme }) => ({
+  background: 'linear-gradient(135deg, rgba(74, 144, 226, 0.1) 0%, rgba(80, 227, 194, 0.1) 100%)',
+  padding: theme.spacing(3),
+  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+}));
+
+const StyledTextField = styled(TextField)(({ theme }) => ({
+  '& .MuiOutlinedInput-root': {
+    background: 'rgba(255, 255, 255, 0.05)',
+    backdropFilter: 'blur(10px)',
+    borderRadius: '12px',
+    color: '#fff',
+    transition: 'all 0.3s ease',
+    '& fieldset': {
+      borderColor: 'rgba(255, 255, 255, 0.1)',
     },
-    "&:hover fieldset": {
-      borderColor: colors.primary,
+    '&:hover fieldset': {
+      borderColor: 'rgba(255, 255, 255, 0.2)',
     },
-    "&.Mui-focused fieldset": {
-      borderColor: colors.primary,
-      borderWidth: 2,
+    '&.Mui-focused fieldset': {
+      borderColor: '#4A90E2',
     },
   },
-});
+  '& .MuiInputLabel-root': {
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  '& .MuiInputBase-input': {
+    color: '#fff',
+  },
+  '& .MuiSelect-icon': {
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+}));
 
 const categoryColors = {
   Work: "#00FFFF", // Neon Cyan
@@ -125,6 +152,106 @@ const categoryColors = {
   Health: "#00E5EE", // Neon Turquoise
   Finance: "#CCFF00", // Neon Lime
 };
+
+const categoryNames = {
+  Work: "İş",
+  Personal: "Kişisel",
+  Exercise: "Egzersiz",
+  Study: "Çalışma",
+  Other: "Diğer",
+  Travel: "Seyahat",
+  Shopping: "Alışveriş",
+  Entertainment: "Eğlence",
+  Food: "Yemek",
+  Health: "Sağlık",
+  Finance: "Finans",
+};
+
+const categoryIcons = {
+  Work: <WorkOutlineIcon />,
+  Personal: <PersonIcon />,
+  Exercise: <FitnessCenterIcon />,
+  Study: <SchoolIcon />,
+  Other: <MoreHorizIcon />,
+  Travel: <TravelExploreIcon />,
+  Shopping: <ShoppingCartIcon />,
+  Entertainment: <MovieIcon />,
+  Food: <RestaurantIcon />,
+  Health: <LocalHospitalIcon />,
+  Finance: <AttachMoneyIcon />,
+};
+
+const categoryDescriptions = {
+  Work: "İş için zaman ayırma",
+  Personal: "Kişisel gelişim için zaman ayırma",
+  Exercise: "Fiziksel sağlık için zaman ayırma",
+  Study: "Akademik gelişim için zaman ayırma",
+  Other: "Diğer faaliyetler için zaman ayırma",
+  Travel: "Seyahat için zaman ayırma",
+  Shopping: "Alışveriş için zaman ayırma",
+  Entertainment: "Eğlence için zaman ayırma",
+  Food: "Yemek için zaman ayırma",
+  Health: "Sağlık için zaman ayırma",
+  Finance: "Finans için zaman ayırma",
+};
+
+const CategorySelector = styled(Box)(({ theme }) => ({
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+  gap: theme.spacing(1.5),
+  marginTop: theme.spacing(2),
+}));
+
+const CategoryOption = styled(Box)(({ theme, selected, color }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  padding: theme.spacing(2),
+  borderRadius: '16px',
+  background: selected
+    ? `linear-gradient(135deg, ${color}15 0%, ${color}25 100%)`
+    : 'rgba(255, 255, 255, 0.05)',
+  border: `1px solid ${selected ? color : 'rgba(255, 255, 255, 0.1)'}`,
+  cursor: 'pointer',
+  transition: 'all 0.3s ease',
+  backdropFilter: 'blur(10px)',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+    boxShadow: `0 8px 20px ${color}30`,
+    background: selected
+      ? `linear-gradient(135deg, ${color}20 0%, ${color}30 100%)`
+      : 'rgba(255, 255, 255, 0.08)',
+  },
+}));
+
+const CategoryIcon = styled(Box)(({ theme, color }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: '48px',
+  height: '48px',
+  borderRadius: '50%',
+  background: `linear-gradient(135deg, ${color}20 0%, ${color}30 100%)`,
+  marginBottom: theme.spacing(1.5),
+  fontSize: '1.5rem',
+  transition: 'all 0.3s ease',
+  boxShadow: `0 4px 12px ${color}20`,
+}));
+
+const CategoryLabel = styled(Typography)(({ theme, selected, color }) => ({
+  color: selected ? color : "#fff",
+  fontSize: "0.8rem",
+  fontWeight: selected ? 600 : 500,
+  textAlign: "center",
+  transition: "all 0.3s ease",
+}));
+
+const CategoryDescription = styled(Typography)(({ theme }) => ({
+  color: "rgba(255,255,255,0.7)",
+  fontSize: "0.7rem",
+  textAlign: "center",
+  marginTop: theme.spacing(0.5),
+}));
 
 const getTurkeyDateString = () => {
   const options = {
@@ -179,369 +306,140 @@ const RoutineModal = ({ open, onClose, routine, initialDate, onSave }) => {
   };
 
   return (
-    <Dialog
+    <StyledDialog
       open={open}
       onClose={onClose}
-      PaperProps={{
-        sx: {
-          background: colors.background.paper,
-          backdropFilter: "blur(12px)",
-          borderRadius: "24px",
-          border: `1px solid ${alpha(colors.primary, 0.15)}`,
-          boxShadow: `0 8px 32px 0 ${alpha(colors.primary, 0.2)}`,
-          overflow: "hidden",
-          maxWidth: 450,
-          width: "100%",
-        },
-      }}
+      maxWidth="sm"
+      fullWidth
     >
-      <Box
-        sx={{
-          background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 100%)`,
-          padding: "20px 24px",
-          color: colors.text.light,
-        }}
-      >
-        <Typography variant="h6" fontWeight={700}>
+      <DialogHeader>
+        <Typography variant="h5" sx={{
+          color: '#fff',
+          fontWeight: 600,
+          textAlign: 'center',
+          textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+        }}>
           {routine ? "Rutini Düzenle" : "Yeni Rutin Ekle"}
         </Typography>
-        <Typography variant="body2" sx={{ opacity: 0.9, mt: 0.5 }}>
-          {routine
-            ? "Mevcut rutininizi düzenleyin"
-            : "Günlük düzeninize yeni bir rutin ekleyin"}
-        </Typography>
-      </Box>
-
-      <DialogContent sx={{ padding: 3 }}>
-        <StyledTextField
-          fullWidth
-          margin="dense"
-          label="Tarih"
-          type="date"
-          name="date"
-          InputLabelProps={{ shrink: true }}
-          value={formData.date}
-          onChange={handleChange}
-          sx={{ mb: 2 }}
-        />
-
-        <Box sx={{ mb: 1, mt: 1 }}>
-          <Typography
-            variant="subtitle2"
-            sx={{ color: colors.text.secondary, mb: 2, fontWeight: 600 }}
-          >
-            Zaman Ayarları
-          </Typography>
-          <Box sx={{ display: "flex", gap: 2 }}>
-            <StyledTextField
-              fullWidth
-              margin="dense"
-              label="Başlangıç Saati"
-              type="time"
-              name="time"
-              InputLabelProps={{ shrink: true }}
-              value={formData.time}
-              onChange={handleChange}
-              sx={{ mb: 2 }}
-            />
-            <StyledTextField
-              fullWidth
-              margin="dense"
-              label="Bitiş Saati"
-              type="time"
-              name="endTime"
-              InputLabelProps={{ shrink: true }}
-              value={formData.endTime || ""}
-              onChange={handleChange}
-              sx={{ mb: 2 }}
-              helperText="Opsiyonel"
-            />
-          </Box>
-        </Box>
-
-        <StyledTextField
-          fullWidth
-          margin="dense"
-          label="Rutin Açıklaması"
-          name="title"
-          value={formData.title}
-          onChange={handleChange}
-          sx={{ mb: 3 }}
-        />
-
-        <StyledTextField
-          select
-          fullWidth
-          margin="dense"
-          label="Kategori"
-          name="category"
-          value={formData.category}
-          onChange={handleChange}
-          sx={{ mb: 2 }}
-          SelectProps={{
-            renderValue: (selected) => (
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                {selected === "Work" && <WorkOutlineIcon sx={{ mr: 1 }} />}
-                {selected === "Personal" && <PersonIcon sx={{ mr: 1 }} />}
-                {selected === "Exercise" && (
-                  <FitnessCenterIcon sx={{ mr: 1 }} />
-                )}
-                {selected === "Study" && <SchoolIcon sx={{ mr: 1 }} />}
-                {selected === "Other" && <MoreHorizIcon sx={{ mr: 1 }} />}
-                {selected === "Travel" && <TravelExploreIcon sx={{ mr: 1 }} />}
-                {selected === "Shopping" && <ShoppingCartIcon sx={{ mr: 1 }} />}
-                {selected === "Entertainment" && <MovieIcon sx={{ mr: 1 }} />}
-                {selected === "Food" && <RestaurantIcon sx={{ mr: 1 }} />}
-                {selected === "Health" && <LocalHospitalIcon sx={{ mr: 1 }} />}
-                {selected === "Finance" && <AttachMoneyIcon sx={{ mr: 1 }} />}
-                <Typography>
-                  {
-                    {
-                      Work: "İş",
-                      Personal: "Kişisel",
-                      Exercise: "Egzersiz",
-                      Study: "Çalışma",
-                      Other: "Diğer",
-                      Travel: "Seyahat",
-                      Shopping: "Alışveriş",
-                      Entertainment: "Eğlence",
-                      Food: "Yemek",
-                      Health: "Sağlık",
-                      Finance: "Finans",
-                    }[selected]
-                  }
-                </Typography>
-              </Box>
-            ),
-          }}
-        >
-          <MenuItem value="Work">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <WorkOutlineIcon sx={{ mr: 1 }} />
-              İŞ
-            </Box>
-          </MenuItem>
-          <MenuItem value="Personal">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <PersonIcon sx={{ mr: 1 }} />
-              Kişisel
-            </Box>
-          </MenuItem>
-          <MenuItem value="Exercise">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <FitnessCenterIcon sx={{ mr: 1 }} />
-              Egzersiz
-            </Box>
-          </MenuItem>
-          <MenuItem value="Study">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <SchoolIcon sx={{ mr: 1 }} />
-              Çalışma
-            </Box>
-          </MenuItem>
-          <MenuItem value="Other">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <MoreHorizIcon sx={{ mr: 1 }} />
-              Diğer
-            </Box>
-          </MenuItem>
-          <MenuItem value="Travel">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <TravelExploreIcon sx={{ mr: 1 }} />
-              Seyahat
-            </Box>
-          </MenuItem>
-          <MenuItem value="Shopping">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <ShoppingCartIcon sx={{ mr: 1 }} />
-              Alışveriş
-            </Box>
-          </MenuItem>
-          <MenuItem value="Entertainment">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <MovieIcon sx={{ mr: 1 }} />
-              Eğlence
-            </Box>
-          </MenuItem>
-          <MenuItem value="Food">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <RestaurantIcon sx={{ mr: 1 }} />
-              Yemek
-            </Box>
-          </MenuItem>
-          <MenuItem value="Health">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <LocalHospitalIcon sx={{ mr: 1 }} />
-              Sağlık
-            </Box>
-          </MenuItem>
-          <MenuItem value="Finance">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <AttachMoneyIcon sx={{ mr: 1 }} />
-              Finans
-            </Box>
-          </MenuItem>
-        </StyledTextField>
-
-        <StyledTextField
-          select
-          fullWidth
-          margin="dense"
-          label="Tekrarlama"
-          name="repeat"
-          value={formData.repeat}
-          onChange={handleChange}
-          sx={{ mb: 2 }}
-        >
-          <MenuItem value="none">Tekrarlama Yok</MenuItem>
-          <MenuItem value="daily">Günlük</MenuItem>
-          <MenuItem value="weekly">Haftalık</MenuItem>
-          <MenuItem value="monthly">Aylık</MenuItem>
-        </StyledTextField>
-
-        {formData.repeat !== "none" && (
+      </DialogHeader>
+      <DialogContent sx={{ p: 3 }}>
+        <form onSubmit={handleSave}>
           <StyledTextField
             fullWidth
-            margin="dense"
-            label="Tekrar Sayısı"
-            type="number"
-            name="repeatCount"
-            InputLabelProps={{ shrink: true }}
-            value={formData.repeatCount}
-            onChange={handleChange}
-            sx={{ mb: 2 }}
-            inputProps={{ min: 1, max: 30 }}
+            label="Başlık"
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            margin="normal"
+            required
           />
-        )}
 
-        <StyledTextField
-          select
-          fullWidth
-          margin="dense"
-          label="İkon Seçimi"
-          name="icon"
-          value={formData.icon}
-          onChange={handleChange}
-          sx={{ mb: 2 }}
-          SelectProps={{
-            renderValue: (selected) => (
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                {selected === "default" && <MoreHorizIcon sx={{ mr: 1 }} />}
-                {selected === "work" && <WorkOutlineIcon sx={{ mr: 1 }} />}
-                {selected === "study" && <SchoolIcon sx={{ mr: 1 }} />}
-                {selected === "sport" && <FitnessCenterIcon sx={{ mr: 1 }} />}
-                {selected === "relax" && <PersonIcon sx={{ mr: 1 }} />}
-                {selected === "travel" && <TravelExploreIcon sx={{ mr: 1 }} />}
-                {selected === "shopping" && <ShoppingCartIcon sx={{ mr: 1 }} />}
-                {selected === "entertainment" && <MovieIcon sx={{ mr: 1 }} />}
-                {selected === "food" && <RestaurantIcon sx={{ mr: 1 }} />}
-                {selected === "health" && <LocalHospitalIcon sx={{ mr: 1 }} />}
-                {selected === "finance" && <AttachMoneyIcon sx={{ mr: 1 }} />}
-                <Typography>
-                  {
-                    {
-                      default: "Varsayılan",
-                      work: "İş",
-                      study: "Çalışma",
-                      sport: "Spor",
-                      relax: "Rahatla",
-                      travel: "Seyahat",
-                      shopping: "Alışveriş",
-                      entertainment: "Eğlence",
-                      food: "Yemek",
-                      health: "Sağlık",
-                      finance: "Finans",
-                    }[selected]
-                  }
-                </Typography>
-              </Box>
-            ),
-          }}
-        >
-          <MenuItem value="default">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <MoreHorizIcon sx={{ mr: 1 }} />
-              Varsayılan
+          <Typography variant="subtitle2" sx={{
+            mt: 3,
+            mb: 2,
+            color: '#fff',
+            fontWeight: 600,
+            letterSpacing: '0.5px'
+          }}>
+            Kategori Seçin
+          </Typography>
+          <CategorySelector>
+            {Object.entries(categoryNames).map(([key, name]) => (
+              <CategoryOption
+                key={key}
+                selected={formData.category === key}
+                color={categoryColors[key]}
+                onClick={() => setFormData({ ...formData, category: key })}
+              >
+                <CategoryIcon color={categoryColors[key]}>
+                  {categoryIcons[key]}
+                </CategoryIcon>
+                <CategoryLabel
+                  selected={formData.category === key}
+                  color={categoryColors[key]}
+                >
+                  {name}
+                </CategoryLabel>
+                <CategoryDescription>
+                  {categoryDescriptions[key]}
+                </CategoryDescription>
+              </CategoryOption>
+            ))}
+          </CategorySelector>
+
+          <Box sx={{ mt: 3, mb: 2 }}>
+            <Typography variant="subtitle2" sx={{
+              color: '#fff',
+              mb: 2,
+              fontWeight: 600,
+              letterSpacing: '0.5px'
+            }}>
+              Zaman Ayarları
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <StyledTextField
+                fullWidth
+                label="Başlangıç Saati"
+                type="time"
+                name="time"
+                InputLabelProps={{ shrink: true }}
+                value={formData.time}
+                onChange={handleChange}
+              />
+              <StyledTextField
+                fullWidth
+                label="Bitiş Saati"
+                type="time"
+                name="endTime"
+                InputLabelProps={{ shrink: true }}
+                value={formData.endTime || ""}
+                onChange={handleChange}
+                helperText="Opsiyonel"
+              />
             </Box>
-          </MenuItem>
-          <MenuItem value="work">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <WorkOutlineIcon sx={{ mr: 1 }} />
-              İş
-            </Box>
-          </MenuItem>
-          <MenuItem value="study">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <SchoolIcon sx={{ mr: 1 }} />
-              Çalışma
-            </Box>
-          </MenuItem>
-          <MenuItem value="sport">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <FitnessCenterIcon sx={{ mr: 1 }} />
-              Spor
-            </Box>
-          </MenuItem>
-          <MenuItem value="relax">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <PersonIcon sx={{ mr: 1 }} />
-              Rahatla
-            </Box>
-          </MenuItem>
-          <MenuItem value="travel">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <TravelExploreIcon sx={{ mr: 1 }} />
-              Seyahat
-            </Box>
-          </MenuItem>
-          <MenuItem value="shopping">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <ShoppingCartIcon sx={{ mr: 1 }} />
-              Alışveriş
-            </Box>
-          </MenuItem>
-          <MenuItem value="entertainment">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <MovieIcon sx={{ mr: 1 }} />
-              Eğlence
-            </Box>
-          </MenuItem>
-          <MenuItem value="food">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <RestaurantIcon sx={{ mr: 1 }} />
-              Yemek
-            </Box>
-          </MenuItem>
-          <MenuItem value="health">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <LocalHospitalIcon sx={{ mr: 1 }} />
-              Sağlık
-            </Box>
-          </MenuItem>
-          <MenuItem value="finance">
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <AttachMoneyIcon sx={{ mr: 1 }} />
-              Finans
-            </Box>
-          </MenuItem>
-        </StyledTextField>
+          </Box>
+
+          <StyledTextField
+            select
+            fullWidth
+            margin="normal"
+            label="Tekrarlama"
+            name="repeat"
+            value={formData.repeat}
+            onChange={handleChange}
+          >
+            <MenuItem value="none">Tekrarlama Yok</MenuItem>
+            <MenuItem value="daily">Günlük</MenuItem>
+            <MenuItem value="weekly">Haftalık</MenuItem>
+            <MenuItem value="monthly">Aylık</MenuItem>
+          </StyledTextField>
+
+          {formData.repeat !== "none" && (
+            <StyledTextField
+              fullWidth
+              margin="normal"
+              label="Tekrar Sayısı"
+              type="number"
+              name="repeatCount"
+              InputLabelProps={{ shrink: true }}
+              value={formData.repeatCount}
+              onChange={handleChange}
+              inputProps={{ min: 1, max: 30 }}
+            />
+          )}
+        </form>
       </DialogContent>
-
-      <DialogActions
-        sx={{
-          padding: "16px 24px",
-          borderTop: `1px solid ${alpha(colors.text.secondary, 0.1)}`,
-        }}
-      >
-        <CancelButton onClick={onClose}>İptal</CancelButton>
-        <StyledAnimatedButton
+      <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+        <Button onClick={onClose}>
+          İptal
+        </Button>
+        <Button
           onClick={handleSave}
-          variant={routine ? "primary" : "success"}
+          variant="contained"
         >
-          {routine ? "Güncelle" : "Kaydet"}
-        </StyledAnimatedButton>
+          {routine ? "Güncelle" : "Ekle"}
+        </Button>
       </DialogActions>
-    </Dialog>
+    </StyledDialog>
   );
 };
 

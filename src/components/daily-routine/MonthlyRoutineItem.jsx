@@ -49,17 +49,17 @@ const MonthlyRoutineItem = ({
   };
 
   const formatTimeCountdown = (targetTimeStr, now = new Date()) => {
+    const nowInTurkey = new Date(
+      now.toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
+    );
     const [targetHour, targetMinute] = targetTimeStr.split(":").map(Number);
-    const targetDate = new Date(now);
+    const targetDate = new Date(nowInTurkey);
     targetDate.setHours(targetHour, targetMinute, 0, 0);
-    if (targetDate < now) targetDate.setDate(targetDate.getDate() + 1);
-    let remainingSeconds = Math.floor((targetDate - now) / 1000);
+    if (targetDate < nowInTurkey) targetDate.setDate(targetDate.getDate() + 1);
+    let remainingSeconds = Math.floor((targetDate - nowInTurkey) / 1000);
     remainingSeconds = remainingSeconds > 0 ? remainingSeconds : 0;
     const hours = String(Math.floor(remainingSeconds / 3600)).padStart(2, "0");
-    const minutes = String(Math.floor((remainingSeconds % 3600) / 60)).padStart(
-      2,
-      "0"
-    );
+    const minutes = String(Math.floor((remainingSeconds % 3600) / 60)).padStart(2, "0");
     const seconds = String(remainingSeconds % 60).padStart(2, "0");
     return `${hours}:${minutes}:${seconds}`;
   };
@@ -233,10 +233,9 @@ const MonthlyRoutineItem = ({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: `0px 4px 10px ${
-              (categoryColors[routine.category] || categoryColors.Default) +
+            boxShadow: `0px 4px 10px ${(categoryColors[routine.category] || categoryColors.Default) +
               "80"
-            }`,
+              }`,
           }}
         >
           {getCategoryIcon(routine.category)}

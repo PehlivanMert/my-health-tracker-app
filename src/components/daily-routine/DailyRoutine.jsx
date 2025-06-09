@@ -18,18 +18,71 @@ import { showToast } from "../../utils/weather-theme-notify/NotificationManager"
 import { initialRoutines } from "../../utils/constant/ConstantData";
 
 const categoryColors = {
-  Work: "#00FFFF", // Neon Cyan
-  Personal: "#FF00FF", // Neon Magenta
-  Exercise: "#39FF14", // Neon Green
-  Study: "#FFFF33", // Neon Yellow
-  Other: "#FF5F1F", // Neon Orange
-  Travel: "#BF00FF", // Neon Purple
-  Shopping: "#FF1493", // Neon Pink
-  Entertainment: "#FF073A", // Neon Red
-  Food: "#FFD700", // Neon Gold
-  Health: "#00E5EE", // Neon Turquoise
-  Finance: "#CCFF00", // Neon Lime
-  Default: "#FF5F1F", // Varsayılan olarak 'Other' ile aynı neon orange tonu
+  Work: "#4A90E2", // Modern Mavi
+  Personal: "#50E3C2", // Turkuaz
+  Exercise: "#5CB85C", // Yeşil
+  Study: "#F5A623", // Turuncu
+  Health: "#D0021B", // Kırmızı
+  Finance: "#9013FE", // Mor
+  Social: "#F8E71C", // Sarı
+  Hobby: "#7ED321", // Açık Yeşil
+  Travel: "#4A90E2", // Mavi
+  Shopping: "#BD10E0", // Pembe
+  Food: "#F5A623", // Turuncu
+  Entertainment: "#50E3C2", // Turkuaz
+  Other: "#9B9B9B", // Gri
+  Default: "#9B9B9B", // Varsayılan Gri
+};
+
+const categoryIcons = {
+  Work: "💼",
+  Personal: "👤",
+  Exercise: "💪",
+  Study: "📚",
+  Health: "❤️",
+  Finance: "💰",
+  Social: "👥",
+  Hobby: "🎨",
+  Travel: "✈️",
+  Shopping: "🛍️",
+  Food: "🍽️",
+  Entertainment: "🎬",
+  Other: "📌",
+  Default: "📌",
+};
+
+const categoryNames = {
+  Work: "İş",
+  Personal: "Kişisel",
+  Exercise: "Egzersiz",
+  Study: "Çalışma",
+  Health: "Sağlık",
+  Finance: "Finans",
+  Social: "Sosyal",
+  Hobby: "Hobi",
+  Travel: "Seyahat",
+  Shopping: "Alışveriş",
+  Food: "Yemek",
+  Entertainment: "Eğlence",
+  Other: "Diğer",
+  Default: "Diğer",
+};
+
+const categoryDescriptions = {
+  Work: "İş ve kariyer ile ilgili rutinler",
+  Personal: "Kişisel gelişim ve bakım rutinleri",
+  Exercise: "Spor ve fitness aktiviteleri",
+  Study: "Eğitim ve öğrenme rutinleri",
+  Health: "Sağlık ve wellness rutinleri",
+  Finance: "Finansal planlama ve yönetim",
+  Social: "Sosyal aktiviteler ve ilişkiler",
+  Hobby: "Hobiler ve ilgi alanları",
+  Travel: "Seyahat ve gezi planları",
+  Shopping: "Alışveriş ve market rutinleri",
+  Food: "Yemek ve beslenme rutinleri",
+  Entertainment: "Eğlence ve boş zaman aktiviteleri",
+  Other: "Diğer rutinler",
+  Default: "Diğer rutinler",
 };
 
 const getTurkeyLocalDateString = (date = new Date()) =>
@@ -48,6 +101,26 @@ const routineOccursOn = (routine, filterDateStr) => {
   const routineDate = parseLocalDate(routine.date);
   const filterDate = parseLocalDate(filterDateStr);
   return routineDate.getTime() === filterDate.getTime();
+};
+
+const getFilterDate = (timeFilter) => {
+  const nowTurkey = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
+  );
+  const filterDate = new Date(nowTurkey);
+
+  switch (timeFilter) {
+    case "Yesterday":
+      filterDate.setDate(filterDate.getDate() - 1);
+      break;
+    case "Tomorrow":
+      filterDate.setDate(filterDate.getDate() + 1);
+      break;
+    default:
+      break;
+  }
+
+  return filterDate;
 };
 
 const DailyRoutine = ({ user }) => {
@@ -182,6 +255,7 @@ const DailyRoutine = ({ user }) => {
         isInitialLoad.current = false;
       } catch (error) {
         console.error("Data load error:", error);
+        showToast("Veriler yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.", "error");
       }
     };
     loadData();
@@ -190,11 +264,13 @@ const DailyRoutine = ({ user }) => {
   useEffect(() => {
     if (!user || isInitialLoad.current) return;
     const saveData = async () => {
+      if (!user || isInitialLoad.current) return;
       try {
         const userRef = doc(db, "users", user.uid);
         await updateDoc(userRef, { routines, weeklyStats, monthlyStats });
       } catch (error) {
         console.error("Data save error:", error);
+        showToast("Veriler kaydedilirken bir hata oluştu. Değişiklikleriniz kaydedilemedi.", "error");
       }
     };
     saveData();
@@ -206,24 +282,17 @@ const DailyRoutine = ({ user }) => {
     const searchMatch = r.title
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
+
     let timeMatch = true;
     if (r.date) {
-      const nowTurkey = new Date(
-        new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
-      );
-      if (
-        timeFilter === "Today" ||
-        timeFilter === "Yesterday" ||
-        timeFilter === "Tomorrow"
-      ) {
-        const filterDate = new Date(nowTurkey);
-        if (timeFilter === "Yesterday")
-          filterDate.setDate(filterDate.getDate() - 1);
-        if (timeFilter === "Tomorrow")
-          filterDate.setDate(filterDate.getDate() + 1);
+      if (timeFilter === "Today" || timeFilter === "Yesterday" || timeFilter === "Tomorrow") {
+        const filterDate = getFilterDate(timeFilter);
         const filterDateStr = getTurkeyLocalDateString(filterDate);
         timeMatch = r.date === filterDateStr;
       } else if (timeFilter === "Monthly") {
+        const nowTurkey = new Date(
+          new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
+        );
         const currentYear = nowTurkey.getFullYear();
         const currentMonth = nowTurkey.getMonth();
         const routineDate = new Date(r.date);
@@ -365,6 +434,16 @@ const DailyRoutine = ({ user }) => {
 
   const handleConfirmDelete = () => {
     if (routineToDelete) {
+      if (routineToDelete.completed) {
+        setWeeklyStats((prev) => ({
+          ...prev,
+          completed: Math.max(prev.completed - 1, 0),
+        }));
+        setMonthlyStats((prev) => ({
+          ...prev,
+          completed: Math.max(prev.completed - 1, 0),
+        }));
+      }
       setRoutines((prev) => prev.filter((r) => r.id !== routineToDelete.id));
       setRoutineToDelete(null);
       setOpenDeleteNonRepeatDialog(false);
@@ -374,10 +453,36 @@ const DailyRoutine = ({ user }) => {
   const handleConfirmDeleteRepeating = (deleteAll) => {
     if (routineToDelete) {
       if (deleteAll && routineToDelete.groupId) {
+        const routinesToDelete = routines.filter(
+          (r) => r.groupId === routineToDelete.groupId
+        );
+        const completedCount = routinesToDelete.filter((r) => r.completed).length;
+
+        if (completedCount > 0) {
+          setWeeklyStats((prev) => ({
+            ...prev,
+            completed: Math.max(prev.completed - completedCount, 0),
+          }));
+          setMonthlyStats((prev) => ({
+            ...prev,
+            completed: Math.max(prev.completed - completedCount, 0),
+          }));
+        }
+
         setRoutines((prev) =>
           prev.filter((r) => r.groupId !== routineToDelete.groupId)
         );
       } else {
+        if (routineToDelete.completed) {
+          setWeeklyStats((prev) => ({
+            ...prev,
+            completed: Math.max(prev.completed - 1, 0),
+          }));
+          setMonthlyStats((prev) => ({
+            ...prev,
+            completed: Math.max(prev.completed - 1, 0),
+          }));
+        }
         setRoutines((prev) => prev.filter((r) => r.id !== routineToDelete.id));
       }
       setRoutineToDelete(null);
@@ -395,45 +500,95 @@ const DailyRoutine = ({ user }) => {
       prev.map((r) => {
         if (r.id === id) {
           const updatedCompleted = !r.completed;
-          if (updatedCompleted) {
-            setWeeklyStats((prev) => ({
-              ...prev,
-              completed: prev.completed + 1,
-            }));
-            setMonthlyStats((prev) => ({
-              ...prev,
-              completed: prev.completed + 1,
-            }));
+          const todayStr = getTurkeyLocalDateString(new Date());
+
+          // Tekrarlanan rutinler için completedDates array'ini güncelle
+          if (r.repeat && r.repeat !== "none") {
+            const completedDates = r.completedDates || [];
+            if (updatedCompleted) {
+              if (!completedDates.includes(todayStr)) {
+                completedDates.push(todayStr);
+              }
+            } else {
+              const index = completedDates.indexOf(todayStr);
+              if (index > -1) {
+                completedDates.splice(index, 1);
+              }
+            }
+
+            if (updatedCompleted) {
+              setWeeklyStats((prev) => ({
+                ...prev,
+                completed: prev.completed + 1,
+              }));
+              setMonthlyStats((prev) => ({
+                ...prev,
+                completed: prev.completed + 1,
+              }));
+            } else {
+              setWeeklyStats((prev) => ({
+                ...prev,
+                completed: Math.max(prev.completed - 1, 0),
+              }));
+              setMonthlyStats((prev) => ({
+                ...prev,
+                completed: Math.max(prev.completed - 1, 0),
+              }));
+            }
+
+            return { ...r, completedDates };
           } else {
-            setWeeklyStats((prev) => ({
-              ...prev,
-              completed: Math.max(prev.completed - 1, 0),
-            }));
-            setMonthlyStats((prev) => ({
-              ...prev,
-              completed: Math.max(prev.completed - 1, 0),
-            }));
+            // Tekrarlanmayan rutinler için normal completed durumu
+            if (updatedCompleted) {
+              setWeeklyStats((prev) => ({
+                ...prev,
+                completed: prev.completed + 1,
+              }));
+              setMonthlyStats((prev) => ({
+                ...prev,
+                completed: prev.completed + 1,
+              }));
+            } else {
+              setWeeklyStats((prev) => ({
+                ...prev,
+                completed: Math.max(prev.completed - 1, 0),
+              }));
+              setMonthlyStats((prev) => ({
+                ...prev,
+                completed: Math.max(prev.completed - 1, 0),
+              }));
+            }
+            return { ...r, completed: updatedCompleted };
           }
-          return { ...r, completed: updatedCompleted };
         }
         return r;
       })
     );
   };
 
-  const handleToggleNotification = (id) => {
+  const handleToggleNotification = async (id) => {
     const routine = routines.find((r) => r.id === id);
     if (!routine) return;
     const isEnabled = !routine.notificationEnabled;
-    showToast(
-      isEnabled ? "Bildirimler açıldı 🔔" : "Bildirimler kapatıldı 🔕",
-      isEnabled ? "success" : "error"
-    );
-    setRoutines(
-      routines.map((r) =>
+
+    try {
+      // Firebase'e kaydet
+      const userRef = doc(db, "users", user.uid);
+      const updatedRoutines = routines.map((r) =>
         r.id === id ? { ...r, notificationEnabled: isEnabled } : r
-      )
-    );
+      );
+      await updateDoc(userRef, { routines: updatedRoutines });
+
+      // State'i güncelle
+      setRoutines(updatedRoutines);
+      showToast(
+        isEnabled ? "Bildirimler açıldı 🔔" : "Bildirimler kapatıldı 🔕",
+        isEnabled ? "success" : "error"
+      );
+    } catch (error) {
+      console.error("Bildirim ayarı güncellenirken hata:", error);
+      showToast("Bildirim ayarı güncellenirken bir hata oluştu", "error");
+    }
   };
 
   const handleSelectAll = () => {
@@ -468,7 +623,7 @@ const DailyRoutine = ({ user }) => {
       }));
       setMonthlyStats((prev) => ({
         ...prev,
-        completed: Math.max(prev.completed - 1, 0),
+        completed: Math.max(prev.completed - count, 0),
       }));
     }
     setRoutines((prev) =>

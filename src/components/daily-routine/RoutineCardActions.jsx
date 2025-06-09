@@ -32,17 +32,17 @@ const ActionButton = styled(IconButton)(({ theme, color }) => ({
   },
 }));
 
-const CountdownDisplay = styled(Box)(({ theme, isActive, color }) => ({
+const CountdownDisplay = styled(Box)(({ theme, isactive, color }) => ({
   display: "flex",
   alignItems: "center",
   fontFamily: "'Poppins', sans-serif",
-  color: isActive ? color : "#fff",
+  color: isactive === "true" ? color : "#fff",
   fontWeight: 600,
   padding: "4px 12px",
   borderRadius: "12px",
-  background: isActive ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.08)",
-  boxShadow: isActive ? `0 0 15px ${color}30` : "0 0 10px rgba(0,0,0,0.2)",
-  border: isActive ? `1px solid ${color}30` : "1px solid rgba(255,255,255,0.1)",
+  background: isactive === "true" ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.08)",
+  boxShadow: isactive === "true" ? `0 0 15px ${color}30` : "0 0 10px rgba(0,0,0,0.2)",
+  border: isactive === "true" ? `1px solid ${color}30` : "1px solid rgba(255,255,255,0.1)",
   transition: "all 0.3s ease",
   [theme.breakpoints.down("sm")]: {
     padding: "2px 8px",
@@ -88,7 +88,7 @@ const RoutineCardActions = ({
       }}
     >
       {countdownMessage && (
-        <CountdownDisplay isActive={isActive} color={cardColor}>
+        <CountdownDisplay isactive={isActive.toString()} color={cardColor}>
           <AccessTime
             sx={{
               fontSize: isMobile ? "0.9rem" : "1rem",

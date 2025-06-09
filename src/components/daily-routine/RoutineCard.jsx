@@ -76,15 +76,35 @@ const StyledCard = styled(motion.div, {
 const CategoryChip = styled(Box)(({ theme, color }) => ({
   display: "inline-flex",
   alignItems: "center",
-  background: `${color}1A`,
+  background: `${color}15`,
   color,
-  borderRadius: theme.spacing(1.5),
-  padding: `${theme.spacing(0.25)} ${theme.spacing(1)}`,
-  fontSize: "0.65rem",
-  fontWeight: 700,
+  borderRadius: theme.spacing(2),
+  padding: `${theme.spacing(0.5)} ${theme.spacing(1.5)}`,
+  fontSize: "0.75rem",
+  fontWeight: 600,
   marginLeft: theme.spacing(0.5),
-  boxShadow: `0 0 10px ${color}33`,
-  border: `1px solid ${color}4D`,
+  boxShadow: `0 2px 8px ${color}20`,
+  border: `1px solid ${color}30`,
+  backdropFilter: "blur(8px)",
+  transition: "all 0.3s ease",
+  "&:hover": {
+    background: `${color}25`,
+    transform: "translateY(-1px)",
+    boxShadow: `0 4px 12px ${color}30`,
+  },
+}));
+
+const CategoryIcon = styled(Box)(({ theme, color }) => ({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: "24px",
+  height: "24px",
+  borderRadius: "50%",
+  background: `${color}20`,
+  marginRight: theme.spacing(1),
+  fontSize: "1rem",
+  transition: "all 0.3s ease",
 }));
 
 const RoutineCard = ({
@@ -302,6 +322,9 @@ const RoutineCard = ({
             </Typography>
             <Box display="flex" alignItems="center" mt={0.75}>
               <CategoryChip color={cardColor}>
+                <CategoryIcon color={cardColor}>
+                  {getCategoryIcon(routine.category)}
+                </CategoryIcon>
                 {routine.category || "General"}
               </CategoryChip>
               <Typography
@@ -364,6 +387,7 @@ const RoutineCard = ({
               alignItems: "center",
               justifyContent: "center",
               boxShadow: `0px 4px 10px ${cardColor}80`,
+              fontSize: isMobile ? "1rem" : "1.2rem",
             }}
           >
             {getCategoryIcon(routine.category)}

@@ -124,10 +124,30 @@ export const handleLogout = async (setUser) => {
 
 export const handlePasswordReset = async (email) => {
   try {
+    console.log("Şifre sıfırlama isteği gönderiliyor:", email);
     await sendPasswordResetEmail(auth, email);
+    console.log("Şifre sıfırlama e-postası başarıyla gönderildi");
     toast.success("Şifre sıfırlama e-postası gönderildi!");
   } catch (error) {
     console.error("Şifre sıfırlama hatası:", error);
-    toast.error("Şifre sıfırlama işlemi başarısız oldu");
+    console.error("Hata kodu:", error.code);
+    console.error("Hata mesajı:", error.message);
+    
+    switch (error.code) {
+      case "auth/user-not-found":
+        toast.error("Bu e-posta adresi ile kayıtlı kullanıcı bulunamadı");
+        break;
+      case "auth/invalid-email":
+        toast.error("Geçersiz e-posta formatı");
+        break;
+      case "auth/too-many-requests":
+        toast.error("Çok fazla istek gönderildi. Lütfen daha sonra tekrar deneyin");
+        break;
+      case "auth/network-request-failed":
+        toast.error("Ağ bağlantısı hatası. İnternet bağlantınızı kontrol edin");
+        break;
+      default:
+        toast.error(`Şifre sıfırlama işlemi başarısız oldu: ${error.message}`);
+    }
   }
 };

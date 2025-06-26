@@ -311,10 +311,13 @@ const UserAuth = ({ setUser }) => {
       newErrors.username = "Geçerli bir e-posta adresi giriniz";
     }
 
-    if (!loginData.password) {
-      newErrors.password = "Şifre gereklidir";
-    } else if (isRegister && loginData.password.length < 8) {
-      newErrors.password = "Şifre en az 8 karakter olmalıdır";
+    // Şifre sıfırlama modunda şifre kontrolü yapma
+    if (!isResetting) {
+      if (!loginData.password) {
+        newErrors.password = "Şifre gereklidir";
+      } else if (isRegister && loginData.password.length < 8) {
+        newErrors.password = "Şifre en az 8 karakter olmalıdır";
+      }
     }
 
     if (isRegister && loginData.password !== loginData.confirmPassword) {
@@ -335,13 +338,19 @@ const UserAuth = ({ setUser }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Form gönderildi, isResetting:", isResetting);
+    console.log("Form verileri:", loginData);
 
-    if (!validate()) return;
+    if (!validate()) {
+      console.log("Form validasyonu başarısız");
+      return;
+    }
 
     setIsLoading(true);
 
     try {
       if (isResetting) {
+        console.log("Şifre sıfırlama işlemi başlatılıyor...");
         await handlePasswordReset(loginData.username);
         setIsResetting(false);
       } else if (isRegister) {

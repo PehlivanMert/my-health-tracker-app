@@ -89,6 +89,52 @@ const PRESET_SETTINGS = {
     workDuration: 90 * 60,
     breakDuration: 30 * 60,
   },
+  ULTRA_FOCUS: {
+    name: "Ultra Odaklanma",
+    mode: TIMER_MODES.POMODORO,
+    workDuration: 45 * 60,
+    breakDuration: 15 * 60,
+    longBreakDuration: 30 * 60,
+    sessionsBeforeLongBreak: 3,
+  },
+  QUICK_SESSIONS: {
+    name: "Hızlı Oturumlar",
+    mode: TIMER_MODES.POMODORO,
+    workDuration: 15 * 60,
+    breakDuration: 3 * 60,
+    longBreakDuration: 10 * 60,
+    sessionsBeforeLongBreak: 6,
+  },
+  DEEP_WORK: {
+    name: "Derin Çalışma",
+    mode: TIMER_MODES.POMODORO,
+    workDuration: 60 * 60,
+    breakDuration: 10 * 60,
+    longBreakDuration: 20 * 60,
+    sessionsBeforeLongBreak: 2,
+  },
+  FLOWTIME_DEFAULT: {
+    name: "Flowtime (Varsayılan)",
+    mode: TIMER_MODES.FLOWTIME,
+    workDuration: 0, // Flowtime'da çalışma süresi dinamik
+    breakDuration: 10 * 60,
+  },
+  CUSTOM_25_10: {
+    name: "Özel 25/10",
+    mode: TIMER_MODES.CUSTOM,
+    workDuration: 25 * 60,
+    breakDuration: 10 * 60,
+    longBreakDuration: 20 * 60,
+    sessionsBeforeLongBreak: 4,
+  },
+  CUSTOM_30_5: {
+    name: "Özel 30/5",
+    mode: TIMER_MODES.CUSTOM,
+    workDuration: 30 * 60,
+    breakDuration: 5 * 60,
+    longBreakDuration: 15 * 60,
+    sessionsBeforeLongBreak: 4,
+  },
 };
 
 const AdvancedTimer = ({ user }) => {
@@ -179,7 +225,7 @@ const AdvancedTimer = ({ user }) => {
     },
   });
 
-  // Firestore’a kaydetme yardımcı fonksiyonu (merge ile güncelleme)
+  // Firestore'a kaydetme yardımcı fonksiyonu (merge ile güncelleme)
   const saveToFirestore = async (settings) => {
     if (!user || !user.uid) {
       console.warn("Kullanıcı bilgisi yok, Firestore kaydı atlanıyor.");
@@ -330,7 +376,7 @@ const AdvancedTimer = ({ user }) => {
     timer,
   ]);
 
-  // Firestore’dan state’i tek seferlik okuma
+  // Firestore'dan state'i tek seferlik okuma
   useEffect(() => {
     if (!user || !user.uid) return;
     const loadStateFromFirestore = async () => {
@@ -556,7 +602,7 @@ const AdvancedTimer = ({ user }) => {
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 3000);
         const shouldTakeLongBreak =
-          mode === TIMER_MODES.POMODORO &&
+          (mode === TIMER_MODES.POMODORO || mode === TIMER_MODES.CUSTOM) &&
           (completedSessions + 1) % sessionsBeforeLongBreak === 0;
         if (shouldTakeLongBreak) {
           nextPhase = {
@@ -659,6 +705,7 @@ const AdvancedTimer = ({ user }) => {
         } else {
           setTimer((prev) => {
             if (mode === TIMER_MODES.FLOWTIME && isWorking) {
+              // Flowtime çalışma sırasında süre ileri gitmeli
               return prev + 1;
             } else if (
               mode === TIMER_MODES.POMODORO ||
@@ -667,6 +714,7 @@ const AdvancedTimer = ({ user }) => {
               mode === TIMER_MODES.NINETY_THIRTY ||
               (mode === TIMER_MODES.FLOWTIME && !isWorking)
             ) {
+              // Diğer modlarda ve Flowtime mola sırasında süre geri gitmeli
               if (prev > 0) {
                 return prev - 1;
               } else {
@@ -696,7 +744,12 @@ const AdvancedTimer = ({ user }) => {
         }
       );
     } else {
-      setTargetTime(Date.now() + timer * 1000);
+      // Flowtime çalışma sırasında targetTime olmamalı
+      if (mode === TIMER_MODES.FLOWTIME && isWorking) {
+        setTargetTime(null);
+      } else {
+        setTargetTime(Date.now() + timer * 1000);
+      }
       setIsRunning(true);
       sendNotification(isWorking ? "Çalışma başlatıldı" : "Mola başlatıldı", {
         severity: "info",
@@ -1076,15 +1129,9 @@ const AdvancedTimer = ({ user }) => {
                     label="Zamanlayıcı Modu"
                     onChange={(e) => setMode(e.target.value)}
                   >
-                    <MenuItem value={TIMER_MODES.POMODORO}>Pomodoro</MenuItem>
-                    <MenuItem value={TIMER_MODES.FLOWTIME}>Flowtime</MenuItem>
-                    <MenuItem value={TIMER_MODES.FIFTY_TWO_SEVENTEEN}>
-                      52/17 Metodu
-                    </MenuItem>
-                    <MenuItem value={TIMER_MODES.NINETY_THIRTY}>
-                      90/30 Bloklama
-                    </MenuItem>
-                    <MenuItem value={TIMER_MODES.CUSTOM}>Özel</MenuItem>
+                    <MenuItem value={TIMER_MODES.POMODORO}>🍅 Pomodoro</MenuItem>
+                    <MenuItem value={TIMER_MODES.FLOWTIME}>🌊 Flowtime</MenuItem>
+                    <MenuItem value={TIMER_MODES.CUSTOM}>⚙️ Özel</MenuItem>
                   </Select>
                 </FormControl>
                 <FormControl fullWidth sx={{ mb: 3 }}>
@@ -1098,13 +1145,44 @@ const AdvancedTimer = ({ user }) => {
                     label="Hazır Ayarlar"
                     onChange={(e) => applyPreset(e.target.value)}
                   >
-                    <MenuItem value="CLASSIC_POMODORO">
-                      Klasik Pomodoro (25/5)
-                    </MenuItem>
+                    {mode === TIMER_MODES.POMODORO && (
+                      <>
+                        <MenuItem value="CLASSIC_POMODORO">
+                          🍅 Klasik Pomodoro (25/5)
+                        </MenuItem>
+                        <MenuItem value="ULTRA_FOCUS">
+                          🔥 Ultra Odaklanma (45/15)
+                        </MenuItem>
+                        <MenuItem value="QUICK_SESSIONS">
+                          ⚡ Hızlı Oturumlar (15/3)
+                        </MenuItem>
+                        <MenuItem value="DEEP_WORK">
+                          🧠 Derin Çalışma (60/10)
+                        </MenuItem>
+                      </>
+                    )}
+                    {mode === TIMER_MODES.FLOWTIME && (
+                      <MenuItem value="FLOWTIME_DEFAULT">
+                        🌊 Flowtime (Dinamik)
+                      </MenuItem>
+                    )}
+                    {mode === TIMER_MODES.CUSTOM && (
+                      <>
+                        <MenuItem value="CUSTOM_25_10">
+                          ⚙️ Özel 25/10
+                        </MenuItem>
+                        <MenuItem value="CUSTOM_30_5">
+                          ⚙️ Özel 30/5
+                        </MenuItem>
+                      </>
+                    )}
+                    {/* Özel modlar - her zaman görünür */}
                     <MenuItem value="FIFTY_TWO_SEVENTEEN">
-                      52/17 Metodu
+                      ⏱️ 52/17 Metodu
                     </MenuItem>
-                    <MenuItem value="NINETY_THIRTY">90/30 Bloklama</MenuItem>
+                    <MenuItem value="NINETY_THIRTY">
+                      🎯 90/30 Bloklama
+                    </MenuItem>
                   </Select>
                 </FormControl>
                 <Divider sx={{ my: 2 }} />
@@ -1130,9 +1208,14 @@ const AdvancedTimer = ({ user }) => {
             )}
             {settingsTab === 1 && (
               <Box>
+                {/* Pomodoro ve Custom modları için süre ayarları */}
                 {(mode === TIMER_MODES.POMODORO ||
                   mode === TIMER_MODES.CUSTOM) && (
                   <>
+                    <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
+                      Pomodoro Ayarları
+                    </Typography>
+                    
                     <Typography id="work-duration-slider" gutterBottom>
                       Çalışma Süresi: {Math.floor(workDuration / 60)} dakika
                     </Typography>
@@ -1140,17 +1223,20 @@ const AdvancedTimer = ({ user }) => {
                       value={Math.floor(workDuration / 60)}
                       onChange={(_, value) => setWorkDuration(value * 60)}
                       aria-labelledby="work-duration-slider"
-                      min={1}
+                      min={5}
                       max={120}
                       marks={[
+                        { value: 15, label: "15" },
                         { value: 25, label: "25" },
+                        { value: 45, label: "45" },
                         { value: 60, label: "60" },
                         { value: 90, label: "90" },
                       ]}
                       sx={{ mb: 4 }}
                     />
+                    
                     <Typography id="break-duration-slider" gutterBottom>
-                      Mola Süresi: {Math.floor(breakDuration / 60)} dakika
+                      Kısa Mola Süresi: {Math.floor(breakDuration / 60)} dakika
                     </Typography>
                     <Slider
                       value={Math.floor(breakDuration / 60)}
@@ -1159,75 +1245,118 @@ const AdvancedTimer = ({ user }) => {
                       min={1}
                       max={30}
                       marks={[
+                        { value: 3, label: "3" },
                         { value: 5, label: "5" },
+                        { value: 10, label: "10" },
                         { value: 15, label: "15" },
-                        { value: 30, label: "30" },
                       ]}
                       sx={{ mb: 4 }}
                     />
+                    
                     <Typography id="long-break-duration-slider" gutterBottom>
-                      Uzun Mola Süresi: {Math.floor(longBreakDuration / 60)}{" "}
-                      dakika
+                      Uzun Mola Süresi: {Math.floor(longBreakDuration / 60)} dakika
                     </Typography>
                     <Slider
                       value={Math.floor(longBreakDuration / 60)}
                       onChange={(_, value) => setLongBreakDuration(value * 60)}
                       aria-labelledby="long-break-duration-slider"
-                      min={5}
+                      min={10}
                       max={60}
                       marks={[
                         { value: 15, label: "15" },
+                        { value: 20, label: "20" },
                         { value: 30, label: "30" },
+                        { value: 45, label: "45" },
                       ]}
                       sx={{ mb: 4 }}
                     />
-                    <Typography
-                      id="sessions-before-long-break-slider"
-                      gutterBottom
-                    >
+                    
+                    <Typography id="sessions-before-long-break-slider" gutterBottom>
                       Uzun Mola Öncesi Oturum Sayısı: {sessionsBeforeLongBreak}
                     </Typography>
                     <Slider
                       value={sessionsBeforeLongBreak}
                       onChange={(_, value) => setSessionsBeforeLongBreak(value)}
                       aria-labelledby="sessions-before-long-break-slider"
-                      min={1}
+                      min={2}
                       max={8}
                       marks={[
                         { value: 2, label: "2" },
+                        { value: 3, label: "3" },
                         { value: 4, label: "4" },
                         { value: 6, label: "6" },
-                        { value: 8, label: "8" },
                       ]}
                       step={1}
                     />
                   </>
                 )}
-                {(mode === TIMER_MODES.FIFTY_TWO_SEVENTEEN ||
-                  mode === TIMER_MODES.NINETY_THIRTY) && (
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ fontStyle: "italic" }}
-                  >
-                    Bu mod için önceden tanımlanmış süreler kullanılmaktadır.
-                  </Typography>
+                
+                {/* 52/17 Metodu için özel ayarlar */}
+                {mode === TIMER_MODES.FIFTY_TWO_SEVENTEEN && (
+                  <Box>
+                    <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
+                      52/17 Metodu Ayarları
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                      52 dakika çalışma, 17 dakika mola. Bu metod uzun odaklanma süreleri için tasarlanmıştır.
+                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mb: 3 }}>
+                      <Chip 
+                        label={`Çalışma: ${Math.floor(workDuration / 60)} dk`} 
+                        color="primary" 
+                        variant="outlined" 
+                      />
+                      <Chip 
+                        label={`Mola: ${Math.floor(breakDuration / 60)} dk`} 
+                        color="secondary" 
+                        variant="outlined" 
+                      />
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
+                      ⚠️ Bu mod için süreler sabit olarak ayarlanmıştır.
+                    </Typography>
+                  </Box>
                 )}
+                
+                {/* 90/30 Bloklama için özel ayarlar */}
+                {mode === TIMER_MODES.NINETY_THIRTY && (
+                  <Box>
+                    <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
+                      90/30 Bloklama Ayarları
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                      90 dakika çalışma, 30 dakika mola. Derin çalışma için ideal.
+                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mb: 3 }}>
+                      <Chip 
+                        label={`Çalışma: ${Math.floor(workDuration / 60)} dk`} 
+                        color="primary" 
+                        variant="outlined" 
+                      />
+                      <Chip 
+                        label={`Mola: ${Math.floor(breakDuration / 60)} dk`} 
+                        color="secondary" 
+                        variant="outlined" 
+                      />
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
+                      ⚠️ Bu mod için süreler sabit olarak ayarlanmıştır.
+                    </Typography>
+                  </Box>
+                )}
+                
+                {/* Flowtime modu için mola ayarı */}
                 {mode === TIMER_MODES.FLOWTIME && (
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ fontStyle: "italic" }}
-                  >
-                    Flowtime modunda çalışma süresi, çalışmayı bitirdiğinizde
-                    belirlenir. Mola süresini aşağıdan ayarlayabilirsiniz:
-                    <Typography
-                      id="flowtime-break-duration-slider"
-                      gutterBottom
-                      sx={{ mt: 2 }}
-                    >
-                      Flowtime Mola Süresi: {Math.floor(breakDuration / 60)}{" "}
-                      dakika
+                  <Box>
+                    <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
+                      Flowtime Ayarları
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                      Flowtime modunda çalışma süresi, çalışmayı bitirdiğinizde belirlenir. 
+                      Mola süresini aşağıdan ayarlayabilirsiniz:
+                    </Typography>
+                    <Typography id="flowtime-break-duration-slider" gutterBottom>
+                      Mola Süresi: {Math.floor(breakDuration / 60)} dakika
                     </Typography>
                     <Slider
                       value={Math.floor(breakDuration / 60)}
@@ -1237,16 +1366,21 @@ const AdvancedTimer = ({ user }) => {
                       max={30}
                       marks={[
                         { value: 5, label: "5" },
+                        { value: 10, label: "10" },
                         { value: 15, label: "15" },
-                        { value: 30, label: "30" },
+                        { value: 20, label: "20" },
                       ]}
                     />
-                  </Typography>
+                  </Box>
                 )}
               </Box>
             )}
             {settingsTab === 2 && (
               <Box>
+                <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
+                  Bildirim Ayarları
+                </Typography>
+                
                 <FormControlLabel
                   control={
                     <Switch
@@ -1256,9 +1390,10 @@ const AdvancedTimer = ({ user }) => {
                       }
                     />
                   }
-                  label="Bildirimler"
+                  label="Masaüstü Bildirimleri"
                   sx={{ mb: 2, display: "block" }}
                 />
+                
                 <FormControlLabel
                   control={
                     <Switch
@@ -1267,9 +1402,10 @@ const AdvancedTimer = ({ user }) => {
                     />
                   }
                   label="Sesli Bildirimler"
-                  sx={{ mb: 2, display: "block" }}
+                  sx={{ mb: 3, display: "block" }}
                 />
-                <FormControl fullWidth sx={{ mt: 2 }}>
+                
+                <FormControl fullWidth sx={{ mb: 3 }}>
                   <InputLabel id="sound-select-label">Bildirim Sesi</InputLabel>
                   <Select
                     labelId="sound-select-label"
@@ -1288,12 +1424,13 @@ const AdvancedTimer = ({ user }) => {
                   >
                     {Object.values(NOTIFICATION_SOUNDS).map((sound) => (
                       <MenuItem key={sound.name} value={sound.name}>
-                        {sound.name}
+                        🔊 {sound.name}
                       </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
-                <Box sx={{ mt: 3, display: "flex", justifyContent: "center" }}>
+                
+                <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
                   <Button
                     variant="outlined"
                     startIcon={<VolumeUp />}
@@ -1310,6 +1447,10 @@ const AdvancedTimer = ({ user }) => {
                     Sesi Test Et
                   </Button>
                 </Box>
+                
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 3, textAlign: 'center' }}>
+                  💡 İpucu: Bildirimler için tarayıcınızın bildirim iznini vermeniz gerekebilir.
+                </Typography>
               </Box>
             )}
           </DialogContent>

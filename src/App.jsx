@@ -38,7 +38,6 @@ import BottomNavigationAction from "@mui/material/BottomNavigationAction";
 import HomeIcon from "@mui/icons-material/Home";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import DashboardIcon from "@mui/icons-material/Dashboard";
-import LightbulbIcon from "@mui/icons-material/Lightbulb";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import background from "./assets/background.jpg";
@@ -53,11 +52,9 @@ import {
   initialExercises,
   initialSupplements,
   initialRoutines,
-  additionalInfo as constantAdditionalInfo,
 } from "./utils/constant/ConstantData";
 import DailyRoutine from "./components/daily-routine/DailyRoutine";
 import Exercises from "./components/exercises/exercise";
-import ProTips from "./components/pro-tips/ProTips";
 import CalendarComponent from "./components/calendar/CalendarComponent";
 import WellnessTracker from "./components/wellnesstracker/WellnessTracker";
 import { auth, db } from "./components/auth/firebaseConfig";
@@ -174,7 +171,7 @@ function App() {
   const [transition, setTransition] = useState(false);
   const [activeGlow, setActiveGlow] = useState("#2196F3");
 
-  // Kullanıcı, oturum ve genel state’ler
+  // Kullanıcı, oturum ve genel state'ler
   const [lastEmailSent, setLastEmailSent] = useState(
     localStorage.getItem("lastEmailSent") || 0
   );
@@ -199,14 +196,6 @@ function App() {
       requestNotificationPermissionAndSaveToken(user);
     }
   }, [user]);
-
-  // additionalInfo
-  const [additionalInfo, setAdditionalInfo] = useState({
-    ...constantAdditionalInfo,
-    recipes: Array.isArray(constantAdditionalInfo.recipes)
-      ? constantAdditionalInfo.recipes
-      : Object.values(constantAdditionalInfo.recipes),
-  });
 
   // Sekme Yönetimi (hem Tabs hem BottomNavigation için aynı state)
   const [activeTab, setActiveTab] = useState(
@@ -236,7 +225,7 @@ function App() {
     setEditingExercise(null);
   }, []);
 
-  // Firestore’dan Kullanıcı Verilerini Yükleme
+  // Firestore'dan Kullanıcı Verilerini Yükleme
   const isInitialLoad = useRef(true);
   useEffect(() => {
     const loadUserData = async () => {
@@ -246,15 +235,7 @@ function App() {
         const docSnap = await getDoc(userDocRef, { source: "server" });
         if (docSnap.exists()) {
           const data = docSnap.data();
-          const loadedAdditionalInfo =
-            data.additionalInfo ?? constantAdditionalInfo;
           setExercises(data.exercises ?? initialExercises);
-          setAdditionalInfo({
-            ...loadedAdditionalInfo,
-            recipes: Array.isArray(loadedAdditionalInfo.recipes)
-              ? loadedAdditionalInfo.recipes
-              : Object.values(loadedAdditionalInfo.recipes),
-          });
           if (
             data.profile &&
             data.profile.birthDate &&
@@ -269,16 +250,9 @@ function App() {
         } else {
           const initialData = {
             exercises: initialExercises,
-            additionalInfo: constantAdditionalInfo,
           };
           await setDoc(userDocRef, initialData);
           setExercises(initialExercises);
-          setAdditionalInfo({
-            ...constantAdditionalInfo,
-            recipes: Array.isArray(constantAdditionalInfo.recipes)
-              ? constantAdditionalInfo.recipes
-              : Object.values(constantAdditionalInfo.recipes),
-          });
         }
       } catch (error) {
         console.error("Veri yükleme hatası:", error);
@@ -411,7 +385,7 @@ function App() {
         let prof = {};
         if (docSnap.exists() && docSnap.data().profile) {
           prof = docSnap.data().profile;
-          // Firestore’da timestamp veya ISO formatında saklanıyorsa, Date objesine çevirin.
+          // Firestore'da timestamp veya ISO formatında saklanıyorsa, Date objesine çevirin.
           let birth;
           if (prof.birthDate?.toDate) {
             birth = prof.birthDate.toDate(); // 👈 Date objesi olarak sakla
@@ -424,7 +398,7 @@ function App() {
           if (birth) {
             const age = computeAge(birth);
             prof.age = age;
-            // İsteğe bağlı: Firestore’daki profilde age alanı yoksa güncelleyin
+            // İsteğe bağlı: Firestore'daki profilde age alanı yoksa güncelleyin
             await updateDoc(userDocRef, { profile: { ...prof, age } });
           }
           // Varsayılan değerler ve diğer alanlar:
@@ -1003,13 +977,6 @@ function App() {
                   {activeTab === 1 && <WellnessTracker user={user} />}
                   {activeTab === 2 && <HealthDashboard user={user} />}
                   {activeTab === 3 && (
-                    <ProTips
-                      additionalInfo={additionalInfo}
-                      setAdditionalInfo={setAdditionalInfo}
-                      user={user}
-                    />
-                  )}
-                  {activeTab === 4 && (
                     <Exercises
                       exercises={exercises}
                       setExercises={setExercises}
@@ -1018,7 +985,7 @@ function App() {
                       setEditingExercise={setEditingExercise}
                     />
                   )}
-                  {activeTab === 5 && <CalendarComponent user={user} />}
+                  {activeTab === 4 && <CalendarComponent user={user} />}
                 </Box>
 
                 <BottomNavigation
@@ -1073,18 +1040,6 @@ function App() {
                     }}
                     label="Sağlık"
                     icon={<DashboardIcon sx={{ color: "white", mt: "-4px" }} />}
-                  />
-                  <BottomNavigationAction
-                    sx={{
-                      flex: 1,
-                      minWidth: 0,
-                      "&.Mui-selected": {
-                        backgroundColor: "transparent",
-                        borderTop: "3px solid white",
-                      },
-                    }}
-                    label="İpuçları"
-                    icon={<LightbulbIcon sx={{ color: "white", mt: "-4px" }} />}
                   />
                   <BottomNavigationAction
                     sx={{
@@ -1204,10 +1159,6 @@ function App() {
                     label="Sağlık"
                   />
                   <Tab
-                    icon={<LightbulbIcon sx={{ fontSize: "1.0rem" }} />}
-                    label="İpuçları"
-                  />
-                  <Tab
                     icon={<FitnessCenterIcon sx={{ fontSize: "1.0rem" }} />}
                     label="Egzersiz"
                   />
@@ -1221,13 +1172,6 @@ function App() {
                 {activeTab === 1 && <WellnessTracker user={user} />}
                 {activeTab === 2 && <HealthDashboard user={user} />}
                 {activeTab === 3 && (
-                  <ProTips
-                    additionalInfo={additionalInfo}
-                    setAdditionalInfo={setAdditionalInfo}
-                    user={user}
-                  />
-                )}
-                {activeTab === 4 && (
                   <Exercises
                     exercises={exercises}
                     setExercises={setExercises}
@@ -1236,7 +1180,7 @@ function App() {
                     setEditingExercise={setEditingExercise}
                   />
                 )}
-                {activeTab === 5 && <CalendarComponent user={user} />}
+                {activeTab === 4 && <CalendarComponent user={user} />}
               </React.Fragment>
             )}
 

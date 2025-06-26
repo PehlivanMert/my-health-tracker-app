@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -8,6 +8,9 @@ import {
   IconButton,
   Typography,
   Button,
+  Alert,
+  InputAdornment,
+  FormHelperText,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { styled, alpha } from "@mui/material/styles";
@@ -63,12 +66,69 @@ const SupplementDialog = ({
   setEditingSupplement,
   handleSaveSupplement,
 }) => {
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    // Takviye adı kontrolü
+    if (!supplementForm.name.trim()) {
+      newErrors.name = "Takviye adı gereklidir";
+    } else if (supplementForm.name.trim().length < 2) {
+      newErrors.name = "Takviye adı en az 2 karakter olmalıdır";
+    }
+
+    // Miktar kontrolü
+    if (supplementForm.quantity <= 0) {
+      newErrors.quantity = "Miktar 0'dan büyük olmalıdır";
+    } else if (supplementForm.quantity > 10000) {
+      newErrors.quantity = "Miktar çok yüksek";
+    }
+
+    // Günlük kullanım kontrolü
+    if (supplementForm.dailyUsage <= 0) {
+      newErrors.dailyUsage = "Günlük kullanım 0'dan büyük olmalıdır";
+    } else if (supplementForm.dailyUsage > supplementForm.quantity) {
+      newErrors.dailyUsage = "Günlük kullanım toplam miktardan fazla olamaz";
+    } else if (supplementForm.dailyUsage > 50) {
+      newErrors.dailyUsage = "Günlük kullanım çok yüksek";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+    try {
+      await handleSaveSupplement();
+      setErrors({});
+    } catch (error) {
+      console.error("Takviye kaydetme hatası:", error);
+      setErrors({ submit: "Takviye kaydedilirken bir hata oluştu" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleInputChange = (field, value) => {
+    setSupplementForm({ ...supplementForm, [field]: value });
+    // Hata mesajını temizle
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: "" });
+    }
+  };
+
   return (
     <Dialog
       open={openSupplementDialog}
       onClose={() => {
         setOpenSupplementDialog(false);
         setEditingSupplement(null);
+        setErrors({});
       }}
       fullWidth
       maxWidth="sm"
@@ -91,6 +151,7 @@ const SupplementDialog = ({
           onClick={() => {
             setOpenSupplementDialog(false);
             setEditingSupplement(null);
+            setErrors({});
           }}
           sx={{
             position: "absolute",
@@ -105,43 +166,54 @@ const SupplementDialog = ({
         </IconButton>
       </StyledDialogTitle>
       <StyledDialogContent dividers>
+        {errors.submit && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {errors.submit}
+          </Alert>
+        )}
+        
         <TextField
           autoFocus
           margin="dense"
           label="Takviye Adı"
           fullWidth
           value={supplementForm.name}
-          onChange={(e) =>
-            setSupplementForm({ ...supplementForm, name: e.target.value })
-          }
+          onChange={(e) => handleInputChange("name", e.target.value)}
+          error={!!errors.name}
+          helperText={errors.name}
+          placeholder="Örn: Vitamin D3, Omega-3, Protein Tozu"
           sx={{ mb: 2 }}
         />
+        
         <TextField
           margin="dense"
-          label="Miktar"
+          label="Toplam Miktar"
           type="number"
           fullWidth
           value={supplementForm.quantity}
-          onChange={(e) =>
-            setSupplementForm({
-              ...supplementForm,
-              quantity: Number(e.target.value),
-            })
-          }
+          onChange={(e) => handleInputChange("quantity", Number(e.target.value))}
+          error={!!errors.quantity}
+          helperText={errors.quantity || "Toplam adet sayısı"}
+          InputProps={{
+            endAdornment: <InputAdornment position="end">adet</InputAdornment>,
+          }}
+          inputProps={{ min: 1, max: 10000 }}
           sx={{ mb: 2 }}
         />
+        
         <TextField
           margin="dense"
           label="Günlük Kullanım Miktarı"
           type="number"
           fullWidth
           value={supplementForm.dailyUsage}
-          onChange={(e) =>
-            setSupplementForm({
-              ...supplementForm,
-              dailyUsage: Number(e.target.value),
-            })
-          }
+          onChange={(e) => handleInputChange("dailyUsage", Number(e.target.value))}
+          error={!!errors.dailyUsage}
+          helperText={errors.dailyUsage || "Günde kaç adet alacağınız"}
+          InputProps={{
+            endAdornment: <InputAdornment position="end">adet/gün</InputAdornment>,
+          }}
+          inputProps={{ min: 1, max: 50 }}
         />
       </StyledDialogContent>
       <DialogActions
@@ -155,17 +227,18 @@ const SupplementDialog = ({
         }}
       >
         <ActionButton
-          onClick={handleSaveSupplement}
+          onClick={handleSubmit}
           variant="contained"
           color="primary"
+          disabled={isSubmitting}
           sx={{
             background: "linear-gradient(135deg, #4b6cb7 0%, #182848 100%)",
             position: "relative",
             overflow: "hidden",
-            ml: "auto", // Bu satır butonu sağa iter
+            ml: "auto",
           }}
         >
-          {editingSupplement ? "Güncelle" : "Ekle"}
+          {isSubmitting ? "Kaydediliyor..." : (editingSupplement ? "Güncelle" : "Ekle")}
         </ActionButton>
       </DialogActions>
     </Dialog>

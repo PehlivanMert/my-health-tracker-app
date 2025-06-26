@@ -201,33 +201,52 @@ const WellnessTracker = ({ user }) => {
     const checkAndUpdateReminders = async () => {
       if (!supplements.length || !user) return;
 
+      // Batch işlem için tüm supplementleri tek seferde kontrol et
+      const supplementsToUpdate = [];
+      
       for (const supp of supplements) {
         const suppDocRef = doc(db, "users", user.uid, "supplements", supp.id);
-        const suppSnap = await getDoc(suppDocRef);
+        try {
+          const suppSnap = await getDoc(suppDocRef);
+          
+          if (suppSnap.exists()) {
+            const data = suppSnap.data();
+            const lastCalculated = data.notificationsLastCalculated
+              ? new Date(data.notificationsLastCalculated)
+              : null;
+            const now = new Date();
+            const THRESHOLD = 60 * 60 * 1000; // 1 saat
 
-        if (suppSnap.exists()) {
-          const data = suppSnap.data();
-          const lastCalculated = data.notificationsLastCalculated
-            ? new Date(data.notificationsLastCalculated)
-            : null;
-          const now = new Date();
-          const THRESHOLD = 60 * 60 * 1000; // 30 dakika
-
-          // Eğer son hesaplama 30 dakikadan eskiyse, yeni hesaplama yap
-          if (
-            !lastCalculated ||
-            now.getTime() - lastCalculated.getTime() > THRESHOLD
-          ) {
-            console.log(
-              `📌 SupplementReminder: ${supp.name} için hesaplama tetiklendi`
-            );
-            await saveNextSupplementReminderTime(user, supp);
-          } else {
-            console.log(
-              `✅ SupplementReminder: ${supp.name} için hesaplama atlandı (Son hesap: ${lastCalculated})`
-            );
+            // Eğer son hesaplama 1 saatten eskiyse, güncelleme listesine ekle
+            if (
+              !lastCalculated ||
+              now.getTime() - lastCalculated.getTime() > THRESHOLD
+            ) {
+              supplementsToUpdate.push(supp);
+            }
           }
+        } catch (error) {
+          console.error(`Supplement ${supp.name} kontrol hatası:`, error);
         }
+      }
+
+      // Batch olarak güncellemeleri yap
+      if (supplementsToUpdate.length > 0) {
+        console.log(`📌 ${supplementsToUpdate.length} supplement için hesaplama tetiklendi`);
+        
+        // Paralel olarak güncellemeleri yap (performans için)
+        const updatePromises = supplementsToUpdate.map(supp => 
+          saveNextSupplementReminderTime(user, supp)
+        );
+        
+        try {
+          await Promise.all(updatePromises);
+          console.log('✅ Tüm supplement güncellemeleri tamamlandı');
+        } catch (error) {
+          console.error('Supplement güncelleme hatası:', error);
+        }
+      } else {
+        console.log('✅ Tüm supplementler güncel');
       }
     };
 

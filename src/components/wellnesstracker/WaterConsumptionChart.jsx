@@ -199,29 +199,24 @@ const WaterConsumptionChart = ({ waterHistory, nextReminder }) => {
                 />
                 <RechartsTooltip
                   contentStyle={{
-                    backgroundColor: "rgba(0, 10, 50, 0.8)",
+                    backgroundColor: "rgba(0,0,0,0.8)",
                     border: "none",
-                    borderRadius: "10px",
+                    borderRadius: "8px",
                     color: "#fff",
                   }}
                 />
                 <Area
                   type="monotone"
                   dataKey="intake"
-                  stroke="#5c6bc0"
-                  fillOpacity={1}
+                  stroke="#3F51B5"
                   fill="url(#waterColor)"
-                  strokeWidth={3}
-                  name="Su Tüketimi (mL)"
+                  strokeWidth={2}
                 />
               </AreaChart>
             </ResponsiveContainer>
           ) : (
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart
-                data={filteredData}
-                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-              >
+              <BarChart data={filteredData}>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke="rgba(255,255,255,0.2)"
@@ -237,26 +232,13 @@ const WaterConsumptionChart = ({ waterHistory, nextReminder }) => {
                 />
                 <RechartsTooltip
                   contentStyle={{
-                    backgroundColor: "rgba(0, 10, 50, 0.8)",
+                    backgroundColor: "rgba(0,0,0,0.8)",
                     border: "none",
-                    borderRadius: "10px",
+                    borderRadius: "8px",
                     color: "#fff",
                   }}
                 />
-                <Legend
-                  wrapperStyle={{ color: "#fff" }}
-                  formatter={(value) => (
-                    <span style={{ color: "#fff" }}>{value}</span>
-                  )}
-                />
-                <Bar
-                  dataKey="intake"
-                  fill="#3F51B5"
-                  name="Su Tüketimi (mL)"
-                  radius={[4, 4, 0, 0]}
-                  animationDuration={1500}
-                  animationEasing="ease-out"
-                />
+                <Bar dataKey="intake" fill="#3F51B5" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )
@@ -265,28 +247,20 @@ const WaterConsumptionChart = ({ waterHistory, nextReminder }) => {
             sx={{
               height: 250,
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              flexDirection: "column",
-              bgcolor: "rgba(255,255,255,0.1)",
-              borderRadius: 2,
-              p: 2,
+              color: "rgba(255,255,255,0.7)",
+              textAlign: "center",
+              p: 3,
             }}
           >
-            <WaterDropIcon
-              sx={{ fontSize: 60, color: "rgba(255,255,255,0.7)", mb: 2 }}
-            />
-            <Typography variant="body1" color="#fff" align="center">
-              Henüz su tüketim verisi bulunmamaktadır
+            <WaterDropIcon sx={{ fontSize: 48, mb: 2, opacity: 0.5 }} />
+            <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
+              Henüz Su Verisi Yok
             </Typography>
-            <Typography
-              variant="body2"
-              color="rgba(255,255,255,0.7)"
-              mt={1}
-              textAlign="center"
-            >
-              Su tüketimlerinizi girdiğinizde istatistikleriniz burada
-              görünecektir
+            <Typography variant="body2" sx={{ opacity: 0.8 }}>
+              Su tüketiminizi kaydetmeye başladığınızda burada grafikler görünecek
             </Typography>
           </Box>
         )}

@@ -34,6 +34,7 @@ import {
   ExpandMore as ExpandMoreIcon,
 } from "@mui/icons-material";
 import { keyframes } from "@emotion/react";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const float = keyframes`
   0% { transform: translateY(0px); }
@@ -45,6 +46,9 @@ const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(-20px); }
   to { opacity: 1; transform: translateY(0); }
 `;
+
+// Gemini AI konfigürasyonu
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "GEMINI_API_KEY");
 
 const API_URL = "/api/qwen-proxy"; /* "http://localhost:3001/api/qwen-proxy"; */
 const HealthDashboard = ({ user }) => {
@@ -66,7 +70,7 @@ const HealthDashboard = ({ user }) => {
   const [recommendations, setRecommendations] = useState(null);
   const [loading, setLoading] = useState(false);
   const [apiCooldown, setApiCooldown] = useState(false);
-  const [qwenUsage, setQwenUsage] = useState(null);
+  const [geminiUsage, setGeminiUsage] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
 
   // Geçmişte kaydedilen öneriden seçim yapıldığında ana içerikte göster
@@ -76,45 +80,45 @@ const HealthDashboard = ({ user }) => {
   };
 
   useEffect(() => {
-    const fetchQwenUsage = async () => {
-      const usageDocRef = doc(db, "users", user.uid, "apiUsage", "qwen");
+    const fetchGeminiUsage = async () => {
+      const usageDocRef = doc(db, "users", user.uid, "apiUsage", "gemini");
       const docSnap = await getDoc(usageDocRef);
       if (docSnap.exists()) {
-        setQwenUsage(docSnap.data());
+        setGeminiUsage(docSnap.data());
       } else {
         // Eğer doküman yoksa oluştur
         const todayStr = new Date().toISOString().slice(0, 10);
         const initialUsage = { date: todayStr, count: 0 };
         await setDoc(usageDocRef, initialUsage);
-        setQwenUsage(initialUsage);
+        setGeminiUsage(initialUsage);
       }
     };
 
     if (user) {
-      fetchQwenUsage();
+      fetchGeminiUsage();
     }
   }, [user]);
 
-  // Qwen kullanım sınırını kontrol eden fonksiyon: Eğer kullanım sayısı 2'ye ulaşmışsa false döner.
-  const canUseQwen = () => {
-    if (!qwenUsage) return false; // Veriler henüz yüklenmediyse false döndür
+  // Gemini kullanım sınırını kontrol eden fonksiyon: Eğer kullanım sayısı 2'ye ulaşmışsa false döner.
+  const canUseGemini = () => {
+    if (!geminiUsage) return false; // Veriler henüz yüklenmediyse false döndür
     const todayStr = new Date().toISOString().slice(0, 10);
-    if (qwenUsage.date !== todayStr) return true; // Yeni gün, sayaç sıfırlanır
-    return qwenUsage.count < 2;
+    if (geminiUsage.date !== todayStr) return true; // Yeni gün, sayaç sıfırlanır
+    return geminiUsage.count < 2;
   };
 
-  // Qwen API kullanımı sonrası sayacı bir artıran fonksiyon
-  const incrementQwenUsage = async () => {
+  // Gemini API kullanımı sonrası sayacı bir artıran fonksiyon
+  const incrementGeminiUsage = async () => {
     const todayStr = new Date().toISOString().slice(0, 10);
-    const usageDocRef = doc(db, "users", user.uid, "apiUsage", "qwen");
-    let updatedUsage = { ...qwenUsage };
-    if (qwenUsage.date !== todayStr) {
+    const usageDocRef = doc(db, "users", user.uid, "apiUsage", "gemini");
+    let updatedUsage = { ...geminiUsage };
+    if (geminiUsage.date !== todayStr) {
       updatedUsage = { date: todayStr, count: 1 };
     } else {
       updatedUsage.count += 1;
     }
     await updateDoc(usageDocRef, updatedUsage);
-    setQwenUsage(updatedUsage);
+    setGeminiUsage(updatedUsage);
   };
 
   // Firebase'den kullanıcı verilerini çekiyoruz.
@@ -212,9 +216,9 @@ const HealthDashboard = ({ user }) => {
   const generateRecommendations = async () => {
     if (apiCooldown) return;
 
-    // Qwen kullanım sınırını kontrol et (günde 2 kez)
-    if (!canUseQwen()) {
-      toast.error("Qwen günde sadece iki kez kullanılabilir.");
+    // Gemini kullanım sınırını kontrol et (günde 2 kez)
+    if (!canUseGemini()) {
+      toast.error("Gemini günde sadece iki kez kullanılabilir.");
       return;
     }
 
@@ -254,7 +258,6 @@ ${JSON.stringify(healthData.supplementStats, null, 2) || "Veri yok"}
 
 Tarih ve Saat: ${currentDateTime}
 
-
 🌟 *Bilimsel ama Eğlenceli Öneriler İstiyorum* 🌟
 Aşağıdaki başlıkları içeren kesinlikle 3000 karakteri geçmeyen bir rehber hazırla:
 1 Su Tüketimi: Hidrasyon analizi ve yaratıcı su içme taktikleri
@@ -271,23 +274,15 @@ Aşağıdaki başlıkları içeren kesinlikle 3000 karakteri geçmeyen bir rehbe
 ▸ Her maddeyi 🧊💡🏋️♀️ gibi emojilerle süsle
 ▸ Bilimsel terimleri günlük dile çevir (Örn: "Hidrasyon" yerine "Su Dostluğu")
 ▸ Kullanıcıya özel metaforlar kullan (Örn: "Su içmeyi unutuyorsan telefonuna 'Susuzluk Alarmı' kuralım!")
-▸ Pozitif vurgu yap (Eleştirel değil teşvik edici dil)
-`;
+▸ Pozitif vurgu yap (Eleştirel değil teşvik edici dil)`;
 
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "qwen-max",
-          messages: [{ role: "user", content: prompt }],
-          max_tokens: 3500,
-          temperature: 0.6,
-        }),
-      });
+      // Gemini AI kullanarak öneri oluştur
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const recommendationText = response.text();
 
-      const data = await response.json();
-      if (data.choices?.[0]?.message?.content) {
-        const recommendationText = data.choices[0].message.content;
+      if (recommendationText) {
         const newRecommendation = {
           date: new Date().toISOString(), // ISO string formatında kaydet
           content: recommendationText,
@@ -312,8 +307,8 @@ Aşağıdaki başlıkları içeren kesinlikle 3000 karakteri geçmeyen bir rehbe
           recommendationsHistory: updatedHistory,
         }));
 
-        // İşlem başarılıysa Qwen kullanım sayacını artır
-        incrementQwenUsage();
+        // İşlem başarılıysa Gemini kullanım sayacını artır
+        incrementGeminiUsage();
 
         setApiCooldown(true);
         setTimeout(() => setApiCooldown(false), 60000);
@@ -502,7 +497,7 @@ Aşağıdaki başlıkları içeren kesinlikle 3000 karakteri geçmeyen bir rehbe
               variant="contained"
               startIcon={<Refresh />}
               onClick={generateRecommendations}
-              disabled={loading || apiCooldown || !canUseQwen()}
+              disabled={loading || apiCooldown || !canUseGemini()}
               sx={{
                 borderRadius: "12px",
                 py: 1.5,

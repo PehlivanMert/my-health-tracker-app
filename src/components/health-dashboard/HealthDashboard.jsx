@@ -314,7 +314,18 @@ Aşağıdaki başlıkları içeren kesinlikle 3000 karakteri geçmeyen bir rehbe
         setTimeout(() => setApiCooldown(false), 60000);
       }
     } catch (error) {
-      toast.error("Öneri oluşturulamadı: " + error.message);
+      console.error("Gemini API Hatası:", error);
+      console.error("Hata Detayları:", error.response || error.message);
+      
+      if (error.message?.includes("400")) {
+        toast.error("API anahtarı geçersiz veya model bulunamadı. Lütfen ayarları kontrol edin.");
+      } else if (error.message?.includes("403")) {
+        toast.error("API erişim izni yok. Lütfen API anahtarınızı kontrol edin.");
+      } else if (error.message?.includes("429")) {
+        toast.error("API kullanım limiti aşıldı. Lütfen daha sonra tekrar deneyin.");
+      } else {
+        toast.error("Öneri oluşturulamadı: " + error.message);
+      }
     }
     setLoading(false);
   };

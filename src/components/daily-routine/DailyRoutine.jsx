@@ -168,6 +168,7 @@ const DailyRoutine = ({ user }) => {
   useEffect(() => {
     const getTurkeyTime = (date = new Date()) =>
       new Date(date.toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+    
     const getWeekNumber = (date) => {
       const d = new Date(date);
       d.setHours(0, 0, 0, 0);
@@ -175,23 +176,41 @@ const DailyRoutine = ({ user }) => {
       const yearStart = new Date(d.getFullYear(), 0, 1);
       return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
     };
+    
+    const isFirstDayOfWeek = (date) => {
+      // Pazartesi = 1, Pazar = 0
+      return date.getDay() === 1;
+    };
+    
+    const isFirstDayOfMonth = (date) => {
+      return date.getDate() === 1;
+    };
+    
     const nowTurkey = getTurkeyTime();
     const todayStr = getTurkeyLocalDateString(new Date());
     console.log("todayStr", todayStr);
 
     const currentWeek = getWeekNumber(nowTurkey);
     const currentMonthStr = `${nowTurkey.getFullYear()}-${nowTurkey.getMonth()}`;
+    
     if (!resetData.daily || !resetData.weekly || !resetData.monthly) return;
+    
     let updateRequired = false;
     const newReset = { ...resetData };
+    
+    // Günlük sıfırlama - her gün
     if (resetData.daily !== todayStr) {
+      console.log("Günlük sıfırlama yapılıyor");
       setRoutines((prev) =>
         prev.map((r) => (r.repeat === "none" ? { ...r, completed: false } : r))
       );
       newReset.daily = todayStr;
       updateRequired = true;
     }
-    if (resetData.weekly !== String(currentWeek)) {
+    
+    // Haftalık sıfırlama - haftanın ilk günü (Pazartesi)
+    if (isFirstDayOfWeek(nowTurkey) && resetData.weekly !== String(currentWeek)) {
+      console.log("Haftalık sıfırlama yapılıyor");
       setWeeklyStats({ added: 0, completed: 0 });
       setRoutines((prev) =>
         prev.map((r) =>
@@ -201,7 +220,10 @@ const DailyRoutine = ({ user }) => {
       newReset.weekly = String(currentWeek);
       updateRequired = true;
     }
-    if (resetData.monthly !== currentMonthStr) {
+    
+    // Aylık sıfırlama - ayın ilk günü
+    if (isFirstDayOfMonth(nowTurkey) && resetData.monthly !== currentMonthStr) {
+      console.log("Aylık sıfırlama yapılıyor");
       setMonthlyStats({ added: 0, completed: 0 });
       setRoutines((prev) =>
         prev.map((r) =>
@@ -211,6 +233,7 @@ const DailyRoutine = ({ user }) => {
       newReset.monthly = currentMonthStr;
       updateRequired = true;
     }
+    
     if (updateRequired && user) {
       const updateResetData = async () => {
         try {
@@ -241,6 +264,27 @@ const DailyRoutine = ({ user }) => {
           setRoutines(data.routines || initialRoutines);
           setWeeklyStats(data.weeklyStats || { added: 0, completed: 0 });
           setMonthlyStats(data.monthlyStats || { added: 0, completed: 0 });
+          
+          // Reset data'yı yükle
+          const todayStr = getTurkeyLocalDateString(new Date());
+          const getTurkeyTime = (date = new Date()) =>
+            new Date(date.toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+          const getWeekNumber = (date) => {
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+            const yearStart = new Date(d.getFullYear(), 0, 1);
+            return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+          };
+          const nowTurkey = getTurkeyTime();
+          const currentWeek = getWeekNumber(nowTurkey);
+          const currentMonthStr = `${nowTurkey.getFullYear()}-${nowTurkey.getMonth()}`;
+          
+          setResetData({
+            daily: data.lastResetDaily || todayStr,
+            weekly: data.lastResetWeekly || String(currentWeek),
+            monthly: data.lastResetMonthly || currentMonthStr,
+          });
         } else {
           const initialData = {
             routines: initialRoutines,
@@ -251,6 +295,27 @@ const DailyRoutine = ({ user }) => {
           setRoutines(initialRoutines);
           setWeeklyStats({ added: 0, completed: 0 });
           setMonthlyStats({ added: 0, completed: 0 });
+          
+          // İlk yükleme için reset data'yı ayarla
+          const todayStr = getTurkeyLocalDateString(new Date());
+          const getTurkeyTime = (date = new Date()) =>
+            new Date(date.toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+          const getWeekNumber = (date) => {
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+            const yearStart = new Date(d.getFullYear(), 0, 1);
+            return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+          };
+          const nowTurkey = getTurkeyTime();
+          const currentWeek = getWeekNumber(nowTurkey);
+          const currentMonthStr = `${nowTurkey.getFullYear()}-${nowTurkey.getMonth()}`;
+          
+          setResetData({
+            daily: todayStr,
+            weekly: String(currentWeek),
+            monthly: currentMonthStr,
+          });
         }
         isInitialLoad.current = false;
       } catch (error) {

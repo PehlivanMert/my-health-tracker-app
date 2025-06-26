@@ -80,12 +80,21 @@ const StatsPanel = ({ routines, weeklyStats, monthlyStats }) => {
   // Mobilde kartları yan yana göstermek için grid xs değeri
   const gridXS = isMobile ? 4 : 12;
 
-  // Günlük başarı: non-repeating rutinlerde "completed" alanına göre,
-  // tüm rutin sayısı ise routines.length (tekrarlı rutinler her occurrence bağımsız).
+  // Bugünün tarihini al (Türkiye saati)
+  const getTurkeyLocalDateString = (date = new Date()) =>
+    new Date(
+      date.toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
+    ).toLocaleDateString("en-CA");
+  
+  const todayStr = getTurkeyLocalDateString();
+
+  // Günlük başarı: bugünün tarihine sahip non-repeating rutinlerde "completed" alanına göre
   const dailyCompleted = routines.filter(
-    (r) => r.repeat === "none" && r.completed
+    (r) => r.repeat === "none" && r.date === todayStr && r.completed
   ).length;
-  const dailyTotal = routines.filter((r) => r.repeat === "none").length;
+  const dailyTotal = routines.filter(
+    (r) => r.repeat === "none" && r.date === todayStr
+  ).length;
 
   const statsData = [
     {

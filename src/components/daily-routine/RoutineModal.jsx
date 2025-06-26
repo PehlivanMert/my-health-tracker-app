@@ -375,6 +375,18 @@ const RoutineModal = ({ open, onClose, routine, initialDate, onSave }) => {
             }}>
               Zaman Ayarları
             </Typography>
+            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+              <StyledTextField
+                fullWidth
+                label="Tarih"
+                type="date"
+                name="date"
+                InputLabelProps={{ shrink: true }}
+                value={formData.date}
+                onChange={handleChange}
+                required
+              />
+            </Box>
             <Box sx={{ display: 'flex', gap: 2 }}>
               <StyledTextField
                 fullWidth

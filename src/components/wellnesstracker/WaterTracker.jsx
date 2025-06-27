@@ -480,7 +480,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
         }}
       >
-        Su Takibi
+        Su Tüketimi
       </Typography>
       <WaterContainer className={fillPercentage === 100 ? "goal-achieved" : ""}>
         <Box

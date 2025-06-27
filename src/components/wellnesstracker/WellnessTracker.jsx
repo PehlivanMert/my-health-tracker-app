@@ -391,7 +391,7 @@ const WellnessTracker = ({ user }) => {
                 verticalAlign: "middle",
               }}
             />
-            Takviye Takibi
+            Takviye & Su Tüketimi
           </Typography>
           
           <Box sx={{ 
@@ -441,7 +441,7 @@ const WellnessTracker = ({ user }) => {
               color: "#fff",
               fontSize: { xs: "1.1rem", sm: "1.3rem", md: "1.5rem" },
             }}>
-              Su Takibi
+              Su Tüketimi
             </Typography>
           </StyledAccordionSummary>
           <AccordionDetails sx={{ p: { xs: 1, sm: 2, md: 3 } }}>

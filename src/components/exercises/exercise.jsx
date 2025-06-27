@@ -4,10 +4,6 @@ import {
   Typography,
   IconButton,
   Grid,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
   CircularProgress,
   Alert,
   useTheme,
@@ -20,57 +16,50 @@ import {
   styled,
   keyframes,
   Button,
+  Card,
+  CardContent,
+  Chip,
+  Divider,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Paper,
+  Avatar,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
 } from "@mui/material";
-import { Delete, Edit, FitnessCenter, Add, Close } from "@mui/icons-material";
-import axios from "axios";
+import {
+  Delete,
+  Edit,
+  FitnessCenter,
+  Add,
+  Close,
+  ExpandMore,
+  PlayArrow,
+  YouTube,
+  AccessTime,
+  TrendingUp,
+  Person,
+  SportsGymnastics,
+  DirectionsRun,
+  Pool,
+  DirectionsBike,
+  SelfImprovement,
+  Spa,
+} from "@mui/icons-material";
 import { toast } from "react-toastify";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { db, auth } from "../auth/firebaseConfig";
 
-// Çeviri nesnesi: bodyParts, equipment ve targets
-const TRANSLATIONS = {
-  bodyParts: {
-    chest: "Göğüs",
-    back: "Sırt",
-    legs: "Bacak",
-    shoulders: "Omuz",
-    arms: "Kol",
-    core: "Karın",
-    cardio: "Kardiyo",
-  },
-  equipment: {
-    bodyweight: "Vücut Ağırlığı",
-    cable: "Kablo Makinesi",
-    dumbbell: "Dambıl",
-    bands: "Direnç Bandı",
-    barbell: "Halter",
-    kettlebell: "Kettlebell",
-    machine: "Ağırlık Makinesi",
-  },
-  targets: {
-    abs: "Karın",
-    biceps: "Biseps",
-    triceps: "Triseps",
-    shoulders: "Omuzlar",
-    "upper back": "Üst Sırt",
-    "lower back": "Alt Sırt",
-    glutes: "Kalça",
-    quads: "Quadriceps",
-    hamstrings: "Arka Bacak",
-  },
-};
-
-// TARGETS dizisini, hedef kas grubu seçenekleri için oluşturuyoruz.
-const TARGETS = Object.keys(TRANSLATIONS.targets);
-
-// API'nin beklediği bodyPart değerlerine göre mapping
-const BODY_PART_MAPPING = {
-  chest: "chest",
-  back: "back",
-  legs: "lower legs", // API, "legs" yerine "lower legs" bekleyebilir.
-  shoulders: "shoulders",
-  arms: "upper arms", // API "arms" için "upper arms" bekleyebilir.
-  core: "waist", // "core" yerine "waist" kullanılması gerekebilir.
-  cardio: "cardio",
-};
+// Gemini AI konfigürasyonu
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
 const float = keyframes`
   0% { transform: translateY(0px); }
@@ -78,28 +67,25 @@ const float = keyframes`
   100% { transform: translateY(0px); }
 `;
 
-const isIOS = () =>
-  typeof navigator !== "undefined" &&
-  /iPad|iPhone|iPod/.test(navigator.userAgent);
+const pulse = keyframes`
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+`;
 
 const GlowingCard = styled(Box, {
   shouldForwardProp: (prop) => prop !== "$glowColor",
-})(({ theme, $glowColor }) => {
-  const ios = isIOS();
-  return {
-    background: ios ? "rgba(255,255,255,0.1)" : "rgba(255, 255, 255, 0.1)",
-    color: "#fff",
-    borderRadius: "24px",
-    WebkitBackdropFilter: ios ? "none" : "blur(10px)",
-    backdropFilter: ios ? "none" : "blur(10px)",
-    boxShadow: `0 0 20px ${$glowColor || "#2196F322"}`,
-    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-    "&:hover": {
-      transform: "translateY(-5px)",
-      boxShadow: `0 0 40px ${$glowColor || "#2196F344"}`,
-    },
-  };
-});
+})(({ theme, $glowColor }) => ({
+  background: "rgba(255, 255, 255, 0.1)",
+  backdropFilter: "blur(10px)",
+  borderRadius: "24px",
+  boxShadow: `0 0 20px ${$glowColor || "#2196F322"}`,
+  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+  "&:hover": {
+    transform: "translateY(-5px)",
+    boxShadow: `0 0 40px ${$glowColor || "#2196F344"}`,
+  },
+}));
 
 const AnimatedButton = styled(Button)(({ theme }) => ({
   background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
@@ -115,353 +101,452 @@ const AnimatedButton = styled(Button)(({ theme }) => ({
   },
 }));
 
+const StyledAccordion = styled(Accordion)(({ theme }) => ({
+  background: "rgba(255, 255, 255, 0.1)",
+  backdropFilter: "blur(10px)",
+  borderRadius: "16px",
+  marginBottom: "16px",
+  "&:before": { display: "none" },
+  "&.Mui-expanded": {
+    margin: "16px 0",
+  },
+}));
+
+const StyledAccordionSummary = styled(AccordionSummary)(({ theme }) => ({
+  background: "linear-gradient(45deg, rgba(33,150,243,0.3) 0%, rgba(63,81,181,0.3) 100%)",
+  borderRadius: "16px",
+  color: "#fff",
+  "&.Mui-expanded": {
+    borderRadius: "16px 16px 0 0",
+  },
+}));
+
+// Utility functions
+const getDayIcon = (dayName) => {
+  const icons = {
+    'Pazartesi': <DirectionsRun />,
+    'Salı': <FitnessCenter />,
+    'Çarşamba': <Pool />,
+    'Perşembe': <DirectionsBike />,
+    'Cuma': <SportsGymnastics />,
+    'Cumartesi': <SelfImprovement />,
+    'Pazar': <Spa />
+  };
+  return icons[dayName] || <FitnessCenter />;
+};
+
+const getDifficultyColor = (difficulty) => {
+  const colors = {
+    'Başlangıç': 'rgba(76,175,80,0.8)',
+    'Orta': 'rgba(255,152,0,0.8)',
+    'İleri': 'rgba(244,67,54,0.8)',
+    'Başlangıç/Orta': 'rgba(76,175,80,0.8)',
+    'Orta/İleri': 'rgba(255,152,0,0.8)'
+  };
+  return colors[difficulty] || 'rgba(158,158,158,0.8)';
+};
+
 const Exercises = ({ exercises, setExercises }) => {
   const theme = useTheme();
   const [openModal, setOpenModal] = useState(false);
-  const [modalType, setModalType] = useState("api");
-  const [apiExercises, setApiExercises] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [expandedId, setExpandedId] = useState(null);
-  const [filters, setFilters] = useState({
-    bodyPart: "",
-    equipment: "",
-    name: "",
-    target: "",
-  });
-  const [customExercise, setCustomExercise] = useState({
-    id: null,
-    title: "",
-    target: "",
-    equipment: "",
-    instructions: "",
-    gifUrl: "",
-  });
+  const [profileData, setProfileData] = useState({});
+  const [userRequest, setUserRequest] = useState("");
+  const [generatedProgram, setGeneratedProgram] = useState(null);
+  const [geminiUsage, setGeminiUsage] = useState(null);
 
-  const BODY_PARTS = Object.keys(TRANSLATIONS.bodyParts);
-  const EQUIPMENTS = Object.keys(TRANSLATIONS.equipment);
-
-  // Düzeltilmiş API yapılandırması
-  const API_BASE_URL = "https://exercisedb.p.rapidapi.com/exercises";
-  const API_OPTIONS = {
-    headers: {
-      "X-RapidAPI-Key": import.meta.env.VITE_XRAPID_API_KEY,
-      "X-RapidAPI-Host": "exercisedb.p.rapidapi.com",
-    },
-    timeout: 10000,
-  };
-
-  const capitalizeWords = (str) => {
-    return str
-      .split(/[\s-]+/)
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
-  };
-
-  const translateExerciseBatch = async (exercises) => {
-    try {
-      const response = await axios.post(
-        "https://google-translate113.p.rapidapi.com/api/v1/translator/json",
-        {
-          from: "auto",
-          to: "tr",
-          protected_paths: ["gifUrl"],
-          json: { exercises },
-        },
-        {
-          headers: {
-            "x-rapidapi-key": import.meta.env.VITE_XRAPID_API_KEY,
-            "x-rapidapi-host": "google-translate113.p.rapidapi.com",
-            "Content-Type": "application/json",
-          },
-          timeout: 10000,
+  // Kullanıcı profil verilerini çek
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      try {
+        const userDocRef = doc(db, "users", auth.currentUser?.uid);
+        const docSnap = await getDoc(userDocRef);
+        if (docSnap.exists() && docSnap.data().profile) {
+          setProfileData(docSnap.data().profile);
         }
-      );
+      } catch (error) {
+        console.error("Profil verisi çekme hatası:", error);
+      }
+    };
 
-      // API yanıt yapısını düzgün şekilde alıyoruz
-      return response.data.trans.exercises || exercises;
+    if (auth.currentUser) {
+      fetchProfileData();
+    }
+  }, []);
+
+  // Gemini kullanım sayısını kontrol et
+  useEffect(() => {
+    const fetchGeminiUsage = async () => {
+      try {
+        const usageDocRef = doc(db, "users", auth.currentUser?.uid, "apiUsage", "gemini");
+        const docSnap = await getDoc(usageDocRef);
+        if (docSnap.exists()) {
+          setGeminiUsage(docSnap.data());
+        } else {
+          const todayStr = new Date().toISOString().slice(0, 10);
+          const initialUsage = { date: todayStr, count: 0 };
+          await setDoc(usageDocRef, initialUsage);
+          setGeminiUsage(initialUsage);
+        }
+      } catch (error) {
+        console.error("Gemini kullanım verisi çekme hatası:", error);
+      }
+    };
+
+    if (auth.currentUser) {
+      fetchGeminiUsage();
+    }
+  }, []);
+
+  const canUseGemini = () => {
+    if (!geminiUsage) return false;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (geminiUsage.date !== todayStr) return true;
+    return geminiUsage.count < 3; // Günde 3 kez kullanabilir
+  };
+
+  const incrementGeminiUsage = async () => {
+    try {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const usageDocRef = doc(db, "users", auth.currentUser?.uid, "apiUsage", "gemini");
+      let updatedUsage = { ...geminiUsage };
+      if (geminiUsage.date !== todayStr) {
+        updatedUsage = { date: todayStr, count: 1 };
+      } else {
+        updatedUsage.count += 1;
+      }
+      await updateDoc(usageDocRef, updatedUsage);
+      setGeminiUsage(updatedUsage);
     } catch (error) {
-      console.error("Toplu çeviri hatası:", error);
-      return exercises;
+      console.error("Gemini kullanım sayacı güncelleme hatası:", error);
     }
   };
 
-  const fetchExercises = async () => {
+  const generatePersonalizedProgram = async () => {
+    if (!canUseGemini()) {
+      toast.error("Gemini günde sadece 3 kez kullanılabilir. Yarın tekrar deneyin.");
+      return;
+    }
+
+    if (!userRequest.trim()) {
+      toast.error("Lütfen spor hedeflerinizi ve isteklerinizi belirtin.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
     try {
-      setLoading(true);
-      setError("");
+      // Güncel model adını kullan
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
-      let url = API_BASE_URL;
-      let endpointUsed = "";
+      const prompt = `Sen profesyonel bir fitness koçusun. Kullanıcının bilgilerine göre kişiselleştirilmiş bir spor programı oluştur.
 
-      // Seçilen filtrelerden kaç tanesi dolu?
-      const activeFiltersCount = Object.values(filters).filter(
-        (val) => val !== ""
-      ).length;
+KULLANICI BİLGİLERİ:
+- İsim: ${profileData.firstName || "Belirtilmemiş"}
+- Yaş: ${profileData.age || "Belirtilmemiş"}
+- Cinsiyet: ${profileData.gender === "male" ? "Erkek" : profileData.gender === "female" ? "Kadın" : "Belirtilmemiş"}
+- Boy: ${profileData.height || "Belirtilmemiş"} cm
+- Kilo: ${profileData.weight || "Belirtilmemiş"} kg
 
-      if (activeFiltersCount > 1) {
-        // Birden fazla filtre seçilmişse; genel endpoint ile tüm egzersizleri çekip, sonrasında client-side filtre uyguluyoruz.
-        url = API_BASE_URL;
-        endpointUsed = "general";
+KULLANICI İSTEKLERİ:
+${userRequest}
+
+Lütfen aşağıdaki formatta detaylı bir spor programı oluştur:
+
+# 🏋️ KİŞİSELLEŞTİRİLMİŞ SPOR PROGRAMI
+
+## 📋 Program Özeti
+[Kullanıcının hedeflerine uygun kısa özet]
+
+## 🎯 Hedefler
+- [Hedef 1]
+- [Hedef 2]
+- [Hedef 3]
+
+## 📅 Haftalık Program
+
+### Pazartesi - [Antrenman Türü]
+**Süre:** [X] dakika
+**Zorluk:** [Başlangıç/Orta/İleri]
+
+**Egzersizler:**
+1. **[Egzersiz Adı]** - [Set x Tekrar] - [YouTube Video Açıklaması]
+   - [Detaylı açıklama]
+   - [Hedef kas grubu]
+   - [Video önerisi: "YouTube'da 'egzersiz adı' araması yapın"]
+
+2. **[Egzersiz Adı]** - [Set x Tekrar] - [YouTube Video Açıklaması]
+   - [Detaylı açıklama]
+   - [Hedef kas grubu]
+   - [Video önerisi: "YouTube'da 'egzersiz adı' araması yapın"]
+
+### Salı - [Antrenman Türü]
+[Benzer format...]
+
+### Çarşamba - [Antrenman Türü]
+[Benzer format...]
+
+### Perşembe - [Antrenman Türü]
+[Benzer format...]
+
+### Cuma - [Antrenman Türü]
+[Benzer format...]
+
+### Cumartesi - [Antrenman Türü]
+[Benzer format...]
+
+### Pazar - Dinlenme
+**Aktivite:** Hafif yürüyüş veya esneme
+
+## 💡 Önemli Notlar
+- [Beslenme önerileri]
+- [Su tüketimi]
+- [Dinlenme önerileri]
+- [İlerleme takibi]
+
+## 🎥 Video Önerileri
+Her egzersiz için YouTube'da arama yapabileceğiniz anahtar kelimeler:
+- [Anahtar kelime 1]
+- [Anahtar kelime 2]
+- [Anahtar kelime 3]
+
+## 📊 İlerleme Takibi
+- Haftalık kilo takibi
+- Fotoğraf çekimi (aylık)
+- Performans notları
+- Enerji seviyesi değerlendirmesi
+
+Programı Türkçe olarak, kullanıcının seviyesine uygun, güvenli ve etkili egzersizlerle oluştur. Her egzersiz için YouTube video önerisi ekle.`;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const programText = response.text();
+
+      console.log("🔍 Gemini API'den gelen cevap:", programText);
+      console.log("📏 Cevap uzunluğu:", programText.length);
+
+      // Programı parse et ve yapılandırılmış hale getir
+      const parsedProgram = parseProgram(programText);
+      console.log("🔧 Parse edilen program:", parsedProgram);
+      
+      setGeneratedProgram(parsedProgram);
+
+      // Firestore'a kaydet
+      const userDocRef = doc(db, "users", auth.currentUser?.uid);
+      await updateDoc(userDocRef, {
+        exercises: [{
+          id: Date.now().toString(),
+          title: "Kişiselleştirilmiş Spor Programı",
+          content: programText,
+          createdAt: new Date().toISOString(),
+          type: "ai-generated"
+        }]
+      });
+
+      // Gemini kullanım sayacını artır
+      await incrementGeminiUsage();
+
+      toast.success("Kişiselleştirilmiş spor programınız hazır!");
+      setOpenModal(false);
+
+    } catch (error) {
+      console.error("Program oluşturma hatası:", error);
+      
+      // Daha detaylı hata mesajları
+      if (error.message?.includes("API_KEY")) {
+        setError("Gemini API anahtarı bulunamadı. Lütfen .env dosyasını kontrol edin.");
+        toast.error("API anahtarı eksik veya geçersiz!");
+      } else if (error.message?.includes("404")) {
+        setError("Gemini API modeli bulunamadı. Lütfen daha sonra tekrar deneyin.");
+        toast.error("API modeli geçici olarak kullanılamıyor!");
+      } else if (error.message?.includes("429")) {
+        setError("API kullanım limiti aşıldı. Lütfen daha sonra tekrar deneyin.");
+        toast.error("API limiti aşıldı!");
       } else {
-        // Tek filtre seçilmişse, ilgili endpoint'i kullanıyoruz.
-        if (filters.name) {
-          url = `${API_BASE_URL}/name/${filters.name}`;
-          endpointUsed = "name";
-        } else if (filters.target) {
-          url = `${API_BASE_URL}/target/${filters.target}`;
-          endpointUsed = "target";
-        } else if (filters.equipment) {
-          url = `${API_BASE_URL}/equipment/${filters.equipment}`;
-          endpointUsed = "equipment";
-        } else if (filters.bodyPart) {
-          // UI'dan gelen bodyPart değerini API'nin beklediği değere dönüştürüyoruz.
-          const apiBodyPart =
-            BODY_PART_MAPPING[filters.bodyPart] || filters.bodyPart;
-          url = `${API_BASE_URL}/bodyPart/${apiBodyPart}`;
-          endpointUsed = "bodyPart";
-        }
+        setError("Program oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.");
+        toast.error("Program oluşturulamadı: " + error.message);
       }
-
-      const response = await axios.get(url, API_OPTIONS);
-      let exercisesData = response.data;
-
-      // Eğer endpoint "name" değilse, yani tek filtre veya genel endpoint kullanıldıysa,
-      // client-side filtreleme uyguluyoruz.
-      if (endpointUsed !== "name") {
-        if (filters.bodyPart) {
-          exercisesData = exercisesData.filter(
-            (ex) =>
-              (ex.bodyPart || "").toLowerCase() ===
-              (
-                BODY_PART_MAPPING[filters.bodyPart] || filters.bodyPart
-              ).toLowerCase()
-          );
-        }
-        if (filters.equipment) {
-          exercisesData = exercisesData.filter(
-            (ex) =>
-              (ex.equipment || "").toLowerCase() ===
-              filters.equipment.toLowerCase()
-          );
-        }
-        if (filters.target) {
-          exercisesData = exercisesData.filter(
-            (ex) =>
-              (ex.target || "").toLowerCase() === filters.target.toLowerCase()
-          );
-        }
-        if (filters.name) {
-          exercisesData = exercisesData.filter((ex) =>
-            (ex.name || "").toLowerCase().includes(filters.name.toLowerCase())
-          );
-        }
-      }
-
-      // Toplu çeviri işlemi (gerekirse)
-      const translatedExercises = await translateExerciseBatch(exercisesData);
-      const processedExercises = exercisesData.map((ex, index) => ({
-        ...ex,
-        name: translatedExercises[index]?.name || ex.name,
-        target: translatedExercises[index]?.target || ex.target,
-        equipment: translatedExercises[index]?.equipment || ex.equipment,
-        instructions:
-          translatedExercises[index]?.instructions || ex.instructions,
-        gifUrl: ex.gifUrl,
-      }));
-
-      // Egzersiz listesini rastgele sıraya koyuyoruz.
-      const shuffledExercises = processedExercises.sort(
-        () => Math.random() - 0.5
-      );
-
-      setApiExercises(shuffledExercises);
-    } catch (err) {
-      setError(
-        "Egzersizler yüklenirken hata oluştu. Lütfen daha sonra tekrar deneyin."
-      );
     } finally {
       setLoading(false);
     }
   };
 
-  const renderExerciseCard = (exercise, isInModal = true) => (
-    <GlowingCard
-      $glowColor="#4CAF50"
-      sx={{
-        p: 3,
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        transition: "all 0.3s ease",
-      }}
-    >
-      <Typography
-        variant="h6"
-        sx={{
-          color: "#fff",
-          mb: 1,
-          minHeight: "3em",
-          display: "flex",
-          alignItems: "center",
-        }}
-      >
-        {exercise.name}
-      </Typography>
+  const parseProgram = (programText) => {
+    if (!programText) return null;
 
-      <Box
-        sx={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-        }}
-      >
-        {/* GIF Container */}
-        <Box
-          sx={{
-            position: "relative",
-            paddingTop: "56.25%",
-            borderRadius: "12px",
-            overflow: "hidden",
-            mb: 2,
-            border: "2px solid rgba(255,255,255,0.1)",
-          }}
-        >
-          <img
-            src={exercise.gifUrl}
-            alt={exercise.name}
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              backgroundColor: "#000",
-            }}
-          />
-        </Box>
-
-        {/* Sadece modal dışında talimatları göster */}
-        {!isInModal && (
-          <Collapse in={expandedId === exercise.id}>
-            <Box
-              sx={{
-                maxHeight: 200,
-                overflow: "auto",
-                mb: 2,
-                backgroundColor: "rgba(0,0,0,0.2)",
-                borderRadius: "8px",
-                p: 2,
-              }}
-            >
-              <Typography
-                variant="body2"
-                sx={{ color: "#fff", fontWeight: 500, mb: 1 }}
-              >
-                Talimatlar:
-              </Typography>
-              {exercise.instructions?.map((step, i) => (
-                <Typography
-                  key={i}
-                  variant="body2"
-                  sx={{
-                    color: "#fff",
-                    mb: 1,
-                    "&:last-child": { mb: 0 },
-                  }}
-                >
-                  {i + 1}. {step}
-                </Typography>
-              ))}
-            </Box>
-          </Collapse>
-        )}
-
-        <AnimatedButton
-          fullWidth
-          onClick={() => handleAddExercise(exercise)}
-          sx={{
-            mt: "auto",
-            visibility: isInModal ? "visible" : "hidden",
-            "&:hover": {
-              transform: isInModal ? "scale(1.03)" : "none",
-            },
-          }}
-        >
-          Programıma Ekle
-        </AnimatedButton>
-      </Box>
-    </GlowingCard>
-  );
-
-  const handleAddExercise = (exercise) => {
-    const newExercise = {
-      id: Date.now().toString(),
-      title: exercise.name,
-      content: `Hedef: ${exercise.target}\nEkipman: ${
-        exercise.equipment
-      }\nTalimatlar:\n${
-        Array.isArray(exercise.instructions)
-          ? exercise.instructions.map((s, i) => `${i + 1}. ${s}`).join("\n")
-          : exercise.instructions
-      }`,
-      gifUrl: exercise.gifUrl,
+    const lines = programText.split('\n').filter(line => line.trim());
+    
+    const program = {
+      title: '',
+      summary: '',
+      goals: [],
+      weeklyProgram: {},
+      notes: [],
+      videoSuggestions: []
     };
 
-    setExercises((prev) => [...prev, newExercise]);
-    toast.success("Egzersiz programınıza eklendi!");
-    setOpenModal(false); // Modal'ı kapat
-  };
+    let currentSection = '';
+    let currentDay = '';
+    let inGoals = false;
+    let inWeeklyProgram = false;
+    let inNotes = false;
+    let inVideoSuggestions = false;
 
-  const handleSubmitCustomExercise = () => {
-    if (!customExercise.title || !customExercise.instructions) {
-      toast.error("Lütfen zorunlu alanları doldurun");
-      return;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+
+      // Başlık kontrolü
+      if (line.startsWith('# ') && !program.title) {
+        program.title = line.substring(2).trim();
+        continue;
+      }
+
+      // Özet bölümü
+      if (line.includes('Program Özeti') || line.includes('Özet')) {
+        currentSection = 'summary';
+        inGoals = false;
+        inWeeklyProgram = false;
+        inNotes = false;
+        inVideoSuggestions = false;
+        continue;
+      }
+
+      // Hedefler bölümü
+      if (line.includes('Hedefler') || line.includes('Goals')) {
+        currentSection = 'goals';
+        inGoals = true;
+        inWeeklyProgram = false;
+        inNotes = false;
+        inVideoSuggestions = false;
+        continue;
+      }
+
+      // Haftalık program bölümü
+      if (line.includes('Haftalık Program') || line.includes('Weekly Program')) {
+        currentSection = 'weeklyProgram';
+        inGoals = false;
+        inWeeklyProgram = true;
+        inNotes = false;
+        inVideoSuggestions = false;
+        continue;
+      }
+
+      // Notlar bölümü
+      if (line.includes('Notlar') || line.includes('Notes')) {
+        currentSection = 'notes';
+        inGoals = false;
+        inWeeklyProgram = false;
+        inNotes = true;
+        inVideoSuggestions = false;
+        continue;
+      }
+
+      // Video önerileri bölümü
+      if (line.includes('Video') || line.includes('YouTube')) {
+        currentSection = 'videoSuggestions';
+        inGoals = false;
+        inWeeklyProgram = false;
+        inNotes = false;
+        inVideoSuggestions = true;
+        continue;
+      }
+
+      // Gün kontrolü (Pazartesi, Salı, vb.)
+      if (inWeeklyProgram && (line.includes('Pazartesi') || line.includes('Salı') || 
+          line.includes('Çarşamba') || line.includes('Perşembe') || 
+          line.includes('Cuma') || line.includes('Cumartesi') || 
+          line.includes('Pazar') || line.includes('Monday') || 
+          line.includes('Tuesday') || line.includes('Wednesday') || 
+          line.includes('Thursday') || line.includes('Friday') || 
+          line.includes('Saturday') || line.includes('Sunday'))) {
+        
+        currentDay = line.replace(/^[-*]\s*/, '').trim();
+        program.weeklyProgram[currentDay] = {
+          duration: '',
+          difficulty: '',
+          exercises: []
+        };
+        continue;
+      }
+
+      // Süre kontrolü
+      if (inWeeklyProgram && currentDay && (line.includes('dakika') || line.includes('minute'))) {
+        const durationMatch = line.match(/(\d+)\s*(dakika|minute)/i);
+        if (durationMatch) {
+          program.weeklyProgram[currentDay].duration = durationMatch[0];
+        }
+        continue;
+      }
+
+      // Zorluk kontrolü
+      if (inWeeklyProgram && currentDay && (line.includes('Zorluk') || line.includes('Difficulty'))) {
+        const difficultyMatch = line.match(/Zorluk[:\s]*([^-\n]+)/i) || line.match(/Difficulty[:\s]*([^-\n]+)/i);
+        if (difficultyMatch) {
+          program.weeklyProgram[currentDay].difficulty = difficultyMatch[1].trim();
+        }
+        continue;
+      }
+
+      // Egzersiz kontrolü
+      if (inWeeklyProgram && currentDay && line.includes('**') && line.includes('-')) {
+        const exerciseMatch = line.match(/\*\*([^*]+)\*\*\s*-\s*([^-]+)/);
+        if (exerciseMatch) {
+          const exerciseName = exerciseMatch[1].trim();
+          const exerciseDetails = exerciseMatch[2].trim();
+          program.weeklyProgram[currentDay].exercises.push(`${exerciseName} - ${exerciseDetails}`);
+        }
+        continue;
+      }
+
+      // Hedef ekleme
+      if (inGoals && line.startsWith('-') || line.startsWith('*')) {
+        const goal = line.replace(/^[-*]\s*/, '').trim();
+        if (goal) {
+          program.goals.push(goal);
+        }
+        continue;
+      }
+
+      // Not ekleme
+      if (inNotes && (line.startsWith('-') || line.startsWith('*'))) {
+        const note = line.replace(/^[-*]\s*/, '').trim();
+        if (note) {
+          program.notes.push(note);
+        }
+        continue;
+      }
+
+      // Video önerisi ekleme
+      if (inVideoSuggestions && (line.startsWith('-') || line.startsWith('*'))) {
+        const suggestion = line.replace(/^[-*]\s*/, '').trim();
+        if (suggestion) {
+          program.videoSuggestions.push(suggestion);
+        }
+        continue;
+      }
+
+      // Özet metni
+      if (currentSection === 'summary' && line && !line.startsWith('#')) {
+        program.summary += line + ' ';
+      }
     }
 
-    const newExercise = {
-      id: customExercise.id || Date.now().toString(),
-      title: capitalizeWords(customExercise.title),
-      content: `Hedef: ${customExercise.target || "Belirtilmemiş"}\nEkipman: ${
-        customExercise.equipment || "Belirtilmemiş"
-      }\nTalimatlar:\n${customExercise.instructions
-        .split("\n")
-        .map((step, index) => `${index + 1}. ${step}`)
-        .join("\n")}`,
-    };
+    // Özet metnini temizle
+    if (program.summary) {
+      program.summary = program.summary.trim();
+    }
 
-    setExercises((prev) => {
-      if (customExercise.id) {
-        return prev.map((ex) =>
-          ex.id === customExercise.id ? newExercise : ex
-        );
-      }
-      return [...prev, newExercise];
-    });
-
-    toast.success(
-      customExercise.id ? "Egzersiz güncellendi!" : "Özel egzersiz eklendi!"
-    );
-
-    setCustomExercise({
-      id: null,
-      title: "",
-      target: "",
-      equipment: "",
-      instructions: "",
-    });
-    setModalType("api");
-    setOpenModal(false);
+    return program;
   };
 
   return (
     <Box
       sx={{
         minHeight: "100vh",
-        background:
-          "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
+        background: "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
         padding: { xs: 2, md: 4 },
       }}
     >
@@ -480,12 +565,12 @@ const Exercises = ({ exercises, setExercises }) => {
         >
           <FitnessCenter
             sx={{
-              fontSize: { xs: 40, md: 50 }, // Mobilde 40px, masaüstünde 50px
+              fontSize: { xs: 40, md: 50 },
               verticalAlign: "middle",
               mr: 2,
             }}
           />
-          Egzersiz Yönetimi
+          AI Spor Koçu
         </Typography>
 
         <GlowingCard $glowColor="#2196F3" sx={{ p: 4, mb: 4 }}>
@@ -498,267 +583,26 @@ const Exercises = ({ exercises, setExercises }) => {
             }}
           >
             <Typography variant="h5" sx={{ color: "#fff", fontWeight: 700 }}>
-              Egzersiz Kütüphanesi
+              Kişiselleştirilmiş Spor Programı
             </Typography>
             <AnimatedButton
               startIcon={<Add />}
-              onClick={() => {
-                setCustomExercise({
-                  id: null,
-                  title: "",
-                  target: "",
-                  equipment: "",
-                  instructions: "",
-                });
-                setOpenModal(true);
-              }}
+              onClick={() => setOpenModal(true)}
+              disabled={!canUseGemini()}
               sx={{
                 padding: { xs: "6px 14px", md: "12px 30px" },
                 fontSize: { xs: "0.6rem", md: "inherit" },
               }}
             >
-              Yeni Egzersiz Ekle
+              {canUseGemini() ? "Yeni Program Oluştur" : "Günlük Limit Doldu"}
             </AnimatedButton>
           </Box>
 
-          <Dialog
-            open={openModal}
-            onClose={() => setOpenModal(false)}
-            fullWidth
-            maxWidth="lg"
-            PaperProps={{
-              sx: {
-                background: "rgba(255,255,255,0.9)",
-                backdropFilter: "blur(10px)",
-                borderRadius: "24px",
-                border: "1px solid rgba(33, 150, 243, 0.2)",
-              },
-            }}
-          >
-            <DialogTitle sx={{ fontWeight: 700 }}>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                {modalType === "api"
-                  ? "Egzersiz Ara ve Ekle"
-                  : "Özel Egzersiz Oluştur"}
-                <IconButton onClick={() => setOpenModal(false)}>
-                  <Close sx={{ color: "#2196F3" }} />
-                </IconButton>
-              </Box>
-            </DialogTitle>
-
-            <DialogContent>
-              {modalType === "api" ? (
-                <>
-                  <Grid container spacing={3} sx={{ mt: 2 }}>
-                    <Grid item xs={12} md={3}>
-                      <FormControl fullWidth>
-                        <InputLabel>Vücut Bölgesi</InputLabel>
-                        <Select
-                          value={filters.bodyPart}
-                          onChange={(e) =>
-                            setFilters({ ...filters, bodyPart: e.target.value })
-                          }
-                          sx={{ background: "rgba(255,255,255,0.8)" }}
-                        >
-                          {BODY_PARTS.map((part) => (
-                            <MenuItem key={part} value={part}>
-                              {TRANSLATIONS.bodyParts[part]}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </Grid>
-
-                    <Grid item xs={12} md={3}>
-                      <FormControl fullWidth>
-                        <InputLabel>Ekipman</InputLabel>
-                        <Select
-                          value={filters.equipment}
-                          onChange={(e) =>
-                            setFilters({
-                              ...filters,
-                              equipment: e.target.value,
-                            })
-                          }
-                          sx={{ background: "rgba(255,255,255,0.8)" }}
-                        >
-                          {EQUIPMENTS.map((eq) => (
-                            <MenuItem key={eq} value={eq}>
-                              {TRANSLATIONS.equipment[eq]}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </Grid>
-
-                    <Grid item xs={12} md={3}>
-                      <FormControl fullWidth>
-                        <InputLabel>Hedef Kas Grubu</InputLabel>
-                        <Select
-                          value={filters.target}
-                          onChange={(e) =>
-                            setFilters({ ...filters, target: e.target.value })
-                          }
-                          sx={{ background: "rgba(255,255,255,0.8)" }}
-                        >
-                          {TARGETS.map((tar) => (
-                            <MenuItem key={tar} value={tar}>
-                              {tar.charAt(0).toUpperCase() + tar.slice(1)}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </Grid>
-
-                    <Grid item xs={12} md={3}>
-                      <TextField
-                        label="Egzersiz Adı Ara"
-                        value={filters.name}
-                        onChange={(e) =>
-                          setFilters({ ...filters, name: e.target.value })
-                        }
-                        fullWidth
-                        sx={{ background: "rgba(255,255,255,0.8)" }}
-                      />
-                    </Grid>
-                  </Grid>
-
-                  <AnimatedButton
-                    fullWidth
-                    onClick={fetchExercises}
-                    disabled={loading}
-                    sx={{ my: 3 }}
-                  >
-                    Egzersizleri Getir
-                  </AnimatedButton>
-
-                  {loading && (
-                    <CircularProgress
-                      sx={{
-                        display: "block",
-                        margin: "20px auto",
-                        color: "#2196F3",
-                      }}
-                    />
-                  )}
-
-                  {error && (
-                    <Alert severity="error" sx={{ mb: 3 }}>
-                      {error}
-                    </Alert>
-                  )}
-
-                  <Grid container spacing={3}>
-                    {apiExercises.map((exercise) => (
-                      <Grid item xs={12} md={6} key={exercise.id}>
-                        {renderExerciseCard(exercise, true)}
-                      </Grid>
-                    ))}
-                  </Grid>
-
-                  <Box sx={{ textAlign: "center", mt: 3 }}>
-                    <AnimatedButton
-                      variant="text"
-                      onClick={() => setModalType("custom")}
-                      sx={{ color: "#2196F3" }}
-                    >
-                      Özel Egzersiz Oluştur
-                    </AnimatedButton>
-                  </Box>
-                </>
-              ) : (
-                <Box sx={{ mt: 2 }}>
-                  <TextField
-                    label="Egzersiz Adı*"
-                    fullWidth
-                    value={customExercise.title}
-                    onChange={(e) =>
-                      setCustomExercise({
-                        ...customExercise,
-                        title: e.target.value,
-                      })
-                    }
-                    sx={{ mb: 2, background: "rgba(255,255,255,0.8)" }}
-                  />
-
-                  <TextField
-                    label="Hedef Bölge"
-                    fullWidth
-                    value={customExercise.target}
-                    onChange={(e) =>
-                      setCustomExercise({
-                        ...customExercise,
-                        target: e.target.value,
-                      })
-                    }
-                    sx={{ mb: 2, background: "rgba(255,255,255,0.8)" }}
-                  />
-
-                  <FormControl fullWidth sx={{ mb: 2 }}>
-                    <InputLabel>Ekipman</InputLabel>
-                    <Select
-                      value={customExercise.equipment}
-                      onChange={(e) =>
-                        setCustomExercise({
-                          ...customExercise,
-                          equipment: e.target.value,
-                        })
-                      }
-                      sx={{ background: "rgba(255,255,255,0.8)" }}
-                    >
-                      {EQUIPMENTS.map((eq) => (
-                        <MenuItem key={eq} value={eq}>
-                          {TRANSLATIONS.equipment[eq]}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-
-                  <TextField
-                    label="Talimatlar*"
-                    multiline
-                    rows={4}
-                    fullWidth
-                    value={customExercise.instructions}
-                    onChange={(e) =>
-                      setCustomExercise({
-                        ...customExercise,
-                        instructions: e.target.value,
-                      })
-                    }
-                    placeholder="Her bir talimatı yeni satıra yazın"
-                    sx={{ background: "rgba(255,255,255,0.8)" }}
-                  />
-
-                  <Box
-                    sx={{
-                      mt: 3,
-                      display: "flex",
-                      justifyContent: "flex-end",
-                      gap: 2,
-                    }}
-                  >
-                    <AnimatedButton
-                      variant="outlined"
-                      onClick={() => setModalType("api")}
-                      sx={{ borderColor: "#2196F3", color: "#2196F3" }}
-                    >
-                      Geri Dön
-                    </AnimatedButton>
-                    <AnimatedButton onClick={handleSubmitCustomExercise}>
-                      {customExercise.id ? "Güncelle" : "Kaydet"}
-                    </AnimatedButton>
-                  </Box>
-                </Box>
-              )}
-            </DialogContent>
-          </Dialog>
+          {!canUseGemini() && (
+            <Alert severity="info" sx={{ mb: 3, background: "rgba(255,255,255,0.9)" }}>
+              Günde sadece 3 kez program oluşturabilirsiniz. Yarın tekrar deneyin.
+            </Alert>
+          )}
 
           {exercises.length === 0 ? (
             <Box
@@ -769,124 +613,59 @@ const Exercises = ({ exercises, setExercises }) => {
                 borderRadius: 3,
               }}
             >
-              <Typography variant="h6" sx={{ color: "#fff", opacity: 0.8 }}>
-                Henüz egzersiz eklenmemiş
+              <Typography variant="h6" sx={{ color: "#fff", opacity: 0.8, mb: 2 }}>
+                Henüz spor programınız yok
               </Typography>
-              <Box sx={{ mt: 2 }}>
-                <img
-                  src="/empty-state.svg"
-                  alt="Empty State"
-                  style={{
-                    maxWidth: "20%",
-                    height: "auto",
-                    minWidth: "100px", // Küçük ekranlarda çok küçülmesini önler
-                  }}
-                />
-              </Box>
+              <Typography variant="body1" sx={{ color: "#fff", opacity: 0.6, mb: 3 }}>
+                AI spor koçumuz size özel bir program oluşturmak için hazır!
+              </Typography>
+              <AnimatedButton
+                onClick={() => setOpenModal(true)}
+                disabled={!canUseGemini()}
+              >
+                İlk Programınızı Oluşturun
+              </AnimatedButton>
             </Box>
           ) : (
             <Grid container spacing={3}>
               {exercises.map((exercise) => (
-                <Grid item xs={12} md={6} lg={4} key={exercise.id}>
+                <Grid item xs={12} key={exercise.id}>
                   <GlowingCard
                     $glowColor="#A6F6FF"
                     sx={{
-                      flex: 1,
-                      display: "flex",
-                      flexDirection: "column",
-                      color: "aliceblue",
                       p: 0,
-                      transition: "transform 0.3s, box-shadow 0.3s",
-                      background:
-                        "linear-gradient(135deg, rgba(166,246,255,0.1) 0%, rgba(33,150,243,0.15) 100%)",
-                      border: "none",
                       overflow: "hidden",
-                      "&:hover": {
-                        transform: "translateY(-5px)",
-                        boxShadow: "0 8px 24px rgba(166,246,255,0.25)",
-                      },
                     }}
                   >
-                    {/* Başlık ve Aksiyon Butonları */}
                     <Box
                       sx={{
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        p: 2,
-                        background:
-                          "linear-gradient(45deg, rgba(33,150,243,0.4) 0%, rgba(166,246,255,0.3) 100%)",
+                        p: 3,
+                        background: "linear-gradient(45deg, rgba(33,150,243,0.4) 0%, rgba(166,246,255,0.3) 100%)",
                         borderBottom: "1px solid rgba(255,255,255,0.1)",
                         cursor: "pointer",
-                        minHeight: 100,
                       }}
-                      onClick={() =>
-                        setExpandedId(
-                          expandedId === exercise.id ? null : exercise.id
-                        )
-                      }
+                      onClick={() => setExpandedId(expandedId === exercise.id ? null : exercise.id)}
                     >
-                      <Typography
-                        variant="h6"
-                        sx={{
-                          color: "#fff",
-                          flexGrow: 1,
-                          fontWeight: 600,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                          pr: 1,
-                        }}
-                      >
-                        <FitnessCenter
-                          sx={{ fontSize: 20, color: "#4CAF50" }}
-                        />
-                        {exercise.title}
-                      </Typography>
-
-                      <Box sx={{ display: "flex", gap: 0.5 }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                        <FitnessCenter sx={{ fontSize: 30, color: "#4CAF50" }} />
+                        <Box>
+                          <Typography variant="h6" sx={{ color: "#fff", fontWeight: 600 }}>
+                            {exercise.title}
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: "#fff", opacity: 0.8 }}>
+                            {new Date(exercise.createdAt).toLocaleDateString('tr-TR')}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <Box sx={{ display: "flex", gap: 1 }}>
                         <IconButton
                           size="small"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const instructions = exercise.content
-                              .split("Talimatlar:\n")[1]
-                              ?.split("\n")
-                              .map((line) => line.replace(/^\d+\.\s*/, ""))
-                              .join("\n");
-
-                            setCustomExercise({
-                              id: exercise.id,
-                              title: exercise.title,
-                              target:
-                                exercise.content.match(/Hedef: (.*)/)?.[1] ||
-                                "",
-                              equipment:
-                                exercise.content.match(/Ekipman: (.*)/)?.[1] ||
-                                "",
-                              instructions: instructions || "",
-                            });
-                            setModalType("custom");
-                            setOpenModal(true);
-                          }}
-                          sx={{
-                            color: "#fff",
-                            "&:hover": {
-                              background: "rgba(76,175,80,0.2)",
-                              transform: "scale(1.1)",
-                            },
-                            transition: "all 0.2s",
-                          }}
-                        >
-                          <Edit fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setExercises(
-                              exercises.filter((e) => e.id !== exercise.id)
-                            );
+                            setExercises(exercises.filter((e) => e.id !== exercise.id));
                           }}
                           sx={{
                             color: "#FF5252",
@@ -894,189 +673,320 @@ const Exercises = ({ exercises, setExercises }) => {
                               background: "rgba(255,82,82,0.2)",
                               transform: "scale(1.1)",
                             },
-                            transition: "all 0.2s",
                           }}
                         >
                           <Delete fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedId(expandedId === exercise.id ? null : exercise.id);
+                          }}
+                          sx={{
+                            color: "#fff",
+                            transform: expandedId === exercise.id ? "rotate(180deg)" : "rotate(0deg)",
+                            transition: "transform 0.3s",
+                          }}
+                        >
+                          <ExpandMore fontSize="small" />
                         </IconButton>
                       </Box>
                     </Box>
 
                     <Collapse in={expandedId === exercise.id}>
-                      <Box sx={{ p: 2.5 }}>
-                        {/* Bilgi Grid'i */}
-                        <Grid container spacing={1.5} sx={{ mb: 2 }}>
-                          <Grid item xs={6}>
-                            <Box
-                              sx={{
-                                background: "rgba(255,255,255,0.08)",
-                                borderRadius: 1,
-                                p: 1,
-                                textAlign: "center",
-                              }}
-                            >
-                              <Typography
-                                variant="caption"
-                                sx={{
-                                  color: "#81D4FA",
-                                  fontWeight: 500,
-                                  display: "block",
-                                }}
-                              >
-                                Hedef Bölge
-                              </Typography>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  color: "#fff",
-                                  mt: 0.5,
-                                  fontWeight: 500,
-                                  whiteSpace: "nowrap",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                }}
-                              >
-                                {exercise.content.match(/Hedef: (.*)/)?.[1] ||
-                                  "-"}
-                              </Typography>
-                            </Box>
-                          </Grid>
-
-                          <Grid item xs={6}>
-                            <Box
-                              sx={{
-                                background: "rgba(255,255,255,0.08)",
-                                borderRadius: 1,
-                                p: 1,
-                                textAlign: "center",
-                              }}
-                            >
-                              <Typography
-                                variant="caption"
-                                sx={{
-                                  color: "#81D4FA",
-                                  fontWeight: 500,
-                                  display: "block",
-                                }}
-                              >
-                                Ekipman
-                              </Typography>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  color: "#fff",
-                                  mt: 0.5,
-                                  fontWeight: 500,
-                                  whiteSpace: "nowrap",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                }}
-                              >
-                                {exercise.content.match(/Ekipman: (.*)/)?.[1] ||
-                                  "-"}
-                              </Typography>
-                            </Box>
-                          </Grid>
-                        </Grid>
-
-                        {/* Talimatlar */}
-                        <Box
-                          sx={{
-                            background: "rgba(0,0,0,0.12)",
-                            borderRadius: 1.5,
-                            p: 2,
-                            mb: 2,
-                          }}
-                        >
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              color: "#81D4FA",
-                              fontWeight: 500,
-                              mb: 1,
-                            }}
-                          >
-                            Talimatlar:
+                      <Box sx={{ p: 3 }}>
+                        {exercise.type === "ai-generated" && exercise.content ? (
+                          <ProgramDisplay program={parseProgram(exercise.content)} />
+                        ) : (
+                          <Typography variant="body1" sx={{ color: "#fff" }}>
+                            {exercise.content}
                           </Typography>
-                          {exercise.content.split("\n").map(
-                            (line, i) =>
-                              !line.startsWith("Hedef:") &&
-                              !line.startsWith("Ekipman:") &&
-                              !line.startsWith("Talimatlar:") && (
-                                <Typography
-                                  key={i}
-                                  variant="body2"
-                                  sx={{
-                                    color: "#fff",
-                                    fontSize: "0.85rem",
-                                    position: "relative",
-                                    pl: 2.5,
-                                    mb: 1,
-                                    "&:before": {
-                                      content: '"•"',
-                                      position: "absolute",
-                                      left: 0,
-                                      top: 0,
-                                      color: "#4CAF50",
-                                      fontWeight: "bold",
-                                    },
-                                  }}
-                                >
-                                  {line.replace(/^\d+\.\s*/, "")}
-                                </Typography>
-                              )
-                          )}
-                        </Box>
-
-                        {/* GIF Görseli */}
-                        {exercise.gifUrl && (
-                          <Box
-                            sx={{
-                              position: "relative",
-                              paddingTop: "56.25%",
-                              borderRadius: "12px",
-                              overflow: "hidden",
-                              border: "1px solid rgba(255,255,255,0.12)",
-                            }}
-                          >
-                            <img
-                              src={exercise.gifUrl}
-                              alt={exercise.title}
-                              style={{
-                                position: "absolute",
-                                top: 0,
-                                left: 0,
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                                backgroundColor: "#000",
-                              }}
-                            />
-                          </Box>
                         )}
                       </Box>
                     </Collapse>
-
-                    {/* Kapalı durumda alt çizgi */}
-                    {expandedId !== exercise.id && (
-                      <Box
-                        sx={{
-                          height: 4,
-                          background:
-                            "linear-gradient(90deg, rgba(33,150,243,0.6) 0%, rgba(166,246,255,0.4) 100%)",
-                          opacity: 0.4,
-                        }}
-                      />
-                    )}
                   </GlowingCard>
                 </Grid>
               ))}
             </Grid>
           )}
         </GlowingCard>
+
+        {/* Program Oluşturma Modal */}
+        <Dialog
+          open={openModal}
+          onClose={() => setOpenModal(false)}
+          fullWidth
+          maxWidth="md"
+          PaperProps={{
+            sx: {
+              background: "rgba(255,255,255,0.95)",
+              backdropFilter: "blur(10px)",
+              borderRadius: "24px",
+              border: "1px solid rgba(33, 150, 243, 0.2)",
+            },
+          }}
+        >
+          <DialogTitle sx={{ fontWeight: 700, textAlign: "center" }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Typography variant="h5" sx={{ color: "#2196F3" }}>
+                AI Spor Koçu
+              </Typography>
+              <IconButton onClick={() => setOpenModal(false)}>
+                <Close sx={{ color: "#2196F3" }} />
+              </IconButton>
+            </Box>
+          </DialogTitle>
+
+          <DialogContent>
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="h6" sx={{ mb: 2, color: "#2196F3" }}>
+                Profil Bilgileriniz
+              </Typography>
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={6} md={3}>
+                  <Paper sx={{ p: 2, textAlign: "center", background: "rgba(33,150,243,0.1)" }}>
+                    <Person sx={{ color: "#2196F3", mb: 1 }} />
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {profileData.firstName || "Belirtilmemiş"}
+                    </Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={6} md={3}>
+                  <Paper sx={{ p: 2, textAlign: "center", background: "rgba(33,150,243,0.1)" }}>
+                    <Typography variant="h6" sx={{ color: "#2196F3" }}>
+                      {profileData.age || "?"}
+                    </Typography>
+                    <Typography variant="body2">Yaş</Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={6} md={3}>
+                  <Paper sx={{ p: 2, textAlign: "center", background: "rgba(33,150,243,0.1)" }}>
+                    <Typography variant="h6" sx={{ color: "#2196F3" }}>
+                      {profileData.height || "?"}
+                    </Typography>
+                    <Typography variant="body2">Boy (cm)</Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={6} md={3}>
+                  <Paper sx={{ p: 2, textAlign: "center", background: "rgba(33,150,243,0.1)" }}>
+                    <Typography variant="h6" sx={{ color: "#2196F3" }}>
+                      {profileData.weight || "?"}
+                    </Typography>
+                    <Typography variant="body2">Kilo (kg)</Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
+
+              <Typography variant="h6" sx={{ mb: 2, color: "#2196F3" }}>
+                Spor Hedefleriniz ve İstekleriniz
+              </Typography>
+              <TextField
+                label="Hedeflerinizi ve isteklerinizi detaylı olarak yazın..."
+                multiline
+                rows={6}
+                fullWidth
+                value={userRequest}
+                onChange={(e) => setUserRequest(e.target.value)}
+                placeholder="Örnek: Kilo vermek istiyorum, haftada 3 gün antrenman yapabilirim, evde egzersiz yapmak istiyorum, başlangıç seviyesindeyim..."
+                sx={{ mb: 3 }}
+              />
+
+              {error && (
+                <Alert severity="error" sx={{ mb: 3 }}>
+                  {error}
+                </Alert>
+              )}
+
+              <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => setOpenModal(false)}
+                  sx={{ borderColor: "#2196F3", color: "#2196F3" }}
+                >
+                  İptal
+                </Button>
+                <AnimatedButton
+                  onClick={generatePersonalizedProgram}
+                  disabled={loading || !userRequest.trim()}
+                  startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <FitnessCenter />}
+                >
+                  {loading ? "Program Oluşturuluyor..." : "Program Oluştur"}
+                </AnimatedButton>
+              </Box>
+            </Box>
+          </DialogContent>
+        </Dialog>
       </Container>
     </Box>
   );
 };
 
-export default Exercises;
+// Program Görüntüleme Komponenti
+const ProgramDisplay = ({ program }) => {
+  const [expandedDay, setExpandedDay] = useState(null);
+
+  if (!program) return null;
+
+  return (
+    <Box sx={{ color: "#fff" }}>
+      {/* Program Özeti */}
+      {program.summary && (
+        <Paper sx={{ p: 3, mb: 3, background: "rgba(33,150,243,0.1)", border: "1px solid rgba(33,150,243,0.3)" }}>
+          <Typography variant="h6" sx={{ color: "#2196F3", mb: 2, fontWeight: 600 }}>
+            📋 Program Özeti
+          </Typography>
+          <Typography variant="body1" sx={{ color: "#fff" }}>
+            {program.summary}
+          </Typography>
+        </Paper>
+      )}
+
+      {/* Hedefler */}
+      {program.goals.length > 0 && (
+        <Paper sx={{ p: 3, mb: 3, background: "rgba(76,175,80,0.1)", border: "1px solid rgba(76,175,80,0.3)" }}>
+          <Typography variant="h6" sx={{ color: "#4CAF50", mb: 2, fontWeight: 600 }}>
+            🎯 Hedefler
+          </Typography>
+          <List dense>
+            {program.goals.map((goal, index) => (
+              <ListItem key={index} sx={{ py: 0.5 }}>
+                <ListItemIcon>
+                  <TrendingUp sx={{ color: "#4CAF50", fontSize: 20 }} />
+                </ListItemIcon>
+                <ListItemText primary={goal} sx={{ color: "#fff" }} />
+              </ListItem>
+            ))}
+          </List>
+        </Paper>
+      )}
+
+      {/* Haftalık Program */}
+      <Typography variant="h6" sx={{ color: "#FF9800", mb: 2, fontWeight: 600 }}>
+        📅 Haftalık Program
+      </Typography>
+      
+      {Object.entries(program.weeklyProgram).map(([day, dayProgram]) => (
+        <StyledAccordion
+          key={day}
+          expanded={expandedDay === day}
+          onChange={() => setExpandedDay(expandedDay === day ? null : day)}
+        >
+          <StyledAccordionSummary expandIcon={<ExpandMore sx={{ color: "#fff" }} />}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2, width: "100%" }}>
+              {getDayIcon(day)}
+              <Typography variant="h6" sx={{ color: "#fff", fontWeight: 600 }}>
+                {day}
+              </Typography>
+              {dayProgram.duration && (
+                <Chip
+                  icon={<AccessTime />}
+                  label={dayProgram.duration}
+                  size="small"
+                  sx={{ background: "rgba(255,255,255,0.2)", color: "#fff" }}
+                />
+              )}
+              {dayProgram.difficulty && (
+                <Chip
+                  label={dayProgram.difficulty}
+                  size="small"
+                  sx={{ 
+                    background: getDifficultyColor(dayProgram.difficulty),
+                    color: "#fff",
+                    fontWeight: 600
+                  }}
+                />
+              )}
+            </Box>
+          </StyledAccordionSummary>
+          <AccordionDetails sx={{ background: "rgba(0,0,0,0.1)" }}>
+            {dayProgram.exercises.length > 0 ? (
+              <List dense>
+                {dayProgram.exercises.map((exercise, index) => (
+                  <ListItem key={index} sx={{ py: 1 }}>
+                    <ListItemIcon>
+                      <FitnessCenter sx={{ color: "#FF9800", fontSize: 20 }} />
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={exercise}
+                      sx={{ color: "#fff" }}
+                    />
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        const searchTerm = encodeURIComponent(exercise.split(' - ')[0]);
+                        window.open(`https://www.youtube.com/results?search_query=${searchTerm}`, '_blank');
+                      }}
+                      sx={{ color: "#FF0000" }}
+                    >
+                      <YouTube />
+                    </IconButton>
+                  </ListItem>
+                ))}
+              </List>
+            ) : (
+              <Typography variant="body1" sx={{ color: "#fff", opacity: 0.8 }}>
+                Dinlenme günü
+              </Typography>
+            )}
+          </AccordionDetails>
+        </StyledAccordion>
+      ))}
+
+      {/* Önemli Notlar */}
+      {program.notes.length > 0 && (
+        <Paper sx={{ p: 3, mt: 3, background: "rgba(255,152,0,0.1)", border: "1px solid rgba(255,152,0,0.3)" }}>
+          <Typography variant="h6" sx={{ color: "#FF9800", mb: 2, fontWeight: 600 }}>
+            💡 Önemli Notlar
+          </Typography>
+          <List dense>
+            {program.notes.map((note, index) => (
+              <ListItem key={index} sx={{ py: 0.5 }}>
+                <ListItemIcon>
+                  <Typography sx={{ color: "#FF9800", fontSize: 20 }}>•</Typography>
+                </ListItemIcon>
+                <ListItemText primary={note} sx={{ color: "#fff" }} />
+              </ListItem>
+            ))}
+          </List>
+        </Paper>
+      )}
+
+      {/* Video Önerileri */}
+      {program.videoSuggestions.length > 0 && (
+        <Paper sx={{ p: 3, mt: 3, background: "rgba(244,67,54,0.1)", border: "1px solid rgba(244,67,54,0.3)" }}>
+          <Typography variant="h6" sx={{ color: "#F44336", mb: 2, fontWeight: 600 }}>
+            🎥 Video Önerileri
+          </Typography>
+          <Typography variant="body2" sx={{ color: "#fff", mb: 2 }}>
+            Her egzersiz için YouTube'da arama yapabileceğiniz anahtar kelimeler:
+          </Typography>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+            {program.videoSuggestions.map((suggestion, index) => (
+              <Chip
+                key={index}
+                label={suggestion}
+                size="small"
+                icon={<YouTube />}
+                onClick={() => {
+                  const searchTerm = encodeURIComponent(suggestion);
+                  window.open(`https://www.youtube.com/results?search_query=${searchTerm}`, '_blank');
+                }}
+                sx={{ 
+                  background: "rgba(244,67,54,0.2)",
+                  color: "#fff",
+                  cursor: "pointer",
+                  "&:hover": {
+                    background: "rgba(244,67,54,0.4)",
+                  }
+                }}
+              />
+            ))}
+          </Box>
+        </Paper>
+      )}
+    </Box>
+  );
+};
+
+export default Exercises; 

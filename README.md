@@ -9,7 +9,7 @@ Türkçe kişisel sağlık, fitness ve wellness takip platformu. Firebase tabanl
 ### 📅 Entegre Sistemler
 - **Günlük Rutin Takibi** (Alarmlı hatırlatıcılar, tarih bazlı filtreleme)
 - **Akıllı Su Takip Sistemi** (Hareketli su animasyonlu)
-- **Egzersiz Kütüphanesi** (1000+ hareket, GIF destekli)
+- **AI Destekli Egzersiz Koçu** (Gemini AI ile kişiselleştirilmiş programlar)
 - **Kişiselleştirilmiş Sağlık Panosu** (AI öneri sistemi)
 - **Takviye Yönetimi** (Vitamin, mineral takibi)
 - **Akıllı Takvim** (Renk kodlu etkinlikler)
@@ -23,7 +23,15 @@ Türkçe kişisel sağlık, fitness ve wellness takip platformu. Firebase tabanl
 - **Çoklu Dil Desteği** (Türkçe/İngilizce)
 - **Responsive Tasarım**
 
-## 🆕 Son Güncellemeler (v2.1.0)
+## 🆕 Son Güncellemeler (v2.2.0)
+
+### 🤖 AI Egzersiz Koçu Sistemi
+- **Gemini AI entegrasyonu** ile kişiselleştirilmiş spor programları
+- Kullanıcı profil verilerine göre özel program oluşturma
+- **YouTube video önerileri** ile egzersiz rehberliği
+- Günlük 3 program oluşturma limiti
+- Detaylı program analizi (hedefler, süre, zorluk seviyesi)
+- Modern ve kullanıcı dostu arayüz
 
 ### ✅ Kimlik Doğrulama İyileştirmeleri
 - **Şifre Sıfırlama Sistemi** düzeltildi ve optimize edildi
@@ -64,7 +72,7 @@ Türkçe kişisel sağlık, fitness ve wellness takip platformu. Firebase tabanl
 ### Gereksinimler
 - Node.js v18+
 - Firebase Projesi
-- RapidAPI Hesapları (ExerciseDB, Translation)
+- Gemini AI API Key
 
 ```bash
 git clone https://github.com/PehlivanMert/my-health-tracker-app.git
@@ -77,8 +85,7 @@ npm install
 ```ini
 VITE_FIREBASE_API_KEY=xxx
 VITE_FIREBASE_AUTH_DOMAIN=xxx
-VITE_XRAPID_API_KEY=xxx
-VITE_GEMINI_API_URL=xxx
+VITE_GEMINI_API_KEY=xxx
 ```
 
 ### Çalıştırma
@@ -108,13 +115,11 @@ npm run dev
 | **Profil Sayfası** | ![Profil Sayfası](/screenshots/Ekran%20görüntüsü%202025-02-26%20155121.png) |
 | **Rutin Takip** | ![Rutin Takip](/screenshots/Ekran%20görüntüsü%202025-02-26%20154057.png) |
 | **Su Takibi** | ![Su Takibi](/screenshots/Ekran%20görüntüsü%202025-02-26%20153741.png) |
-| **Egzersiz Kütüphanesi** | ![Egzersizler](/screenshots/Ekran%20görüntüsü%202025-02-26%20153835.png) |
-| **Api Egzersizler** | ![Api Egzersizler](/screenshots/Ekran%20görüntüsü%202025-02-26%20154247.png) |
+| **AI Egzersiz Koçu** | ![AI Egzersizler](/screenshots/Ekran%20görüntüsü%202025-02-26%20153835.png) |
 | **Sağlık Panosu** | ![Dashboard](/screenshots/Ekran%20görüntüsü%202025-02-26%20153924.png) |
 | **Takviye Yönetimi** | ![Takviyeler](/screenshots/Ekran%20görüntüsü%202025-02-26%20154135.png) |
 | **Takviye Detayları** | ![Takviye Detayları](/screenshots/Ekran%20görüntüsü%202025-02-26%20154157.png) |
 | **Tarifler** | ![Tarifler](/screenshots/Ekran%20görüntüsü%202025-02-26%20154210.png) |
-| **Api Tarifler** | ![Api Tarifler](/screenshots/Ekran%20görüntüsü%202025-02-26%20154226.png) |
 | **Tam Ekran Akıllı Takvim** | ![Takvim](/screenshots/Ekran%20görüntüsü%202025-02-26%20154400.png) |
 | **Takvim Renkleri** | ![Takvim Renkleri](/screenshots/Ekran%20görüntüsü%202025-02-26%20154342.png) |
 
@@ -127,6 +132,29 @@ npm run dev
 MIT Lisansı - Detaylar için [LICENSE](LICENSE) dosyasına bakınız.
 
 ---
+
+## 🤖 AI Egzersiz Koçu Sistemi
+
+### Özellikler
+- **Kişiselleştirilmiş Programlar:** Kullanıcının yaş, kilo, boy, hedefler ve mevcut fitness seviyesine göre özel programlar
+- **Akıllı Analiz:** Gemini AI ile detaylı program analizi ve öneriler
+- **YouTube Entegrasyonu:** Her egzersiz için otomatik YouTube video arama
+- **Günlük Limit:** Günde 3 program oluşturma hakkı
+- **Detaylı Raporlama:** Hedefler, süre, zorluk seviyesi ve egzersiz açıklamaları
+
+### Program Yapısı
+- **Program Özeti:** Genel program açıklaması
+- **Hedefler:** Kişisel fitness hedefleri
+- **Haftalık Program:** 7 günlük detaylı egzersiz planı
+- **Önemli Notlar:** Güvenlik ve performans ipuçları
+- **Video Önerileri:** YouTube'da arama yapılabilecek anahtar kelimeler
+
+### Kullanım
+1. Profil bilgilerinizi güncelleyin
+2. "Yeni Program Oluştur" butonuna tıklayın
+3. Hedeflerinizi ve tercihlerinizi belirtin
+4. AI'nin kişiselleştirilmiş programınızı oluşturmasını bekleyin
+5. Programı inceleyin ve YouTube videolarıyla egzersizleri öğrenin
 
 ## 🔔 Bildirim Sistemi Detayları
 

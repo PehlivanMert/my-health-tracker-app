@@ -1050,7 +1050,7 @@ function App() {
                         borderTop: "3px solid white",
                       },
                     }}
-                    label="Egzersiz"
+                    label="AI Egzersiz"
                     icon={
                       <FitnessCenterIcon sx={{ color: "white", mt: "-4px" }} />
                     }
@@ -1160,7 +1160,7 @@ function App() {
                   />
                   <Tab
                     icon={<FitnessCenterIcon sx={{ fontSize: "1.0rem" }} />}
-                    label="Egzersiz"
+                    label="AI Egzersiz"
                   />
                   <Tab
                     icon={<CalendarMonthIcon sx={{ fontSize: "1.0rem" }} />}

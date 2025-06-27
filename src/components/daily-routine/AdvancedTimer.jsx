@@ -409,7 +409,10 @@ const AdvancedTimer = ({ user }) => {
             (sound) => sound.name === savedSound
           );
           setCurrentSound(foundSound || NOTIFICATION_SOUNDS.BELL);
-          setSelectedPreset(settings.selectedPreset || "CLASSIC_POMODORO");
+          // Preset değerini doğrula ve geçerli değilse varsayılan değere döndür
+          const savedPreset = settings.selectedPreset || "CLASSIC_POMODORO";
+          const isValidPreset = PRESET_SETTINGS[savedPreset];
+          setSelectedPreset(isValidPreset ? savedPreset : "CLASSIC_POMODORO");
           setHistory(settings.history || []);
           setDarkMode(
             settings.darkMode !== undefined ? settings.darkMode : darkMode
@@ -461,7 +464,10 @@ const AdvancedTimer = ({ user }) => {
               (sound) => sound.name === savedSound
             );
             setCurrentSound(foundSound || NOTIFICATION_SOUNDS.BELL);
-            setSelectedPreset(settings.selectedPreset || "CLASSIC_POMODORO");
+            // Preset değerini doğrula ve geçerli değilse varsayılan değere döndür
+            const savedPreset = settings.selectedPreset || "CLASSIC_POMODORO";
+            const isValidPreset = PRESET_SETTINGS[savedPreset];
+            setSelectedPreset(isValidPreset ? savedPreset : "CLASSIC_POMODORO");
             setHistory(settings.history || []);
             setDarkMode(
               settings.darkMode !== undefined ? settings.darkMode : darkMode
@@ -547,9 +553,40 @@ const AdvancedTimer = ({ user }) => {
       if (preset.sessionsBeforeLongBreak)
         setSessionsBeforeLongBreak(preset.sessionsBeforeLongBreak);
       setSelectedPreset(presetKey);
-      resetTimer();
+      
+      // Timer'ı sıfırla ve doğru başlangıç değerini ayarla
+      clearInterval(timerRef.current);
+      setIsRunning(false);
+      setIsWorking(true);
+      setIsLongBreak(false);
+      setTargetTime(null);
+      setCompletedSessions(0);
+      
+      if (preset.mode === TIMER_MODES.FLOWTIME) {
+        setTimer(0);
+        setInitialTimer(0);
+      } else {
+        setTimer(preset.workDuration);
+        setInitialTimer(preset.workDuration);
+      }
     }
   };
+
+  // Seçilen preset'i uygula (sadece bir kez, yükleme sırasında)
+  useEffect(() => {
+    if (selectedPreset && PRESET_SETTINGS[selectedPreset]) {
+      const preset = PRESET_SETTINGS[selectedPreset];
+      setMode(preset.mode);
+      setWorkDuration(preset.workDuration);
+      setBreakDuration(preset.breakDuration);
+      if (preset.longBreakDuration) {
+        setLongBreakDuration(preset.longBreakDuration);
+      }
+      if (preset.sessionsBeforeLongBreak) {
+        setSessionsBeforeLongBreak(preset.sessionsBeforeLongBreak);
+      }
+    }
+  }, []); // Sadece bir kez çalışsın
 
   // Bildirim gönderme fonksiyonu
   const sendNotification = useCallback(
@@ -1125,64 +1162,29 @@ const AdvancedTimer = ({ user }) => {
                   <Select
                     labelId="mode-select-label"
                     id="mode-select"
-                    value={mode}
-                    label="Zamanlayıcı Modu"
-                    onChange={(e) => setMode(e.target.value)}
-                  >
-                    <MenuItem value={TIMER_MODES.POMODORO}>🍅 Pomodoro</MenuItem>
-                    <MenuItem value={TIMER_MODES.FLOWTIME}>🌊 Flowtime</MenuItem>
-                    <MenuItem value={TIMER_MODES.CUSTOM}>⚙️ Özel</MenuItem>
-                  </Select>
-                </FormControl>
-                <FormControl fullWidth sx={{ mb: 3 }}>
-                  <InputLabel id="preset-select-label">
-                    Hazır Ayarlar
-                  </InputLabel>
-                  <Select
-                    labelId="preset-select-label"
-                    id="preset-select"
                     value={selectedPreset}
-                    label="Hazır Ayarlar"
-                    onChange={(e) => applyPreset(e.target.value)}
+                    label="Zamanlayıcı Modu"
+                    onChange={(e) => {
+                      const selectedValue = e.target.value;
+                      applyPreset(selectedValue);
+                    }}
                   >
-                    {mode === TIMER_MODES.POMODORO && (
-                      <>
-                        <MenuItem value="CLASSIC_POMODORO">
-                          🍅 Klasik Pomodoro (25/5)
-                        </MenuItem>
-                        <MenuItem value="ULTRA_FOCUS">
-                          🔥 Ultra Odaklanma (45/15)
-                        </MenuItem>
-                        <MenuItem value="QUICK_SESSIONS">
-                          ⚡ Hızlı Oturumlar (15/3)
-                        </MenuItem>
-                        <MenuItem value="DEEP_WORK">
-                          🧠 Derin Çalışma (60/10)
-                        </MenuItem>
-                      </>
-                    )}
-                    {mode === TIMER_MODES.FLOWTIME && (
-                      <MenuItem value="FLOWTIME_DEFAULT">
-                        🌊 Flowtime (Dinamik)
-                      </MenuItem>
-                    )}
-                    {mode === TIMER_MODES.CUSTOM && (
-                      <>
-                        <MenuItem value="CUSTOM_25_10">
-                          ⚙️ Özel 25/10
-                        </MenuItem>
-                        <MenuItem value="CUSTOM_30_5">
-                          ⚙️ Özel 30/5
-                        </MenuItem>
-                      </>
-                    )}
-                    {/* Özel modlar - her zaman görünür */}
-                    <MenuItem value="FIFTY_TWO_SEVENTEEN">
-                      ⏱️ 52/17 Metodu
-                    </MenuItem>
-                    <MenuItem value="NINETY_THIRTY">
-                      🎯 90/30 Bloklama
-                    </MenuItem>
+                    {/* Pomodoro modları */}
+                    <MenuItem value="CLASSIC_POMODORO">🍅 Pomodoro (25/5)</MenuItem>
+                    <MenuItem value="ULTRA_FOCUS">🔥 Ultra Odaklanma (45/15)</MenuItem>
+                    <MenuItem value="QUICK_SESSIONS">⚡ Hızlı Oturumlar (15/3)</MenuItem>
+                    <MenuItem value="DEEP_WORK">🧠 Derin Çalışma (60/10)</MenuItem>
+                    
+                    {/* Flowtime modu */}
+                    <MenuItem value="FLOWTIME_DEFAULT">🌊 Flowtime (Dinamik)</MenuItem>
+                    
+                    {/* Custom modları */}
+                    <MenuItem value="CUSTOM_25_10">⚙️ Özel 25/10</MenuItem>
+                    <MenuItem value="CUSTOM_30_5">⚙️ Özel 30/5</MenuItem>
+                    
+                    {/* Özel modlar */}
+                    <MenuItem value="FIFTY_TWO_SEVENTEEN">⏱️ 52/17 Metodu</MenuItem>
+                    <MenuItem value="NINETY_THIRTY">🎯 90/30 Bloklama</MenuItem>
                   </Select>
                 </FormControl>
                 <Divider sx={{ my: 2 }} />
@@ -1663,3 +1665,4 @@ const AdvancedTimer = ({ user }) => {
 };
 
 export default AdvancedTimer;
+

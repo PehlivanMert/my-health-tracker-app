@@ -23,6 +23,7 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Chip,
 } from "@mui/material";
 import {
   FitnessCenter,
@@ -32,6 +33,15 @@ import {
   Height,
   Scale,
   ExpandMore as ExpandMoreIcon,
+  OpenInNew,
+  ShoppingCart,
+  PlayArrow,
+  YouTube,
+  Book,
+  Article,
+  Movie,
+  Tv,
+  Headphones,
 } from "@mui/icons-material";
 import { keyframes } from "@emotion/react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -329,6 +339,88 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
       "icon": "✨",
       "quote": "İlham verici söz",
       "dailyGoal": "Günlük hedef"
+    },
+    "reading": {
+      "title": "📚 Okuma Önerileri",
+      "content": "Çeşitli alanlarda kitap ve makale önerileri (300-400 karakter)",
+      "icon": "📖",
+      "books": [
+        {
+          "title": "Kitap adı",
+          "author": "Yazar adı",
+          "description": "Kitap açıklaması",
+          "category": "Kategori (Sağlık/Bilim/Bilim Kurgu/Sanat/Kültür/Felsefe/Tarih/Teknoloji/Psikoloji/Fantezi/Macera/Biyografi)",
+          "language": "Dil (Türkçe/İngilizce)",
+          "difficulty": "Zorluk (Başlangıç/Orta/İleri)",
+          "pages": "Sayfa sayısı",
+          "buyLink": "Satın alma linki (Kitapyurdu/İdefix/Amazon)",
+          "pdfLink": "PDF linki (varsa)",
+          "isbn": "ISBN numarası"
+        }
+      ],
+      "articles": [
+        {
+          "title": "Makale başlığı",
+          "source": "Kaynak",
+          "url": "Link",
+          "summary": "Özet",
+          "category": "Kategori",
+          "readingTime": "Okuma süresi"
+        }
+      ]
+    },
+    "watching": {
+      "title": "📺 İzleme Önerileri",
+      "content": "Çeşitli platformlarda video, dizi ve belgesel önerileri (300-400 karakter)",
+      "icon": "🎬",
+      "videos": [
+        {
+          "title": "Video başlığı",
+          "channel": "Kanal adı",
+          "duration": "Süre",
+          "description": "Açıklama",
+          "url": "YouTube linki",
+          "category": "Kategori",
+          "language": "Dil"
+        }
+      ],
+      "documentaries": [
+        {
+          "title": "Dokümanter adı",
+          "platform": "Platform (Netflix/TRT Belgesel/National Geographic/Prime Video)",
+          "duration": "Süre",
+          "description": "Açıklama",
+          "category": "Kategori",
+          "year": "Yıl",
+          "watchLink": "İzleme linki",
+          "trailerLink": "Fragman linki"
+        }
+      ],
+      "series": [
+        {
+          "title": "Dizi adı",
+          "platform": "Platform",
+          "seasons": "Sezon sayısı",
+          "episodes": "Bölüm sayısı",
+          "description": "Açıklama",
+          "category": "Kategori",
+          "rating": "Yaş sınırı",
+          "watchLink": "İzleme linki",
+          "trailerLink": "Fragman linki"
+        }
+      ],
+      "podcasts": [
+        {
+          "title": "Podcast adı",
+          "host": "Sunucu",
+          "episode": "Bölüm",
+          "duration": "Süre",
+          "description": "Açıklama",
+          "category": "Kategori",
+          "platform": "Platform",
+          "listenLink": "Dinleme linki"
+        }
+      ]
     }
   },
   "priority": "En önemli 3 öneri",
@@ -342,7 +434,12 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 4. Pozitif ve teşvik edici dil kullan
 5. Kullanıcının yaş, cinsiyet, VKİ ve su/takviye verilerini dikkate al
 6. Gerçekçi ve uygulanabilir öneriler ver
-7. JSON formatını bozma, geçerli JSON olsun`;
+7. JSON formatını bozma, geçerli JSON olsun
+8. Okuma önerilerinde çeşitli kategoriler kullan: Sağlık, Bilim, Bilim Kurgu, Sanat, Kültür, Felsefe, Tarih, Teknoloji, Psikoloji, Fantezi, Macera, Biyografi
+9. Video önerilerinde farklı platformları dahil et: YouTube, Netflix, Disney+, Prime Video, TRT Belgesel, National Geographic
+10. Kullanıcının yaşına ve ilgi alanlarına uygun içerik seç
+11. Türkçe ve yabancı içerikleri dengeli dağıt
+12. Hem eğitici hem eğlenceli içerikler öner`;
 
       // Gemini AI kullanarak öneri oluştur
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
@@ -977,6 +1074,506 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                                 🎯 {section.dailyGoal}
                               </Typography>
                             )}
+                          </Box>
+                        )}
+
+                        {section.books && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                              📚 Kitap Önerileri:
+                            </Typography>
+                            {section.books.map((book, idx) => (
+                              <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2 }}>
+                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.5 }}>
+                                  "{book.title}" - {book.author}
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: "0.85rem" }}>
+                                  {book.description}
+                                </Typography>
+                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                                  <Chip 
+                                    label={book.category} 
+                                    size="small" 
+                                    sx={{ 
+                                      bgcolor: "rgba(255,255,255,0.2)", 
+                                      color: "#fff",
+                                      fontSize: "0.7rem"
+                                    }} 
+                                  />
+                                  <Chip 
+                                    label={book.language} 
+                                    size="small" 
+                                    sx={{ 
+                                      bgcolor: "rgba(33,150,243,0.2)", 
+                                      color: "#fff",
+                                      fontSize: "0.7rem"
+                                    }} 
+                                  />
+                                  <Chip 
+                                    label={book.difficulty} 
+                                    size="small" 
+                                    sx={{ 
+                                      bgcolor: "rgba(76,175,80,0.2)", 
+                                      color: "#fff",
+                                      fontSize: "0.7rem"
+                                    }} 
+                                  />
+                                  {book.pages && (
+                                    <Chip 
+                                      label={`${book.pages} sayfa`} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(255,152,0,0.2)", 
+                                        color: "#fff",
+                                        fontSize: "0.7rem"
+                                      }} 
+                                    />
+                                  )}
+                                </Box>
+                                <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
+                                  {book.buyLink && (
+                                    <Button
+                                      size="small"
+                                      startIcon={<ShoppingCart />}
+                                      onClick={() => window.open(book.buyLink, '_blank')}
+                                      sx={{
+                                        bgcolor: "rgba(76,175,80,0.2)",
+                                        color: "#fff",
+                                        fontSize: "0.7rem",
+                                        py: 0.5,
+                                        px: 1,
+                                        "&:hover": { bgcolor: "rgba(76,175,80,0.3)" }
+                                      }}
+                                    >
+                                      Satın Al
+                                    </Button>
+                                  )}
+                                  {book.pdfLink && (
+                                    <Button
+                                      size="small"
+                                      startIcon={<Book />}
+                                      onClick={() => window.open(book.pdfLink, '_blank')}
+                                      sx={{
+                                        bgcolor: "rgba(255,152,0,0.2)",
+                                        color: "#fff",
+                                        fontSize: "0.7rem",
+                                        py: 0.5,
+                                        px: 1,
+                                        "&:hover": { bgcolor: "rgba(255,152,0,0.3)" }
+                                      }}
+                                    >
+                                      PDF İndir
+                                    </Button>
+                                  )}
+                                </Box>
+                              </Box>
+                            ))}
+                          </Box>
+                        )}
+
+                        {section.articles && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                              📰 Makale Önerileri:
+                            </Typography>
+                            {section.articles.map((article, idx) => (
+                              <Box key={idx} sx={{ mb: 1, p: 1.5, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 1 }}>
+                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.5 }}>
+                                  {article.title}
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", mb: 1, fontSize: "0.8rem" }}>
+                                  {article.summary}
+                                </Typography>
+                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+                                  <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.7)", fontSize: "0.75rem" }}>
+                                    Kaynak: {article.source}
+                                  </Typography>
+                                  {article.category && (
+                                    <Chip 
+                                      label={article.category} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(156,39,176,0.2)", 
+                                        color: "#fff",
+                                        fontSize: "0.6rem"
+                                      }} 
+                                    />
+                                  )}
+                                  {article.readingTime && (
+                                    <Chip 
+                                      label={`${article.readingTime} dk`} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(0,150,136,0.2)", 
+                                        color: "#fff",
+                                        fontSize: "0.6rem"
+                                      }} 
+                                    />
+                                  )}
+                                </Box>
+                                {article.url && (
+                                  <Button
+                                    size="small"
+                                    startIcon={<Article />}
+                                    onClick={() => window.open(article.url, '_blank')}
+                                    sx={{
+                                      bgcolor: "rgba(33,150,243,0.2)",
+                                      color: "#fff",
+                                      fontSize: "0.7rem",
+                                      py: 0.5,
+                                      px: 1,
+                                      mt: 1,
+                                      "&:hover": { bgcolor: "rgba(33,150,243,0.3)" }
+                                    }}
+                                  >
+                                    Makaleyi Oku
+                                  </Button>
+                                )}
+                              </Box>
+                            ))}
+                          </Box>
+                        )}
+
+                        {section.videos && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                              🎥 Video Önerileri:
+                            </Typography>
+                            {section.videos.map((video, idx) => (
+                              <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2 }}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                                  <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600 }}>
+                                    {video.title}
+                                  </Typography>
+                                  <Chip 
+                                    label={video.duration} 
+                                    size="small" 
+                                    sx={{ 
+                                      bgcolor: "rgba(255,0,0,0.2)", 
+                                      color: "#fff",
+                                      fontSize: "0.7rem"
+                                    }} 
+                                  />
+                                </Box>
+                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: "0.85rem" }}>
+                                  {video.description}
+                                </Typography>
+                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+                                  <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.7)", fontSize: "0.75rem" }}>
+                                    Kanal: {video.channel}
+                                  </Typography>
+                                  {video.category && (
+                                    <Chip 
+                                      label={video.category} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(255,152,0,0.2)", 
+                                        color: "#fff",
+                                        fontSize: "0.6rem"
+                                      }} 
+                                    />
+                                  )}
+                                  {video.language && (
+                                    <Chip 
+                                      label={video.language} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(33,150,243,0.2)", 
+                                        color: "#fff",
+                                        fontSize: "0.6rem"
+                                      }} 
+                                    />
+                                  )}
+                                </Box>
+                                {video.url && (
+                                  <Button
+                                    size="small"
+                                    startIcon={<YouTube />}
+                                    onClick={() => window.open(video.url, '_blank')}
+                                    sx={{
+                                      bgcolor: "rgba(255,0,0,0.2)",
+                                      color: "#fff",
+                                      fontSize: "0.7rem",
+                                      py: 0.5,
+                                      px: 1,
+                                      mt: 1,
+                                      "&:hover": { bgcolor: "rgba(255,0,0,0.3)" }
+                                    }}
+                                  >
+                                    YouTube'da İzle
+                                  </Button>
+                                )}
+                              </Box>
+                            ))}
+                          </Box>
+                        )}
+
+                        {section.documentaries && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                              📺 Dokümanter Önerileri:
+                            </Typography>
+                            {section.documentaries.map((doc, idx) => (
+                              <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2 }}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                                  <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600 }}>
+                                    {doc.title}
+                                  </Typography>
+                                  <Chip 
+                                    label={doc.duration} 
+                                    size="small" 
+                                    sx={{ 
+                                      bgcolor: "rgba(0,150,136,0.2)", 
+                                      color: "#fff",
+                                      fontSize: "0.7rem"
+                                    }} 
+                                  />
+                                </Box>
+                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: "0.85rem" }}>
+                                  {doc.description}
+                                </Typography>
+                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+                                  <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.7)", fontSize: "0.75rem" }}>
+                                    Platform: {doc.platform}
+                                  </Typography>
+                                  {doc.category && (
+                                    <Chip 
+                                      label={doc.category} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(156,39,176,0.2)", 
+                                        color: "#fff",
+                                        fontSize: "0.6rem"
+                                      }} 
+                                    />
+                                  )}
+                                  {doc.year && (
+                                    <Chip 
+                                      label={doc.year} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(76,175,80,0.2)", 
+                                        color: "#fff",
+                                        fontSize: "0.6rem"
+                                      }} 
+                                    />
+                                  )}
+                                </Box>
+                                <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
+                                  {doc.watchLink && (
+                                    <Button
+                                      size="small"
+                                      startIcon={<PlayArrow />}
+                                      onClick={() => window.open(doc.watchLink, '_blank')}
+                                      sx={{
+                                        bgcolor: "rgba(0,150,136,0.2)",
+                                        color: "#fff",
+                                        fontSize: "0.7rem",
+                                        py: 0.5,
+                                        px: 1,
+                                        "&:hover": { bgcolor: "rgba(0,150,136,0.3)" }
+                                      }}
+                                    >
+                                      İzle
+                                    </Button>
+                                  )}
+                                  {doc.trailerLink && (
+                                    <Button
+                                      size="small"
+                                      startIcon={<Movie />}
+                                      onClick={() => window.open(doc.trailerLink, '_blank')}
+                                      sx={{
+                                        bgcolor: "rgba(255,152,0,0.2)",
+                                        color: "#fff",
+                                        fontSize: "0.7rem",
+                                        py: 0.5,
+                                        px: 1,
+                                        "&:hover": { bgcolor: "rgba(255,152,0,0.3)" }
+                                      }}
+                                    >
+                                      Fragman
+                                    </Button>
+                                  )}
+                                </Box>
+                              </Box>
+                            ))}
+                          </Box>
+                        )}
+
+                        {section.series && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                              📺 Dizi Önerileri:
+                            </Typography>
+                            {section.series.map((series, idx) => (
+                              <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2 }}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                                  <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600 }}>
+                                    {series.title}
+                                  </Typography>
+                                  <Chip 
+                                    label={series.rating} 
+                                    size="small" 
+                                    sx={{ 
+                                      bgcolor: "rgba(255,0,0,0.2)", 
+                                      color: "#fff",
+                                      fontSize: "0.7rem"
+                                    }} 
+                                  />
+                                </Box>
+                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: "0.85rem" }}>
+                                  {series.description}
+                                </Typography>
+                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+                                  <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.7)", fontSize: "0.75rem" }}>
+                                    Platform: {series.platform}
+                                  </Typography>
+                                  {series.seasons && (
+                                    <Chip 
+                                      label={`${series.seasons} sezon`} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(255,152,0,0.2)", 
+                                        color: "#fff",
+                                        fontSize: "0.6rem"
+                                      }} 
+                                    />
+                                  )}
+                                  {series.episodes && (
+                                    <Chip 
+                                      label={`${series.episodes} bölüm`} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(33,150,243,0.2)", 
+                                        color: "#fff",
+                                        fontSize: "0.6rem"
+                                      }} 
+                                    />
+                                  )}
+                                  {series.category && (
+                                    <Chip 
+                                      label={series.category} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(156,39,176,0.2)", 
+                                        color: "#fff",
+                                        fontSize: "0.6rem"
+                                      }} 
+                                    />
+                                  )}
+                                </Box>
+                                <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
+                                  {series.watchLink && (
+                                    <Button
+                                      size="small"
+                                      startIcon={<Tv />}
+                                      onClick={() => window.open(series.watchLink, '_blank')}
+                                      sx={{
+                                        bgcolor: "rgba(156,39,176,0.2)",
+                                        color: "#fff",
+                                        fontSize: "0.7rem",
+                                        py: 0.5,
+                                        px: 1,
+                                        "&:hover": { bgcolor: "rgba(156,39,176,0.3)" }
+                                      }}
+                                    >
+                                      İzle
+                                    </Button>
+                                  )}
+                                  {series.trailerLink && (
+                                    <Button
+                                      size="small"
+                                      startIcon={<Movie />}
+                                      onClick={() => window.open(series.trailerLink, '_blank')}
+                                      sx={{
+                                        bgcolor: "rgba(255,152,0,0.2)",
+                                        color: "#fff",
+                                        fontSize: "0.7rem",
+                                        py: 0.5,
+                                        px: 1,
+                                        "&:hover": { bgcolor: "rgba(255,152,0,0.3)" }
+                                      }}
+                                    >
+                                      Fragman
+                                    </Button>
+                                  )}
+                                </Box>
+                              </Box>
+                            ))}
+                          </Box>
+                        )}
+
+                        {section.podcasts && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                              🎧 Podcast Önerileri:
+                            </Typography>
+                            {section.podcasts.map((podcast, idx) => (
+                              <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2 }}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                                  <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600 }}>
+                                    {podcast.title}
+                                  </Typography>
+                                  <Chip 
+                                    label={podcast.duration} 
+                                    size="small" 
+                                    sx={{ 
+                                      bgcolor: "rgba(156,39,176,0.2)", 
+                                      color: "#fff",
+                                      fontSize: "0.7rem"
+                                    }} 
+                                  />
+                                </Box>
+                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: "0.85rem" }}>
+                                  {podcast.description}
+                                </Typography>
+                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+                                  <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.7)", fontSize: "0.75rem" }}>
+                                    Sunucu: {podcast.host} • Bölüm: {podcast.episode}
+                                  </Typography>
+                                  {podcast.category && (
+                                    <Chip 
+                                      label={podcast.category} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(76,175,80,0.2)", 
+                                        color: "#fff",
+                                        fontSize: "0.6rem"
+                                      }} 
+                                    />
+                                  )}
+                                  {podcast.platform && (
+                                    <Chip 
+                                      label={podcast.platform} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(255,152,0,0.2)", 
+                                        color: "#fff",
+                                        fontSize: "0.6rem"
+                                      }} 
+                                    />
+                                  )}
+                                </Box>
+                                {podcast.listenLink && (
+                                  <Button
+                                    size="small"
+                                    startIcon={<Headphones />}
+                                    onClick={() => window.open(podcast.listenLink, '_blank')}
+                                    sx={{
+                                      bgcolor: "rgba(156,39,176,0.2)",
+                                      color: "#fff",
+                                      fontSize: "0.7rem",
+                                      py: 0.5,
+                                      px: 1,
+                                      mt: 1,
+                                      "&:hover": { bgcolor: "rgba(156,39,176,0.3)" }
+                                    }}
+                                  >
+                                    Dinle
+                                  </Button>
+                                )}
+                              </Box>
+                            ))}
                           </Box>
                         )}
                       </Box>

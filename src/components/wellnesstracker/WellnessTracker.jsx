@@ -15,6 +15,8 @@ import {
   DialogActions,
   TextField,
   Button,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import { styled, keyframes } from "@mui/material/styles";
 import NotificationsIcon from "@mui/icons-material/Notifications";
@@ -120,9 +122,12 @@ const StyledAccordionSummary = styled(AccordionSummary)(({ theme }) => ({
   borderRadius: 25,
   boxShadow: "0 3px 5px 2px rgba(33, 150, 243, 0.3)",
   color: "white",
-  padding: "12px 35px",
+  padding: { xs: "8px 20px", sm: "10px 25px", md: "12px 35px" },
   transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
   cursor: "pointer",
+  "& .MuiAccordionSummary-content": {
+    margin: { xs: "4px 0", sm: "6px 0", md: "8px 0" },
+  },
 }));
 
 const AnimatedButton = styled(Button)(({ theme }) => ({
@@ -131,7 +136,8 @@ const AnimatedButton = styled(Button)(({ theme }) => ({
   borderRadius: 25,
   boxShadow: "0 3px 5px 2px rgba(33, 150, 243, .3)",
   color: "white",
-  padding: "12px 35px",
+  padding: { xs: "8px 20px", sm: "10px 25px", md: "12px 35px" },
+  fontSize: { xs: "0.8rem", sm: "0.9rem", md: "1rem" },
   transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
   position: "relative",
   overflow: "hidden",
@@ -142,6 +148,10 @@ const AnimatedButton = styled(Button)(({ theme }) => ({
 }));
 
 const WellnessTracker = ({ user }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
+  
   if (!user) return <div>Lütfen giriş yapın</div>;
 
   const [supplements, setSupplements] = useState([]);
@@ -216,8 +226,6 @@ const WellnessTracker = ({ user }) => {
               : null;
             const now = new Date();
             const THRESHOLD = 60 * 60 * 1000; // 1 saat
-
-            // Eğer son hesaplama 1 saatten eskiyse, güncelleme listesine ekle
             if (
               !lastCalculated ||
               now.getTime() - lastCalculated.getTime() > THRESHOLD
@@ -226,61 +234,49 @@ const WellnessTracker = ({ user }) => {
             }
           }
         } catch (error) {
-          console.error(`Supplement ${supp.name} kontrol hatası:`, error);
+          console.error("Supplement kontrol hatası:", error);
         }
       }
 
-      // Batch olarak güncellemeleri yap
+      // Batch güncelleme
       if (supplementsToUpdate.length > 0) {
-        console.log(`📌 ${supplementsToUpdate.length} supplement için hesaplama tetiklendi`);
-        
-        // Paralel olarak güncellemeleri yap (performans için)
-        const updatePromises = supplementsToUpdate.map(supp => 
-          saveNextSupplementReminderTime(user, supp)
-        );
-        
-        try {
-          await Promise.all(updatePromises);
-          console.log('✅ Tüm supplement güncellemeleri tamamlandı');
-        } catch (error) {
-          console.error('Supplement güncelleme hatası:', error);
+        for (const supp of supplementsToUpdate) {
+          try {
+            await saveNextSupplementReminderTime(user, supp);
+            const suppDocRef = doc(db, "users", user.uid, "supplements", supp.id);
+            await updateDoc(suppDocRef, {
+              notificationsLastCalculated: new Date(),
+            });
+          } catch (error) {
+            console.error("Supplement reminder güncelleme hatası:", error);
+          }
         }
-      } else {
-        console.log('✅ Tüm supplementler güncel');
       }
     };
 
     checkAndUpdateReminders();
-  }, [user, supplements]); // Sadece supplements veya user değişirse çalışır.
+  }, [supplements, user]);
 
   const handleSaveSupplement = async () => {
     const ref = getSupplementsRef();
     try {
       if (editingSupplement) {
-        // Düzenleme modunda: mevcut supplement dokümanını güncelle
-        const suppRef = doc(ref, editingSupplement.id);
-        await updateDoc(suppRef, {
-          name: supplementForm.name,
-          quantity: Number(supplementForm.quantity),
-          dailyUsage: Number(supplementForm.dailyUsage),
+        const supplementRef = doc(ref, editingSupplement.id);
+        await updateDoc(supplementRef, {
+          ...supplementForm,
+          lastUpdated: new Date(),
         });
       } else {
-        // Yeni ekleme modunda: yeni doküman oluştur
         await addDoc(ref, {
           ...supplementForm,
-          quantity: Number(supplementForm.quantity),
-          initialQuantity: Number(supplementForm.quantity),
-          dailyUsage: Number(supplementForm.dailyUsage),
+          createdAt: new Date(),
+          lastUpdated: new Date(),
         });
       }
       await fetchSupplements();
-      // Yeni takviye eklendiğinde tüm supplementler için bildirimleri güncelleyelim
-      supplements.forEach(async (supp) => {
-        await saveNextSupplementReminderTime(user, supp);
-      });
       setOpenSupplementDialog(false);
-      setSupplementForm({ name: "", quantity: 0, dailyUsage: 1 });
       setEditingSupplement(null);
+      setSupplementForm({ name: "", quantity: 0, dailyUsage: 1 });
     } catch (error) {
       console.error("Error saving supplement:", error);
     }
@@ -340,32 +336,18 @@ const WellnessTracker = ({ user }) => {
     setOpenSupplementDialog(true);
   };
 
-  const handleSaveSupplementNotifications = async (updatedSupplements) => {
-    const ref = getSupplementsRef(); // Firestore'daki supplements koleksiyonuna erişim sağlayan fonksiyon
+  const handleSaveSupplementNotifications = async (notifications) => {
     try {
-      for (const updatedSupp of updatedSupplements) {
-        // Mevcut supplement verisini supplements dizisinden bul
-        const supp = supplements.find((s) => s.id === updatedSupp.id);
-        if (!supp) continue;
-
-        // Yeni notificationSchedule değerini supplement nesnesine ekle
-        const newSupp = {
-          ...supp,
-          notificationSchedule: updatedSupp.notificationSchedule,
-        };
-
-        // Firestore'da notificationSchedule alanını güncelle
-        const suppRef = doc(ref, newSupp.id);
-        await updateDoc(suppRef, {
-          notificationSchedule: newSupp.notificationSchedule,
+      for (const [supplementId, notification] of Object.entries(notifications)) {
+        const supplementRef = doc(db, "users", user.uid, "supplements", supplementId);
+        await updateDoc(supplementRef, {
+          notificationTime: notification.time,
+          notificationEnabled: notification.enabled,
         });
-
-        // nextSupplementReminderTime'ı hesapla ve kaydet
-        await saveNextSupplementReminderTime(user, newSupp);
       }
-      await fetchSupplements(); // Güncel veriyi çekmek için
+      setSupplementNotificationDialogOpen(false);
     } catch (error) {
-      console.error("Takviye bildirim ayarları güncelleme hatası:", error);
+      console.error("Error saving supplement notifications:", error);
     }
   };
 
@@ -375,7 +357,7 @@ const WellnessTracker = ({ user }) => {
         minHeight: "100vh",
         background:
           "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
-        padding: { xs: 2, md: 4 },
+        padding: { xs: 1, sm: 2, md: 4 },
       }}
     >
       <Container maxWidth="lg">
@@ -384,7 +366,9 @@ const WellnessTracker = ({ user }) => {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            mb: { xs: 2, md: 4 },
+            mb: { xs: 2, sm: 3, md: 4 },
+            flexDirection: { xs: "column", sm: "row" },
+            gap: { xs: 2, sm: 0 },
           }}
         >
           <Typography
@@ -393,347 +377,403 @@ const WellnessTracker = ({ user }) => {
               textAlign: "center",
               color: "#fff",
               fontWeight: 800,
-              mt: { xs: 4, md: 6 },
+              mt: { xs: 2, sm: 3, md: 6 },
               textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
               animation: `${float} 3s ease-in-out infinite`,
-              fontSize: { xs: "2rem", md: "3rem" },
+              fontSize: { xs: "1.5rem", sm: "2rem", md: "3rem" },
             }}
           >
             <WaterDropIcon
-              sx={{ fontSize: { xs: 30, md: 50 }, color: "lightblue", mr: 2 }}
+              sx={{ 
+                fontSize: { xs: 24, sm: 30, md: 50 }, 
+                color: "lightblue", 
+                mr: { xs: 1, sm: 2 },
+                verticalAlign: "middle",
+              }}
             />
             Takviye Takibi
           </Typography>
+          
+          <Box sx={{ 
+            display: "flex", 
+            gap: { xs: 1, sm: 2 },
+            flexDirection: { xs: "row", sm: "row" },
+            width: { xs: "100%", sm: "auto" },
+            justifyContent: { xs: "center", sm: "flex-end" },
+          }}>
+            <AnimatedButton
+              onClick={() => setOpenSupplementDialog(true)}
+              startIcon={<AddIcon sx={{ fontSize: { xs: "1rem", sm: "1.2rem", md: "1.5rem" } }} />}
+              sx={{ 
+                fontSize: { xs: "0.7rem", sm: "0.8rem", md: "1rem" },
+                padding: { xs: "6px 12px", sm: "8px 16px", md: "12px 24px" },
+              }}
+            >
+              Takviye Ekle
+            </AnimatedButton>
+            <AnimatedButton
+              onClick={() => setSupplementNotificationDialogOpen(true)}
+              startIcon={<NotificationsIcon sx={{ fontSize: { xs: "1rem", sm: "1.2rem", md: "1.5rem" } }} />}
+              sx={{ 
+                fontSize: { xs: "0.7rem", sm: "0.8rem", md: "1rem" },
+                padding: { xs: "6px 12px", sm: "8px 16px", md: "12px 24px" },
+              }}
+            >
+              Bildirimler
+            </AnimatedButton>
+          </Box>
         </Box>
 
-        <WaterTracker user={user} onWaterDataChange={setWaterData} />
-        <Box sx={{ mt: 4, textAlign: "center" }}>
-          <AnimatedButton
-            onClick={() => {
-              setEditingSupplement(null);
-              setSupplementForm({ name: "", quantity: 0, dailyUsage: 1 });
-              setOpenSupplementDialog(true);
-            }}
-            startIcon={<AddIcon />}
-            sx={{ minWidth: 200 }}
-          >
-            Yeni Takviye Ekle
-          </AnimatedButton>
-        </Box>
+        {/* Su Takibi */}
         <Accordion
-          defaultExpanded={false}
+          defaultExpanded={true}
           sx={{
             background: "transparent",
             boxShadow: "none",
             color: "#fff",
-            mt: 4,
+            mb: { xs: 2, sm: 3, md: 4 },
             "&::before": { display: "none" },
           }}
         >
           <StyledAccordionSummary>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                width: "100%",
-                justifyContent: "space-between",
-              }}
-            >
-              <Typography variant="h5" sx={{ fontWeight: 700, color: "#fff" }}>
-                Takviyeler
-              </Typography>
-              <Tooltip title="Takviye Bildirim Ayarları">
-                <IconButton
-                  component="span"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSupplementNotificationDialogOpen(true);
-                  }}
-                  sx={{
-                    color: "#fff",
-                    transition: "all 0.3s ease-in-out",
-                    "&:hover": {
-                      color: "#FFD700",
-                      transform: "scale(1.1)",
-                    },
-                  }}
-                >
-                  <NotificationsIcon />
-                </IconButton>
-              </Tooltip>
-            </Box>
+            <Typography variant="h5" sx={{ 
+              fontWeight: 700, 
+              color: "#fff",
+              fontSize: { xs: "1.1rem", sm: "1.3rem", md: "1.5rem" },
+            }}>
+              Su Takibi
+            </Typography>
           </StyledAccordionSummary>
-          <AccordionDetails>
-            <Grid container spacing={3} sx={{ mt: 1 }}>
-              <AnimatePresence>
-                {(supplements || []).map((supplement) => {
-                  const name = supplement?.name || "Unknown";
-                  const progress =
-                    (supplement.quantity / supplement.initialQuantity) * 100;
-                  const daysLeft = Math.floor(
-                    supplement.quantity / supplement.dailyUsage
-                  );
-                  const consumedToday =
-                    supplementConsumptionToday[supplement.name] || 0;
-                  const remainingToday = Math.max(
-                    0,
-                    supplement.dailyUsage - consumedToday
-                  );
+          <AccordionDetails sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+            <WaterTracker user={user} />
+          </AccordionDetails>
+        </Accordion>
+
+        {/* Takviye Listesi */}
+        <Accordion
+          defaultExpanded={true}
+          sx={{
+            background: "transparent",
+            boxShadow: "none",
+            color: "#fff",
+            mb: { xs: 2, sm: 3, md: 4 },
+            "&::before": { display: "none" },
+          }}
+        >
+          <StyledAccordionSummary>
+            <Typography variant="h5" sx={{ 
+              fontWeight: 700, 
+              color: "#fff",
+              fontSize: { xs: "1.1rem", sm: "1.3rem", md: "1.5rem" },
+            }}>
+              Takviyelerim
+            </Typography>
+          </StyledAccordionSummary>
+          <AccordionDetails sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+            {supplements.length === 0 ? (
+              <Box
+                sx={{
+                  textAlign: "center",
+                  py: { xs: 4, sm: 6, md: 8 },
+                  color: "rgba(255,255,255,0.7)",
+                }}
+              >
+                <Typography variant="h6" sx={{ 
+                  mb: 2,
+                  fontSize: { xs: "1rem", sm: "1.2rem", md: "1.5rem" },
+                }}>
+                  Henüz takviye eklenmemiş
+                </Typography>
+                <Typography variant="body1" sx={{ 
+                  fontSize: { xs: "0.85rem", sm: "1rem", md: "1.1rem" },
+                }}>
+                  İlk takviyenizi eklemek için "Takviye Ekle" butonuna tıklayın
+                </Typography>
+              </Box>
+            ) : (
+              <Grid container spacing={{ xs: 1, sm: 2, md: 3 }}>
+                {supplements.map((supplement) => {
+                  const { name, quantity, dailyUsage } = supplement;
+                  const consumedToday = supplementConsumptionToday[name] || 0;
+                  const remainingToday = Math.max(0, dailyUsage - consumedToday);
+                  const daysLeft = Math.ceil(quantity / dailyUsage);
+                  const progress = Math.min(100, (consumedToday / dailyUsage) * 100);
 
                   return (
                     <Grid item xs={12} sm={6} md={4} key={supplement.id}>
-                      <Box
-                        sx={{
-                          background: `linear-gradient(135deg, ${getSupplementColor(
-                            name
-                          )} 0%, rgba(255,255,255,0.1) 100%)`,
-                          borderRadius: "20px",
-                          p: 3,
-                          boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
-                          backdropFilter: "blur(8px)",
-                          border: "1px solid rgba(255,255,255,0.2)",
-                          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                          "&:hover": {
-                            transform: "translateY(-5px)",
-                            boxShadow: "0 12px 40px rgba(33,150,243,0.2)",
-                          },
-                        }}
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
                       >
-                        {/* Üst Bilgi */}
                         <Box
                           sx={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
+                            background: "rgba(255,255,255,0.1)",
+                            borderRadius: "20px",
+                            p: { xs: 2, sm: 2.5, md: 3 },
+                            backdropFilter: "blur(10px)",
+                            border: "1px solid rgba(255,255,255,0.2)",
+                            position: "relative",
+                            overflow: "hidden",
+                            "&::before": {
+                              content: '""',
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              height: "4px",
+                              background: getSupplementColor(name),
+                            },
                           }}
                         >
-                          <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 1.5,
-                            }}
-                          >
-                            <Box
-                              sx={{
-                                bgcolor: "rgba(255,255,255,0.15)",
-                                p: 1.2,
-                                borderRadius: "12px",
-                                display: "flex",
-                              }}
-                            >
-                              {getSupplementIcon(name)}
-                            </Box>
-                            <Typography
-                              variant="h6"
-                              sx={{
-                                fontWeight: 700,
-                                color: "#fff",
-                                textTransform: "capitalize",
-                              }}
-                            >
-                              {supplement.name}
-                            </Typography>
-                          </Box>
-                          <Box sx={{ display: "flex", gap: 1 }}>
-                            <IconButton
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditSupplement(supplement);
-                              }}
-                              sx={{
-                                color: "rgba(255,255,255,0.7)",
-                                transition: "all 0.3s",
-                                "&:hover": {
-                                  color: "#FFD700",
-                                  transform: "rotate(5deg)",
-                                },
-                              }}
-                            >
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(supplement.id);
-                              }}
-                              sx={{
-                                color: "rgba(255,255,255,0.7)",
-                                transition: "all 0.3s",
-                                "&:hover": {
-                                  color: "#ff5252",
-                                  transform: "rotate(90deg)",
-                                },
-                              }}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Box>
-                        </Box>
-
-                        {/* İlerleme Çubuğu */}
-                        <Box sx={{ mt: 2, mb: 2 }}>
-                          <Box
-                            sx={{
-                              height: 6,
-                              bgcolor: "rgba(255,255,255,0.15)",
-                              borderRadius: 3,
-                              overflow: "hidden",
-                            }}
-                          >
-                            <Box
-                              sx={{
-                                width: `${progress}%`,
-                                height: "100%",
-                                bgcolor: getSupplementColor(name),
-                                transition: "width 0.5s ease",
-                              }}
-                            />
-                          </Box>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              mt: 1,
-                              color: "rgba(255,255,255,0.8)",
-                              fontSize: "0.85rem",
-                            }}
-                          >
-                            <span>{supplement.quantity} adet</span>
-                            <span>{daysLeft}gün kaldı</span>
-                          </Box>
-                        </Box>
-
-                        {/* Günlük Tüketim */}
-                        <Box
-                          sx={{
-                            bgcolor: "rgba(255,255,255,0.1)",
-                            borderRadius: "14px",
-                            p: 2,
-                            mt: 2,
-                          }}
-                        >
+                          {/* Header */}
                           <Box
                             sx={{
                               display: "flex",
                               justifyContent: "space-between",
                               alignItems: "center",
-                              mb: 1,
-                            }}
-                          >
-                            <Typography
-                              variant="body2"
-                              sx={{ color: "rgba(255,255,255,0.8)" }}
-                            >
-                              Günlük Tüketim
-                            </Typography>
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                color: getSupplementColor(name),
-                                fontWeight: 600,
-                              }}
-                            >
-                              {supplement.dailyUsage} adet
-                            </Typography>
-                          </Box>
-
-                          <Box
-                            sx={{
-                              display: "flex",
-                              gap: 1,
-                              alignItems: "center",
+                              mb: { xs: 1.5, sm: 2 },
                             }}
                           >
                             <Box
                               sx={{
-                                width: 30,
-                                height: 30,
-                                bgcolor: "rgba(255,255,255,0.15)",
-                                borderRadius: "8px",
                                 display: "flex",
                                 alignItems: "center",
-                                justifyContent: "center",
-                                color: "#fff",
+                                gap: { xs: 1, sm: 1.5 },
                               }}
                             >
-                              {consumedToday}
+                              <Box
+                                sx={{
+                                  width: { xs: 32, sm: 36, md: 40 },
+                                  height: { xs: 32, sm: 36, md: 40 },
+                                  borderRadius: "50%",
+                                  background: getSupplementColor(name),
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
+                                }}
+                              >
+                                {getSupplementIcon(name)}
+                              </Box>
+                              <Typography
+                                variant="h6"
+                                sx={{
+                                  color: "#fff",
+                                  fontWeight: 600,
+                                  fontSize: { xs: "0.9rem", sm: "1rem", md: "1.1rem" },
+                                  lineHeight: 1.2,
+                                }}
+                              >
+                                {name}
+                              </Typography>
                             </Box>
-                            <Typography
-                              variant="body2"
-                              sx={{ color: "rgba(255,255,255,0.6)" }}
+                            <Box sx={{ display: "flex", gap: { xs: 0.5, sm: 1 } }}>
+                              <Tooltip title="Düzenle">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleEditSupplement(supplement)}
+                                  sx={{
+                                    color: "rgba(255,255,255,0.7)",
+                                    "&:hover": { color: "#fff" },
+                                    padding: { xs: "4px", sm: "6px" },
+                                  }}
+                                >
+                                  <EditIcon sx={{ fontSize: { xs: "1rem", sm: "1.2rem" } }} />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Sil">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleDelete(supplement.id)}
+                                  sx={{
+                                    color: "rgba(255,255,255,0.7)",
+                                    "&:hover": { color: "#ff4444" },
+                                    padding: { xs: "4px", sm: "6px" },
+                                  }}
+                                >
+                                  <DeleteIcon sx={{ fontSize: { xs: "1rem", sm: "1.2rem" } }} />
+                                </IconButton>
+                              </Tooltip>
+                            </Box>
+                          </Box>
+
+                          {/* İlerleme Çubuğu */}
+                          <Box sx={{ mt: 2, mb: 2 }}>
+                            <Box
+                              sx={{
+                                height: { xs: 4, sm: 6 },
+                                bgcolor: "rgba(255,255,255,0.15)",
+                                borderRadius: 3,
+                                overflow: "hidden",
+                              }}
                             >
-                              Tüketilen
-                            </Typography>
-                            <Box sx={{ flex: 1, textAlign: "right" }}>
+                              <Box
+                                sx={{
+                                  width: `${progress}%`,
+                                  height: "100%",
+                                  bgcolor: getSupplementColor(name),
+                                  transition: "width 0.5s ease",
+                                }}
+                              />
+                            </Box>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                mt: 1,
+                                color: "rgba(255,255,255,0.8)",
+                                fontSize: { xs: "0.7rem", sm: "0.8rem", md: "0.85rem" },
+                              }}
+                            >
+                              <span>{supplement.quantity} adet</span>
+                              <span>{daysLeft}gün kaldı</span>
+                            </Box>
+                          </Box>
+
+                          {/* Günlük Tüketim */}
+                          <Box
+                            sx={{
+                              bgcolor: "rgba(255,255,255,0.1)",
+                              borderRadius: "14px",
+                              p: { xs: 1.5, sm: 2 },
+                              mt: 2,
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                mb: 1,
+                              }}
+                            >
+                              <Typography
+                                variant="body2"
+                                sx={{ 
+                                  color: "rgba(255,255,255,0.8)",
+                                  fontSize: { xs: "0.75rem", sm: "0.8rem", md: "0.85rem" },
+                                }}
+                              >
+                                Günlük Tüketim
+                              </Typography>
                               <Typography
                                 variant="body2"
                                 sx={{
                                   color: getSupplementColor(name),
                                   fontWeight: 600,
+                                  fontSize: { xs: "0.75rem", sm: "0.8rem", md: "0.85rem" },
                                 }}
                               >
-                                {remainingToday} adet kaldı
+                                {supplement.dailyUsage} adet
                               </Typography>
                             </Box>
+
+                            <Box
+                              sx={{
+                                display: "flex",
+                                gap: 1,
+                                alignItems: "center",
+                              }}
+                            >
+                              <Box
+                                sx={{
+                                  width: { xs: 24, sm: 28, md: 30 },
+                                  height: { xs: 24, sm: 28, md: 30 },
+                                  bgcolor: "rgba(255,255,255,0.15)",
+                                  borderRadius: "8px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  color: "#fff",
+                                  fontSize: { xs: "0.7rem", sm: "0.8rem", md: "0.85rem" },
+                                }}
+                              >
+                                {consumedToday}
+                              </Box>
+                              <Typography
+                                variant="body2"
+                                sx={{ 
+                                  color: "rgba(255,255,255,0.6)",
+                                  fontSize: { xs: "0.7rem", sm: "0.75rem", md: "0.8rem" },
+                                }}
+                              >
+                                Tüketilen
+                              </Typography>
+                              <Box sx={{ flex: 1, textAlign: "right" }}>
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    color: getSupplementColor(name),
+                                    fontWeight: 600,
+                                    fontSize: { xs: "0.7rem", sm: "0.75rem", md: "0.8rem" },
+                                  }}
+                                >
+                                  {remainingToday} adet kaldı
+                                </Typography>
+                              </Box>
+                            </Box>
+                          </Box>
+
+                          {/* Tüket Butonu */}
+                          <Box sx={{ mt: 2, textAlign: "center" }}>
+                            <Button
+                              variant="contained"
+                              onClick={() => handleConsume(supplement.id)}
+                              disabled={supplement.quantity === 0}
+                              sx={{
+                                background: getSupplementColor(name),
+                                color: "#fff",
+                                borderRadius: "20px",
+                                px: { xs: 2, sm: 3 },
+                                py: { xs: 1, sm: 1.5 },
+                                fontSize: { xs: "0.75rem", sm: "0.8rem", md: "0.9rem" },
+                                fontWeight: 600,
+                                textTransform: "none",
+                                "&:hover": {
+                                  background: getSupplementColor(name),
+                                  opacity: 0.9,
+                                },
+                                "&:disabled": {
+                                  background: "rgba(255,255,255,0.2)",
+                                  color: "rgba(255,255,255,0.5)",
+                                },
+                              }}
+                            >
+                              {supplement.quantity === 0 ? "Tükendi" : "Tüket"}
+                            </Button>
                           </Box>
                         </Box>
-
-                        {/* Aksiyon Butonu */}
-                        <Button
-                          fullWidth
-                          variant="contained"
-                          onClick={() => handleConsume(supplement.id)}
-                          disabled={supplement.quantity <= 0}
-                          sx={{
-                            mt: 2,
-                            bgcolor: "rgba(255,255,255,0.15)",
-                            color: "#fff",
-                            borderRadius: "12px",
-                            py: 1.5,
-                            textTransform: "none",
-                            fontWeight: 600,
-                            backdropFilter: "blur(4px)",
-                            "&:hover": {
-                              bgcolor: getSupplementColor(name),
-                            },
-                            "&:disabled": {
-                              bgcolor: "rgba(255,255,255,0.05)",
-                            },
-                          }}
-                          startIcon={
-                            <EmojiEventsIcon
-                              sx={{ color: "rgba(255,255,255,0.8)" }}
-                            />
-                          }
-                        >
-                          Dozu Tamamla
-                        </Button>
-                      </Box>
+                      </motion.div>
                     </Grid>
                   );
                 })}
-              </AnimatePresence>
-            </Grid>
+              </Grid>
+            )}
           </AccordionDetails>
         </Accordion>
+        
         <Accordion
           defaultExpanded={false}
           sx={{
             background: "transparent",
             boxShadow: "none",
             color: "#fff",
-            mt: 4,
+            mt: { xs: 2, sm: 3, md: 4 },
             "&::before": { display: "none" },
           }}
         >
           <StyledAccordionSummary>
-            <Typography variant="h5" sx={{ fontWeight: 700, color: "#fff" }}>
+            <Typography variant="h5" sx={{ 
+              fontWeight: 700, 
+              color: "#fff",
+              fontSize: { xs: "1.1rem", sm: "1.3rem", md: "1.5rem" },
+            }}>
               İstatistikler
             </Typography>
           </StyledAccordionSummary>
-          <AccordionDetails>
-            <Grid container spacing={4} sx={{ mt: 2 }}>
+          <AccordionDetails sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+            <Grid container spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mt: 2 }}>
               <Grid item xs={12} md={6}>
                 <WaterConsumptionChart waterHistory={waterData.history} />
               </Grid>

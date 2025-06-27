@@ -17,7 +17,7 @@ import { styled, alpha } from "@mui/material/styles";
 
 // Modern başlık stili
 const StyledDialogTitle = styled(DialogTitle)(({ theme }) => ({
-  padding: theme.spacing(3),
+  padding: { xs: theme.spacing(2), sm: theme.spacing(3) },
   background: "linear-gradient(135deg, #4b6cb7 0%, #182848 100%)",
   color: theme.palette.primary.contrastText,
   position: "relative",
@@ -26,25 +26,26 @@ const StyledDialogTitle = styled(DialogTitle)(({ theme }) => ({
   justifyContent: "center",
   "& .MuiTypography-root": {
     fontWeight: 700,
-    fontSize: "1.25rem",
+    fontSize: { xs: "1rem", sm: "1.1rem", md: "1.25rem" },
     textShadow: "0px 2px 4px rgba(0,0,0,0.2)",
   },
 }));
 
 // Modern içerik stili
 const StyledDialogContent = styled(DialogContent)(({ theme }) => ({
-  padding: theme.spacing(3),
+  padding: { xs: theme.spacing(2), sm: theme.spacing(3) },
   background: alpha("#f8f9fa", 0.95),
 }));
 
 // Modern buton stili
 const ActionButton = styled(Button)(({ theme }) => ({
   borderRadius: theme.spacing(3),
-  padding: theme.spacing(1.2, 3.5),
+  padding: { xs: theme.spacing(1, 2.5), sm: theme.spacing(1.2, 3.5) },
   textTransform: "none",
   fontWeight: 600,
   letterSpacing: "0.5px",
   boxShadow: theme.shadows[3],
+  fontSize: { xs: "0.8rem", sm: "0.9rem", md: "1rem" },
   transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
   "&:hover": {
     transform: "translateY(-3px) scale(1.02)",
@@ -140,6 +141,9 @@ const SupplementDialog = ({
           boxShadow:
             "0 50px 100px rgba(0,0,0,0.25), 0 30px 60px rgba(0,0,0,0.22)",
           padding: 0,
+          maxWidth: { xs: "95vw", sm: "600px" },
+          width: { xs: "95vw", sm: "auto" },
+          margin: "auto",
         },
       }}
     >
@@ -219,11 +223,13 @@ const SupplementDialog = ({
       <DialogActions
         sx={{
           justifyContent: "space-between",
-          p: 3,
+          p: { xs: 2, sm: 3 },
           bgcolor: alpha("#f5f5f5", 0.5),
           background:
             "linear-gradient(rgba(255,255,255,0.8), rgba(245,245,245,0.9))",
           backdropFilter: "blur(10px)",
+          flexDirection: { xs: "column", sm: "row" },
+          gap: { xs: 1, sm: 0 },
         }}
       >
         <ActionButton

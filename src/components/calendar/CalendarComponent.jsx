@@ -79,10 +79,28 @@ const ColorPickerDialog = ({
           p: 2,
           maxWidth: { xs: "95vw", sm: 400 },
           width: { xs: "95vw", sm: "auto" },
+          maxHeight: { xs: "80vh", sm: "70vh" },
+          margin: "auto",
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+        },
+      }}
+      sx={{
+        "& .MuiDialog-paper": {
+          margin: 0,
         },
       }}
     >
-      <DialogTitle sx={{ fontSize: { xs: "1rem", md: "1.25rem" } }}>
+      <DialogTitle sx={{ 
+        fontSize: { xs: "1rem", md: "1.25rem" },
+        flexShrink: 0,
+        pb: 1,
+      }}>
         Renk Seç
       </DialogTitle>
       <DialogContent
@@ -93,6 +111,22 @@ const ColorPickerDialog = ({
           maxWidth: { xs: "90vw", sm: 400 },
           maxHeight: { xs: "60vh", sm: 300 },
           overflowY: "auto",
+          overflowX: "hidden",
+          flex: 1,
+          "&::-webkit-scrollbar": {
+            width: "6px",
+          },
+          "&::-webkit-scrollbar-track": {
+            background: "rgba(255,255,255,0.1)",
+            borderRadius: "3px",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            background: "rgba(255,255,255,0.3)",
+            borderRadius: "3px",
+            "&:hover": {
+              background: "rgba(255,255,255,0.5)",
+            },
+          },
         }}
       >
         {Object.entries(colors).map(([name, color]) => (
@@ -772,13 +806,49 @@ const CalendarComponent = ({ user }) => {
             p: 2,
             maxWidth: { xs: "95vw", sm: "500px" },
             width: { xs: "95vw", sm: "auto" },
+            margin: "auto",
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+          },
+        }}
+        sx={{
+          "& .MuiDialog-paper": {
+            margin: 0,
           },
         }}
       >
-        <DialogTitle sx={{ fontSize: { xs: "1.1rem", md: "1.25rem" } }}>
+        <DialogTitle sx={{ 
+          fontSize: { xs: "1.1rem", md: "1.25rem" },
+          flexShrink: 0,
+          pb: 1,
+        }}>
           Etkinlik Detayları
         </DialogTitle>
-        <DialogContent sx={styles.dialogContent}>
+        <DialogContent sx={{ 
+          ...styles.dialogContent,
+          flex: 1,
+          overflowY: "auto",
+          overflowX: "hidden",
+          "&::-webkit-scrollbar": {
+            width: "6px",
+          },
+          "&::-webkit-scrollbar-track": {
+            background: "rgba(255,255,255,0.1)",
+            borderRadius: "3px",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            background: "rgba(255,255,255,0.3)",
+            borderRadius: "3px",
+            "&:hover": {
+              background: "rgba(255,255,255,0.5)",
+            },
+          },
+        }}>
           <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: "1rem", md: "1.25rem" } }}>
             {selectedEvent?.title}
           </Typography>
@@ -789,33 +859,41 @@ const CalendarComponent = ({ user }) => {
           <Typography variant="body2" color="#fff" sx={{ fontSize: { xs: "0.85rem", md: "1rem" } }}>
             Bitiş: {selectedEvent?.end?.toFormat("dd.MM.yyyy HH:mm") || "-"}
           </Typography>
-          <Box sx={{ mt: 2, display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1 }}>
-            <Button
-              variant="contained"
-              startIcon={<Edit />}
-              onClick={() => {
-                setEditEvent(selectedEvent);
-                setOpenEditDialog(true);
-              }}
-              sx={{ fontSize: { xs: "0.8rem", md: "inherit" } }}
-            >
-              Düzenle
-            </Button>
-            <Button
-              color="error"
-              startIcon={<Delete />}
-              onClick={() =>
-                handleDeleteEvent(
-                  selectedEvent.id,
-                  selectedEvent.notificationId
-                )
-              }
-              sx={{ fontSize: { xs: "0.8rem", md: "inherit" } }}
-            >
-              Sil
-            </Button>
-          </Box>
         </DialogContent>
+        <Box sx={{ 
+          mt: 2, 
+          display: "flex", 
+          flexDirection: { xs: "column", sm: "row" }, 
+          gap: 1,
+          flexShrink: 0,
+          borderTop: "1px solid rgba(255,255,255,0.1)",
+          pt: 2,
+        }}>
+          <Button
+            variant="contained"
+            startIcon={<Edit />}
+            onClick={() => {
+              setEditEvent(selectedEvent);
+              setOpenEditDialog(true);
+            }}
+            sx={{ fontSize: { xs: "0.8rem", md: "inherit" } }}
+          >
+            Düzenle
+          </Button>
+          <Button
+            color="error"
+            startIcon={<Delete />}
+            onClick={() =>
+              handleDeleteEvent(
+                selectedEvent.id,
+                selectedEvent.notificationId
+              )
+            }
+            sx={{ fontSize: { xs: "0.8rem", md: "inherit" } }}
+          >
+            Sil
+          </Button>
+        </Box>
       </Dialog>
     </Paper>
   );
@@ -946,13 +1024,51 @@ const EventDialog = ({
             p: 2,
             maxWidth: { xs: "95vw", sm: "600px" },
             width: { xs: "95vw", sm: "auto" },
+            maxHeight: { xs: "90vh", sm: "80vh" },
+            margin: "auto",
+            position: "fixed",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+          },
+        }}
+        sx={{
+          "& .MuiDialog-paper": {
+            margin: 0,
           },
         }}
       >
-        <DialogTitle sx={{ fontSize: { xs: "1.1rem", md: "1.25rem" } }}>
+        <DialogTitle sx={{ 
+          fontSize: { xs: "1.1rem", md: "1.25rem" },
+          flexShrink: 0,
+          pb: 1,
+        }}>
           {title}
         </DialogTitle>
-        <DialogContent sx={{ py: 2, minWidth: { xs: "90vw", sm: 480 } }}>
+        <DialogContent sx={{ 
+          py: 2, 
+          minWidth: { xs: "90vw", sm: 480 },
+          flex: 1,
+          overflowY: "auto",
+          overflowX: "hidden",
+          "&::-webkit-scrollbar": {
+            width: "6px",
+          },
+          "&::-webkit-scrollbar-track": {
+            background: "rgba(255,255,255,0.1)",
+            borderRadius: "3px",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            background: "rgba(255,255,255,0.3)",
+            borderRadius: "3px",
+            "&:hover": {
+              background: "rgba(255,255,255,0.5)",
+            },
+          },
+        }}>
           <TextField
             label="Etkinlik Başlığı"
             fullWidth
@@ -1154,7 +1270,9 @@ const EventDialog = ({
         <DialogActions sx={{ 
           flexDirection: { xs: "column", sm: "row" }, 
           gap: { xs: 1, sm: 0 },
-          padding: { xs: 2, sm: 3 }
+          padding: { xs: 2, sm: 3 },
+          flexShrink: 0,
+          borderTop: "1px solid rgba(255,255,255,0.1)",
         }}>
           <Button 
             onClick={onClose}

@@ -59,6 +59,9 @@ const ColorPickerDialog = ({
   colors,
   selectedColor,
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  
   return (
     <Dialog
       container={container}
@@ -74,15 +77,19 @@ const ColorPickerDialog = ({
           border: "1px solid rgba(33, 150, 243, 0.2)",
           color: "#fff",
           p: 2,
+          maxWidth: { xs: "95vw", sm: 400 },
+          width: { xs: "95vw", sm: "auto" },
         },
       }}
     >
-      <DialogTitle>Renk Seç</DialogTitle>
+      <DialogTitle sx={{ fontSize: { xs: "1rem", md: "1.25rem" } }}>
+        Renk Seç
+      </DialogTitle>
       <DialogContent
         sx={{
           display: "flex",
           flexWrap: "wrap",
-          gap: 2,
+          gap: { xs: 1, sm: 2 },
           maxWidth: { xs: "90vw", sm: 400 },
           maxHeight: { xs: "60vh", sm: 300 },
           overflowY: "auto",
@@ -97,6 +104,13 @@ const ColorPickerDialog = ({
               color: "#fff",
               cursor: "pointer",
               fontWeight: "bold",
+              fontSize: { xs: "0.7rem", md: "0.75rem" },
+              height: { xs: "2rem", md: "2.5rem" },
+              minWidth: { xs: "calc(50% - 4px)", sm: "auto" },
+              "&:hover": {
+                opacity: 0.8,
+                transform: "scale(1.05)",
+              },
             }}
             onClick={() => {
               onColorSelect(color);
@@ -113,6 +127,8 @@ const ColorPickerDialog = ({
 // Ana takvim bileşeni
 const CalendarComponent = ({ user }) => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
   const calendarRef = useRef(null);
   const paperRef = useRef(null);
 
@@ -456,25 +472,10 @@ const CalendarComponent = ({ user }) => {
     recurrenceType,
     recurrenceUntil,
   }) => {
-    const [localRecurrenceType, setLocalRecurrenceType] = useState(
-      recurrenceType || ""
+    const [type, setType] = useState(recurrenceType || "");
+    const [until, setUntil] = useState(
+      recurrenceUntil?.toFormat("yyyy-MM-dd") || ""
     );
-    const [localRecurrenceUntil, setLocalRecurrenceUntil] = useState(
-      recurrenceUntil ? recurrenceUntil.toFormat("yyyy-MM-dd") : ""
-    );
-
-    useEffect(() => {
-      setLocalRecurrenceType(recurrenceType || "");
-      setLocalRecurrenceUntil(
-        recurrenceUntil ? recurrenceUntil.toFormat("yyyy-MM-dd") : ""
-      );
-    }, [recurrenceType, recurrenceUntil]);
-
-    const handleSave = () => {
-      const newRecurrenceUntil = DateTime.fromISO(localRecurrenceUntil);
-      onSave(localRecurrenceType, newRecurrenceUntil);
-      onClose();
-    };
 
     return (
       <Dialog
@@ -482,8 +483,6 @@ const CalendarComponent = ({ user }) => {
         open={open}
         onClose={onClose}
         disableEnforceFocus
-        fullWidth
-        maxWidth="sm"
         PaperProps={{
           sx: {
             zIndex: 99999,
@@ -496,37 +495,34 @@ const CalendarComponent = ({ user }) => {
           },
         }}
       >
-        <DialogTitle>Tekrarlı Etkinlik Ayarları</DialogTitle>
-        <DialogContent
-          sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-        >
-          <Typography variant="subtitle1">Tekrarlama Türü</Typography>
+        <DialogTitle>Tekrarlama Ayarları</DialogTitle>
+        <DialogContent>
           <Select
-            value={localRecurrenceType}
-            onChange={(e) => setLocalRecurrenceType(e.target.value)}
+            value={type}
+            onChange={(e) => setType(e.target.value)}
             fullWidth
-            sx={{ color: "#fff", borderColor: "#fff" }}
+            sx={{ mb: 2, color: "#fff" }}
           >
             <MenuItem value="daily">Her Gün</MenuItem>
             <MenuItem value="weekly">Her Hafta</MenuItem>
             <MenuItem value="monthly">Her Ay</MenuItem>
             <MenuItem value="yearly">Her Yıl</MenuItem>
           </Select>
-          <Typography variant="subtitle1">Tekrarlama Bitiş Tarihi</Typography>
           <TextField
+            label="Sonlanma Tarihi"
             type="date"
-            value={localRecurrenceUntil}
-            onChange={(e) => setLocalRecurrenceUntil(e.target.value)}
+            value={until}
+            onChange={(e) => setUntil(e.target.value)}
             fullWidth
-            InputLabelProps={{ shrink: true }}
-            sx={{ input: { color: "#fff" }, label: { color: "#fff" } }}
+            sx={{ color: "#fff" }}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose} sx={{ color: "#fff" }}>
-            İptal
-          </Button>
-          <Button onClick={handleSave} variant="contained">
+          <Button onClick={onClose}>İptal</Button>
+          <Button
+            onClick={() => onSave(type, until)}
+            variant="contained"
+          >
             Kaydet
           </Button>
         </DialogActions>
@@ -602,7 +598,6 @@ const CalendarComponent = ({ user }) => {
     );
   };
 
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   return (
     <Paper ref={paperRef} sx={styles.container}>
       <Box sx={styles.controls}>
@@ -610,6 +605,10 @@ const CalendarComponent = ({ user }) => {
           variant="contained"
           startIcon={<Add />}
           onClick={() => setOpenDialog(true)}
+          sx={{
+            fontSize: { xs: "0.75rem", sm: "0.875rem", md: "inherit" },
+            padding: { xs: "6px 12px", sm: "8px 16px", md: "10px 20px" },
+          }}
         >
           Yeni Etkinlik
         </Button>
@@ -645,6 +644,8 @@ const CalendarComponent = ({ user }) => {
             left: "prev,next today",
             center: "title",
             right: isMobile
+              ? "dayGridMonth,timeGridWeek,timeGridDay"
+              : isTablet
               ? "dayGridMonth,timeGridWeek,timeGridDay,multiMonthYear"
               : "dayGridMonth,timeGridWeek,timeGridDay,multiMonthYear,fullscreenButton",
           }}
@@ -769,22 +770,26 @@ const CalendarComponent = ({ user }) => {
             border: "1px solid rgba(33, 150, 243, 0.2)",
             color: "#fff",
             p: 2,
+            maxWidth: { xs: "95vw", sm: "500px" },
+            width: { xs: "95vw", sm: "auto" },
           },
         }}
       >
-        <DialogTitle>Etkinlik Detayları</DialogTitle>
+        <DialogTitle sx={{ fontSize: { xs: "1.1rem", md: "1.25rem" } }}>
+          Etkinlik Detayları
+        </DialogTitle>
         <DialogContent sx={styles.dialogContent}>
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: "1rem", md: "1.25rem" } }}>
             {selectedEvent?.title}
           </Typography>
-          <Typography variant="body2" color="#fff">
+          <Typography variant="body2" color="#fff" sx={{ fontSize: { xs: "0.85rem", md: "1rem" } }}>
             Başlangıç:{" "}
             {selectedEvent?.start?.toFormat("dd.MM.yyyy HH:mm") || "-"}
           </Typography>
-          <Typography variant="body2" color="#fff">
+          <Typography variant="body2" color="#fff" sx={{ fontSize: { xs: "0.85rem", md: "1rem" } }}>
             Bitiş: {selectedEvent?.end?.toFormat("dd.MM.yyyy HH:mm") || "-"}
           </Typography>
-          <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
+          <Box sx={{ mt: 2, display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1 }}>
             <Button
               variant="contained"
               startIcon={<Edit />}
@@ -792,6 +797,7 @@ const CalendarComponent = ({ user }) => {
                 setEditEvent(selectedEvent);
                 setOpenEditDialog(true);
               }}
+              sx={{ fontSize: { xs: "0.8rem", md: "inherit" } }}
             >
               Düzenle
             </Button>
@@ -804,6 +810,7 @@ const CalendarComponent = ({ user }) => {
                   selectedEvent.notificationId
                 )
               }
+              sx={{ fontSize: { xs: "0.8rem", md: "inherit" } }}
             >
               Sil
             </Button>
@@ -832,19 +839,40 @@ const renderEventContent = (eventInfo) => {
       sx={{
         backgroundColor: eventInfo.event.backgroundColor,
         // Mobilde daha geniş padding, yuvarlatılmış kenarlar ve hafif gölge ile Apple Calendar benzeri görünüm
-        padding: { xs: "8px 12px", md: "6px 10px" },
-        borderRadius: "8px",
+        padding: { xs: "4px 6px", sm: "6px 8px", md: "6px 10px" },
+        borderRadius: "6px",
         boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-        lineHeight: 1.4,
+        lineHeight: 1.2,
         width: "100%",
         color: "#fff",
+        minHeight: { xs: "20px", sm: "24px", md: "28px" },
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
       }}
     >
-      <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.85rem" }}>
+      <Typography 
+        variant="body2" 
+        sx={{ 
+          fontWeight: 600, 
+          fontSize: { xs: "0.65rem", sm: "0.75rem", md: "0.85rem" },
+          lineHeight: 1.1,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
         {eventInfo.event.title}
       </Typography>
       {!isAllDay && (
-        <Typography variant="caption" sx={{ fontSize: "0.75rem" }}>
+        <Typography 
+          variant="caption" 
+          sx={{ 
+            fontSize: { xs: "0.55rem", sm: "0.65rem", md: "0.75rem" },
+            opacity: 0.9,
+            lineHeight: 1,
+          }}
+        >
           {startStr} - {endStr}
         </Typography>
       )}
@@ -870,6 +898,8 @@ const EventDialog = ({
   if (!event) return null;
 
   const [openColorPicker, setOpenColorPicker] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const handleAllDayChange = (e) => {
     setEvent((prev) => ({
@@ -914,10 +944,14 @@ const EventDialog = ({
             border: "1px solid rgba(33, 150, 243, 0.2)",
             color: "#fff",
             p: 2,
+            maxWidth: { xs: "95vw", sm: "600px" },
+            width: { xs: "95vw", sm: "auto" },
           },
         }}
       >
-        <DialogTitle>{title}</DialogTitle>
+        <DialogTitle sx={{ fontSize: { xs: "1.1rem", md: "1.25rem" } }}>
+          {title}
+        </DialogTitle>
         <DialogContent sx={{ py: 2, minWidth: { xs: "90vw", sm: 480 } }}>
           <TextField
             label="Etkinlik Başlığı"
@@ -927,7 +961,10 @@ const EventDialog = ({
             onChange={(e) =>
               setEvent((prev) => ({ ...(prev || {}), title: e.target.value }))
             }
-            sx={{ input: { color: "#fff" }, label: { color: "#fff" } }}
+            sx={{ 
+              input: { color: "#fff", fontSize: { xs: "0.9rem", md: "1rem" } }, 
+              label: { color: "#fff", fontSize: { xs: "0.85rem", md: "1rem" } } 
+            }}
           />
           <FormControlLabel
             control={
@@ -938,9 +975,13 @@ const EventDialog = ({
               />
             }
             label="Tüm Gün"
-            sx={{ mt: 1, color: "#fff" }}
+            sx={{ mt: 1, color: "#fff", fontSize: { xs: "0.85rem", md: "1rem" } }}
           />
-          <Box sx={styles.timeInputs}>
+          <Box sx={{
+            ...styles.timeInputs,
+            flexDirection: { xs: "column", sm: "row" },
+            gap: { xs: 1, sm: 2 }
+          }}>
             <TextField
               label="Başlangıç"
               type={event.allDay ? "date" : "datetime-local"}
@@ -956,7 +997,10 @@ const EventDialog = ({
                 handleDateTimeChange(e.target.value, true, event, setEvent)
               }
               fullWidth
-              sx={{ input: { color: "#fff" }, label: { color: "#fff" } }}
+              sx={{ 
+                input: { color: "#fff", fontSize: { xs: "0.85rem", md: "1rem" } }, 
+                label: { color: "#fff", fontSize: { xs: "0.8rem", md: "1rem" } } 
+              }}
             />
             <TextField
               label="Bitiş"
@@ -973,33 +1017,37 @@ const EventDialog = ({
                 handleDateTimeChange(e.target.value, false, event, setEvent)
               }
               fullWidth
-              sx={{ input: { color: "#fff" }, label: { color: "#fff" } }}
+              sx={{ 
+                input: { color: "#fff", fontSize: { xs: "0.85rem", md: "1rem" } }, 
+                label: { color: "#fff", fontSize: { xs: "0.8rem", md: "1rem" } } 
+              }}
             />
           </Box>
 
           {/* Renk Seçimi */}
-          <Typography variant="subtitle1" sx={{ mt: 2 }}>
+          <Typography variant="subtitle1" sx={{ mt: 2, fontSize: { xs: "0.9rem", md: "1rem" } }}>
             Seçili Renk
           </Typography>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, flexWrap: "wrap" }}>
             <Chip
               label=""
               sx={{
                 backgroundColor: event.color || colors.lavanta,
-                width: "1cm",
-                height: "1cm",
+                width: { xs: "2rem", md: "1cm" },
+                height: { xs: "2rem", md: "1cm" },
               }}
             />
             <Button
               variant="contained"
               onClick={() => setOpenColorPicker(true)}
+              sx={{ fontSize: { xs: "0.75rem", md: "inherit" } }}
             >
               Renk Seç
             </Button>
           </Box>
 
           {/* Bildirim Zamanı Seçimi */}
-          <Typography variant="subtitle1" sx={{ mt: 2 }}>
+          <Typography variant="subtitle1" sx={{ mt: 2, fontSize: { xs: "0.9rem", md: "1rem" } }}>
             Bildirim Zamanı
           </Typography>
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
@@ -1014,14 +1062,15 @@ const EventDialog = ({
                   }))
                 }
                 sx={{
-                  width: "4cm",
-                  height: "0,7cm",
+                  width: { xs: "calc(50% - 4px)", sm: "4cm" },
+                  height: { xs: "2rem", md: "0.7cm" },
                   backgroundColor:
                     (event.notification || "none") === option.value
                       ? "primary.main"
                       : "grey.500",
                   color: "#fff",
                   cursor: "pointer",
+                  fontSize: { xs: "0.7rem", md: "0.75rem" },
                 }}
               />
             ))}
@@ -1044,12 +1093,12 @@ const EventDialog = ({
                 />
               }
               label="Tekrarlı Etkinlik"
-              sx={{ color: "#fff" }}
+              sx={{ color: "#fff", fontSize: { xs: "0.85rem", md: "1rem" } }}
             />
           </Box>
           {event.isRecurring && (
             <>
-              <Typography variant="subtitle1" sx={{ mt: 2 }}>
+              <Typography variant="subtitle1" sx={{ mt: 2, fontSize: { xs: "0.9rem", md: "1rem" } }}>
                 Tekrarlama Türü
               </Typography>
               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
@@ -1064,14 +1113,15 @@ const EventDialog = ({
                       }))
                     }
                     sx={{
-                      width: "4cm",
-                      height: "0,7cm",
+                      width: { xs: "calc(50% - 4px)", sm: "4cm" },
+                      height: { xs: "2rem", md: "0.7cm" },
                       backgroundColor:
                         event.recurrenceType === option.value
                           ? "primary.main"
                           : "grey.500",
                       color: "#fff",
                       cursor: "pointer",
+                      fontSize: { xs: "0.7rem", md: "0.75rem" },
                     }}
                   />
                 ))}
@@ -1094,26 +1144,41 @@ const EventDialog = ({
                 }
                 fullWidth
                 sx={{
-                  input: { color: "#fff", mt: 1 },
-                  label: { color: "#fff" },
+                  input: { color: "#fff", mt: 1, fontSize: { xs: "0.85rem", md: "1rem" } },
+                  label: { color: "#fff", fontSize: { xs: "0.8rem", md: "1rem" } },
                 }}
               />
             </>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose} sx={{ color: "#fff" }}>
+        <DialogActions sx={{ 
+          flexDirection: { xs: "column", sm: "row" }, 
+          gap: { xs: 1, sm: 0 },
+          padding: { xs: 2, sm: 3 }
+        }}>
+          <Button 
+            onClick={onClose}
+            sx={{ 
+              fontSize: { xs: "0.8rem", md: "inherit" },
+              width: { xs: "100%", sm: "auto" }
+            }}
+          >
             İptal
           </Button>
           <Button
-            variant="contained"
             onClick={onSubmit}
-            disabled={!event.start?.isValid || !event.end?.isValid}
+            variant="contained"
+            sx={{ 
+              fontSize: { xs: "0.8rem", md: "inherit" },
+              width: { xs: "100%", sm: "auto" }
+            }}
           >
             Kaydet
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Renk Seçici Dialog */}
       <ColorPickerDialog
         container={container}
         open={openColorPicker}
@@ -1132,24 +1197,25 @@ const EventDialog = ({
 // Stil tanımları
 const styles = {
   container: {
-    p: 3,
-    borderRadius: 4,
-    boxShadow: (theme) => theme.shadows[3],
-    overflow: "visible",
     display: "flex",
     flexDirection: "column",
-    height: "95vh",
-    background:
-      "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
+    height: "100vh",
+    background: "linear-gradient(135deg, #1a2a6c, #2196F3 50%, #3F51B5 100%)",
     color: "#fff",
+    overflow: "hidden",
   },
   controls: {
-    mb: 2,
-    color: "#fff",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    p: { xs: 1, sm: 2, md: 3 },
+    background: "rgba(255,255,255,0.1)",
+    backdropFilter: "blur(10px)",
+    borderBottom: "1px solid rgba(255,255,255,0.2)",
   },
   calendarWrapper: {
     flex: 1,
-    minHeight: 600,
+    minHeight: { xs: 400, sm: 500, md: 600 },
     borderRadius: 5,
     background: "rgba(255,255,255,0.1)",
     backdropFilter: "blur(10px)",
@@ -1162,8 +1228,8 @@ const styles = {
       "& th": {
         background:
           "linear-gradient(135deg, #1a2a6c, #2196F3 50%, #3F51B5 100%)",
-        padding: "8px 4px",
-        //border: "1px solid rgba(255, 255, 255, 0.51) !important",
+        padding: { xs: "4px 2px", sm: "6px 3px", md: "8px 4px" },
+        fontSize: { xs: "0.7rem", sm: "0.8rem", md: "0.875rem" },
       },
       "& .fc-day-today": {
         backgroundColor: "rgba(19, 89, 107, 0.25)",
@@ -1180,6 +1246,7 @@ const styles = {
         boxShadow: "0px 2px 4px rgba(0,0,0,0.3)",
         cursor: "move",
         transition: "all 0.2s",
+        fontSize: { xs: "0.7rem", sm: "0.8rem", md: "0.875rem" },
         "&:hover": {
           boxShadow: "0px 4px 8px rgba(0,0,0,0.5)",
         },
@@ -1194,9 +1261,11 @@ const styles = {
           borderRadius: "8px",
           boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
           transition: "all 0.3s ease",
-          "@media (max-width:600px)": {
-            fontSize: "0.6rem !important", // !important ekledik
-            padding: "2px 4px !important", // !important ekledik
+          fontSize: { xs: "0.6rem", sm: "0.7rem", md: "0.875rem" },
+          padding: { xs: "2px 4px", sm: "4px 8px", md: "6px 12px" },
+          "&:hover": {
+            backgroundColor: "#2E5A8F",
+            transform: "translateY(-1px)",
           },
         },
         "& .fc-toolbar .fc-button": {
@@ -1206,50 +1275,40 @@ const styles = {
           borderRadius: "8px",
           boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
           transition: "all 0.3s ease",
-          "@media (max-width:600px)": {
-            fontSize: "0.6rem",
-            padding: "2px 4px",
+          fontSize: { xs: "0.6rem", sm: "0.7rem", md: "0.875rem" },
+          padding: { xs: "2px 4px", sm: "4px 8px", md: "6px 12px" },
+          "&:hover": {
+            backgroundColor: "#2E5A8F",
+            transform: "translateY(-1px)",
           },
         },
-
-        "& .fc-button:hover": {
-          backgroundColor: "#A1E3F9",
-          transform: "translateY(-2px)",
+        "& .fc-toolbar-title": {
+          fontSize: { xs: "0.9rem", sm: "1.1rem", md: "1.25rem" },
+          fontWeight: 600,
         },
-        "& .fc-button-primary.fc-button-active": {
-          backgroundColor: "#98E4FF",
-          color: "black",
+        "& .fc-daygrid-day-number": {
+          fontSize: { xs: "0.7rem", sm: "0.8rem", md: "0.875rem" },
+          padding: { xs: "2px", sm: "4px", md: "6px" },
+        },
+        "& .fc-timegrid-slot-label": {
+          fontSize: { xs: "0.6rem", sm: "0.7rem", md: "0.75rem" },
+        },
+        "& .fc-timegrid-axis": {
+          fontSize: { xs: "0.6rem", sm: "0.7rem", md: "0.75rem" },
         },
       },
     },
-    "& .fc-theme-standard .fc-scrollgrid": {
-      borderColor: "rgba(255, 255, 255, 0.2) !important",
-    },
-    "& .fc-theme-standard .fc-scrollgrid td, & .fc-theme-standard .fc-scrollgrid th":
-      {
-        border: "1px solid rgba(255, 255, 255, 0.2) !important",
-      },
-    "& .fc-toolbar-title": {
-      fontSize: "1.5rem",
-      fontWeight: "bold",
-      "@media (max-width:600px)": {
-        fontSize: "1.2rem",
-      },
-    },
-  },
-  dialogContent: {
-    py: 2,
-    minWidth: 400,
-    "& .MuiTextField-root": { my: 1 },
   },
   timeInputs: {
-    display: "grid",
+    display: "flex",
     gap: 2,
-    gridTemplateColumns: "1fr 1fr",
-    my: 2,
+    mt: 2,
   },
-  eventContent: {
-    color: "#fff",
+  dialogContent: {
+    minWidth: { xs: "90vw", sm: 400 },
+    "& .MuiTypography-root": {
+      color: "#fff",
+    },
   },
 };
 

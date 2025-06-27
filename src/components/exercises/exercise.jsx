@@ -33,6 +33,7 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
+  useMediaQuery,
 } from "@mui/material";
 import {
   Delete,
@@ -148,6 +149,7 @@ const getDifficultyColor = (difficulty) => {
 
 const Exercises = ({ exercises, setExercises }) => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [openModal, setOpenModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -646,7 +648,7 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
       sx={{
         minHeight: "100vh",
         background: "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
-        padding: { xs: 2, md: 4 },
+        padding: { xs: 1, sm: 2, md: 4 },
       }}
     >
       <Container maxWidth="lg">
@@ -656,32 +658,34 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
             textAlign: "center",
             color: "#fff",
             fontWeight: 800,
-            mb: 6,
+            mb: { xs: 3, md: 6 },
             textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
             animation: `${float} 3s ease-in-out infinite`,
-            fontSize: { xs: "2rem", md: "3rem" },
+            fontSize: { xs: "1.5rem", sm: "2rem", md: "3rem" },
           }}
         >
           <FitnessCenter
             sx={{
-              fontSize: { xs: 40, md: 50 },
+              fontSize: { xs: 30, sm: 40, md: 50 },
               verticalAlign: "middle",
-              mr: 2,
+              mr: { xs: 1, md: 2 },
             }}
           />
           AI Spor Koçu
         </Typography>
 
-        <GlowingCard $glowColor="#2196F3" sx={{ p: 4, mb: 4 }}>
+        <GlowingCard $glowColor="#2196F3" sx={{ p: { xs: 2, md: 4 }, mb: 4 }}>
           <Box
             sx={{
               display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
               justifyContent: "space-between",
-              alignItems: "center",
+              alignItems: { xs: "stretch", sm: "center" },
               mb: 4,
+              gap: { xs: 2, sm: 0 },
             }}
           >
-            <Typography variant="h5" sx={{ color: "#fff", fontWeight: 700 }}>
+            <Typography variant="h5" sx={{ color: "#fff", fontWeight: 700, fontSize: { xs: "1.2rem", md: "1.5rem" }, textAlign: { xs: "center", sm: "left" } }}>
               Kişiselleştirilmiş Spor Programı
             </Typography>
             <AnimatedButton
@@ -689,8 +693,9 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
               onClick={() => setOpenModal(true)}
               disabled={!canUseGemini()}
               sx={{
-                padding: { xs: "6px 14px", md: "12px 30px" },
-                fontSize: { xs: "0.6rem", md: "inherit" },
+                padding: { xs: "8px 16px", sm: "10px 20px", md: "12px 30px" },
+                fontSize: { xs: "0.7rem", sm: "0.8rem", md: "inherit" },
+                whiteSpace: "nowrap",
               }}
             >
               {canUseGemini() ? "Yeni Program Oluştur" : "Günlük Limit Doldu"}
@@ -698,7 +703,7 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
           </Box>
 
           {!canUseGemini() && (
-            <Alert severity="info" sx={{ mb: 3, background: "rgba(255,255,255,0.9)" }}>
+            <Alert severity="info" sx={{ mb: 3, background: "rgba(255,255,255,0.9)", fontSize: { xs: "0.8rem", md: "inherit" } }}>
               Günde sadece 3 kez program oluşturabilirsiniz. Yarın tekrar deneyin.
             </Alert>
           )}
@@ -707,26 +712,27 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
             <Box
               sx={{
                 textAlign: "center",
-                p: 4,
+                p: { xs: 3, md: 4 },
                 border: `2px dashed rgba(255,255,255,0.3)`,
                 borderRadius: 3,
               }}
             >
-              <Typography variant="h6" sx={{ color: "#fff", opacity: 0.8, mb: 2 }}>
+              <Typography variant="h6" sx={{ color: "#fff", opacity: 0.8, mb: 2, fontSize: { xs: "1rem", md: "1.25rem" } }}>
                 Henüz spor programınız yok
               </Typography>
-              <Typography variant="body1" sx={{ color: "#fff", opacity: 0.6, mb: 3 }}>
+              <Typography variant="body1" sx={{ color: "#fff", opacity: 0.6, mb: 3, fontSize: { xs: "0.9rem", md: "1rem" } }}>
                 AI spor koçumuz size özel bir program oluşturmak için hazır!
               </Typography>
               <AnimatedButton
                 onClick={() => setOpenModal(true)}
                 disabled={!canUseGemini()}
+                sx={{ fontSize: { xs: "0.8rem", md: "inherit" } }}
               >
                 İlk Programınızı Oluşturun
               </AnimatedButton>
             </Box>
           ) : (
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
               {exercises.map((exercise) => (
                 <Grid item xs={12} key={exercise.id}>
                   <GlowingCard
@@ -741,25 +747,25 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        p: 3,
+                        p: { xs: 2, md: 3 },
                         background: "linear-gradient(45deg, rgba(33,150,243,0.4) 0%, rgba(166,246,255,0.3) 100%)",
                         borderBottom: "1px solid rgba(255,255,255,0.1)",
                         cursor: "pointer",
                       }}
                       onClick={() => setExpandedId(expandedId === exercise.id ? null : exercise.id)}
                     >
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                        <FitnessCenter sx={{ fontSize: 30, color: "#4CAF50" }} />
-                        <Box>
-                          <Typography variant="h6" sx={{ color: "#fff", fontWeight: 600 }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 1, md: 2 }, flex: 1, minWidth: 0 }}>
+                        <FitnessCenter sx={{ fontSize: { xs: 24, md: 30 }, color: "#4CAF50", flexShrink: 0 }} />
+                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                          <Typography variant="h6" sx={{ color: "#fff", fontWeight: 600, fontSize: { xs: "1rem", md: "1.25rem" }, wordBreak: "break-word" }}>
                             {exercise.title}
                           </Typography>
-                          <Typography variant="body2" sx={{ color: "#fff", opacity: 0.8 }}>
+                          <Typography variant="body2" sx={{ color: "#fff", opacity: 0.8, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
                             {new Date(exercise.createdAt).toLocaleDateString('tr-TR')}
                           </Typography>
                         </Box>
                       </Box>
-                      <Box sx={{ display: "flex", gap: 1 }}>
+                      <Box sx={{ display: "flex", gap: 1, flexShrink: 0 }}>
                         <IconButton
                           size="small"
                           onClick={async (e) => {
@@ -805,13 +811,13 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
                     </Box>
 
                     <Collapse in={expandedId === exercise.id}>
-                      <Box sx={{ p: 3 }}>
+                      <Box sx={{ p: { xs: 2, md: 3 } }}>
                         {exercise.type === "ai-generated" && exercise.parsedContent ? (
                           <ProgramDisplay program={exercise.parsedContent} />
                         ) : exercise.type === "ai-generated" && exercise.content ? (
                           <ProgramDisplay program={parseProgram(exercise.content)} />
                         ) : (
-                          <Typography variant="body1" sx={{ color: "#fff" }}>
+                          <Typography variant="body1" sx={{ color: "#fff", fontSize: { xs: "0.9rem", md: "1rem" } }}>
                             {exercise.content}
                           </Typography>
                         )}
@@ -836,12 +842,13 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
               backdropFilter: "blur(10px)",
               borderRadius: "24px",
               border: "1px solid rgba(33, 150, 243, 0.2)",
+              m: { xs: 2, md: 0 },
             },
           }}
         >
-          <DialogTitle sx={{ fontWeight: 700, textAlign: "center" }}>
+          <DialogTitle sx={{ fontWeight: 700, textAlign: "center", p: { xs: 2, md: 3 } }}>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <Typography variant="h5" sx={{ color: "#2196F3" }}>
+              <Typography variant="h5" sx={{ color: "#2196F3", fontSize: { xs: "1.2rem", md: "1.5rem" } }}>
                 AI Spor Koçu
               </Typography>
               <IconButton onClick={() => setOpenModal(false)}>
@@ -849,48 +856,9 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
               </IconButton>
             </Box>
           </DialogTitle>
-
-          <DialogContent>
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="h6" sx={{ mb: 2, color: "#2196F3" }}>
-                Profil Bilgileriniz
-              </Typography>
-              <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={6} md={3}>
-                  <Paper sx={{ p: 2, textAlign: "center", background: "rgba(33,150,243,0.1)" }}>
-                    <Person sx={{ color: "#2196F3", mb: 1 }} />
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {profileData.firstName || "Belirtilmemiş"}
-                    </Typography>
-                  </Paper>
-                </Grid>
-                <Grid item xs={6} md={3}>
-                  <Paper sx={{ p: 2, textAlign: "center", background: "rgba(33,150,243,0.1)" }}>
-                    <Typography variant="h6" sx={{ color: "#2196F3" }}>
-                      {profileData.age || "?"}
-                    </Typography>
-                    <Typography variant="body2">Yaş</Typography>
-                  </Paper>
-                </Grid>
-                <Grid item xs={6} md={3}>
-                  <Paper sx={{ p: 2, textAlign: "center", background: "rgba(33,150,243,0.1)" }}>
-                    <Typography variant="h6" sx={{ color: "#2196F3" }}>
-                      {profileData.height || "?"}
-                    </Typography>
-                    <Typography variant="body2">Boy (cm)</Typography>
-                  </Paper>
-                </Grid>
-                <Grid item xs={6} md={3}>
-                  <Paper sx={{ p: 2, textAlign: "center", background: "rgba(33,150,243,0.1)" }}>
-                    <Typography variant="h6" sx={{ color: "#2196F3" }}>
-                      {profileData.weight || "?"}
-                    </Typography>
-                    <Typography variant="body2">Kilo (kg)</Typography>
-                  </Paper>
-                </Grid>
-              </Grid>
-
-              <Typography variant="h6" sx={{ mb: 2, color: "#2196F3" }}>
+          <DialogContent sx={{ p: { xs: 2, md: 3 } }}>
+            <Box>
+              <Typography variant="h6" sx={{ mb: 2, color: "#2196F3", fontSize: { xs: "1rem", md: "1.25rem" } }}>
                 Spor Hedefleriniz ve İstekleriniz
               </Typography>
               <TextField
@@ -905,16 +873,16 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
               />
 
               {error && (
-                <Alert severity="error" sx={{ mb: 3 }}>
+                <Alert severity="error" sx={{ mb: 3, fontSize: { xs: "0.8rem", md: "inherit" } }}>
                   {error}
                 </Alert>
               )}
 
-              <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
+              <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "center", gap: 2 }}>
                 <Button
                   variant="outlined"
                   onClick={() => setOpenModal(false)}
-                  sx={{ borderColor: "#2196F3", color: "#2196F3" }}
+                  sx={{ borderColor: "#2196F3", color: "#2196F3", fontSize: { xs: "0.8rem", md: "inherit" } }}
                 >
                   İptal
                 </Button>
@@ -922,6 +890,7 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
                   onClick={generatePersonalizedProgram}
                   disabled={loading || !userRequest.trim()}
                   startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <FitnessCenter />}
+                  sx={{ fontSize: { xs: "0.8rem", md: "inherit" } }}
                 >
                   {loading ? "Program Oluşturuluyor..." : "Program Oluştur"}
                 </AnimatedButton>
@@ -944,11 +913,11 @@ const ProgramDisplay = ({ program }) => {
     <Box sx={{ color: "#fff" }}>
       {/* Program Özeti */}
       {program.summary && (
-        <Paper sx={{ p: 3, mb: 3, background: "rgba(33,150,243,0.1)", border: "1px solid rgba(33,150,243,0.3)" }}>
-          <Typography variant="h6" sx={{ color: "#2196F3", mb: 2, fontWeight: 600 }}>
+        <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3, background: "rgba(33,150,243,0.1)", border: "1px solid rgba(33,150,243,0.3)" }}>
+          <Typography variant="h6" sx={{ color: "#2196F3", mb: 2, fontWeight: 600, fontSize: { xs: "1rem", md: "1.25rem" } }}>
             📋 Program Özeti
           </Typography>
-          <Typography variant="body1" sx={{ color: "#fff" }}>
+          <Typography variant="body1" sx={{ color: "#fff", fontSize: { xs: "0.9rem", md: "1rem" } }}>
             {program.summary}
           </Typography>
         </Paper>
@@ -956,17 +925,17 @@ const ProgramDisplay = ({ program }) => {
 
       {/* Hedefler */}
       {program.goals.length > 0 && (
-        <Paper sx={{ p: 3, mb: 3, background: "rgba(76,175,80,0.1)", border: "1px solid rgba(76,175,80,0.3)" }}>
-          <Typography variant="h6" sx={{ color: "#4CAF50", mb: 2, fontWeight: 600 }}>
+        <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3, background: "rgba(76,175,80,0.1)", border: "1px solid rgba(76,175,80,0.3)" }}>
+          <Typography variant="h6" sx={{ color: "#4CAF50", mb: 2, fontWeight: 600, fontSize: { xs: "1rem", md: "1.25rem" } }}>
             🎯 Hedefler
           </Typography>
           <List dense>
             {program.goals.map((goal, index) => (
               <ListItem key={index} sx={{ py: 0.5 }}>
                 <ListItemIcon>
-                  <TrendingUp sx={{ color: "#4CAF50", fontSize: 20 }} />
+                  <TrendingUp sx={{ color: "#4CAF50", fontSize: { xs: 18, md: 20 } }} />
                 </ListItemIcon>
-                <ListItemText primary={goal} sx={{ color: "#fff" }} />
+                <ListItemText primary={goal} sx={{ color: "#fff", fontSize: { xs: "0.85rem", md: "1rem" } }} />
               </ListItem>
             ))}
           </List>
@@ -974,91 +943,106 @@ const ProgramDisplay = ({ program }) => {
       )}
 
       {/* Haftalık Program */}
-      <Typography variant="h6" sx={{ color: "#FF9800", mb: 2, fontWeight: 600 }}>
+      <Typography variant="h6" sx={{ color: "#FF9800", mb: 2, fontWeight: 600, fontSize: { xs: "1rem", md: "1.25rem" } }}>
         📅 Haftalık Program
       </Typography>
       
-      {Object.entries(program.weeklyProgram).map(([day, dayProgram]) => (
-        <StyledAccordion
-          key={day}
-          expanded={expandedDay === day}
-          onChange={() => setExpandedDay(expandedDay === day ? null : day)}
-        >
-          <StyledAccordionSummary expandIcon={<ExpandMore sx={{ color: "#fff" }} />}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2, width: "100%" }}>
-              {getDayIcon(day)}
-              <Typography variant="h6" sx={{ color: "#fff", fontWeight: 600 }}>
-                {day}
-              </Typography>
-              {dayProgram.duration && (
-                <Chip
-                  icon={<AccessTime />}
-                  label={dayProgram.duration}
-                  size="small"
-                  sx={{ background: "rgba(255,255,255,0.2)", color: "#fff" }}
-                />
+      {(() => {
+        // Günleri doğru sırada göstermek için sıralama
+        const dayOrder = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+        const sortedDays = Object.entries(program.weeklyProgram).sort((a, b) => {
+          const aIndex = dayOrder.indexOf(a[0]);
+          const bIndex = dayOrder.indexOf(b[0]);
+          return aIndex - bIndex;
+        });
+
+        return sortedDays.map(([day, dayProgram]) => (
+          <StyledAccordion
+            key={day}
+            expanded={expandedDay === day}
+            onChange={() => setExpandedDay(expandedDay === day ? null : day)}
+          >
+            <StyledAccordionSummary expandIcon={<ExpandMore sx={{ color: "#fff" }} />}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 1, md: 2 }, width: "100%", flexWrap: "wrap" }}>
+                {getDayIcon(day)}
+                <Typography variant="h6" sx={{ color: "#fff", fontWeight: 600, fontSize: { xs: "0.9rem", md: "1.25rem" } }}>
+                  {day}
+                </Typography>
+                {dayProgram.duration && (
+                  <Chip
+                    icon={<AccessTime />}
+                    label={dayProgram.duration}
+                    size="small"
+                    sx={{ background: "rgba(255,255,255,0.2)", color: "#fff", fontSize: { xs: "0.7rem", md: "0.75rem" } }}
+                  />
+                )}
+                {dayProgram.difficulty && (
+                  <Chip
+                    label={dayProgram.difficulty}
+                    size="small"
+                    sx={{ 
+                      background: getDifficultyColor(dayProgram.difficulty),
+                      color: "#fff",
+                      fontWeight: 600,
+                      fontSize: { xs: "0.7rem", md: "0.75rem" }
+                    }}
+                  />
+                )}
+              </Box>
+            </StyledAccordionSummary>
+            <AccordionDetails sx={{ background: "rgba(0,0,0,0.1)" }}>
+              {dayProgram.exercises.length > 0 ? (
+                <List dense>
+                  {dayProgram.exercises.map((exercise, index) => (
+                    <ListItem key={index} sx={{ py: 1 }}>
+                      <ListItemIcon>
+                        <FitnessCenter sx={{ color: "#FF9800", fontSize: { xs: 18, md: 20 } }} />
+                      </ListItemIcon>
+                      <ListItemText 
+                        primary={exercise.name || exercise}
+                        secondary={exercise.sets || exercise}
+                        sx={{ 
+                          color: "#fff",
+                          "& .MuiListItemText-primary": { fontSize: { xs: "0.85rem", md: "1rem" } },
+                          "& .MuiListItemText-secondary": { fontSize: { xs: "0.75rem", md: "0.875rem" } }
+                        }}
+                      />
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          const searchTerm = encodeURIComponent(exercise.videoSearch || exercise.name || exercise);
+                          window.open(`https://www.youtube.com/results?search_query=${searchTerm}`, '_blank');
+                        }}
+                        sx={{ color: "#FF0000" }}
+                      >
+                        <YouTube />
+                      </IconButton>
+                    </ListItem>
+                  ))}
+                </List>
+              ) : (
+                <Typography variant="body1" sx={{ color: "#fff", opacity: 0.8, fontSize: { xs: "0.9rem", md: "1rem" } }}>
+                  Dinlenme günü
+                </Typography>
               )}
-              {dayProgram.difficulty && (
-                <Chip
-                  label={dayProgram.difficulty}
-                  size="small"
-                  sx={{ 
-                    background: getDifficultyColor(dayProgram.difficulty),
-                    color: "#fff",
-                    fontWeight: 600
-                  }}
-                />
-              )}
-            </Box>
-          </StyledAccordionSummary>
-          <AccordionDetails sx={{ background: "rgba(0,0,0,0.1)" }}>
-            {dayProgram.exercises.length > 0 ? (
-              <List dense>
-                {dayProgram.exercises.map((exercise, index) => (
-                  <ListItem key={index} sx={{ py: 1 }}>
-                    <ListItemIcon>
-                      <FitnessCenter sx={{ color: "#FF9800", fontSize: 20 }} />
-                    </ListItemIcon>
-                    <ListItemText 
-                      primary={exercise.name || exercise}
-                      secondary={exercise.sets || exercise}
-                      sx={{ color: "#fff" }}
-                    />
-                    <IconButton
-                      size="small"
-                      onClick={() => {
-                        const searchTerm = encodeURIComponent(exercise.videoSearch || exercise.name || exercise);
-                        window.open(`https://www.youtube.com/results?search_query=${searchTerm}`, '_blank');
-                      }}
-                      sx={{ color: "#FF0000" }}
-                    >
-                      <YouTube />
-                    </IconButton>
-                  </ListItem>
-                ))}
-              </List>
-            ) : (
-              <Typography variant="body1" sx={{ color: "#fff", opacity: 0.8 }}>
-                Dinlenme günü
-              </Typography>
-            )}
-          </AccordionDetails>
-        </StyledAccordion>
-      ))}
+            </AccordionDetails>
+          </StyledAccordion>
+        ));
+      })()}
 
       {/* Önemli Notlar */}
       {program.notes.length > 0 && (
-        <Paper sx={{ p: 3, mt: 3, background: "rgba(255,152,0,0.1)", border: "1px solid rgba(255,152,0,0.3)" }}>
-          <Typography variant="h6" sx={{ color: "#FF9800", mb: 2, fontWeight: 600 }}>
+        <Paper sx={{ p: { xs: 2, md: 3 }, mt: 3, background: "rgba(255,152,0,0.1)", border: "1px solid rgba(255,152,0,0.3)" }}>
+          <Typography variant="h6" sx={{ color: "#FF9800", mb: 2, fontWeight: 600, fontSize: { xs: "1rem", md: "1.25rem" } }}>
             💡 Önemli Notlar
           </Typography>
           <List dense>
             {program.notes.map((note, index) => (
               <ListItem key={index} sx={{ py: 0.5 }}>
                 <ListItemIcon>
-                  <Typography sx={{ color: "#FF9800", fontSize: 20 }}>•</Typography>
+                  <Typography sx={{ color: "#FF9800", fontSize: { xs: 18, md: 20 } }}>•</Typography>
                 </ListItemIcon>
-                <ListItemText primary={note} sx={{ color: "#fff" }} />
+                <ListItemText primary={note} sx={{ color: "#fff", fontSize: { xs: "0.85rem", md: "1rem" } }} />
               </ListItem>
             ))}
           </List>
@@ -1067,11 +1051,11 @@ const ProgramDisplay = ({ program }) => {
 
       {/* Video Önerileri */}
       {program.videoSuggestions.length > 0 && (
-        <Paper sx={{ p: 3, mt: 3, background: "rgba(244,67,54,0.1)", border: "1px solid rgba(244,67,54,0.3)" }}>
-          <Typography variant="h6" sx={{ color: "#F44336", mb: 2, fontWeight: 600 }}>
+        <Paper sx={{ p: { xs: 2, md: 3 }, mt: 3, background: "rgba(244,67,54,0.1)", border: "1px solid rgba(244,67,54,0.3)" }}>
+          <Typography variant="h6" sx={{ color: "#F44336", mb: 2, fontWeight: 600, fontSize: { xs: "1rem", md: "1.25rem" } }}>
             🎥 Video Önerileri
           </Typography>
-          <Typography variant="body2" sx={{ color: "#fff", mb: 2 }}>
+          <Typography variant="body2" sx={{ color: "#fff", mb: 2, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
             Her egzersiz için YouTube'da arama yapabileceğiniz anahtar kelimeler:
           </Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
@@ -1089,6 +1073,7 @@ const ProgramDisplay = ({ program }) => {
                   background: "rgba(244,67,54,0.2)",
                   color: "#fff",
                   cursor: "pointer",
+                  fontSize: { xs: "0.7rem", md: "0.75rem" },
                   "&:hover": {
                     background: "rgba(244,67,54,0.4)",
                   }

@@ -645,7 +645,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
       sx={{
         background: "linear-gradient(135deg, #dbe9ff 0%, #f0f5ff 100%)",
         minHeight: "100vh",
-        p: isMobile ? 2 : 4,
+        p: isMobile ? 1 : 4,
       }}
     >
       <Box sx={{ maxWidth: 1440, margin: "0 auto" }}>
@@ -655,15 +655,17 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
             background:
               "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
             borderRadius: 4,
-            p: 4,
+            p: { xs: 2, md: 4 },
             mb: 4,
             boxShadow: 3,
           }}
         >
           <Box
             display="flex"
+            flexDirection={{ xs: "column", sm: "row" }}
             justifyContent="space-between"
-            alignItems="center"
+            alignItems={{ xs: "stretch", sm: "center" }}
+            gap={{ xs: 2, sm: 0 }}
           >
             <Box>
               <Typography
@@ -672,18 +674,18 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                   textAlign: "center",
                   color: "#fff",
                   fontWeight: 800,
-                  mb: { xs: 3, sm: 6 },
-                  mr: { xs: 7, sm: 0 },
+                  mb: { xs: 2, sm: 3, md: 6 },
+                  mr: { xs: 0, sm: 7 },
                   textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
                   animation: `${fadeIn} 1s ease, ${float} 6s ease-in-out infinite`,
-                  fontSize: { xs: "1rem", sm: "3rem", md: "4rem" },
+                  fontSize: { xs: "1.5rem", sm: "2rem", md: "3rem", lg: "4rem" },
                 }}
               >
                 <LocalHospital
                   sx={{
-                    fontSize: { xs: 30, sm: 50 },
+                    fontSize: { xs: 24, sm: 30, md: 50 },
                     verticalAlign: "middle",
-                    mr: 2,
+                    mr: { xs: 1, md: 2 },
                   }}
                 />
                 Sağlık Panosu
@@ -694,7 +696,8 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                   color: "#fff",
                   textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
                   animation: `${float} 6s ease-in-out infinite`,
-                  fontSize: { xs: "0.9rem", sm: "1rem" },
+                  fontSize: { xs: "0.8rem", sm: "0.9rem", md: "1rem" },
+                  textAlign: { xs: "center", sm: "left" },
                 }}
               >
                 {new Date().toLocaleDateString("tr-TR", {
@@ -712,12 +715,14 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
               disabled={loading || apiCooldown || !canUseGemini()}
               sx={{
                 borderRadius: "12px",
-                py: 1.5,
-                px: 4,
+                py: { xs: 1, md: 1.5 },
+                px: { xs: 2, md: 4 },
                 fontWeight: 600,
                 textTransform: "none",
                 background: "rgba(255,255,255,0.2)",
                 backdropFilter: "blur(10px)",
+                fontSize: { xs: "0.75rem", sm: "0.8rem", md: "inherit" },
+                whiteSpace: "nowrap",
                 "&:hover": { background: "rgba(255,255,255,0.3)" },
               }}
             >
@@ -728,37 +733,37 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
           </Box>
         </Box>
         {/* Metrikler */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid container spacing={2} sx={{ mb: 4 }}>
           {[
             {
-              icon: <Cake sx={{ fontSize: 24 }} />,
+              icon: <Cake sx={{ fontSize: { xs: 20, md: 24 } }} />,
               title: "Yaş",
               value: profileData.age,
               color: theme.palette.secondary.main,
             },
             {
-              icon: <Height sx={{ fontSize: 24 }} />,
+              icon: <Height sx={{ fontSize: { xs: 20, md: 24 } }} />,
               title: "Boy",
               value: profileData.height,
               unit: "cm",
               color: theme.palette.info.main,
             },
             {
-              icon: <Scale sx={{ fontSize: 24 }} />,
+              icon: <Scale sx={{ fontSize: { xs: 20, md: 24 } }} />,
               title: "Kilo",
               value: profileData.weight,
               unit: "kg",
               color: theme.palette.warning.main,
             },
             {
-              icon: <FitnessCenter sx={{ fontSize: 24 }} />,
+              icon: <FitnessCenter sx={{ fontSize: { xs: 20, md: 24 } }} />,
               title: "VKİ",
               value: calculateBMI()?.value,
               unit: calculateBMI()?.status,
               color: theme.palette.success.main,
             },
           ].map((metric, index) => (
-            <Grid item xs={12} sm={6} md={3} key={index}>
+            <Grid item xs={6} sm={6} md={3} key={index}>
               <MetricCard {...metric} />
             </Grid>
           ))}
@@ -766,10 +771,12 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
         {/* Kişiselleştirilmiş Öneriler Header with Accordion for History */}
         <Box
           display="flex"
+          flexDirection={{ xs: "column", sm: "row" }}
           justifyContent="space-between"
-          alignItems="center"
+          alignItems={{ xs: "stretch", sm: "center" }}
           mb={3}
           position="relative"
+          gap={{ xs: 2, sm: 0 }}
         >
           <Typography
             variant="h4"
@@ -778,7 +785,8 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
               fontFamily: '"Montserrat", sans-serif',
               letterSpacing: "0.5px",
               color: "#1a2a6c",
-              fontSize: { xs: "1.5rem" },
+              fontSize: { xs: "1.2rem", sm: "1.5rem", md: "1.875rem" },
+              textAlign: { xs: "center", sm: "left" },
             }}
           >
             Kişiselleştirilmiş Öneriler
@@ -792,11 +800,12 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
               onClick={(e) => setShowHistory(!showHistory)}
               sx={{
                 borderRadius: "12px",
-                py: 1,
-                px: 3,
+                py: { xs: 0.5, md: 1 },
+                px: { xs: 2, md: 3 },
                 fontWeight: 600,
                 color: "#1a2a6c",
                 borderColor: "#1a2a6c",
+                fontSize: { xs: "0.75rem", md: "inherit" },
                 "&:hover": { borderColor: "#2196F3" },
               }}
             >
@@ -809,7 +818,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                   right: 0,
                   top: "100%",
                   mt: 1,
-                  width: 300,
+                  width: { xs: 280, sm: 300 },
                   maxHeight: 400,
                   bgcolor: "background.paper",
                   borderRadius: "12px",
@@ -819,54 +828,34 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                   border: "1px solid #e0e0e0",
                 }}
               >
-                <Box
-                  sx={{
-                    maxHeight: 380,
-                    overflowY: "auto",
-                    p: 2,
-                    "&::-webkit-scrollbar": { width: "6px" },
-                    "&::-webkit-scrollbar-thumb": {
-                      backgroundColor: "#1a2a6c",
-                      borderRadius: "3px",
-                    },
-                  }}
-                >
-                  {healthData.recommendationsHistory?.length > 0 ? (
+                <Box sx={{ p: 2, borderBottom: "1px solid #e0e0e0" }}>
+                  <Typography variant="subtitle2" fontWeight={600}>
+                    Önceki Öneriler
+                  </Typography>
+                </Box>
+                <Box sx={{ maxHeight: 350, overflow: "auto" }}>
+                  {healthData.recommendationsHistory && healthData.recommendationsHistory.length > 0 ? (
                     healthData.recommendationsHistory.map((rec, index) => (
                       <Box
                         key={index}
                         sx={{
+                          p: 2,
+                          borderBottom: "1px solid #f0f0f0",
                           cursor: "pointer",
-                          p: 1.5,
-                          mb: 1,
-                          borderRadius: "8px",
-                          transition: "all 0.2s ease",
-                          "&:hover": {
-                            backgroundColor: "#f5f5f5",
-                            transform: "translateX(4px)",
-                          },
+                          "&:hover": { bgcolor: "#f5f5f5" },
                         }}
                         onClick={() => handleSelectRecommendation(rec)}
                       >
-                        <Typography variant="body2" fontWeight={500}>
-                          {rec.displayDate || rec.date}
+                        <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
+                          {rec.displayDate || new Date(rec.date).toLocaleDateString("tr-TR")}
                         </Typography>
-                        <Typography
-                          variant="caption"
-                          color="textSecondary"
-                          sx={{
-                            display: "-webkit-box",
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                          }}
-                        >
-                          {rec.content}
+                        <Typography variant="body2" color="textSecondary" sx={{ fontSize: "0.8rem" }}>
+                          {rec.content.substring(0, 100)}...
                         </Typography>
                       </Box>
                     ))
                   ) : (
-                    <Typography variant="body2" color="textSecondary">
+                    <Typography variant="body2" color="textSecondary" sx={{ p: 2 }}>
                       Önceki öneri bulunamadı.
                     </Typography>
                   )}
@@ -890,14 +879,14 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                 boxShadow: 3,
               }}
             >
-              <CardContent sx={{ color: "white", py: 4 }}>
+              <CardContent sx={{ color: "white", py: { xs: 3, md: 4 }, px: { xs: 2, md: 3 } }}>
                 <Typography
                   variant="h4"
                   sx={{
                     textAlign: "center",
                     fontWeight: 700,
                     mb: 2,
-                    fontSize: { xs: "1.5rem", md: "2rem" },
+                    fontSize: { xs: "1.2rem", sm: "1.5rem", md: "2rem" },
                   }}
                 >
                   {parsed.parsedData.title}
@@ -906,7 +895,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                   variant="body1"
                   sx={{
                     textAlign: "center",
-                    fontSize: "1.1rem",
+                    fontSize: { xs: "0.9rem", sm: "1rem", md: "1.1rem" },
                     lineHeight: 1.8,
                     opacity: 0.9,
                   }}
@@ -917,9 +906,9 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
             </Card>
 
             {/* Bölümler */}
-            <Grid container spacing={4}>
+            <Grid container spacing={2}>
               {Object.entries(parsed.parsedData.sections).map(([key, section], index) => (
-                <Grid item xs={12} md={6} lg={4} key={key}>
+                <Grid item xs={12} sm={6} lg={4} key={key}>
                   <Card
                     sx={{
                       height: "100%",
@@ -934,13 +923,13 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                       },
                     }}
                   >
-                    <CardContent sx={{ height: "100%", p: 3 }}>
+                    <CardContent sx={{ height: "100%", p: { xs: 2, md: 3 } }}>
                       <Box
                         sx={{
                           display: "flex",
                           flexDirection: "column",
                           height: "100%",
-                          gap: 2.5,
+                          gap: 2,
                         }}
                       >
                         <Typography
@@ -951,11 +940,12 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                             pb: 2,
                             mb: 2,
                             fontWeight: 700,
-                            fontSize: "1.25rem",
+                            fontSize: { xs: "1rem", sm: "1.1rem", md: "1.25rem" },
                             letterSpacing: "0.5px",
                             display: "flex",
                             alignItems: "center",
                             gap: 1,
+                            wordBreak: "break-word",
                           }}
                         >
                           <span>{section.icon}</span>
@@ -967,7 +957,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                           sx={{
                             color: "rgba(255,255,255,0.95)",
                             flex: 1,
-                            fontSize: "0.95rem",
+                            fontSize: { xs: "0.85rem", sm: "0.9rem", md: "0.95rem" },
                             lineHeight: 1.8,
                             mb: 2,
                           }}
@@ -978,10 +968,10 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                         {/* Özel içerik türleri */}
                         {section.tips && (
                           <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
                               💡 İpuçları:
                             </Typography>
-                            <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 20 }}>
+                            <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 20, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
                               {section.tips.map((tip, idx) => (
                                 <li key={idx}>{tip}</li>
                               ))}
@@ -991,10 +981,10 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 
                         {section.recommendations && (
                           <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
                               📋 Öneriler:
                             </Typography>
-                            <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 20 }}>
+                            <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 20, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
                               {section.recommendations.map((rec, idx) => (
                                 <li key={idx}>{rec}</li>
                               ))}
@@ -1004,15 +994,15 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 
                         {section.phases && (
                           <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
                               📅 Aşamalar:
                             </Typography>
                             {section.phases.map((phase, idx) => (
                               <Box key={idx} sx={{ mb: 1, p: 1, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 1 }}>
-                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600 }}>
+                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
                                   {phase.phase}
                                 </Typography>
-                                <ul style={{ color: "rgba(255,255,255,0.9)", margin: "4px 0 0 0", paddingLeft: 20 }}>
+                                <ul style={{ color: "rgba(255,255,255,0.9)", margin: "4px 0 0 0", paddingLeft: 20, fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
                                   {phase.exercises.map((exercise, exIdx) => (
                                     <li key={exIdx}>{exercise}</li>
                                   ))}
@@ -1024,12 +1014,12 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 
                         {section.meals && (
                           <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
                               🍽️ Öğünler:
                             </Typography>
                             {Object.entries(section.meals).map(([mealType, meal]) => (
                               <Box key={mealType} sx={{ mb: 1 }}>
-                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, textTransform: "capitalize" }}>
+                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, textTransform: "capitalize", fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
                                   {mealType === "breakfast" ? "Kahvaltı" : 
                                    mealType === "lunch" ? "Öğle" : 
                                    mealType === "dinner" ? "Akşam" : "Ara Öğün"}: {meal}
@@ -1041,15 +1031,15 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 
                         {section.recipeName && (
                           <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
                               👨‍🍳 {section.recipeName}
                             </Typography>
                             {section.ingredients && (
                               <Box sx={{ mb: 1 }}>
-                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600 }}>
+                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
                                   Malzemeler:
                                 </Typography>
-                                <ul style={{ color: "rgba(255,255,255,0.9)", margin: "4px 0 0 0", paddingLeft: 20 }}>
+                                <ul style={{ color: "rgba(255,255,255,0.9)", margin: "4px 0 0 0", paddingLeft: 20, fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
                                   {section.ingredients.map((ingredient, idx) => (
                                     <li key={idx}>{ingredient}</li>
                                   ))}
@@ -1057,7 +1047,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                               </Box>
                             )}
                             {section.instructions && (
-                              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)" }}>
+                              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
                                 {section.instructions}
                               </Typography>
                             )}
@@ -1066,11 +1056,11 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 
                         {section.quote && (
                           <Box sx={{ mt: 2, p: 2, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2, textAlign: "center" }}>
-                            <Typography variant="body2" sx={{ color: "#fff", fontStyle: "italic", mb: 1 }}>
+                            <Typography variant="body2" sx={{ color: "#fff", fontStyle: "italic", mb: 1, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
                               "{section.quote}"
                             </Typography>
                             {section.dailyGoal && (
-                              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>
+                              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", fontWeight: 600, fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
                                 🎯 {section.dailyGoal}
                               </Typography>
                             )}
@@ -1079,15 +1069,15 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 
                         {section.books && (
                           <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
                               📚 Kitap Önerileri:
                             </Typography>
                             {section.books.map((book, idx) => (
                               <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2 }}>
-                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.5 }}>
+                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.5, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
                                   "{book.title}" - {book.author}
                                 </Typography>
-                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: "0.85rem" }}>
+                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: { xs: "0.7rem", md: "0.85rem" } }}>
                                   {book.description}
                                 </Typography>
                                 <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
@@ -1097,38 +1087,18 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                                     sx={{ 
                                       bgcolor: "rgba(255,255,255,0.2)", 
                                       color: "#fff",
-                                      fontSize: "0.7rem"
-                                    }} 
+                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
+                                    }}
                                   />
                                   <Chip 
                                     label={book.language} 
                                     size="small" 
                                     sx={{ 
-                                      bgcolor: "rgba(33,150,243,0.2)", 
+                                      bgcolor: "rgba(255,255,255,0.2)", 
                                       color: "#fff",
-                                      fontSize: "0.7rem"
-                                    }} 
+                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
+                                    }}
                                   />
-                                  <Chip 
-                                    label={book.difficulty} 
-                                    size="small" 
-                                    sx={{ 
-                                      bgcolor: "rgba(76,175,80,0.2)", 
-                                      color: "#fff",
-                                      fontSize: "0.7rem"
-                                    }} 
-                                  />
-                                  {book.pages && (
-                                    <Chip 
-                                      label={`${book.pages} sayfa`} 
-                                      size="small" 
-                                      sx={{ 
-                                        bgcolor: "rgba(255,152,0,0.2)", 
-                                        color: "#fff",
-                                        fontSize: "0.7rem"
-                                      }} 
-                                    />
-                                  )}
                                 </Box>
                                 <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
                                   {book.buyLink && (
@@ -1139,7 +1109,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                                       sx={{
                                         bgcolor: "rgba(76,175,80,0.2)",
                                         color: "#fff",
-                                        fontSize: "0.7rem",
+                                        fontSize: { xs: "0.6rem", md: "0.7rem" },
                                         py: 0.5,
                                         px: 1,
                                         "&:hover": { bgcolor: "rgba(76,175,80,0.3)" }
@@ -1154,15 +1124,15 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                                       startIcon={<Book />}
                                       onClick={() => window.open(book.pdfLink, '_blank')}
                                       sx={{
-                                        bgcolor: "rgba(255,152,0,0.2)",
+                                        bgcolor: "rgba(33,150,243,0.2)",
                                         color: "#fff",
-                                        fontSize: "0.7rem",
+                                        fontSize: { xs: "0.6rem", md: "0.7rem" },
                                         py: 0.5,
                                         px: 1,
-                                        "&:hover": { bgcolor: "rgba(255,152,0,0.3)" }
+                                        "&:hover": { bgcolor: "rgba(33,150,243,0.3)" }
                                       }}
                                     >
-                                      PDF İndir
+                                      PDF
                                     </Button>
                                   )}
                                 </Box>
@@ -1173,43 +1143,36 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 
                         {section.articles && (
                           <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
                               📰 Makale Önerileri:
                             </Typography>
                             {section.articles.map((article, idx) => (
-                              <Box key={idx} sx={{ mb: 1, p: 1.5, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 1 }}>
-                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.5 }}>
+                              <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2 }}>
+                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.5, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
                                   {article.title}
                                 </Typography>
-                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", mb: 1, fontSize: "0.8rem" }}>
+                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: { xs: "0.7rem", md: "0.85rem" } }}>
                                   {article.summary}
                                 </Typography>
-                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
-                                  <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.7)", fontSize: "0.75rem" }}>
-                                    Kaynak: {article.source}
-                                  </Typography>
-                                  {article.category && (
-                                    <Chip 
-                                      label={article.category} 
-                                      size="small" 
-                                      sx={{ 
-                                        bgcolor: "rgba(156,39,176,0.2)", 
-                                        color: "#fff",
-                                        fontSize: "0.6rem"
-                                      }} 
-                                    />
-                                  )}
-                                  {article.readingTime && (
-                                    <Chip 
-                                      label={`${article.readingTime} dk`} 
-                                      size="small" 
-                                      sx={{ 
-                                        bgcolor: "rgba(0,150,136,0.2)", 
-                                        color: "#fff",
-                                        fontSize: "0.6rem"
-                                      }} 
-                                    />
-                                  )}
+                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                                  <Chip 
+                                    label={article.category} 
+                                    size="small" 
+                                    sx={{ 
+                                      bgcolor: "rgba(255,255,255,0.2)", 
+                                      color: "#fff",
+                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
+                                    }}
+                                  />
+                                  <Chip 
+                                    label={article.readingTime} 
+                                    size="small" 
+                                    sx={{ 
+                                      bgcolor: "rgba(255,255,255,0.2)", 
+                                      color: "#fff",
+                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
+                                    }}
+                                  />
                                 </Box>
                                 {article.url && (
                                   <Button
@@ -1219,7 +1182,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                                     sx={{
                                       bgcolor: "rgba(33,150,243,0.2)",
                                       color: "#fff",
-                                      fontSize: "0.7rem",
+                                      fontSize: { xs: "0.6rem", md: "0.7rem" },
                                       py: 0.5,
                                       px: 1,
                                       mt: 1,
@@ -1236,54 +1199,36 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 
                         {section.videos && (
                           <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
                               🎥 Video Önerileri:
                             </Typography>
                             {section.videos.map((video, idx) => (
                               <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2 }}>
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                                  <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600 }}>
-                                    {video.title}
-                                  </Typography>
+                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.5, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
+                                  {video.title}
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: { xs: "0.7rem", md: "0.85rem" } }}>
+                                  {video.description}
+                                </Typography>
+                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                                  <Chip 
+                                    label={video.category} 
+                                    size="small" 
+                                    sx={{ 
+                                      bgcolor: "rgba(255,255,255,0.2)", 
+                                      color: "#fff",
+                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
+                                    }}
+                                  />
                                   <Chip 
                                     label={video.duration} 
                                     size="small" 
                                     sx={{ 
-                                      bgcolor: "rgba(255,0,0,0.2)", 
+                                      bgcolor: "rgba(255,255,255,0.2)", 
                                       color: "#fff",
-                                      fontSize: "0.7rem"
-                                    }} 
+                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
+                                    }}
                                   />
-                                </Box>
-                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: "0.85rem" }}>
-                                  {video.description}
-                                </Typography>
-                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
-                                  <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.7)", fontSize: "0.75rem" }}>
-                                    Kanal: {video.channel}
-                                  </Typography>
-                                  {video.category && (
-                                    <Chip 
-                                      label={video.category} 
-                                      size="small" 
-                                      sx={{ 
-                                        bgcolor: "rgba(255,152,0,0.2)", 
-                                        color: "#fff",
-                                        fontSize: "0.6rem"
-                                      }} 
-                                    />
-                                  )}
-                                  {video.language && (
-                                    <Chip 
-                                      label={video.language} 
-                                      size="small" 
-                                      sx={{ 
-                                        bgcolor: "rgba(33,150,243,0.2)", 
-                                        color: "#fff",
-                                        fontSize: "0.6rem"
-                                      }} 
-                                    />
-                                  )}
                                 </Box>
                                 {video.url && (
                                   <Button
@@ -1291,16 +1236,16 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                                     startIcon={<YouTube />}
                                     onClick={() => window.open(video.url, '_blank')}
                                     sx={{
-                                      bgcolor: "rgba(255,0,0,0.2)",
+                                      bgcolor: "rgba(244,67,54,0.2)",
                                       color: "#fff",
-                                      fontSize: "0.7rem",
+                                      fontSize: { xs: "0.6rem", md: "0.7rem" },
                                       py: 0.5,
                                       px: 1,
                                       mt: 1,
-                                      "&:hover": { bgcolor: "rgba(255,0,0,0.3)" }
+                                      "&:hover": { bgcolor: "rgba(244,67,54,0.3)" }
                                     }}
                                   >
-                                    YouTube'da İzle
+                                    İzle
                                   </Button>
                                 )}
                               </Box>
@@ -1310,54 +1255,36 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 
                         {section.documentaries && (
                           <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
                               📺 Dokümanter Önerileri:
                             </Typography>
                             {section.documentaries.map((doc, idx) => (
                               <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2 }}>
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                                  <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600 }}>
-                                    {doc.title}
-                                  </Typography>
+                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.5, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
+                                  {doc.title}
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: { xs: "0.7rem", md: "0.85rem" } }}>
+                                  {doc.description}
+                                </Typography>
+                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                                  <Chip 
+                                    label={doc.platform} 
+                                    size="small" 
+                                    sx={{ 
+                                      bgcolor: "rgba(255,255,255,0.2)", 
+                                      color: "#fff",
+                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
+                                    }}
+                                  />
                                   <Chip 
                                     label={doc.duration} 
                                     size="small" 
                                     sx={{ 
-                                      bgcolor: "rgba(0,150,136,0.2)", 
+                                      bgcolor: "rgba(255,255,255,0.2)", 
                                       color: "#fff",
-                                      fontSize: "0.7rem"
-                                    }} 
+                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
+                                    }}
                                   />
-                                </Box>
-                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: "0.85rem" }}>
-                                  {doc.description}
-                                </Typography>
-                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
-                                  <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.7)", fontSize: "0.75rem" }}>
-                                    Platform: {doc.platform}
-                                  </Typography>
-                                  {doc.category && (
-                                    <Chip 
-                                      label={doc.category} 
-                                      size="small" 
-                                      sx={{ 
-                                        bgcolor: "rgba(156,39,176,0.2)", 
-                                        color: "#fff",
-                                        fontSize: "0.6rem"
-                                      }} 
-                                    />
-                                  )}
-                                  {doc.year && (
-                                    <Chip 
-                                      label={doc.year} 
-                                      size="small" 
-                                      sx={{ 
-                                        bgcolor: "rgba(76,175,80,0.2)", 
-                                        color: "#fff",
-                                        fontSize: "0.6rem"
-                                      }} 
-                                    />
-                                  )}
                                 </Box>
                                 <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
                                   {doc.watchLink && (
@@ -1368,7 +1295,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                                       sx={{
                                         bgcolor: "rgba(0,150,136,0.2)",
                                         color: "#fff",
-                                        fontSize: "0.7rem",
+                                        fontSize: { xs: "0.6rem", md: "0.7rem" },
                                         py: 0.5,
                                         px: 1,
                                         "&:hover": { bgcolor: "rgba(0,150,136,0.3)" }
@@ -1385,7 +1312,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                                       sx={{
                                         bgcolor: "rgba(255,152,0,0.2)",
                                         color: "#fff",
-                                        fontSize: "0.7rem",
+                                        fontSize: { xs: "0.6rem", md: "0.7rem" },
                                         py: 0.5,
                                         px: 1,
                                         "&:hover": { bgcolor: "rgba(255,152,0,0.3)" }
@@ -1402,65 +1329,36 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 
                         {section.series && (
                           <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
                               📺 Dizi Önerileri:
                             </Typography>
                             {section.series.map((series, idx) => (
                               <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2 }}>
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                                  <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600 }}>
-                                    {series.title}
-                                  </Typography>
-                                  <Chip 
-                                    label={series.rating} 
-                                    size="small" 
-                                    sx={{ 
-                                      bgcolor: "rgba(255,0,0,0.2)", 
-                                      color: "#fff",
-                                      fontSize: "0.7rem"
-                                    }} 
-                                  />
-                                </Box>
-                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: "0.85rem" }}>
+                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.5, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
+                                  {series.title}
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: { xs: "0.7rem", md: "0.85rem" } }}>
                                   {series.description}
                                 </Typography>
-                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
-                                  <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.7)", fontSize: "0.75rem" }}>
-                                    Platform: {series.platform}
-                                  </Typography>
-                                  {series.seasons && (
-                                    <Chip 
-                                      label={`${series.seasons} sezon`} 
-                                      size="small" 
-                                      sx={{ 
-                                        bgcolor: "rgba(255,152,0,0.2)", 
-                                        color: "#fff",
-                                        fontSize: "0.6rem"
-                                      }} 
-                                    />
-                                  )}
-                                  {series.episodes && (
-                                    <Chip 
-                                      label={`${series.episodes} bölüm`} 
-                                      size="small" 
-                                      sx={{ 
-                                        bgcolor: "rgba(33,150,243,0.2)", 
-                                        color: "#fff",
-                                        fontSize: "0.6rem"
-                                      }} 
-                                    />
-                                  )}
-                                  {series.category && (
-                                    <Chip 
-                                      label={series.category} 
-                                      size="small" 
-                                      sx={{ 
-                                        bgcolor: "rgba(156,39,176,0.2)", 
-                                        color: "#fff",
-                                        fontSize: "0.6rem"
-                                      }} 
-                                    />
-                                  )}
+                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                                  <Chip 
+                                    label={series.platform} 
+                                    size="small" 
+                                    sx={{ 
+                                      bgcolor: "rgba(255,255,255,0.2)", 
+                                      color: "#fff",
+                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
+                                    }}
+                                  />
+                                  <Chip 
+                                    label={`${series.seasons} Sezon`} 
+                                    size="small" 
+                                    sx={{ 
+                                      bgcolor: "rgba(255,255,255,0.2)", 
+                                      color: "#fff",
+                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
+                                    }}
+                                  />
                                 </Box>
                                 <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
                                   {series.watchLink && (
@@ -1471,7 +1369,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                                       sx={{
                                         bgcolor: "rgba(156,39,176,0.2)",
                                         color: "#fff",
-                                        fontSize: "0.7rem",
+                                        fontSize: { xs: "0.6rem", md: "0.7rem" },
                                         py: 0.5,
                                         px: 1,
                                         "&:hover": { bgcolor: "rgba(156,39,176,0.3)" }
@@ -1488,7 +1386,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                                       sx={{
                                         bgcolor: "rgba(255,152,0,0.2)",
                                         color: "#fff",
-                                        fontSize: "0.7rem",
+                                        fontSize: { xs: "0.6rem", md: "0.7rem" },
                                         py: 0.5,
                                         px: 1,
                                         "&:hover": { bgcolor: "rgba(255,152,0,0.3)" }
@@ -1505,54 +1403,36 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 
                         {section.podcasts && (
                           <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
                               🎧 Podcast Önerileri:
                             </Typography>
                             {section.podcasts.map((podcast, idx) => (
                               <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2 }}>
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                                  <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600 }}>
-                                    {podcast.title}
-                                  </Typography>
+                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.5, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
+                                  {podcast.title}
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: { xs: "0.7rem", md: "0.85rem" } }}>
+                                  {podcast.description}
+                                </Typography>
+                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                                  <Chip 
+                                    label={podcast.platform} 
+                                    size="small" 
+                                    sx={{ 
+                                      bgcolor: "rgba(255,255,255,0.2)", 
+                                      color: "#fff",
+                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
+                                    }}
+                                  />
                                   <Chip 
                                     label={podcast.duration} 
                                     size="small" 
                                     sx={{ 
-                                      bgcolor: "rgba(156,39,176,0.2)", 
+                                      bgcolor: "rgba(255,255,255,0.2)", 
                                       color: "#fff",
-                                      fontSize: "0.7rem"
-                                    }} 
+                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
+                                    }}
                                   />
-                                </Box>
-                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: "0.85rem" }}>
-                                  {podcast.description}
-                                </Typography>
-                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
-                                  <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.7)", fontSize: "0.75rem" }}>
-                                    Sunucu: {podcast.host} • Bölüm: {podcast.episode}
-                                  </Typography>
-                                  {podcast.category && (
-                                    <Chip 
-                                      label={podcast.category} 
-                                      size="small" 
-                                      sx={{ 
-                                        bgcolor: "rgba(76,175,80,0.2)", 
-                                        color: "#fff",
-                                        fontSize: "0.6rem"
-                                      }} 
-                                    />
-                                  )}
-                                  {podcast.platform && (
-                                    <Chip 
-                                      label={podcast.platform} 
-                                      size="small" 
-                                      sx={{ 
-                                        bgcolor: "rgba(255,152,0,0.2)", 
-                                        color: "#fff",
-                                        fontSize: "0.6rem"
-                                      }} 
-                                    />
-                                  )}
                                 </Box>
                                 {podcast.listenLink && (
                                   <Button
@@ -1560,13 +1440,13 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                                     startIcon={<Headphones />}
                                     onClick={() => window.open(podcast.listenLink, '_blank')}
                                     sx={{
-                                      bgcolor: "rgba(156,39,176,0.2)",
+                                      bgcolor: "rgba(255,193,7,0.2)",
                                       color: "#fff",
-                                      fontSize: "0.7rem",
+                                      fontSize: { xs: "0.6rem", md: "0.7rem" },
                                       py: 0.5,
                                       px: 1,
                                       mt: 1,
-                                      "&:hover": { bgcolor: "rgba(156,39,176,0.3)" }
+                                      "&:hover": { bgcolor: "rgba(255,193,7,0.3)" }
                                     }}
                                   >
                                     Dinle
@@ -1585,7 +1465,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 
             {/* Öncelik ve Sonraki Adımlar */}
             {(parsed.parsedData.priority || parsed.parsedData.nextSteps) && (
-              <Grid container spacing={3} sx={{ mt: 3 }}>
+              <Grid container spacing={2} sx={{ mt: 3 }}>
                 {parsed.parsedData.priority && (
                   <Grid item xs={12} md={6}>
                     <Card
@@ -1595,11 +1475,11 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                         boxShadow: 3,
                       }}
                     >
-                      <CardContent sx={{ color: "white", py: 3 }}>
-                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+                      <CardContent sx={{ color: "white", py: { xs: 2, md: 3 }, px: { xs: 2, md: 3 } }}>
+                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, fontSize: { xs: "1rem", md: "1.25rem" } }}>
                           🎯 Öncelikli Öneriler
                         </Typography>
-                        <Typography variant="body1">
+                        <Typography variant="body1" sx={{ fontSize: { xs: "0.85rem", md: "1rem" } }}>
                           {parsed.parsedData.priority}
                         </Typography>
                       </CardContent>
@@ -1615,11 +1495,11 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                         boxShadow: 3,
                       }}
                     >
-                      <CardContent sx={{ color: "white", py: 3 }}>
-                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+                      <CardContent sx={{ color: "white", py: { xs: 2, md: 3 }, px: { xs: 2, md: 3 } }}>
+                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, fontSize: { xs: "1rem", md: "1.25rem" } }}>
                           📅 Yarın İçin Plan
                         </Typography>
-                        <Typography variant="body1">
+                        <Typography variant="body1" sx={{ fontSize: { xs: "0.85rem", md: "1rem" } }}>
                           {parsed.parsedData.nextSteps}
                         </Typography>
                       </CardContent>
@@ -1628,104 +1508,6 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                 )}
               </Grid>
             )}
-          </Box>
-        ) : parsed.fallbackData ? (
-          /* Fallback Format Render */
-          <Box>
-            {parsed.fallbackData.preamble && (
-              <Grid item xs={12}>
-                <Card
-                  sx={{
-                    width: "100%",
-                    mb: 4,
-                    background:
-                      "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
-                    borderRadius: "16px",
-                    boxShadow: 3,
-                  }}
-                >
-                  <CardContent sx={{ color: "white", py: 4 }}>
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        whiteSpace: "pre-line",
-                        fontSize: "1.1rem",
-                        lineHeight: 1.8,
-                        textAlign: "center",
-                        fontStyle: "italic",
-                      }}
-                    >
-                      {parsed.fallbackData.preamble}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            )}
-            <Grid container spacing={4}>
-              <Grid item xs={12}>
-                <Grid container spacing={3}>
-                  {parsed.fallbackData.sections.map((section, index) => (
-                    <Grid item xs={12} md={6} lg={4} key={index}>
-                      <Card
-                        sx={{
-                          height: "100%",
-                          background:
-                            "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
-                          borderRadius: "16px",
-                          transition:
-                            "transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out",
-                          "&:hover": {
-                            transform: "translateY(-5px)",
-                            boxShadow: theme.shadows[10],
-                          },
-                        }}
-                      >
-                        <CardContent sx={{ height: "100%", p: 3 }}>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              flexDirection: "column",
-                              height: "100%",
-                              gap: 2.5,
-                            }}
-                          >
-                            <Typography
-                              variant="h6"
-                              sx={{
-                                color: "#fff",
-                                borderBottom: "2px solid rgba(255,255,255,0.2)",
-                                pb: 2,
-                                mb: 2,
-                                fontWeight: 700,
-                                fontSize: "1.25rem",
-                                letterSpacing: "0.5px",
-                              }}
-                            >
-                              {section.number
-                                ? `${section.number}. ${section.heading}`
-                                : section.heading}
-                            </Typography>
-                            <Typography
-                              component="div"
-                              sx={{
-                                color: "rgba(255,255,255,0.95)",
-                                flex: 1,
-                                fontSize: "0.95rem",
-                                lineHeight: 1.8,
-                              }}
-                            >
-                              {section.content.split("\n").map((paragraph, idx) => (
-                                <p key={idx}>{paragraph}</p>
-                              ))}
-                            </Typography>
-                          </Box>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Grid>
-            </Grid>
           </Box>
         ) : (
           /* Öneri yoksa boş durum */
@@ -1738,11 +1520,11 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
               boxShadow: 3,
             }}
           >
-            <CardContent sx={{ color: "white", py: 6, textAlign: "center" }}>
-              <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
+            <CardContent sx={{ color: "white", py: { xs: 4, md: 6 }, px: { xs: 2, md: 3 }, textAlign: "center" }}>
+              <Typography variant="h5" sx={{ mb: 2, fontWeight: 600, fontSize: { xs: "1.2rem", md: "1.5rem" } }}>
                 🏥 Kişiselleştirilmiş Sağlık Rehberi
               </Typography>
-              <Typography variant="body1" sx={{ opacity: 0.9 }}>
+              <Typography variant="body1" sx={{ opacity: 0.9, fontSize: { xs: "0.9rem", md: "1rem" } }}>
                 AI destekli sağlık önerilerinizi oluşturmak için yukarıdaki butona tıklayın.
               </Typography>
             </CardContent>

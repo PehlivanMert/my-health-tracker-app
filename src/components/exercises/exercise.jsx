@@ -396,16 +396,24 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
       
       setGeneratedProgram(parsedProgram);
 
-      // Firestore'a kaydet
+      // Yeni programı exercises listesine ekle
+      const newExercise = {
+        id: Date.now().toString(),
+        title: parsedProgram.title || "Kişiselleştirilmiş Spor Programı",
+        content: programText,
+        parsedContent: parsedProgram,
+        createdAt: new Date().toISOString(),
+        type: "ai-generated"
+      };
+
+      // Mevcut exercises listesine yeni programı ekle
+      const updatedExercises = [...exercises, newExercise];
+      setExercises(updatedExercises);
+
+      // Firestore'a kaydet (mevcut exercises'i koruyarak)
       const userDocRef = doc(db, "users", auth.currentUser?.uid);
       await updateDoc(userDocRef, {
-        exercises: [{
-          id: Date.now().toString(),
-          title: "Kişiselleştirilmiş Spor Programı",
-          content: programText,
-          createdAt: new Date().toISOString(),
-          type: "ai-generated"
-        }]
+        exercises: updatedExercises
       });
 
       // Gemini kullanım sayacını artır
@@ -761,9 +769,20 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
                       <Box sx={{ display: "flex", gap: 1 }}>
                         <IconButton
                           size="small"
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation();
-                            setExercises(exercises.filter((e) => e.id !== exercise.id));
+                            const updatedExercises = exercises.filter((e) => e.id !== exercise.id);
+                            setExercises(updatedExercises);
+                            
+                            // Firestore'dan da sil
+                            try {
+                              const userDocRef = doc(db, "users", auth.currentUser?.uid);
+                              await updateDoc(userDocRef, {
+                                exercises: updatedExercises
+                              });
+                            } catch (error) {
+                              toast.error("Program silinirken hata oluştu!");
+                            }
                           }}
                           sx={{
                             color: "#FF5252",
@@ -794,7 +813,9 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
 
                     <Collapse in={expandedId === exercise.id}>
                       <Box sx={{ p: 3 }}>
-                        {exercise.type === "ai-generated" && exercise.content ? (
+                        {exercise.type === "ai-generated" && exercise.parsedContent ? (
+                          <ProgramDisplay program={exercise.parsedContent} />
+                        ) : exercise.type === "ai-generated" && exercise.content ? (
                           <ProgramDisplay program={parseProgram(exercise.content)} />
                         ) : (
                           <Typography variant="body1" sx={{ color: "#fff" }}>

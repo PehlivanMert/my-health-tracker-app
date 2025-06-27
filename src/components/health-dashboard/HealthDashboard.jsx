@@ -81,7 +81,7 @@ const HealthDashboard = ({ user }) => {
 
   useEffect(() => {
     const fetchGeminiUsage = async () => {
-      const usageDocRef = doc(db, "users", user.uid, "apiUsage", "gemini");
+      const usageDocRef = doc(db, "users", user.uid, "apiUsage", "healthDashboard");
       const docSnap = await getDoc(usageDocRef);
       if (docSnap.exists()) {
         setGeminiUsage(docSnap.data());
@@ -101,7 +101,7 @@ const HealthDashboard = ({ user }) => {
 
   // Gemini kullanım sınırını kontrol eden fonksiyon: Eğer kullanım sayısı 2'ye ulaşmışsa false döner.
   const canUseGemini = () => {
-    if (!geminiUsage) return false; // Veriler henüz yüklenmediyse false döndür
+    if (!geminiUsage) return true; // Veriler henüz yüklenmediyse true döndür (buton aktif olsun)
     const todayStr = new Date().toISOString().slice(0, 10);
     if (geminiUsage.date !== todayStr) return true; // Yeni gün, sayaç sıfırlanır
     return geminiUsage.count < 2;
@@ -110,7 +110,7 @@ const HealthDashboard = ({ user }) => {
   // Gemini API kullanımı sonrası sayacı bir artıran fonksiyon
   const incrementGeminiUsage = async () => {
     const todayStr = new Date().toISOString().slice(0, 10);
-    const usageDocRef = doc(db, "users", user.uid, "apiUsage", "gemini");
+    const usageDocRef = doc(db, "users", user.uid, "apiUsage", "healthDashboard");
     let updatedUsage = { ...geminiUsage };
     if (geminiUsage.date !== todayStr) {
       updatedUsage = { date: todayStr, count: 1 };
@@ -258,23 +258,91 @@ ${JSON.stringify(healthData.supplementStats, null, 2) || "Veri yok"}
 
 Tarih ve Saat: ${currentDateTime}
 
-🌟 *Bilimsel ama Eğlenceli Öneriler İstiyorum* 🌟
-Aşağıdaki başlıkları içeren kesinlikle 3000 karakteri geçmeyen bir rehber hazırla:
-1 Su Tüketimi: Hidrasyon analizi ve yaratıcı su içme taktikleri
-2 Takviyeler: Kullanım trendleri ve uzman görüşü
-3 VKİ Yorumu: Mevcut değerinin bilimsel analizi
-4 Hareket Planı: Kişiye özel 3 aşamalı egzersiz programı
-5 Beslenme: Eğlenceli besin kombinasyonları
-6 Şefin Önerisi: Sağlıklı bir tarif (malzeme listeli)
-7️ Motivasyon: Günün bilimsel ilham sözü
+🌟 *Kişiselleştirilmiş Sağlık Rehberi* 🌟
 
-🔍 *İstenen Format:*
-▸ Ana başlıkları normal Rakamlar ile maddelendirerek ve sade metin formatında yaz (Örn: "1. Su Tüketimi:")
-▸ Her başlığı 300-400 karakter arasında tut
-▸ Her maddeyi 🧊💡🏋️♀️ gibi emojilerle süsle
-▸ Bilimsel terimleri günlük dile çevir (Örn: "Hidrasyon" yerine "Su Dostluğu")
-▸ Kullanıcıya özel metaforlar kullan (Örn: "Su içmeyi unutuyorsan telefonuna 'Susuzluk Alarmı' kuralım!")
-▸ Pozitif vurgu yap (Eleştirel değil teşvik edici dil)`;
+Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık rehberi hazırla:
+
+{
+  "title": "🏥 KİŞİSELLEŞTİRİLMİŞ SAĞLIK REHBERİ",
+  "summary": "Kullanıcının mevcut durumuna göre hazırlanmış kapsamlı sağlık önerileri",
+  "sections": {
+    "waterIntake": {
+      "title": "💧 Su Tüketimi Analizi",
+      "content": "Hidrasyon durumu ve yaratıcı su içme taktikleri (300-400 karakter)",
+      "icon": "🧊",
+      "tips": ["İpucu 1", "İpucu 2", "İpucu 3"]
+    },
+    "supplements": {
+      "title": "💊 Takviye Kullanım Rehberi",
+      "content": "Kullanım trendleri ve uzman görüşü (300-400 karakter)",
+      "icon": "💡",
+      "recommendations": ["Öneri 1", "Öneri 2"]
+    },
+    "bmiAnalysis": {
+      "title": "📊 VKİ Bilimsel Analizi",
+      "content": "Mevcut değerin detaylı analizi ve öneriler (300-400 karakter)",
+      "icon": "📈",
+      "status": "Mevcut durum",
+      "advice": "Uzman tavsiyesi"
+    },
+    "exercisePlan": {
+      "title": "🏋️♀️ Kişiye Özel Hareket Planı",
+      "content": "3 aşamalı egzersiz programı (300-400 karakter)",
+      "icon": "💪",
+      "phases": [
+        {
+          "phase": "Başlangıç (1-2 hafta)",
+          "exercises": ["Egzersiz 1", "Egzersiz 2"]
+        },
+        {
+          "phase": "Gelişim (3-4 hafta)",
+          "exercises": ["Egzersiz 1", "Egzersiz 2"]
+        },
+        {
+          "phase": "İleri (5-6 hafta)",
+          "exercises": ["Egzersiz 1", "Egzersiz 2"]
+        }
+      ]
+    },
+    "nutrition": {
+      "title": "🥗 Beslenme Önerileri",
+      "content": "Eğlenceli besin kombinasyonları (300-400 karakter)",
+      "icon": "🍎",
+      "meals": {
+        "breakfast": "Kahvaltı önerisi",
+        "lunch": "Öğle yemeği önerisi",
+        "dinner": "Akşam yemeği önerisi",
+        "snacks": "Ara öğün önerileri"
+      }
+    },
+    "recipe": {
+      "title": "👨‍🍳 Şefin Önerisi",
+      "content": "Sağlıklı bir tarif (300-400 karakter)",
+      "icon": "🍽️",
+      "recipeName": "Tarif adı",
+      "ingredients": ["Malzeme 1", "Malzeme 2", "Malzeme 3"],
+      "instructions": "Hazırlanış adımları"
+    },
+    "motivation": {
+      "title": "🌟 Günün Motivasyonu",
+      "content": "Bilimsel ilham sözü ve kişisel hedef (300-400 karakter)",
+      "icon": "✨",
+      "quote": "İlham verici söz",
+      "dailyGoal": "Günlük hedef"
+    }
+  },
+  "priority": "En önemli 3 öneri",
+  "nextSteps": "Yarın için plan"
+}
+
+🔍 *ÖNEMLİ KURALLAR:*
+1. SADECE JSON formatında cevap ver, başka hiçbir metin ekleme
+2. Her bölümü kullanıcının mevcut durumuna göre kişiselleştir
+3. Bilimsel terimleri günlük dile çevir
+4. Pozitif ve teşvik edici dil kullan
+5. Kullanıcının yaş, cinsiyet, VKİ ve su/takviye verilerini dikkate al
+6. Gerçekçi ve uygulanabilir öneriler ver
+7. JSON formatını bozma, geçerli JSON olsun`;
 
       // Gemini AI kullanarak öneri oluştur
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
@@ -336,8 +404,44 @@ Aşağıdaki başlıkları içeren kesinlikle 3000 karakteri geçmeyen bir rehbe
     }
   }, [user]);
 
-  // Öneri metnini bölümlere ayırıyoruz.
+  // Öneri metnini JSON formatında parse ediyoruz.
   const parseRecommendations = () => {
+    if (!recommendations) return { parsedData: null, fallbackData: null };
+
+    try {
+      // JSON'u temizle ve parse et
+      let cleanText = recommendations.trim();
+      
+      // Eğer JSON başlangıcı ve bitişi varsa, sadece o kısmı al
+      const jsonStart = cleanText.indexOf('{');
+      const jsonEnd = cleanText.lastIndexOf('}');
+      
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        cleanText = cleanText.substring(jsonStart, jsonEnd + 1);
+      }
+      
+      // JSON'u parse et
+      const parsedData = JSON.parse(cleanText);
+      
+      // Gerekli alanları kontrol et ve varsayılan değerler ata
+      const validatedData = {
+        title: parsedData.title || '🏥 KİŞİSELLEŞTİRİLMİŞ SAĞLIK REHBERİ',
+        summary: parsedData.summary || 'Kişiselleştirilmiş sağlık önerileri',
+        sections: parsedData.sections || {},
+        priority: parsedData.priority || 'Önemli öneriler',
+        nextSteps: parsedData.nextSteps || 'Yarın için plan'
+      };
+      
+      return { parsedData: validatedData, fallbackData: null };
+      
+    } catch (error) {
+      // Fallback: Eski parse yöntemini dene
+      return { parsedData: null, fallbackData: parseRecommendationsFallback() };
+    }
+  };
+
+  // Eski parse yöntemi (fallback için)
+  const parseRecommendationsFallback = () => {
     if (!recommendations) return { preamble: null, sections: [] };
 
     const lines = recommendations.split("\n");
@@ -520,7 +624,9 @@ Aşağıdaki başlıkları içeren kesinlikle 3000 karakteri geçmeyen bir rehbe
                 "&:hover": { background: "rgba(255,255,255,0.3)" },
               }}
             >
-              Günlük Kişisel Önerini Oluştur
+              {loading ? "Öneri Oluşturuluyor..." : 
+               !canUseGemini() ? "Günlük Limit Doldu" : 
+               "Günlük Kişisel Önerini Oluştur"}
             </Button>
           </Box>
         </Box>
@@ -673,9 +779,10 @@ Aşağıdaki başlıkları içeren kesinlikle 3000 karakteri geçmeyen bir rehbe
           </Box>
         </Box>
         {/* Kişiselleştirilmiş Öneriler Content */}
-        {/* Header, metrikler ve diğer bileşenler */}
-        {parsed.preamble && (
-          <Grid item xs={12}>
+        {/* JSON Format Render */}
+        {parsed.parsedData ? (
+          <Box>
+            {/* Başlık ve Özet */}
             <Card
               sx={{
                 width: "100%",
@@ -688,26 +795,34 @@ Aşağıdaki başlıkları içeren kesinlikle 3000 karakteri geçmeyen bir rehbe
             >
               <CardContent sx={{ color: "white", py: 4 }}>
                 <Typography
-                  variant="body1"
+                  variant="h4"
                   sx={{
-                    whiteSpace: "pre-line",
-                    fontSize: "1.1rem",
-                    lineHeight: 1.8,
                     textAlign: "center",
-                    fontStyle: "italic",
+                    fontWeight: 700,
+                    mb: 2,
+                    fontSize: { xs: "1.5rem", md: "2rem" },
                   }}
                 >
-                  {parsed.preamble}
+                  {parsed.parsedData.title}
+                </Typography>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    textAlign: "center",
+                    fontSize: "1.1rem",
+                    lineHeight: 1.8,
+                    opacity: 0.9,
+                  }}
+                >
+                  {parsed.parsedData.summary}
                 </Typography>
               </CardContent>
             </Card>
-          </Grid>
-        )}
-        <Grid container spacing={4}>
-          <Grid item xs={12}>
-            <Grid container spacing={3}>
-              {parsed.sections.map((section, index) => (
-                <Grid item xs={12} md={6} lg={4} key={index}>
+
+            {/* Bölümler */}
+            <Grid container spacing={4}>
+              {Object.entries(parsed.parsedData.sections).map(([key, section], index) => (
+                <Grid item xs={12} md={6} lg={4} key={key}>
                   <Card
                     sx={{
                       height: "100%",
@@ -741,12 +856,15 @@ Aşağıdaki başlıkları içeren kesinlikle 3000 karakteri geçmeyen bir rehbe
                             fontWeight: 700,
                             fontSize: "1.25rem",
                             letterSpacing: "0.5px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
                           }}
                         >
-                          {section.number
-                            ? `${section.number}. ${section.heading}`
-                            : section.heading}
+                          <span>{section.icon}</span>
+                          {section.title}
                         </Typography>
+                        
                         <Typography
                           component="div"
                           sx={{
@@ -754,20 +872,285 @@ Aşağıdaki başlıkları içeren kesinlikle 3000 karakteri geçmeyen bir rehbe
                             flex: 1,
                             fontSize: "0.95rem",
                             lineHeight: 1.8,
+                            mb: 2,
                           }}
                         >
-                          {section.content.split("\n").map((paragraph, idx) => (
-                            <p key={idx}>{paragraph}</p>
-                          ))}
+                          {section.content}
                         </Typography>
+
+                        {/* Özel içerik türleri */}
+                        {section.tips && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                              💡 İpuçları:
+                            </Typography>
+                            <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 20 }}>
+                              {section.tips.map((tip, idx) => (
+                                <li key={idx}>{tip}</li>
+                              ))}
+                            </ul>
+                          </Box>
+                        )}
+
+                        {section.recommendations && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                              📋 Öneriler:
+                            </Typography>
+                            <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 20 }}>
+                              {section.recommendations.map((rec, idx) => (
+                                <li key={idx}>{rec}</li>
+                              ))}
+                            </ul>
+                          </Box>
+                        )}
+
+                        {section.phases && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                              📅 Aşamalar:
+                            </Typography>
+                            {section.phases.map((phase, idx) => (
+                              <Box key={idx} sx={{ mb: 1, p: 1, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 1 }}>
+                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600 }}>
+                                  {phase.phase}
+                                </Typography>
+                                <ul style={{ color: "rgba(255,255,255,0.9)", margin: "4px 0 0 0", paddingLeft: 20 }}>
+                                  {phase.exercises.map((exercise, exIdx) => (
+                                    <li key={exIdx}>{exercise}</li>
+                                  ))}
+                                </ul>
+                              </Box>
+                            ))}
+                          </Box>
+                        )}
+
+                        {section.meals && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                              🍽️ Öğünler:
+                            </Typography>
+                            {Object.entries(section.meals).map(([mealType, meal]) => (
+                              <Box key={mealType} sx={{ mb: 1 }}>
+                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, textTransform: "capitalize" }}>
+                                  {mealType === "breakfast" ? "Kahvaltı" : 
+                                   mealType === "lunch" ? "Öğle" : 
+                                   mealType === "dinner" ? "Akşam" : "Ara Öğün"}: {meal}
+                                </Typography>
+                              </Box>
+                            ))}
+                          </Box>
+                        )}
+
+                        {section.recipeName && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+                              👨‍🍳 {section.recipeName}
+                            </Typography>
+                            {section.ingredients && (
+                              <Box sx={{ mb: 1 }}>
+                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600 }}>
+                                  Malzemeler:
+                                </Typography>
+                                <ul style={{ color: "rgba(255,255,255,0.9)", margin: "4px 0 0 0", paddingLeft: 20 }}>
+                                  {section.ingredients.map((ingredient, idx) => (
+                                    <li key={idx}>{ingredient}</li>
+                                  ))}
+                                </ul>
+                              </Box>
+                            )}
+                            {section.instructions && (
+                              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)" }}>
+                                {section.instructions}
+                              </Typography>
+                            )}
+                          </Box>
+                        )}
+
+                        {section.quote && (
+                          <Box sx={{ mt: 2, p: 2, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2, textAlign: "center" }}>
+                            <Typography variant="body2" sx={{ color: "#fff", fontStyle: "italic", mb: 1 }}>
+                              "{section.quote}"
+                            </Typography>
+                            {section.dailyGoal && (
+                              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>
+                                🎯 {section.dailyGoal}
+                              </Typography>
+                            )}
+                          </Box>
+                        )}
                       </Box>
                     </CardContent>
                   </Card>
                 </Grid>
               ))}
             </Grid>
-          </Grid>
-        </Grid>
+
+            {/* Öncelik ve Sonraki Adımlar */}
+            {(parsed.parsedData.priority || parsed.parsedData.nextSteps) && (
+              <Grid container spacing={3} sx={{ mt: 3 }}>
+                {parsed.parsedData.priority && (
+                  <Grid item xs={12} md={6}>
+                    <Card
+                      sx={{
+                        background: "linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%)",
+                        borderRadius: "16px",
+                        boxShadow: 3,
+                      }}
+                    >
+                      <CardContent sx={{ color: "white", py: 3 }}>
+                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+                          🎯 Öncelikli Öneriler
+                        </Typography>
+                        <Typography variant="body1">
+                          {parsed.parsedData.priority}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+                {parsed.parsedData.nextSteps && (
+                  <Grid item xs={12} md={6}>
+                    <Card
+                      sx={{
+                        background: "linear-gradient(135deg, #FF9800 0%, #FFB74D 100%)",
+                        borderRadius: "16px",
+                        boxShadow: 3,
+                      }}
+                    >
+                      <CardContent sx={{ color: "white", py: 3 }}>
+                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+                          📅 Yarın İçin Plan
+                        </Typography>
+                        <Typography variant="body1">
+                          {parsed.parsedData.nextSteps}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+              </Grid>
+            )}
+          </Box>
+        ) : parsed.fallbackData ? (
+          /* Fallback Format Render */
+          <Box>
+            {parsed.fallbackData.preamble && (
+              <Grid item xs={12}>
+                <Card
+                  sx={{
+                    width: "100%",
+                    mb: 4,
+                    background:
+                      "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
+                    borderRadius: "16px",
+                    boxShadow: 3,
+                  }}
+                >
+                  <CardContent sx={{ color: "white", py: 4 }}>
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        whiteSpace: "pre-line",
+                        fontSize: "1.1rem",
+                        lineHeight: 1.8,
+                        textAlign: "center",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      {parsed.fallbackData.preamble}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            )}
+            <Grid container spacing={4}>
+              <Grid item xs={12}>
+                <Grid container spacing={3}>
+                  {parsed.fallbackData.sections.map((section, index) => (
+                    <Grid item xs={12} md={6} lg={4} key={index}>
+                      <Card
+                        sx={{
+                          height: "100%",
+                          background:
+                            "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
+                          borderRadius: "16px",
+                          transition:
+                            "transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out",
+                          "&:hover": {
+                            transform: "translateY(-5px)",
+                            boxShadow: theme.shadows[10],
+                          },
+                        }}
+                      >
+                        <CardContent sx={{ height: "100%", p: 3 }}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexDirection: "column",
+                              height: "100%",
+                              gap: 2.5,
+                            }}
+                          >
+                            <Typography
+                              variant="h6"
+                              sx={{
+                                color: "#fff",
+                                borderBottom: "2px solid rgba(255,255,255,0.2)",
+                                pb: 2,
+                                mb: 2,
+                                fontWeight: 700,
+                                fontSize: "1.25rem",
+                                letterSpacing: "0.5px",
+                              }}
+                            >
+                              {section.number
+                                ? `${section.number}. ${section.heading}`
+                                : section.heading}
+                            </Typography>
+                            <Typography
+                              component="div"
+                              sx={{
+                                color: "rgba(255,255,255,0.95)",
+                                flex: 1,
+                                fontSize: "0.95rem",
+                                lineHeight: 1.8,
+                              }}
+                            >
+                              {section.content.split("\n").map((paragraph, idx) => (
+                                <p key={idx}>{paragraph}</p>
+                              ))}
+                            </Typography>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Grid>
+            </Grid>
+          </Box>
+        ) : (
+          /* Öneri yoksa boş durum */
+          <Card
+            sx={{
+              width: "100%",
+              background:
+                "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
+              borderRadius: "16px",
+              boxShadow: 3,
+            }}
+          >
+            <CardContent sx={{ color: "white", py: 6, textAlign: "center" }}>
+              <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
+                🏥 Kişiselleştirilmiş Sağlık Rehberi
+              </Typography>
+              <Typography variant="body1" sx={{ opacity: 0.9 }}>
+                AI destekli sağlık önerilerinizi oluşturmak için yukarıdaki butona tıklayın.
+              </Typography>
+            </CardContent>
+          </Card>
+        )}
         {loading && (
           <Box
             sx={{

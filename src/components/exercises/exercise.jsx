@@ -179,19 +179,16 @@ const Exercises = ({ exercises, setExercises }) => {
   // Gemini kullanım sayısını kontrol et
   useEffect(() => {
     const fetchGeminiUsage = async () => {
-      try {
-        const usageDocRef = doc(db, "users", auth.currentUser?.uid, "apiUsage", "gemini");
-        const docSnap = await getDoc(usageDocRef);
-        if (docSnap.exists()) {
-          setGeminiUsage(docSnap.data());
-        } else {
-          const todayStr = new Date().toISOString().slice(0, 10);
-          const initialUsage = { date: todayStr, count: 0 };
-          await setDoc(usageDocRef, initialUsage);
-          setGeminiUsage(initialUsage);
-        }
-      } catch (error) {
-        console.error("Gemini kullanım verisi çekme hatası:", error);
+      const usageDocRef = doc(db, "users", auth.currentUser?.uid, "apiUsage", "exerciseAI");
+      const docSnap = await getDoc(usageDocRef);
+      if (docSnap.exists()) {
+        setGeminiUsage(docSnap.data());
+      } else {
+        // Eğer doküman yoksa oluştur
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const initialUsage = { date: todayStr, count: 0 };
+        await setDoc(usageDocRef, initialUsage);
+        setGeminiUsage(initialUsage);
       }
     };
 
@@ -208,20 +205,16 @@ const Exercises = ({ exercises, setExercises }) => {
   };
 
   const incrementGeminiUsage = async () => {
-    try {
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const usageDocRef = doc(db, "users", auth.currentUser?.uid, "apiUsage", "gemini");
-      let updatedUsage = { ...geminiUsage };
-      if (geminiUsage.date !== todayStr) {
-        updatedUsage = { date: todayStr, count: 1 };
-      } else {
-        updatedUsage.count += 1;
-      }
-      await updateDoc(usageDocRef, updatedUsage);
-      setGeminiUsage(updatedUsage);
-    } catch (error) {
-      console.error("Gemini kullanım sayacı güncelleme hatası:", error);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const usageDocRef = doc(db, "users", auth.currentUser?.uid, "apiUsage", "exerciseAI");
+    let updatedUsage = { ...geminiUsage };
+    if (geminiUsage.date !== todayStr) {
+      updatedUsage = { date: todayStr, count: 1 };
+    } else {
+      updatedUsage.count += 1;
     }
+    await updateDoc(usageDocRef, updatedUsage);
+    setGeminiUsage(updatedUsage);
   };
 
   const generatePersonalizedProgram = async () => {

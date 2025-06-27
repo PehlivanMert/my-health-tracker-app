@@ -94,83 +94,42 @@ const getUserLocation = () => {
 // Koordinatları şehir ismine çeviren fonksiyon
 const getCityFromCoordinates = async (latitude, longitude) => {
   try {
-    // OpenCage API anahtarı varsa kullan
-    if (import.meta.env.VITE_OPENCAGE_API_KEY) {
-      const response = await fetch(
-        `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=${import.meta.env.VITE_OPENCAGE_API_KEY}&language=tr`
-      );
-      const data = await response.json();
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&accept-language=tr`
+    );
+    const data = await response.json();
+    
+    if (data && data.address) {
+      // Şehir ismini öncelik sırasına göre al
+      const city = data.address.city || 
+                   data.address.town || 
+                   data.address.village || 
+                   data.address.county ||
+                   data.address.state ||
+                   data.address.country ||
+                   "Bilinmeyen Konum";
       
-      if (data.results && data.results.length > 0) {
-        const result = data.results[0];
-        const components = result.components;
-        
-        // Şehir ismini öncelik sırasına göre al
-        const city = components.city || 
-                     components.town || 
-                     components.village || 
-                     components.county ||
-                     components.state ||
-                     "Bilinmeyen Konum";
-        
-        return {
-          city: city,
-          country: components.country || "Türkiye",
-          fullAddress: result.formatted
-        };
-      }
+      return {
+        city: city,
+        country: data.address.country || "Türkiye",
+        fullAddress: data.display_name || `${city}, ${data.address.country || "Türkiye"}`
+      };
     }
     
-    // Fallback: Basit koordinat bazlı şehir tespiti
-    return getCityFromCoordinatesFallback(latitude, longitude);
+    return {
+      city: "Bilinmeyen Konum",
+      country: "Türkiye",
+      fullAddress: "Bilinmeyen Konum, Türkiye"
+    };
     
   } catch (error) {
     console.error("Şehir ismi alınamadı:", error);
-    return getCityFromCoordinatesFallback(latitude, longitude);
+    return {
+      city: "Bilinmeyen Konum",
+      country: "Türkiye",
+      fullAddress: "Bilinmeyen Konum, Türkiye"
+    };
   }
-};
-
-// Basit koordinat bazlı şehir tespiti (fallback)
-const getCityFromCoordinatesFallback = (latitude, longitude) => {
-  // Türkiye'nin büyük şehirlerinin yaklaşık koordinatları
-  const cities = [
-    { name: "İstanbul", lat: 41.0082, lon: 28.9784, range: 0.5 },
-    { name: "Ankara", lat: 39.9334, lon: 32.8597, range: 0.3 },
-    { name: "İzmir", lat: 38.4192, lon: 27.1287, range: 0.3 },
-    { name: "Bursa", lat: 40.1885, lon: 29.0610, range: 0.3 },
-    { name: "Antalya", lat: 36.8969, lon: 30.7133, range: 0.3 },
-    { name: "Adana", lat: 37.0000, lon: 35.3213, range: 0.3 },
-    { name: "Konya", lat: 37.8667, lon: 32.4833, range: 0.3 },
-    { name: "Gaziantep", lat: 37.0662, lon: 37.3833, range: 0.3 },
-    { name: "Mersin", lat: 36.8000, lon: 34.6333, range: 0.3 },
-    { name: "Diyarbakır", lat: 37.9144, lon: 40.2306, range: 0.3 },
-    { name: "Samsun", lat: 41.2867, lon: 36.3300, range: 0.3 },
-    { name: "Denizli", lat: 37.7765, lon: 29.0864, range: 0.3 },
-    { name: "Eskişehir", lat: 39.7767, lon: 30.5206, range: 0.3 },
-    { name: "Trabzon", lat: 41.0015, lon: 39.7178, range: 0.3 },
-    { name: "Erzurum", lat: 39.9000, lon: 41.2700, range: 0.3 }
-  ];
-
-  for (const city of cities) {
-    const distance = Math.sqrt(
-      Math.pow(latitude - city.lat, 2) + Math.pow(longitude - city.lon, 2)
-    );
-    
-    if (distance <= city.range) {
-      return {
-        city: city.name,
-        country: "Türkiye",
-        fullAddress: `${city.name}, Türkiye`
-      };
-    }
-  }
-
-  // Eğer hiçbir şehir bulunamazsa
-  return {
-    city: "Türkiye",
-    country: "Türkiye",
-    fullAddress: "Türkiye"
-  };
 };
 
 // Hava durumu verisi alma fonksiyonu
@@ -179,7 +138,7 @@ const getWeatherData = async (latitude, longitude) => {
     const response = await fetch(
       `${
         import.meta.env.VITE_OPEN_METEO_API_URL
-      }?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code`
+      }?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,apparent_temperature,pressure_msl&timezone=Europe/Istanbul`
     );
     const data = await response.json();
     if (!data.current) {
@@ -189,6 +148,10 @@ const getWeatherData = async (latitude, longitude) => {
       temperature: data.current.temperature_2m,
       humidity: data.current.relative_humidity_2m,
       weathercode: data.current.weather_code,
+      windSpeed: data.current.wind_speed_10m,
+      windDirection: data.current.wind_direction_10m,
+      apparentTemperature: data.current.apparent_temperature,
+      pressure: data.current.pressure_msl,
     };
   } catch (error) {
     console.error("Hava durumu hatası:", error.message);
@@ -439,7 +402,7 @@ ${bmi ? `VKİ: ${bmi.value} (${bmi.status})` : ""}
 
 Konum ve Hava Durumu:
 ${cityInfo ? `Şehir: ${cityInfo.city}, ${cityInfo.country}` : "Konum: Belirtilmemiş"}
-${weatherData ? `Sıcaklık: ${weatherData.temperature}°C, Nem: ${weatherData.humidity}%` : "Hava durumu: Belirtilmemiş"}
+${weatherData ? `Sıcaklık: ${weatherData.temperature}°C, Hissedilen: ${weatherData.apparentTemperature}°C, Nem: ${weatherData.humidity}%, Rüzgar: ${weatherData.windSpeed} km/s, Basınç: ${weatherData.pressure} hPa` : "Hava durumu: Belirtilmemiş"}
 
 Su Tüketimi:
 - Dün içilen: ${healthData.waterData?.yesterday || 0} ml
@@ -501,6 +464,11 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
         "city": "${cityInfo?.city || "Bilinmeyen Konum"}",
         "country": "${cityInfo?.country || "Türkiye"}",
         "temperature": ${weatherData?.temperature || "null"},
+        "apparentTemperature": ${weatherData?.apparentTemperature || "null"},
+        "humidity": ${weatherData?.humidity || "null"},
+        "windSpeed": ${weatherData?.windSpeed || "null"},
+        "windDirection": ${weatherData?.windDirection || "null"},
+        "pressure": ${weatherData?.pressure || "null"},
         "weatherCondition": ${weatherData?.weathercode || "null"}
       }
     },
@@ -1115,7 +1083,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                 <Grid item xs={12} sm={6} lg={4} key={key}>
                   <Card
                     sx={{
-                      height: "100%",
+                      height: "400px", // Sabit yükseklik
                       background:
                         "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
                       borderRadius: "16px",
@@ -1127,13 +1095,19 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                       },
                     }}
                   >
-                    <CardContent sx={{ height: "100%", p: { xs: 2, md: 3 } }}>
+                    <CardContent sx={{ 
+                      height: "100%", 
+                      p: { xs: 2, md: 3 },
+                      display: "flex",
+                      flexDirection: "column",
+                      overflow: "hidden"
+                    }}>
                       <Box
                         sx={{
                           display: "flex",
                           flexDirection: "column",
                           height: "100%",
-                          gap: 2,
+                          gap: 1.5,
                         }}
                       >
                         <Typography
@@ -1141,8 +1115,8 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                           sx={{
                             color: "#fff",
                             borderBottom: "2px solid rgba(255,255,255,0.2)",
-                            pb: 2,
-                            mb: 2,
+                            pb: 1.5,
+                            mb: 1.5,
                             fontWeight: 700,
                             fontSize: { xs: "1rem", sm: "1.1rem", md: "1.25rem" },
                             letterSpacing: "0.5px",
@@ -1150,716 +1124,484 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                             alignItems: "center",
                             gap: 1,
                             wordBreak: "break-word",
+                            flexShrink: 0, // Başlık sabit kalsın
                           }}
                         >
                           <span>{section.icon}</span>
                           {section.title}
                         </Typography>
                         
-                        <Typography
-                          component="div"
-                          sx={{
-                            color: "rgba(255,255,255,0.95)",
-                            flex: 1,
-                            fontSize: { xs: "0.85rem", sm: "0.9rem", md: "0.95rem" },
-                            lineHeight: 1.8,
-                            mb: 2,
-                          }}
-                        >
-                          {section.content}
-                        </Typography>
+                        {/* Scrollable content area */}
+                        <Box sx={{ 
+                          flex: 1, 
+                          overflow: "auto",
+                          pr: 1, // Scroll bar için boşluk
+                          "&::-webkit-scrollbar": {
+                            width: "6px",
+                          },
+                          "&::-webkit-scrollbar-track": {
+                            background: "rgba(255,255,255,0.1)",
+                            borderRadius: "3px",
+                          },
+                          "&::-webkit-scrollbar-thumb": {
+                            background: "rgba(255,255,255,0.3)",
+                            borderRadius: "3px",
+                            "&:hover": {
+                              background: "rgba(255,255,255,0.5)",
+                            },
+                          },
+                        }}>
+                          <Typography
+                            component="div"
+                            sx={{
+                              color: "rgba(255,255,255,0.95)",
+                              fontSize: { xs: "0.8rem", sm: "0.85rem", md: "0.9rem" },
+                              lineHeight: 1.6,
+                              mb: 1.5,
+                            }}
+                          >
+                            {section.content}
+                          </Typography>
 
-                        {/* Özel içerik türleri */}
-                        {section.tips && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              💡 İpuçları:
-                            </Typography>
-                            <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 20, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              {section.tips.map((tip, idx) => (
-                                <li key={idx}>{tip}</li>
-                              ))}
-                            </ul>
-                          </Box>
-                        )}
-
-                        {section.recommendations && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              📋 Öneriler:
-                            </Typography>
-                            <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 20, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              {section.recommendations.map((rec, idx) => (
-                                <li key={idx}>{rec}</li>
-                              ))}
-                            </ul>
-                          </Box>
-                        )}
-
-                        {section.phases && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              📅 Aşamalar:
-                            </Typography>
-                            {section.phases.map((phase, idx) => (
-                              <Box key={idx} sx={{ mb: 1, p: 1, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 1 }}>
-                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
-                                  {phase.phase}
-                                </Typography>
-                                <ul style={{ color: "rgba(255,255,255,0.9)", margin: "4px 0 0 0", paddingLeft: 20, fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
-                                  {phase.exercises.map((exercise, exIdx) => (
-                                    <li key={exIdx}>{exercise}</li>
-                                  ))}
-                                </ul>
-                              </Box>
-                            ))}
-                          </Box>
-                        )}
-
-                        {section.meals && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              🍽️ Öğünler:
-                            </Typography>
-                            {Object.entries(section.meals).map(([mealType, meal]) => (
-                              <Box key={mealType} sx={{ mb: 1 }}>
-                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, textTransform: "capitalize", fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
-                                  {mealType === "breakfast" ? "Kahvaltı" : 
-                                   mealType === "lunch" ? "Öğle" : 
-                                   mealType === "dinner" ? "Akşam" : "Ara Öğün"}: {meal}
-                                </Typography>
-                              </Box>
-                            ))}
-                          </Box>
-                        )}
-
-                        {section.recipeName && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              👨‍🍳 {section.recipeName}
-                            </Typography>
-                            {section.ingredients && (
-                              <Box sx={{ mb: 1 }}>
-                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
-                                  Malzemeler:
-                                </Typography>
-                                <ul style={{ color: "rgba(255,255,255,0.9)", margin: "4px 0 0 0", paddingLeft: 20, fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
-                                  {section.ingredients.map((ingredient, idx) => (
-                                    <li key={idx}>{ingredient}</li>
-                                  ))}
-                                </ul>
-                              </Box>
-                            )}
-                            {section.instructions && (
-                              <Box>
-                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
-                                  Hazırlanış:
-                                </Typography>
-                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
-                                  {section.instructions}
-                                </Typography>
-                              </Box>
-                            )}
-                          </Box>
-                        )}
-
-                        {/* Konuma Özel Aktivite Önerileri */}
-                        {section.outdoorActivities && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              🌳 Açık Hava Aktiviteleri:
-                            </Typography>
-                            <List dense sx={{ p: 0 }}>
-                              {section.outdoorActivities.map((activity, idx) => (
-                                <ListItem key={idx} sx={{ p: 0, mb: 0.5 }}>
-                                  <ListItemIcon sx={{ minWidth: 30 }}>
-                                    <DirectionsRun sx={{ color: "#4CAF50", fontSize: 16 }} />
-                                  </ListItemIcon>
-                                  <ListItemText 
-                                    primary={activity}
-                                    sx={{ 
-                                      "& .MuiListItemText-primary": { 
-                                        color: "rgba(255,255,255,0.9)", 
-                                        fontSize: { xs: "0.75rem", md: "0.8rem" },
-                                        fontWeight: 500
-                                      }
-                                    }}
-                                  />
-                                </ListItem>
-                              ))}
-                            </List>
-                          </Box>
-                        )}
-
-                        {section.indoorActivities && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              🏠 Kapalı Alan Aktiviteleri:
-                            </Typography>
-                            <List dense sx={{ p: 0 }}>
-                              {section.indoorActivities.map((activity, idx) => (
-                                <ListItem key={idx} sx={{ p: 0, mb: 0.5 }}>
-                                  <ListItemIcon sx={{ minWidth: 30 }}>
-                                    <GymIcon sx={{ color: "#FF9800", fontSize: 16 }} />
-                                  </ListItemIcon>
-                                  <ListItemText 
-                                    primary={activity}
-                                    sx={{ 
-                                      "& .MuiListItemText-primary": { 
-                                        color: "rgba(255,255,255,0.9)", 
-                                        fontSize: { xs: "0.75rem", md: "0.8rem" },
-                                        fontWeight: 500
-                                      }
-                                    }}
-                                  />
-                                </ListItem>
-                              ))}
-                            </List>
-                          </Box>
-                        )}
-
-                        {section.culturalActivities && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              🏛️ Kültürel Etkinlikler:
-                            </Typography>
-                            <List dense sx={{ p: 0 }}>
-                              {section.culturalActivities.map((activity, idx) => (
-                                <ListItem key={idx} sx={{ p: 0, mb: 0.5 }}>
-                                  <ListItemIcon sx={{ minWidth: 30 }}>
-                                    <Book sx={{ color: "#9C27B0", fontSize: 16 }} />
-                                  </ListItemIcon>
-                                  <ListItemText 
-                                    primary={activity}
-                                    sx={{ 
-                                      "& .MuiListItemText-primary": { 
-                                        color: "rgba(255,255,255,0.9)", 
-                                        fontSize: { xs: "0.75rem", md: "0.8rem" },
-                                        fontWeight: 500
-                                      }
-                                    }}
-                                  />
-                                </ListItem>
-                              ))}
-                            </List>
-                          </Box>
-                        )}
-
-                        {section.artisticActivities && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              🎨 Sanatsal Etkinlikler:
-                            </Typography>
-                            <List dense sx={{ p: 0 }}>
-                              {section.artisticActivities.map((activity, idx) => (
-                                <ListItem key={idx} sx={{ p: 0, mb: 0.5 }}>
-                                  <ListItemIcon sx={{ minWidth: 30 }}>
-                                    <Tv sx={{ color: "#E91E63", fontSize: 16 }} />
-                                  </ListItemIcon>
-                                  <ListItemText 
-                                    primary={activity}
-                                    sx={{ 
-                                      "& .MuiListItemText-primary": { 
-                                        color: "rgba(255,255,255,0.9)", 
-                                        fontSize: { xs: "0.75rem", md: "0.8rem" },
-                                        fontWeight: 500
-                                      }
-                                    }}
-                                  />
-                                </ListItem>
-                              ))}
-                            </List>
-                          </Box>
-                        )}
-
-                        {section.sportsActivities && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              ⚽ Spor Etkinlikleri:
-                            </Typography>
-                            <List dense sx={{ p: 0 }}>
-                              {section.sportsActivities.map((activity, idx) => (
-                                <ListItem key={idx} sx={{ p: 0, mb: 0.5 }}>
-                                  <ListItemIcon sx={{ minWidth: 30 }}>
-                                    <FitnessCenter sx={{ color: "#2196F3", fontSize: 16 }} />
-                                  </ListItemIcon>
-                                  <ListItemText 
-                                    primary={activity}
-                                    sx={{ 
-                                      "& .MuiListItemText-primary": { 
-                                        color: "rgba(255,255,255,0.9)", 
-                                        fontSize: { xs: "0.75rem", md: "0.8rem" },
-                                        fontWeight: 500
-                                      }
-                                    }}
-                                  />
-                                </ListItem>
-                              ))}
-                            </List>
-                          </Box>
-                        )}
-
-                        {section.wellnessActivities && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              🧘‍♀️ Wellness Aktiviteleri:
-                            </Typography>
-                            <List dense sx={{ p: 0 }}>
-                              {section.wellnessActivities.map((activity, idx) => (
-                                <ListItem key={idx} sx={{ p: 0, mb: 0.5 }}>
-                                  <ListItemIcon sx={{ minWidth: 30 }}>
-                                    <Headphones sx={{ color: "#00BCD4", fontSize: 16 }} />
-                                  </ListItemIcon>
-                                  <ListItemText 
-                                    primary={activity}
-                                    sx={{ 
-                                      "& .MuiListItemText-primary": { 
-                                        color: "rgba(255,255,255,0.9)", 
-                                        fontSize: { xs: "0.75rem", md: "0.8rem" },
-                                        fontWeight: 500
-                                      }
-                                    }}
-                                  />
-                                </ListItem>
-                              ))}
-                            </List>
-                          </Box>
-                        )}
-
-                        {section.weatherTips && section.weatherTips.length > 0 && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              🌤️ Hava Durumu İpuçları:
-                            </Typography>
-                            <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 20, fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
-                              {section.weatherTips.map((tip, idx) => (
-                                <li key={idx}>{tip}</li>
-                              ))}
-                            </ul>
-                          </Box>
-                        )}
-
-                        {section.locationInfo && (
-                          <Box sx={{ mt: 2, p: 1, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 1 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              📍 Konum Bilgileri:
-                            </Typography>
-                            {section.locationInfo.city && (
-                              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", fontSize: { xs: "0.7rem", md: "0.8rem" }, mb: 0.5 }}>
-                                <LocationOn sx={{ fontSize: 14, mr: 0.5, verticalAlign: "middle" }} />
-                                {section.locationInfo.city}, {section.locationInfo.country}
+                          {/* Özel içerik türleri */}
+                          {section.tips && (
+                            <Box sx={{ mt: 1.5 }}>
+                              <Typography variant="subtitle2" sx={{ color: "#fff", mb: 0.5, fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.8rem" } }}>
+                                💡 İpuçları:
                               </Typography>
-                            )}
-                            {section.locationInfo.temperature && (
-                              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
-                                🌡️ {section.locationInfo.temperature}°C
+                              <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 16, fontSize: { xs: "0.7rem", md: "0.75rem" } }}>
+                                {section.tips.map((tip, idx) => (
+                                  <li key={idx}>{tip}</li>
+                                ))}
+                              </ul>
+                            </Box>
+                          )}
+
+                          {section.recommendations && (
+                            <Box sx={{ mt: 1.5 }}>
+                              <Typography variant="subtitle2" sx={{ color: "#fff", mb: 0.5, fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.8rem" } }}>
+                                📋 Öneriler:
                               </Typography>
-                            )}
-                          </Box>
-                        )}
+                              <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 16, fontSize: { xs: "0.7rem", md: "0.75rem" } }}>
+                                {section.recommendations.map((rec, idx) => (
+                                  <li key={idx}>{rec}</li>
+                                ))}
+                              </ul>
+                            </Box>
+                          )}
 
-                        {section.quote && (
-                          <Box sx={{ mt: 2, p: 2, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2, textAlign: "center" }}>
-                            <Typography variant="body2" sx={{ color: "#fff", fontStyle: "italic", mb: 1, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
-                              "{section.quote}"
-                            </Typography>
-                            {section.dailyGoal && (
-                              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", fontWeight: 600, fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
-                                🎯 {section.dailyGoal}
+                          {section.phases && (
+                            <Box sx={{ mt: 1.5 }}>
+                              <Typography variant="subtitle2" sx={{ color: "#fff", mb: 0.5, fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.8rem" } }}>
+                                📅 Aşamalar:
                               </Typography>
-                            )}
-                          </Box>
-                        )}
+                              {section.phases.map((phase, idx) => (
+                                <Box key={idx} sx={{ mb: 0.5, p: 0.5, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 1 }}>
+                                  <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
+                                    {phase.phase}
+                                  </Typography>
+                                  <ul style={{ color: "rgba(255,255,255,0.9)", margin: "2px 0 0 0", paddingLeft: 16, fontSize: { xs: "0.65rem", md: "0.7rem" } }}>
+                                    {phase.exercises.map((exercise, exIdx) => (
+                                      <li key={exIdx}>{exercise}</li>
+                                    ))}
+                                  </ul>
+                                </Box>
+                              ))}
+                            </Box>
+                          )}
 
-                        {section.books && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              📚 Kitap Önerileri:
-                            </Typography>
-                            {section.books.map((book, idx) => (
-                              <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2 }}>
-                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.5, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
-                                  "{book.title}" - {book.author}
-                                </Typography>
-                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: { xs: "0.7rem", md: "0.85rem" } }}>
-                                  {book.description}
-                                </Typography>
-                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                                  <Chip 
-                                    label={book.category} 
-                                    size="small" 
-                                    sx={{ 
-                                      bgcolor: "rgba(255,255,255,0.2)", 
-                                      color: "#fff",
-                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
-                                    }}
-                                  />
-                                  <Chip 
-                                    label={book.language} 
-                                    size="small" 
-                                    sx={{ 
-                                      bgcolor: "rgba(255,255,255,0.2)", 
-                                      color: "#fff",
-                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
-                                    }}
-                                  />
+                          {section.meals && (
+                            <Box sx={{ mt: 1.5 }}>
+                              <Typography variant="subtitle2" sx={{ color: "#fff", mb: 0.5, fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.8rem" } }}>
+                                🍽️ Öğünler:
+                              </Typography>
+                              {Object.entries(section.meals).map(([mealType, meal]) => (
+                                <Box key={mealType} sx={{ mb: 0.5 }}>
+                                  <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, textTransform: "capitalize", fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
+                                    {mealType === "breakfast" ? "Kahvaltı" : 
+                                     mealType === "lunch" ? "Öğle" : 
+                                     mealType === "dinner" ? "Akşam" : "Ara Öğün"}: {meal}
+                                  </Typography>
                                 </Box>
-                                <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
-                                  {book.buyLink && (
-                                    <Button
-                                      size="small"
-                                      startIcon={<ShoppingCart />}
-                                      onClick={() => window.open(book.buyLink, '_blank')}
-                                      sx={{
-                                        bgcolor: "rgba(76,175,80,0.2)",
-                                        color: "#fff",
-                                        fontSize: { xs: "0.6rem", md: "0.7rem" },
-                                        py: 0.5,
-                                        px: 1,
-                                        "&:hover": { bgcolor: "rgba(76,175,80,0.3)" }
-                                      }}
-                                    >
-                                      Satın Al
-                                    </Button>
-                                  )}
-                                  {book.pdfLink && (
-                                    <Button
-                                      size="small"
-                                      startIcon={<Book />}
-                                      onClick={() => window.open(book.pdfLink, '_blank')}
-                                      sx={{
-                                        bgcolor: "rgba(33,150,243,0.2)",
-                                        color: "#fff",
-                                        fontSize: { xs: "0.6rem", md: "0.7rem" },
-                                        py: 0.5,
-                                        px: 1,
-                                        "&:hover": { bgcolor: "rgba(33,150,243,0.3)" }
-                                      }}
-                                    >
-                                      PDF
-                                    </Button>
-                                  )}
-                                </Box>
-                              </Box>
-                            ))}
-                          </Box>
-                        )}
+                              ))}
+                            </Box>
+                          )}
 
-                        {section.articles && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              📰 Makale Önerileri:
-                            </Typography>
-                            {section.articles.map((article, idx) => (
-                              <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2 }}>
-                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.5, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
-                                  {article.title}
-                                </Typography>
-                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: { xs: "0.7rem", md: "0.85rem" } }}>
-                                  {article.summary}
-                                </Typography>
-                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                                  <Chip 
-                                    label={article.category} 
-                                    size="small" 
-                                    sx={{ 
-                                      bgcolor: "rgba(255,255,255,0.2)", 
-                                      color: "#fff",
-                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
-                                    }}
-                                  />
-                                  <Chip 
-                                    label={article.readingTime} 
-                                    size="small" 
-                                    sx={{ 
-                                      bgcolor: "rgba(255,255,255,0.2)", 
-                                      color: "#fff",
-                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
-                                    }}
-                                  />
-                                </Box>
-                                {article.url && (
-                                  <Button
-                                    size="small"
-                                    startIcon={<Article />}
-                                    onClick={() => window.open(article.url, '_blank')}
-                                    sx={{
-                                      bgcolor: "rgba(33,150,243,0.2)",
-                                      color: "#fff",
-                                      fontSize: { xs: "0.6rem", md: "0.7rem" },
-                                      py: 0.5,
-                                      px: 1,
-                                      mt: 1,
-                                      "&:hover": { bgcolor: "rgba(33,150,243,0.3)" }
-                                    }}
-                                  >
-                                    Makaleyi Oku
-                                  </Button>
-                                )}
-                              </Box>
-                            ))}
-                          </Box>
-                        )}
+                          {section.ingredients && (
+                            <Box sx={{ mt: 1.5 }}>
+                              <Typography variant="subtitle2" sx={{ color: "#fff", mb: 0.5, fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.8rem" } }}>
+                                🥘 Malzemeler:
+                              </Typography>
+                              <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 16, fontSize: { xs: "0.7rem", md: "0.75rem" } }}>
+                                {section.ingredients.map((ingredient, idx) => (
+                                  <li key={idx}>{ingredient}</li>
+                                ))}
+                              </ul>
+                            </Box>
+                          )}
 
-                        {section.videos && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              🎥 Video Önerileri:
-                            </Typography>
-                            {section.videos.map((video, idx) => (
-                              <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2 }}>
-                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.5, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
-                                  {video.title}
-                                </Typography>
-                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: { xs: "0.7rem", md: "0.85rem" } }}>
-                                  {video.description}
-                                </Typography>
-                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                                  <Chip 
-                                    label={video.category} 
-                                    size="small" 
-                                    sx={{ 
-                                      bgcolor: "rgba(255,255,255,0.2)", 
-                                      color: "#fff",
-                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
-                                    }}
-                                  />
-                                  <Chip 
-                                    label={video.duration} 
-                                    size="small" 
-                                    sx={{ 
-                                      bgcolor: "rgba(255,255,255,0.2)", 
-                                      color: "#fff",
-                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
-                                    }}
-                                  />
-                                </Box>
-                                {video.url && (
-                                  <Button
-                                    size="small"
-                                    startIcon={<YouTube />}
-                                    onClick={() => window.open(video.url, '_blank')}
-                                    sx={{
-                                      bgcolor: "rgba(244,67,54,0.2)",
-                                      color: "#fff",
-                                      fontSize: { xs: "0.6rem", md: "0.7rem" },
-                                      py: 0.5,
-                                      px: 1,
-                                      mt: 1,
-                                      "&:hover": { bgcolor: "rgba(244,67,54,0.3)" }
-                                    }}
-                                  >
-                                    İzle
-                                  </Button>
-                                )}
-                              </Box>
-                            ))}
-                          </Box>
-                        )}
+                          {section.instructions && (
+                            <Box sx={{ mt: 1.5 }}>
+                              <Typography variant="subtitle2" sx={{ color: "#fff", mb: 0.5, fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.8rem" } }}>
+                                👨‍🍳 Hazırlanış:
+                              </Typography>
+                              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", fontSize: { xs: "0.7rem", md: "0.75rem" }, lineHeight: 1.5 }}>
+                                {section.instructions}
+                              </Typography>
+                            </Box>
+                          )}
 
-                        {section.documentaries && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              📺 Dokümanter Önerileri:
-                            </Typography>
-                            {section.documentaries.map((doc, idx) => (
-                              <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2 }}>
-                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.5, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
-                                  {doc.title}
-                                </Typography>
-                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: { xs: "0.7rem", md: "0.85rem" } }}>
-                                  {doc.description}
-                                </Typography>
-                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                                  <Chip 
-                                    label={doc.platform} 
-                                    size="small" 
-                                    sx={{ 
-                                      bgcolor: "rgba(255,255,255,0.2)", 
-                                      color: "#fff",
-                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
-                                    }}
-                                  />
-                                  <Chip 
-                                    label={doc.duration} 
-                                    size="small" 
-                                    sx={{ 
-                                      bgcolor: "rgba(255,255,255,0.2)", 
-                                      color: "#fff",
-                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
-                                    }}
-                                  />
-                                </Box>
-                                <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
-                                  {doc.watchLink && (
-                                    <Button
-                                      size="small"
-                                      startIcon={<PlayArrow />}
-                                      onClick={() => window.open(doc.watchLink, '_blank')}
-                                      sx={{
-                                        bgcolor: "rgba(0,150,136,0.2)",
-                                        color: "#fff",
-                                        fontSize: { xs: "0.6rem", md: "0.7rem" },
-                                        py: 0.5,
-                                        px: 1,
-                                        "&:hover": { bgcolor: "rgba(0,150,136,0.3)" }
-                                      }}
-                                    >
-                                      İzle
-                                    </Button>
-                                  )}
-                                  {doc.trailerLink && (
-                                    <Button
-                                      size="small"
-                                      startIcon={<Movie />}
-                                      onClick={() => window.open(doc.trailerLink, '_blank')}
-                                      sx={{
-                                        bgcolor: "rgba(255,152,0,0.2)",
-                                        color: "#fff",
-                                        fontSize: { xs: "0.6rem", md: "0.7rem" },
-                                        py: 0.5,
-                                        px: 1,
-                                        "&:hover": { bgcolor: "rgba(255,152,0,0.3)" }
-                                      }}
-                                    >
-                                      Fragman
-                                    </Button>
-                                  )}
-                                </Box>
-                              </Box>
-                            ))}
-                          </Box>
-                        )}
+                          {section.outdoorActivities && (
+                            <Box sx={{ mt: 1.5 }}>
+                              <Typography variant="subtitle2" sx={{ color: "#fff", mb: 0.5, fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.8rem" } }}>
+                                🌳 Açık Hava:
+                              </Typography>
+                              <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 16, fontSize: { xs: "0.7rem", md: "0.75rem" } }}>
+                                {section.outdoorActivities.map((activity, idx) => (
+                                  <li key={idx}>{activity}</li>
+                                ))}
+                              </ul>
+                            </Box>
+                          )}
 
-                        {section.series && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              📺 Dizi Önerileri:
-                            </Typography>
-                            {section.series.map((series, idx) => (
-                              <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2 }}>
-                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.5, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
-                                  {series.title}
-                                </Typography>
-                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: { xs: "0.7rem", md: "0.85rem" } }}>
-                                  {series.description}
-                                </Typography>
-                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                                  <Chip 
-                                    label={series.platform} 
-                                    size="small" 
-                                    sx={{ 
-                                      bgcolor: "rgba(255,255,255,0.2)", 
-                                      color: "#fff",
-                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
-                                    }}
-                                  />
-                                  <Chip 
-                                    label={`${series.seasons} Sezon`} 
-                                    size="small" 
-                                    sx={{ 
-                                      bgcolor: "rgba(255,255,255,0.2)", 
-                                      color: "#fff",
-                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
-                                    }}
-                                  />
-                                </Box>
-                                <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
-                                  {series.watchLink && (
-                                    <Button
-                                      size="small"
-                                      startIcon={<Tv />}
-                                      onClick={() => window.open(series.watchLink, '_blank')}
-                                      sx={{
-                                        bgcolor: "rgba(156,39,176,0.2)",
-                                        color: "#fff",
-                                        fontSize: { xs: "0.6rem", md: "0.7rem" },
-                                        py: 0.5,
-                                        px: 1,
-                                        "&:hover": { bgcolor: "rgba(156,39,176,0.3)" }
-                                      }}
-                                    >
-                                      İzle
-                                    </Button>
-                                  )}
-                                  {series.trailerLink && (
-                                    <Button
-                                      size="small"
-                                      startIcon={<Movie />}
-                                      onClick={() => window.open(series.trailerLink, '_blank')}
-                                      sx={{
-                                        bgcolor: "rgba(255,152,0,0.2)",
-                                        color: "#fff",
-                                        fontSize: { xs: "0.6rem", md: "0.7rem" },
-                                        py: 0.5,
-                                        px: 1,
-                                        "&:hover": { bgcolor: "rgba(255,152,0,0.3)" }
-                                      }}
-                                    >
-                                      Fragman
-                                    </Button>
-                                  )}
-                                </Box>
-                              </Box>
-                            ))}
-                          </Box>
-                        )}
+                          {section.indoorActivities && (
+                            <Box sx={{ mt: 1.5 }}>
+                              <Typography variant="subtitle2" sx={{ color: "#fff", mb: 0.5, fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.8rem" } }}>
+                                🏠 Kapalı Alan:
+                              </Typography>
+                              <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 16, fontSize: { xs: "0.7rem", md: "0.75rem" } }}>
+                                {section.indoorActivities.map((activity, idx) => (
+                                  <li key={idx}>{activity}</li>
+                                ))}
+                              </ul>
+                            </Box>
+                          )}
 
-                        {section.podcasts && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-                              🎧 Podcast Önerileri:
-                            </Typography>
-                            {section.podcasts.map((podcast, idx) => (
-                              <Box key={idx} sx={{ mb: 2, p: 2, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2 }}>
-                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.5, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
-                                  {podcast.title}
+                          {section.culturalActivities && (
+                            <Box sx={{ mt: 1.5 }}>
+                              <Typography variant="subtitle2" sx={{ color: "#fff", mb: 0.5, fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.8rem" } }}>
+                                🏛️ Kültürel:
+                              </Typography>
+                              <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 16, fontSize: { xs: "0.7rem", md: "0.75rem" } }}>
+                                {section.culturalActivities.map((activity, idx) => (
+                                  <li key={idx}>{activity}</li>
+                                ))}
+                              </ul>
+                            </Box>
+                          )}
+
+                          {section.artisticActivities && (
+                            <Box sx={{ mt: 1.5 }}>
+                              <Typography variant="subtitle2" sx={{ color: "#fff", mb: 0.5, fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.8rem" } }}>
+                                🎨 Sanatsal:
+                              </Typography>
+                              <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 16, fontSize: { xs: "0.7rem", md: "0.75rem" } }}>
+                                {section.artisticActivities.map((activity, idx) => (
+                                  <li key={idx}>{activity}</li>
+                                ))}
+                              </ul>
+                            </Box>
+                          )}
+
+                          {section.sportsActivities && (
+                            <Box sx={{ mt: 1.5 }}>
+                              <Typography variant="subtitle2" sx={{ color: "#fff", mb: 0.5, fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.8rem" } }}>
+                                ⚽ Spor:
+                              </Typography>
+                              <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 16, fontSize: { xs: "0.7rem", md: "0.75rem" } }}>
+                                {section.sportsActivities.map((activity, idx) => (
+                                  <li key={idx}>{activity}</li>
+                                ))}
+                              </ul>
+                            </Box>
+                          )}
+
+                          {section.wellnessActivities && (
+                            <Box sx={{ mt: 1.5 }}>
+                              <Typography variant="subtitle2" sx={{ color: "#fff", mb: 0.5, fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.8rem" } }}>
+                                🧘‍♀️ Wellness:
+                              </Typography>
+                              <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 16, fontSize: { xs: "0.7rem", md: "0.75rem" } }}>
+                                {section.wellnessActivities.map((activity, idx) => (
+                                  <li key={idx}>{activity}</li>
+                                ))}
+                              </ul>
+                            </Box>
+                          )}
+
+                          {section.weatherTips && section.weatherTips.length > 0 && (
+                            <Box sx={{ mt: 1.5 }}>
+                              <Typography variant="subtitle2" sx={{ color: "#fff", mb: 0.5, fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.8rem" } }}>
+                                🌤️ Hava Durumu İpuçları:
+                              </Typography>
+                              <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 16, fontSize: { xs: "0.7rem", md: "0.75rem" } }}>
+                                {section.weatherTips.map((tip, idx) => (
+                                  <li key={idx}>{tip}</li>
+                                ))}
+                              </ul>
+                            </Box>
+                          )}
+
+                          {section.locationInfo && (
+                            <Box sx={{ mt: 1.5, p: 1, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 1 }}>
+                              <Typography variant="subtitle2" sx={{ color: "#fff", mb: 0.5, fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.8rem" } }}>
+                                📍 Konum Bilgileri:
+                              </Typography>
+                              {section.locationInfo.city && (
+                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", fontSize: { xs: "0.65rem", md: "0.7rem" }, mb: 0.25 }}>
+                                  <LocationOn sx={{ fontSize: 12, mr: 0.5, verticalAlign: "middle" }} />
+                                  {section.locationInfo.city}, {section.locationInfo.country}
                                 </Typography>
-                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 1, fontSize: { xs: "0.7rem", md: "0.85rem" } }}>
-                                  {podcast.description}
+                              )}
+                              {section.locationInfo.temperature && (
+                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", fontSize: { xs: "0.65rem", md: "0.7rem" } }}>
+                                  🌡️ {section.locationInfo.temperature}°C
                                 </Typography>
-                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                                  <Chip 
-                                    label={podcast.platform} 
-                                    size="small" 
-                                    sx={{ 
-                                      bgcolor: "rgba(255,255,255,0.2)", 
-                                      color: "#fff",
-                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
-                                    }}
-                                  />
-                                  <Chip 
-                                    label={podcast.duration} 
-                                    size="small" 
-                                    sx={{ 
-                                      bgcolor: "rgba(255,255,255,0.2)", 
-                                      color: "#fff",
-                                      fontSize: { xs: "0.6rem", md: "0.75rem" }
-                                    }}
-                                  />
+                              )}
+                            </Box>
+                          )}
+
+                          {section.quote && (
+                            <Box sx={{ mt: 1.5, p: 1.5, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 2, textAlign: "center" }}>
+                              <Typography variant="body2" sx={{ color: "#fff", fontStyle: "italic", mb: 0.5, fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
+                                "{section.quote}"
+                              </Typography>
+                              {section.dailyGoal && (
+                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", fontWeight: 600, fontSize: { xs: "0.65rem", md: "0.75rem" } }}>
+                                  🎯 {section.dailyGoal}
+                                </Typography>
+                              )}
+                            </Box>
+                          )}
+
+                          {section.books && (
+                            <Box sx={{ mt: 1.5 }}>
+                              <Typography variant="subtitle2" sx={{ color: "#fff", mb: 0.5, fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.8rem" } }}>
+                                📚 Kitap Önerileri:
+                              </Typography>
+                              {section.books.slice(0, 2).map((book, idx) => (
+                                <Box key={idx} sx={{ mb: 1, p: 1, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 1 }}>
+                                  <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.25, fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
+                                    "{book.title}" - {book.author}
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 0.5, fontSize: { xs: "0.65rem", md: "0.75rem" } }}>
+                                    {book.description}
+                                  </Typography>
+                                  <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                                    <Chip 
+                                      label={book.category} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(255,255,255,0.2)", 
+                                        color: "#fff",
+                                        fontSize: { xs: "0.55rem", md: "0.65rem" }
+                                      }}
+                                    />
+                                    <Chip 
+                                      label={book.language} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(255,255,255,0.2)", 
+                                        color: "#fff",
+                                        fontSize: { xs: "0.55rem", md: "0.65rem" }
+                                      }}
+                                    />
+                                  </Box>
                                 </Box>
-                                {podcast.listenLink && (
-                                  <Button
-                                    size="small"
-                                    startIcon={<Headphones />}
-                                    onClick={() => window.open(podcast.listenLink, '_blank')}
-                                    sx={{
-                                      bgcolor: "rgba(255,193,7,0.2)",
-                                      color: "#fff",
-                                      fontSize: { xs: "0.6rem", md: "0.7rem" },
-                                      py: 0.5,
-                                      px: 1,
-                                      mt: 1,
-                                      "&:hover": { bgcolor: "rgba(255,193,7,0.3)" }
-                                    }}
-                                  >
-                                    Dinle
-                                  </Button>
-                                )}
-                              </Box>
-                            ))}
-                          </Box>
-                        )}
+                              ))}
+                            </Box>
+                          )}
+
+                          {section.articles && (
+                            <Box sx={{ mt: 1.5 }}>
+                              <Typography variant="subtitle2" sx={{ color: "#fff", mb: 0.5, fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.8rem" } }}>
+                                📰 Makale Önerileri:
+                              </Typography>
+                              {section.articles.slice(0, 2).map((article, idx) => (
+                                <Box key={idx} sx={{ mb: 1, p: 1, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 1 }}>
+                                  <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.25, fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
+                                    {article.title}
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 0.5, fontSize: { xs: "0.65rem", md: "0.75rem" } }}>
+                                    {article.summary}
+                                  </Typography>
+                                  <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                                    <Chip 
+                                      label={article.category} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(255,255,255,0.2)", 
+                                        color: "#fff",
+                                        fontSize: { xs: "0.55rem", md: "0.65rem" }
+                                      }}
+                                    />
+                                    <Chip 
+                                      label={article.readingTime} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(255,255,255,0.2)", 
+                                        color: "#fff",
+                                        fontSize: { xs: "0.55rem", md: "0.65rem" }
+                                      }}
+                                    />
+                                  </Box>
+                                </Box>
+                              ))}
+                            </Box>
+                          )}
+
+                          {section.videos && (
+                            <Box sx={{ mt: 1.5 }}>
+                              <Typography variant="subtitle2" sx={{ color: "#fff", mb: 0.5, fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.8rem" } }}>
+                                🎥 Video Önerileri:
+                              </Typography>
+                              {section.videos.slice(0, 2).map((video, idx) => (
+                                <Box key={idx} sx={{ mb: 1, p: 1, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 1 }}>
+                                  <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.25, fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
+                                    {video.title}
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 0.5, fontSize: { xs: "0.65rem", md: "0.75rem" } }}>
+                                    {video.description}
+                                  </Typography>
+                                  <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                                    <Chip 
+                                      label={video.category} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(255,255,255,0.2)", 
+                                        color: "#fff",
+                                        fontSize: { xs: "0.55rem", md: "0.65rem" }
+                                      }}
+                                    />
+                                    <Chip 
+                                      label={video.duration} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(255,255,255,0.2)", 
+                                        color: "#fff",
+                                        fontSize: { xs: "0.55rem", md: "0.65rem" }
+                                      }}
+                                    />
+                                  </Box>
+                                </Box>
+                              ))}
+                            </Box>
+                          )}
+
+                          {section.documentaries && (
+                            <Box sx={{ mt: 1.5 }}>
+                              <Typography variant="subtitle2" sx={{ color: "#fff", mb: 0.5, fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.8rem" } }}>
+                                📺 Belgesel Önerileri:
+                              </Typography>
+                              {section.documentaries.slice(0, 2).map((doc, idx) => (
+                                <Box key={idx} sx={{ mb: 1, p: 1, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 1 }}>
+                                  <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.25, fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
+                                    {doc.title}
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 0.5, fontSize: { xs: "0.65rem", md: "0.75rem" } }}>
+                                    {doc.description}
+                                  </Typography>
+                                  <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                                    <Chip 
+                                      label={doc.platform} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(255,255,255,0.2)", 
+                                        color: "#fff",
+                                        fontSize: { xs: "0.55rem", md: "0.65rem" }
+                                      }}
+                                    />
+                                    <Chip 
+                                      label={doc.duration} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(255,255,255,0.2)", 
+                                        color: "#fff",
+                                        fontSize: { xs: "0.55rem", md: "0.65rem" }
+                                      }}
+                                    />
+                                  </Box>
+                                </Box>
+                              ))}
+                            </Box>
+                          )}
+
+                          {section.series && (
+                            <Box sx={{ mt: 1.5 }}>
+                              <Typography variant="subtitle2" sx={{ color: "#fff", mb: 0.5, fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.8rem" } }}>
+                                📺 Dizi Önerileri:
+                              </Typography>
+                              {section.series.slice(0, 2).map((serie, idx) => (
+                                <Box key={idx} sx={{ mb: 1, p: 1, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 1 }}>
+                                  <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.25, fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
+                                    {serie.title}
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 0.5, fontSize: { xs: "0.65rem", md: "0.75rem" } }}>
+                                    {serie.description}
+                                  </Typography>
+                                  <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                                    <Chip 
+                                      label={serie.platform} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(255,255,255,0.2)", 
+                                        color: "#fff",
+                                        fontSize: { xs: "0.55rem", md: "0.65rem" }
+                                      }}
+                                    />
+                                    <Chip 
+                                      label={`${serie.seasons} Sezon`} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(255,255,255,0.2)", 
+                                        color: "#fff",
+                                        fontSize: { xs: "0.55rem", md: "0.65rem" }
+                                      }}
+                                    />
+                                  </Box>
+                                </Box>
+                              ))}
+                            </Box>
+                          )}
+
+                          {section.podcasts && (
+                            <Box sx={{ mt: 1.5 }}>
+                              <Typography variant="subtitle2" sx={{ color: "#fff", mb: 0.5, fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.8rem" } }}>
+                                🎧 Podcast Önerileri:
+                              </Typography>
+                              {section.podcasts.slice(0, 2).map((podcast, idx) => (
+                                <Box key={idx} sx={{ mb: 1, p: 1, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 1 }}>
+                                  <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, mb: 0.25, fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
+                                    {podcast.title}
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mb: 0.5, fontSize: { xs: "0.65rem", md: "0.75rem" } }}>
+                                    {podcast.description}
+                                  </Typography>
+                                  <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                                    <Chip 
+                                      label={podcast.platform} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(255,255,255,0.2)", 
+                                        color: "#fff",
+                                        fontSize: { xs: "0.55rem", md: "0.65rem" }
+                                      }}
+                                    />
+                                    <Chip 
+                                      label={podcast.duration} 
+                                      size="small" 
+                                      sx={{ 
+                                        bgcolor: "rgba(255,255,255,0.2)", 
+                                        color: "#fff",
+                                        fontSize: { xs: "0.55rem", md: "0.65rem" }
+                                      }}
+                                    />
+                                  </Box>
+                                </Box>
+                              ))}
+                            </Box>
+                          )}
+                        </Box>
                       </Box>
                     </CardContent>
                   </Card>

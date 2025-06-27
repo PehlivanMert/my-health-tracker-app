@@ -254,83 +254,145 @@ KULLANICI BİLGİLERİ:
 KULLANICI İSTEKLERİ:
 ${userRequest}
 
-Lütfen aşağıdaki formatta detaylı bir spor programı oluştur:
+Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir format kullanma:
 
-# 🏋️ KİŞİSELLEŞTİRİLMİŞ SPOR PROGRAMI
+{
+  "title": "🏋️ KİŞİSELLEŞTİRİLMİŞ SPOR PROGRAMI",
+  "summary": "Kullanıcının hedeflerine uygun kısa özet (2-3 cümle)",
+  "goals": [
+    "Hedef 1",
+    "Hedef 2", 
+    "Hedef 3"
+  ],
+  "weeklyProgram": {
+    "Pazartesi": {
+      "type": "Antrenman Türü (örn: Üst Vücut)",
+      "duration": "45 dakika",
+      "difficulty": "Başlangıç",
+      "exercises": [
+        {
+          "name": "Push-up",
+          "sets": "3 set x 10 tekrar",
+          "description": "Göğüs ve triceps kaslarını çalıştırır",
+          "videoSearch": "push up nasıl yapılır"
+        },
+        {
+          "name": "Dumbbell Row",
+          "sets": "3 set x 12 tekrar",
+          "description": "Sırt kaslarını güçlendirir",
+          "videoSearch": "dumbbell row egzersizi"
+        }
+      ]
+    },
+    "Salı": {
+      "type": "Antrenman Türü",
+      "duration": "30 dakika",
+      "difficulty": "Başlangıç",
+      "exercises": [
+        {
+          "name": "Squat",
+          "sets": "3 set x 15 tekrar",
+          "description": "Bacak kaslarını çalıştırır",
+          "videoSearch": "squat nasıl yapılır"
+        }
+      ]
+    },
+    "Çarşamba": {
+      "type": "Antrenman Türü",
+      "duration": "40 dakika",
+      "difficulty": "Başlangıç",
+      "exercises": [
+        {
+          "name": "Plank",
+          "sets": "3 set x 30 saniye",
+          "description": "Core kaslarını güçlendirir",
+          "videoSearch": "plank egzersizi"
+        }
+      ]
+    },
+    "Perşembe": {
+      "type": "Antrenman Türü",
+      "duration": "35 dakika",
+      "difficulty": "Başlangıç",
+      "exercises": [
+        {
+          "name": "Lunges",
+          "sets": "3 set x 10 tekrar (her bacak)",
+          "description": "Bacak kaslarını dengeli çalıştırır",
+          "videoSearch": "lunge egzersizi"
+        }
+      ]
+    },
+    "Cuma": {
+      "type": "Antrenman Türü",
+      "duration": "45 dakika",
+      "difficulty": "Başlangıç",
+      "exercises": [
+        {
+          "name": "Pull-up",
+          "sets": "3 set x 5 tekrar",
+          "description": "Sırt ve kol kaslarını güçlendirir",
+          "videoSearch": "pull up nasıl yapılır"
+        }
+      ]
+    },
+    "Cumartesi": {
+      "type": "Antrenman Türü",
+      "duration": "30 dakika",
+      "difficulty": "Başlangıç",
+      "exercises": [
+        {
+          "name": "Burpees",
+          "sets": "3 set x 8 tekrar",
+          "description": "Tam vücut kardiyo egzersizi",
+          "videoSearch": "burpee egzersizi"
+        }
+      ]
+    },
+    "Pazar": {
+      "type": "Dinlenme",
+      "duration": "20 dakika",
+      "difficulty": "Başlangıç",
+      "exercises": [
+        {
+          "name": "Hafif Yürüyüş",
+          "sets": "20 dakika",
+          "description": "Dinlenme günü aktivitesi",
+          "videoSearch": "yürüyüş egzersizi"
+        }
+      ]
+    }
+  },
+  "notes": [
+    "Günde en az 2 litre su için",
+    "Egzersiz öncesi 5-10 dakika ısınma yapın",
+    "Egzersiz sonrası esneme hareketleri yapın",
+    "Haftada 3-4 gün antrenman yapın",
+    "İlerlemenizi takip etmek için not alın"
+  ],
+  "videoSuggestions": [
+    "YouTube'da 'egzersiz adı nasıl yapılır' araması yapın",
+    "Doğru form için video izleyin",
+    "Başlangıç seviyesi videoları tercih edin"
+  ]
+}
 
-## 📋 Program Özeti
-[Kullanıcının hedeflerine uygun kısa özet]
-
-## 🎯 Hedefler
-- [Hedef 1]
-- [Hedef 2]
-- [Hedef 3]
-
-## 📅 Haftalık Program
-
-### Pazartesi - [Antrenman Türü]
-**Süre:** [X] dakika
-**Zorluk:** [Başlangıç/Orta/İleri]
-
-**Egzersizler:**
-1. **[Egzersiz Adı]** - [Set x Tekrar] - [YouTube Video Açıklaması]
-   - [Detaylı açıklama]
-   - [Hedef kas grubu]
-   - [Video önerisi: "YouTube'da 'egzersiz adı' araması yapın"]
-
-2. **[Egzersiz Adı]** - [Set x Tekrar] - [YouTube Video Açıklaması]
-   - [Detaylı açıklama]
-   - [Hedef kas grubu]
-   - [Video önerisi: "YouTube'da 'egzersiz adı' araması yapın"]
-
-### Salı - [Antrenman Türü]
-[Benzer format...]
-
-### Çarşamba - [Antrenman Türü]
-[Benzer format...]
-
-### Perşembe - [Antrenman Türü]
-[Benzer format...]
-
-### Cuma - [Antrenman Türü]
-[Benzer format...]
-
-### Cumartesi - [Antrenman Türü]
-[Benzer format...]
-
-### Pazar - Dinlenme
-**Aktivite:** Hafif yürüyüş veya esneme
-
-## 💡 Önemli Notlar
-- [Beslenme önerileri]
-- [Su tüketimi]
-- [Dinlenme önerileri]
-- [İlerleme takibi]
-
-## 🎥 Video Önerileri
-Her egzersiz için YouTube'da arama yapabileceğiniz anahtar kelimeler:
-- [Anahtar kelime 1]
-- [Anahtar kelime 2]
-- [Anahtar kelime 3]
-
-## 📊 İlerleme Takibi
-- Haftalık kilo takibi
-- Fotoğraf çekimi (aylık)
-- Performans notları
-- Enerji seviyesi değerlendirmesi
-
-Programı Türkçe olarak, kullanıcının seviyesine uygun, güvenli ve etkili egzersizlerle oluştur. Her egzersiz için YouTube video önerisi ekle.`;
+ÖNEMLİ KURALLAR:
+1. SADECE JSON formatında cevap ver, başka hiçbir metin ekleme
+2. Her gün için en az 2-3 egzersiz ekle
+3. Egzersiz isimleri Türkçe olsun
+4. Zorluk seviyesi: Başlangıç, Orta, İleri
+5. Süreler gerçekçi olsun (30-60 dakika arası)
+6. Video arama terimleri Türkçe olsun
+7. Kullanıcının seviyesine uygun egzersizler seç
+8. JSON formatını bozma, geçerli JSON olsun`;
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
       const programText = response.text();
 
-      console.log("🔍 Gemini API'den gelen cevap:", programText);
-      console.log("📏 Cevap uzunluğu:", programText.length);
-
       // Programı parse et ve yapılandırılmış hale getir
       const parsedProgram = parseProgram(programText);
-      console.log("🔧 Parse edilen program:", parsedProgram);
       
       setGeneratedProgram(parsedProgram);
 
@@ -353,8 +415,6 @@ Programı Türkçe olarak, kullanıcının seviyesine uygun, güvenli ve etkili 
       setOpenModal(false);
 
     } catch (error) {
-      console.error("Program oluşturma hatası:", error);
-      
       // Daha detaylı hata mesajları
       if (error.message?.includes("API_KEY")) {
         setError("Gemini API anahtarı bulunamadı. Lütfen .env dosyasını kontrol edin.");
@@ -377,10 +437,60 @@ Programı Türkçe olarak, kullanıcının seviyesine uygun, güvenli ve etkili 
   const parseProgram = (programText) => {
     if (!programText) return null;
 
+    try {
+      // JSON'u temizle ve parse et
+      let cleanText = programText.trim();
+      
+      // Eğer JSON başlangıcı ve bitişi varsa, sadece o kısmı al
+      const jsonStart = cleanText.indexOf('{');
+      const jsonEnd = cleanText.lastIndexOf('}');
+      
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        cleanText = cleanText.substring(jsonStart, jsonEnd + 1);
+      }
+      
+      // JSON'u parse et
+      const program = JSON.parse(cleanText);
+      
+      // Gerekli alanları kontrol et ve varsayılan değerler ata
+      const parsedProgram = {
+        title: program.title || '🏋️ KİŞİSELLEŞTİRİLMİŞ SPOR PROGRAMI',
+        summary: program.summary || 'Kişiselleştirilmiş spor programı',
+        goals: Array.isArray(program.goals) ? program.goals : [],
+        weeklyProgram: program.weeklyProgram || {},
+        notes: Array.isArray(program.notes) ? program.notes : [],
+        videoSuggestions: Array.isArray(program.videoSuggestions) ? program.videoSuggestions : []
+      };
+      
+      // Haftalık programı kontrol et ve düzelt
+      const days = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+      days.forEach(day => {
+        if (parsedProgram.weeklyProgram[day]) {
+          const dayProgram = parsedProgram.weeklyProgram[day];
+          parsedProgram.weeklyProgram[day] = {
+            type: dayProgram.type || 'Antrenman',
+            duration: dayProgram.duration || '30 dakika',
+            difficulty: dayProgram.difficulty || 'Başlangıç',
+            exercises: Array.isArray(dayProgram.exercises) ? dayProgram.exercises : []
+          };
+        }
+      });
+      
+      return parsedProgram;
+      
+    } catch (error) {
+      // Fallback: Eski parse yöntemini dene
+      return parseProgramFallback(programText);
+    }
+  };
+
+  const parseProgramFallback = (programText) => {
+    if (!programText) return null;
+
     const lines = programText.split('\n').filter(line => line.trim());
     
     const program = {
-      title: '',
+      title: '🏋️ KİŞİSELLEŞTİRİLMİŞ SPOR PROGRAMI',
       summary: '',
       goals: [],
       weeklyProgram: {},
@@ -465,28 +575,11 @@ Programı Türkçe olarak, kullanıcının seviyesine uygun, güvenli ve etkili 
         
         currentDay = line.replace(/^[-*]\s*/, '').trim();
         program.weeklyProgram[currentDay] = {
-          duration: '',
-          difficulty: '',
+          type: 'Antrenman',
+          duration: '30 dakika',
+          difficulty: 'Başlangıç',
           exercises: []
         };
-        continue;
-      }
-
-      // Süre kontrolü
-      if (inWeeklyProgram && currentDay && (line.includes('dakika') || line.includes('minute'))) {
-        const durationMatch = line.match(/(\d+)\s*(dakika|minute)/i);
-        if (durationMatch) {
-          program.weeklyProgram[currentDay].duration = durationMatch[0];
-        }
-        continue;
-      }
-
-      // Zorluk kontrolü
-      if (inWeeklyProgram && currentDay && (line.includes('Zorluk') || line.includes('Difficulty'))) {
-        const difficultyMatch = line.match(/Zorluk[:\s]*([^-\n]+)/i) || line.match(/Difficulty[:\s]*([^-\n]+)/i);
-        if (difficultyMatch) {
-          program.weeklyProgram[currentDay].difficulty = difficultyMatch[1].trim();
-        }
         continue;
       }
 
@@ -496,13 +589,18 @@ Programı Türkçe olarak, kullanıcının seviyesine uygun, güvenli ve etkili 
         if (exerciseMatch) {
           const exerciseName = exerciseMatch[1].trim();
           const exerciseDetails = exerciseMatch[2].trim();
-          program.weeklyProgram[currentDay].exercises.push(`${exerciseName} - ${exerciseDetails}`);
+          program.weeklyProgram[currentDay].exercises.push({
+            name: exerciseName,
+            sets: exerciseDetails,
+            description: exerciseDetails,
+            videoSearch: `${exerciseName} nasıl yapılır`
+          });
         }
         continue;
       }
 
       // Hedef ekleme
-      if (inGoals && line.startsWith('-') || line.startsWith('*')) {
+      if (inGoals && (line.startsWith('-') || line.startsWith('*'))) {
         const goal = line.replace(/^[-*]\s*/, '').trim();
         if (goal) {
           program.goals.push(goal);
@@ -908,13 +1006,14 @@ const ProgramDisplay = ({ program }) => {
                       <FitnessCenter sx={{ color: "#FF9800", fontSize: 20 }} />
                     </ListItemIcon>
                     <ListItemText 
-                      primary={exercise}
+                      primary={exercise.name || exercise}
+                      secondary={exercise.sets || exercise}
                       sx={{ color: "#fff" }}
                     />
                     <IconButton
                       size="small"
                       onClick={() => {
-                        const searchTerm = encodeURIComponent(exercise.split(' - ')[0]);
+                        const searchTerm = encodeURIComponent(exercise.videoSearch || exercise.name || exercise);
                         window.open(`https://www.youtube.com/results?search_query=${searchTerm}`, '_blank');
                       }}
                       sx={{ color: "#FF0000" }}

@@ -1,15 +1,21 @@
 // src/components/daily-routine/RoutineHeader.jsx
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Box, Typography, Button, Dialog, DialogContent } from "@mui/material";
 import { AccessTime, Add, Timer } from "@mui/icons-material";
 import AdvancedTimer from "./AdvancedTimer";
 
-const RoutineHeader = ({ onNewRoutine, user }) => {
+const RoutineHeader = ({ onNewRoutine, user, newRoutineButtonRef }) => {
   // user prop'u eklendi
   const [openTimer, setOpenTimer] = useState(false);
+  const timerButtonRef = useRef(); // Sayaç butonu için ref
 
   const handleOpenTimer = () => setOpenTimer(true);
-  const handleCloseTimer = () => setOpenTimer(false);
+  const handleCloseTimer = () => {
+    setOpenTimer(false);
+    setTimeout(() => {
+      timerButtonRef.current?.focus(); // Dialog kapanınca focus'u Sayaç butonuna ver
+    }, 0);
+  };
 
   return (
     <Box>
@@ -32,6 +38,7 @@ const RoutineHeader = ({ onNewRoutine, user }) => {
           onClick={onNewRoutine}
           startIcon={<Add />}
           sx={{ color: "#fff" }}
+          ref={newRoutineButtonRef} // Yeni Rutin Ekle butonuna ref bağla
         >
           Yeni Rutin Ekle
         </Button>
@@ -40,6 +47,7 @@ const RoutineHeader = ({ onNewRoutine, user }) => {
           onClick={handleOpenTimer}
           startIcon={<Timer />}
           sx={{ color: "#fff" }}
+          ref={timerButtonRef} // Ref'i Sayaç butonuna bağla
         >
           Sayaç
         </Button>

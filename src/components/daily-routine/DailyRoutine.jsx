@@ -152,6 +152,8 @@ const DailyRoutine = ({ user }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
 
+  const newRoutineButtonRef = useRef();
+
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(interval);
@@ -734,6 +736,7 @@ const DailyRoutine = ({ user }) => {
             setEditingRoutine(null);
             setModalOpen(true);
           }}
+          newRoutineButtonRef={newRoutineButtonRef}
         />
 
         <StatsPanel
@@ -791,7 +794,12 @@ const DailyRoutine = ({ user }) => {
       </Container>
       <RoutineModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false);
+          setTimeout(() => {
+            newRoutineButtonRef.current?.focus();
+          }, 0);
+        }}
         routine={editingRoutine}
         initialDate={newRoutineDate}
         onSave={handleSaveRoutine}

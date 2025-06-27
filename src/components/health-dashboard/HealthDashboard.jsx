@@ -24,6 +24,12 @@ import {
   AccordionSummary,
   AccordionDetails,
   Chip,
+  Container,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  IconButton,
 } from "@mui/material";
 import {
   FitnessCenter,
@@ -42,9 +48,18 @@ import {
   Movie,
   Tv,
   Headphones,
+  LocationOn,
+  Park,
+  DirectionsRun,
+  Pool,
+  SportsTennis,
+  Hiking,
+  DirectionsBike,
+  FitnessCenter as GymIcon,
 } from "@mui/icons-material";
 import { keyframes } from "@emotion/react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { styled, alpha } from "@mui/material/styles";
 
 const float = keyframes`
   0% { transform: translateY(0px); }
@@ -61,6 +76,159 @@ const fadeIn = keyframes`
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY || "GEMINI_API_KEY");
 
 const API_URL = "/api/qwen-proxy"; /* "http://localhost:3001/api/qwen-proxy"; */
+
+// Konum verisi alma fonksiyonu
+const getUserLocation = () => {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Tarayıcınız konum servisini desteklemiyor."));
+    } else {
+      navigator.geolocation.getCurrentPosition(
+        (position) => resolve(position.coords),
+        (error) => reject(error)
+      );
+    }
+  });
+};
+
+// Koordinatları şehir ismine çeviren fonksiyon
+const getCityFromCoordinates = async (latitude, longitude) => {
+  try {
+    // OpenCage API anahtarı varsa kullan
+    if (import.meta.env.VITE_OPENCAGE_API_KEY) {
+      const response = await fetch(
+        `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=${import.meta.env.VITE_OPENCAGE_API_KEY}&language=tr`
+      );
+      const data = await response.json();
+      
+      if (data.results && data.results.length > 0) {
+        const result = data.results[0];
+        const components = result.components;
+        
+        // Şehir ismini öncelik sırasına göre al
+        const city = components.city || 
+                     components.town || 
+                     components.village || 
+                     components.county ||
+                     components.state ||
+                     "Bilinmeyen Konum";
+        
+        return {
+          city: city,
+          country: components.country || "Türkiye",
+          fullAddress: result.formatted
+        };
+      }
+    }
+    
+    // Fallback: Basit koordinat bazlı şehir tespiti
+    return getCityFromCoordinatesFallback(latitude, longitude);
+    
+  } catch (error) {
+    console.error("Şehir ismi alınamadı:", error);
+    return getCityFromCoordinatesFallback(latitude, longitude);
+  }
+};
+
+// Basit koordinat bazlı şehir tespiti (fallback)
+const getCityFromCoordinatesFallback = (latitude, longitude) => {
+  // Türkiye'nin büyük şehirlerinin yaklaşık koordinatları
+  const cities = [
+    { name: "İstanbul", lat: 41.0082, lon: 28.9784, range: 0.5 },
+    { name: "Ankara", lat: 39.9334, lon: 32.8597, range: 0.3 },
+    { name: "İzmir", lat: 38.4192, lon: 27.1287, range: 0.3 },
+    { name: "Bursa", lat: 40.1885, lon: 29.0610, range: 0.3 },
+    { name: "Antalya", lat: 36.8969, lon: 30.7133, range: 0.3 },
+    { name: "Adana", lat: 37.0000, lon: 35.3213, range: 0.3 },
+    { name: "Konya", lat: 37.8667, lon: 32.4833, range: 0.3 },
+    { name: "Gaziantep", lat: 37.0662, lon: 37.3833, range: 0.3 },
+    { name: "Mersin", lat: 36.8000, lon: 34.6333, range: 0.3 },
+    { name: "Diyarbakır", lat: 37.9144, lon: 40.2306, range: 0.3 },
+    { name: "Samsun", lat: 41.2867, lon: 36.3300, range: 0.3 },
+    { name: "Denizli", lat: 37.7765, lon: 29.0864, range: 0.3 },
+    { name: "Eskişehir", lat: 39.7767, lon: 30.5206, range: 0.3 },
+    { name: "Trabzon", lat: 41.0015, lon: 39.7178, range: 0.3 },
+    { name: "Erzurum", lat: 39.9000, lon: 41.2700, range: 0.3 }
+  ];
+
+  for (const city of cities) {
+    const distance = Math.sqrt(
+      Math.pow(latitude - city.lat, 2) + Math.pow(longitude - city.lon, 2)
+    );
+    
+    if (distance <= city.range) {
+      return {
+        city: city.name,
+        country: "Türkiye",
+        fullAddress: `${city.name}, Türkiye`
+      };
+    }
+  }
+
+  // Eğer hiçbir şehir bulunamazsa
+  return {
+    city: "Türkiye",
+    country: "Türkiye",
+    fullAddress: "Türkiye"
+  };
+};
+
+// Hava durumu verisi alma fonksiyonu
+const getWeatherData = async (latitude, longitude) => {
+  try {
+    const response = await fetch(
+      `${
+        import.meta.env.VITE_OPEN_METEO_API_URL
+      }?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code`
+    );
+    const data = await response.json();
+    if (!data.current) {
+      throw new Error("Hava durumu verisi alınamadı");
+    }
+    return {
+      temperature: data.current.temperature_2m,
+      humidity: data.current.relative_humidity_2m,
+      weathercode: data.current.weather_code,
+    };
+  } catch (error) {
+    console.error("Hava durumu hatası:", error.message);
+    return null;
+  }
+};
+
+// Konuma özel kapsamlı etkinlik önerileri
+const getLocationBasedActivities = (city, weather, temperature) => {
+  const activities = {
+    outdoor: [],
+    indoor: [],
+    cultural: [],
+    artistic: [],
+    sports: [],
+    wellness: [],
+    weather_specific: []
+  };
+
+  // Hava durumuna göre temel aktiviteler (AI'ya gönderilecek)
+  if (weather && temperature) {
+    if (temperature > 25) {
+      activities.weather_specific.push(
+        "Güneş kremi kullanmayı unutmayın",
+        "Bol su için",
+        "Gölgeli alanları tercih edin",
+        "Hafif kıyafetler giyin"
+      );
+    } else if (weather.weathercode >= 3) { // Yağmurlu/karlı
+      activities.weather_specific.push(
+        "Yağmurlu hava için kapalı aktiviteler önerilir",
+        "Isınma hareketlerini ihmal etmeyin",
+        "Sıcak içecekler tüketin"
+      );
+    }
+  }
+
+  return activities;
+};
+
 const HealthDashboard = ({ user }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -237,6 +405,24 @@ const HealthDashboard = ({ user }) => {
       const age = profileData.age;
       const bmi = calculateBMI();
 
+      // Konum ve hava durumu verisi al
+      let locationData = null;
+      let weatherData = null;
+      let locationActivities = null;
+      let cityInfo = null;
+
+      try {
+        const coords = await getUserLocation();
+        locationData = coords;
+        weatherData = await getWeatherData(coords.latitude, coords.longitude);
+        cityInfo = await getCityFromCoordinates(coords.latitude, coords.longitude);
+        locationActivities = getLocationBasedActivities(cityInfo?.city, weatherData, weatherData?.temperature);
+      } catch (error) {
+        console.warn("Konum verisi alınamadı:", error.message);
+        // Varsayılan aktiviteler kullan
+        locationActivities = getLocationBasedActivities("Bilinmeyen Konum", null, 20);
+      }
+
       // Güncel tarih ve saat bilgisini 'Tarih ve Saat' olarak alıyoruz
       const currentDateTime = new Date().toLocaleString("tr-TR", {
         dateStyle: "full",
@@ -250,6 +436,10 @@ Cinsiyet: ${profileData.gender || "Belirtilmemiş"},
 Boy: ${profileData.height || "Belirtilmemiş"} cm,
 Kilo: ${profileData.weight || "Belirtilmemiş"} kg,
 ${bmi ? `VKİ: ${bmi.value} (${bmi.status})` : ""}
+
+Konum ve Hava Durumu:
+${cityInfo ? `Şehir: ${cityInfo.city}, ${cityInfo.country}` : "Konum: Belirtilmemiş"}
+${weatherData ? `Sıcaklık: ${weatherData.temperature}°C, Nem: ${weatherData.humidity}%` : "Hava durumu: Belirtilmemiş"}
 
 Su Tüketimi:
 - Dün içilen: ${healthData.waterData?.yesterday || 0} ml
@@ -295,24 +485,24 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
       "status": "Mevcut durum",
       "advice": "Uzman tavsiyesi"
     },
-    "exercisePlan": {
-      "title": "🏋️♀️ Kişiye Özel Hareket Planı",
-      "content": "3 aşamalı egzersiz programı (300-400 karakter)",
-      "icon": "💪",
-      "phases": [
-        {
-          "phase": "Başlangıç (1-2 hafta)",
-          "exercises": ["Egzersiz 1", "Egzersiz 2"]
-        },
-        {
-          "phase": "Gelişim (3-4 hafta)",
-          "exercises": ["Egzersiz 1", "Egzersiz 2"]
-        },
-        {
-          "phase": "İleri (5-6 hafta)",
-          "exercises": ["Egzersiz 1", "Egzersiz 2"]
-        }
-      ]
+    "locationBasedActivities": {
+      "title": "📍 ${cityInfo?.city || "Konum"} Özel Etkinlik Önerileri",
+      "content": "${cityInfo?.city || "Bulunduğunuz konum"} ve hava durumuna göre kapsamlı etkinlik önerileri (300-400 karakter)",
+      "icon": "🌍",
+      "cityName": "${cityInfo?.city || "Bilinmeyen Konum"}",
+      "outdoorActivities": ["Yapay zeka tarafından oluşturulacak - ${cityInfo?.city || "konum"} için açık hava aktiviteleri"],
+      "indoorActivities": ["Yapay zeka tarafından oluşturulacak - kapalı alan aktiviteleri"],
+      "culturalActivities": ["Yapay zeka tarafından oluşturulacak - ${cityInfo?.city || "konum"} için kültürel etkinlikler"],
+      "artisticActivities": ["Yapay zeka tarafından oluşturulacak - ${cityInfo?.city || "konum"} için sanatsal etkinlikler"],
+      "sportsActivities": ["Yapay zeka tarafından oluşturulacak - ${cityInfo?.city || "konum"} için spor etkinlikleri"],
+      "wellnessActivities": ["Yapay zeka tarafından oluşturulacak - wellness aktiviteleri"],
+      "weatherTips": ${JSON.stringify(locationActivities?.weather_specific || [])},
+      "locationInfo": {
+        "city": "${cityInfo?.city || "Bilinmeyen Konum"}",
+        "country": "${cityInfo?.country || "Türkiye"}",
+        "temperature": ${weatherData?.temperature || "null"},
+        "weatherCondition": ${weatherData?.weathercode || "null"}
+      }
     },
     "nutrition": {
       "title": "🥗 Beslenme Önerileri",
@@ -435,11 +625,25 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 5. Kullanıcının yaş, cinsiyet, VKİ ve su/takviye verilerini dikkate al
 6. Gerçekçi ve uygulanabilir öneriler ver
 7. JSON formatını bozma, geçerli JSON olsun
-8. Okuma önerilerinde çeşitli kategoriler kullan: Sağlık, Bilim, Bilim Kurgu, Sanat, Kültür, Felsefe, Tarih, Teknoloji, Psikoloji, Fantezi, Macera, Biyografi
-9. Video önerilerinde farklı platformları dahil et: YouTube, Netflix, Disney+, Prime Video, TRT Belgesel, National Geographic
-10. Kullanıcının yaşına ve ilgi alanlarına uygun içerik seç
-11. Türkçe ve yabancı içerikleri dengeli dağıt
-12. Hem eğitici hem eğlenceli içerikler öner`;
+8. Konuma özel aktivite önerilerinde şehir ismini ve hava durumunu dikkate al
+9. Kültürel, sanatsal, spor ve wellness aktivitelerini dengeli dağıt
+10. Okuma önerilerinde çeşitli kategoriler kullan: Sağlık, Bilim, Bilim Kurgu, Sanat, Kültür, Felsefe, Tarih, Teknoloji, Psikoloji, Fantezi, Macera, Biyografi
+11. Video önerilerinde farklı platformları dahil et: YouTube, Netflix, Disney+, Prime Video, TRT Belgesel, National Geographic
+12. Kullanıcının yaşına ve ilgi alanlarına uygun içerik seç
+13. Türkçe ve yabancı içerikleri dengeli dağıt
+14. Hem eğitici hem eğlenceli içerikler öner
+
+🎯 *AKTİVİTE ÖNERİLERİ İÇİN ÖZEL KURALLAR:*
+15. Her aktivite kategorisi için 5-8 öneri oluştur
+16. Şehir özel aktiviteleri ekle (müzeler, parklar, tarihi yerler, spor kulüpleri)
+17. Hava durumuna göre uygun aktiviteler seç (sıcak/soğuk/yağmurlu)
+18. Aktivite isimlerini emoji ile başlat (🏃‍♂️, 🏛️, 🎨, ⚽, 🧘‍♀️)
+19. Gerçek mekan isimleri kullan (varsa)
+20. Kullanıcının yaşına uygun aktiviteler öner
+21. Mevsimsel aktiviteleri dikkate al
+22. Hem ücretsiz hem ücretli aktiviteleri dahil et
+23. Erişilebilirlik ve güvenlik faktörlerini göz önünde bulundur
+24. Yerel kültür ve gelenekleri yansıt`;
 
       // Gemini AI kullanarak öneri oluştur
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
@@ -1047,8 +1251,208 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                               </Box>
                             )}
                             {section.instructions && (
-                              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
-                                {section.instructions}
+                              <Box>
+                                <Typography variant="body2" sx={{ color: "#fff", fontWeight: 600, fontSize: { xs: "0.75rem", md: "0.875rem" } }}>
+                                  Hazırlanış:
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
+                                  {section.instructions}
+                                </Typography>
+                              </Box>
+                            )}
+                          </Box>
+                        )}
+
+                        {/* Konuma Özel Aktivite Önerileri */}
+                        {section.outdoorActivities && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
+                              🌳 Açık Hava Aktiviteleri:
+                            </Typography>
+                            <List dense sx={{ p: 0 }}>
+                              {section.outdoorActivities.map((activity, idx) => (
+                                <ListItem key={idx} sx={{ p: 0, mb: 0.5 }}>
+                                  <ListItemIcon sx={{ minWidth: 30 }}>
+                                    <DirectionsRun sx={{ color: "#4CAF50", fontSize: 16 }} />
+                                  </ListItemIcon>
+                                  <ListItemText 
+                                    primary={activity}
+                                    sx={{ 
+                                      "& .MuiListItemText-primary": { 
+                                        color: "rgba(255,255,255,0.9)", 
+                                        fontSize: { xs: "0.75rem", md: "0.8rem" },
+                                        fontWeight: 500
+                                      }
+                                    }}
+                                  />
+                                </ListItem>
+                              ))}
+                            </List>
+                          </Box>
+                        )}
+
+                        {section.indoorActivities && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
+                              🏠 Kapalı Alan Aktiviteleri:
+                            </Typography>
+                            <List dense sx={{ p: 0 }}>
+                              {section.indoorActivities.map((activity, idx) => (
+                                <ListItem key={idx} sx={{ p: 0, mb: 0.5 }}>
+                                  <ListItemIcon sx={{ minWidth: 30 }}>
+                                    <GymIcon sx={{ color: "#FF9800", fontSize: 16 }} />
+                                  </ListItemIcon>
+                                  <ListItemText 
+                                    primary={activity}
+                                    sx={{ 
+                                      "& .MuiListItemText-primary": { 
+                                        color: "rgba(255,255,255,0.9)", 
+                                        fontSize: { xs: "0.75rem", md: "0.8rem" },
+                                        fontWeight: 500
+                                      }
+                                    }}
+                                  />
+                                </ListItem>
+                              ))}
+                            </List>
+                          </Box>
+                        )}
+
+                        {section.culturalActivities && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
+                              🏛️ Kültürel Etkinlikler:
+                            </Typography>
+                            <List dense sx={{ p: 0 }}>
+                              {section.culturalActivities.map((activity, idx) => (
+                                <ListItem key={idx} sx={{ p: 0, mb: 0.5 }}>
+                                  <ListItemIcon sx={{ minWidth: 30 }}>
+                                    <Book sx={{ color: "#9C27B0", fontSize: 16 }} />
+                                  </ListItemIcon>
+                                  <ListItemText 
+                                    primary={activity}
+                                    sx={{ 
+                                      "& .MuiListItemText-primary": { 
+                                        color: "rgba(255,255,255,0.9)", 
+                                        fontSize: { xs: "0.75rem", md: "0.8rem" },
+                                        fontWeight: 500
+                                      }
+                                    }}
+                                  />
+                                </ListItem>
+                              ))}
+                            </List>
+                          </Box>
+                        )}
+
+                        {section.artisticActivities && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
+                              🎨 Sanatsal Etkinlikler:
+                            </Typography>
+                            <List dense sx={{ p: 0 }}>
+                              {section.artisticActivities.map((activity, idx) => (
+                                <ListItem key={idx} sx={{ p: 0, mb: 0.5 }}>
+                                  <ListItemIcon sx={{ minWidth: 30 }}>
+                                    <Tv sx={{ color: "#E91E63", fontSize: 16 }} />
+                                  </ListItemIcon>
+                                  <ListItemText 
+                                    primary={activity}
+                                    sx={{ 
+                                      "& .MuiListItemText-primary": { 
+                                        color: "rgba(255,255,255,0.9)", 
+                                        fontSize: { xs: "0.75rem", md: "0.8rem" },
+                                        fontWeight: 500
+                                      }
+                                    }}
+                                  />
+                                </ListItem>
+                              ))}
+                            </List>
+                          </Box>
+                        )}
+
+                        {section.sportsActivities && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
+                              ⚽ Spor Etkinlikleri:
+                            </Typography>
+                            <List dense sx={{ p: 0 }}>
+                              {section.sportsActivities.map((activity, idx) => (
+                                <ListItem key={idx} sx={{ p: 0, mb: 0.5 }}>
+                                  <ListItemIcon sx={{ minWidth: 30 }}>
+                                    <FitnessCenter sx={{ color: "#2196F3", fontSize: 16 }} />
+                                  </ListItemIcon>
+                                  <ListItemText 
+                                    primary={activity}
+                                    sx={{ 
+                                      "& .MuiListItemText-primary": { 
+                                        color: "rgba(255,255,255,0.9)", 
+                                        fontSize: { xs: "0.75rem", md: "0.8rem" },
+                                        fontWeight: 500
+                                      }
+                                    }}
+                                  />
+                                </ListItem>
+                              ))}
+                            </List>
+                          </Box>
+                        )}
+
+                        {section.wellnessActivities && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
+                              🧘‍♀️ Wellness Aktiviteleri:
+                            </Typography>
+                            <List dense sx={{ p: 0 }}>
+                              {section.wellnessActivities.map((activity, idx) => (
+                                <ListItem key={idx} sx={{ p: 0, mb: 0.5 }}>
+                                  <ListItemIcon sx={{ minWidth: 30 }}>
+                                    <Headphones sx={{ color: "#00BCD4", fontSize: 16 }} />
+                                  </ListItemIcon>
+                                  <ListItemText 
+                                    primary={activity}
+                                    sx={{ 
+                                      "& .MuiListItemText-primary": { 
+                                        color: "rgba(255,255,255,0.9)", 
+                                        fontSize: { xs: "0.75rem", md: "0.8rem" },
+                                        fontWeight: 500
+                                      }
+                                    }}
+                                  />
+                                </ListItem>
+                              ))}
+                            </List>
+                          </Box>
+                        )}
+
+                        {section.weatherTips && section.weatherTips.length > 0 && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
+                              🌤️ Hava Durumu İpuçları:
+                            </Typography>
+                            <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 20, fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
+                              {section.weatherTips.map((tip, idx) => (
+                                <li key={idx}>{tip}</li>
+                              ))}
+                            </ul>
+                          </Box>
+                        )}
+
+                        {section.locationInfo && (
+                          <Box sx={{ mt: 2, p: 1, bgcolor: "rgba(255,255,255,0.1)", borderRadius: 1 }}>
+                            <Typography variant="subtitle2" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
+                              📍 Konum Bilgileri:
+                            </Typography>
+                            {section.locationInfo.city && (
+                              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", fontSize: { xs: "0.7rem", md: "0.8rem" }, mb: 0.5 }}>
+                                <LocationOn sx={{ fontSize: 14, mr: 0.5, verticalAlign: "middle" }} />
+                                {section.locationInfo.city}, {section.locationInfo.country}
+                              </Typography>
+                            )}
+                            {section.locationInfo.temperature && (
+                              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.8)", fontSize: { xs: "0.7rem", md: "0.8rem" } }}>
+                                🌡️ {section.locationInfo.temperature}°C
                               </Typography>
                             )}
                           </Box>

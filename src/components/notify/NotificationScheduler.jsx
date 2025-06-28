@@ -222,6 +222,32 @@ export const getMotivationalMessageForTime = (date, weather = null) => {
       );
       messages.push("Soğuk günlerde sıcak su, sizi ısıtır ve canlandırır!");
     }
+
+    // Yeni hava durumu parametreleri için mesajlar
+    if (weather.windSpeed > 20) {
+      messages.push("Rüzgarlı havada su kaybınız artıyor, daha fazla su için!");
+      messages.push("Rüzgar vücudunuzdan nem alıyor, suyunuzu ihmal etmeyin!");
+    }
+
+    if (weather.uvIndex > 7) {
+      messages.push("UV indeksi yüksek! Güneş ışınları su ihtiyacınızı artırıyor.");
+      messages.push("Yüksek UV'de su, cildinizi korur ve nemlendirir!");
+    }
+
+    if (weather.cloudCover > 80) {
+      messages.push("Bulutlu hava su ihtiyacınızı azaltsa da, su içmeyi unutmayın!");
+    }
+
+    if (weather.precipitation > 0 || weather.rain > 0 || weather.showers > 0) {
+      messages.push("Yağmurlu havada bile su içmeyi ihmal etmeyin!");
+      messages.push("Yağmur dışarıda, su içmek içeride - her ikisi de önemli!");
+    }
+
+    if (weather.humidity > 80) {
+      messages.push("Nemli havada terleme artıyor, su ihtiyacınız yüksek!");
+    } else if (weather.humidity < 30) {
+      messages.push("Kuru havada su kaybı fazla, bol su için!");
+    }
   }
 
   const selectedMessage = messages[Math.floor(Math.random() * messages.length)];
@@ -302,11 +328,11 @@ export const getWeatherData = async () => {
     const { latitude, longitude } = await getUserLocation();
     console.log("Konum alındı:", { latitude, longitude });
 
-    // B. API isteği
+    // B. API isteği - tüm parametreleri al
     const response = await fetch(
       `${
         import.meta.env.VITE_OPEN_METEO_API_URL
-      }?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code`
+      }?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,apparent_temperature,pressure_msl,cloud_cover,precipitation,rain,showers,snowfall,visibility,uv_index,is_day&timezone=Europe/Istanbul`
     );
 
     // C. Veri kontrolü
@@ -320,6 +346,18 @@ export const getWeatherData = async () => {
       temperature: data.current.temperature_2m,
       humidity: data.current.relative_humidity_2m,
       weathercode: data.current.weather_code,
+      windSpeed: data.current.wind_speed_10m,
+      windDirection: data.current.wind_direction_10m,
+      apparentTemperature: data.current.apparent_temperature,
+      pressure: data.current.pressure_msl,
+      cloudCover: data.current.cloud_cover,
+      precipitation: data.current.precipitation,
+      rain: data.current.rain,
+      showers: data.current.showers,
+      snowfall: data.current.snowfall,
+      visibility: data.current.visibility,
+      uvIndex: data.current.uv_index,
+      isDay: data.current.is_day,
     };
   } catch (error) {
     // E. Hata yönetimi
@@ -382,13 +420,38 @@ export const computeWaterReminderTimes = async (user) => {
     if (weather) {
       temperature = weather.temperature;
       humidity = weather.humidity;
-      console.log("Hava durumu verisi:", { temperature, humidity });
     } else {
       console.warn("Varsayılan sıcaklık ve nem kullanılıyor.");
     }
 
+    // Temel çarpanlar
     const humidityMultiplier = 1 + Math.abs(50 - humidity) / 200;
     const weatherMultiplier = 1 + (temperature - 20) / 100;
+    
+    // Yeni eklenen çarpanlar
+    let windMultiplier = 1.0;
+    let uvMultiplier = 1.0;
+    let cloudMultiplier = 1.0;
+    let precipitationMultiplier = 1.0;
+    let dayNightMultiplier = 1.0;
+
+    if (weather) {
+      // Rüzgar çarpanı (10 km/h altı etkisiz)
+      windMultiplier = 1 + Math.max(0, (weather.windSpeed - 10)) / 100;
+      
+      // UV çarpanı (3 altı etkisiz)
+      uvMultiplier = 1 + Math.max(0, (weather.uvIndex - 3)) / 20;
+      
+      // Bulut çarpanı (bulut arttıkça su ihtiyacı azalır)
+      cloudMultiplier = 1 - (weather.cloudCover / 200);
+      
+      // Yağış çarpanı (yağış varsa su ihtiyacı azalır)
+      precipitationMultiplier = (weather.precipitation > 0 || weather.rain > 0 || weather.showers > 0) ? 0.9 : 1.0;
+      
+      // Gündüz/gece çarpanı
+      dayNightMultiplier = weather.isDay ? 1.1 : 0.9;
+    }
+
     const activityMap = {
       çok_düşük: 0.9,
       düşük: 1.0,
@@ -402,13 +465,16 @@ export const computeWaterReminderTimes = async (user) => {
     const activityMultiplier = activityMap[activityLevel] || 1.1;
 
     const finalMultiplier =
-      1.4 * weatherMultiplier * humidityMultiplier * activityMultiplier;
-    console.log("Çarpanlar:", {
-      Sıcaklık: weatherMultiplier.toFixed(2),
-      Nem: humidityMultiplier.toFixed(2),
-      Aktivite: activityMultiplier.toFixed(2),
-      Toplam: finalMultiplier.toFixed(2),
-    });
+      1.4 * 
+      weatherMultiplier * 
+      humidityMultiplier * 
+      activityMultiplier *
+      windMultiplier *
+      uvMultiplier *
+      cloudMultiplier *
+      precipitationMultiplier *
+      dayNightMultiplier;
+      
     const dailyWaterTarget = calculateDailyWaterTarget(bmr, finalMultiplier);
     const waterIntake = data.waterIntake || 0;
     const remainingTarget = Math.max(dailyWaterTarget - waterIntake, 0);

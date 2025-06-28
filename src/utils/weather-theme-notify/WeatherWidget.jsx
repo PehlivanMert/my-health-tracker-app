@@ -42,7 +42,7 @@ const WeatherWidget = () => {
       const weatherResponse = await fetch(
         `${
           import.meta.env.VITE_OPEN_METEO_API_URL
-        }?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,apparent_temperature&timezone=Europe/Istanbul`
+        }?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,apparent_temperature,pressure_msl,cloud_cover,precipitation,rain,showers,snowfall,visibility,uv_index,is_day&timezone=Europe/Istanbul`
       );
       const weatherData = await weatherResponse.json();
       
@@ -54,6 +54,15 @@ const WeatherWidget = () => {
           windSpeed: weatherData.current.wind_speed_10m,
           windDirection: weatherData.current.wind_direction_10m,
           apparentTemperature: weatherData.current.apparent_temperature,
+          pressure: weatherData.current.pressure_msl,
+          cloudCover: weatherData.current.cloud_cover,
+          precipitation: weatherData.current.precipitation,
+          rain: weatherData.current.rain,
+          showers: weatherData.current.showers,
+          snowfall: weatherData.current.snowfall,
+          visibility: weatherData.current.visibility,
+          uvIndex: weatherData.current.uv_index,
+          isDay: weatherData.current.is_day,
         };
         
         setWeather(weatherInfo);
@@ -74,8 +83,6 @@ const WeatherWidget = () => {
     }
 
     navigator.permissions.query({ name: 'geolocation' }).then((permissionStatus) => {
-      console.log('Konum izni durumu:', permissionStatus.state);
-      
       if (permissionStatus.state === 'denied') {
         toast.warning("Konum izni reddedildi. Hava durumu gösterilemiyor.");
         return;
@@ -83,7 +90,6 @@ const WeatherWidget = () => {
       
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          console.log('Konum alındı:', position.coords);
           fetchWeather(position.coords.latitude, position.coords.longitude);
         },
         (error) => {

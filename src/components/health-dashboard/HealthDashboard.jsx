@@ -87,17 +87,14 @@ const getUserLocation = () => {
 
     // Konum izni durumunu kontrol et
     navigator.permissions.query({ name: 'geolocation' }).then((permissionStatus) => {
-      console.log('HealthDashboard - Konum izni durumu:', permissionStatus.state);
-      
       if (permissionStatus.state === 'denied') {
-        reject(new Error("Konum izni reddedildi"));
+        toast.warning("Konum izni reddedildi. Hava durumu gösterilemiyor.");
         return;
       }
       
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          console.log('HealthDashboard - Konum alındı:', position.coords);
-          resolve(position.coords);
+          fetchWeather(position.coords.latitude, position.coords.longitude);
         },
         (error) => {
           console.error('HealthDashboard - Konum hatası:', error);
@@ -183,7 +180,7 @@ const getWeatherData = async (latitude, longitude) => {
     const response = await fetch(
       `${
         import.meta.env.VITE_OPEN_METEO_API_URL
-      }?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,apparent_temperature,pressure_msl&timezone=Europe/Istanbul`
+      }?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,apparent_temperature,pressure_msl,cloud_cover,precipitation,rain,showers,snowfall,visibility,uv_index,is_day&timezone=Europe/Istanbul`
     );
     const data = await response.json();
     if (!data.current) {
@@ -197,6 +194,14 @@ const getWeatherData = async (latitude, longitude) => {
       windDirection: data.current.wind_direction_10m,
       apparentTemperature: data.current.apparent_temperature,
       pressure: data.current.pressure_msl,
+      cloudCover: data.current.cloud_cover,
+      precipitation: data.current.precipitation,
+      rain: data.current.rain,
+      showers: data.current.showers,
+      snowfall: data.current.snowfall,
+      visibility: data.current.visibility,
+      uvIndex: data.current.uv_index,
+      isDay: data.current.is_day,
     };
   } catch (error) {
     console.error("Hava durumu hatası:", error.message);
@@ -230,6 +235,67 @@ const getLocationBasedActivities = (city, weather, temperature) => {
         "Yağmurlu hava için kapalı aktiviteler önerilir",
         "Isınma hareketlerini ihmal etmeyin",
         "Sıcak içecekler tüketin"
+      );
+    }
+
+    // Yeni hava durumu parametreleri için öneriler
+    if (weather.windSpeed > 20) {
+      activities.weather_specific.push(
+        "Rüzgarlı havada dış aktiviteler için dikkatli olun",
+        "Rüzgar sporları için ideal hava koşulları",
+        "Su kaybınız artıyor, daha fazla su için"
+      );
+    }
+
+    if (weather.uvIndex > 7) {
+      activities.weather_specific.push(
+        "Yüksek UV indeksi - güneş kremi kullanın",
+        "Gölgeli aktiviteler tercih edin",
+        "UV korumalı kıyafetler giyin"
+      );
+    }
+
+    if (weather.cloudCover > 80) {
+      activities.weather_specific.push(
+        "Bulutlu hava - açık hava aktiviteleri için ideal",
+        "Güneş yanığı riski düşük"
+      );
+    }
+
+    if (weather.precipitation > 0 || weather.rain > 0 || weather.showers > 0) {
+      activities.weather_specific.push(
+        "Yağmurlu hava - kapalı spor salonları önerilir",
+        "Yağmur sonrası temiz hava aktiviteleri",
+        "Su geçirmez kıyafetler kullanın"
+      );
+    }
+
+    if (weather.snowfall > 0) {
+      activities.weather_specific.push(
+        "Karlı hava - kış sporları için ideal",
+        "Isınma hareketlerini ihmal etmeyin",
+        "Kalın kıyafetler giyin"
+      );
+    }
+
+    if (weather.visibility < 5) {
+      activities.weather_specific.push(
+        "Düşük görüş - dış aktiviteler için dikkatli olun",
+        "Güvenlik için reflektörlü kıyafetler kullanın"
+      );
+    }
+
+    if (weather.humidity > 80) {
+      activities.weather_specific.push(
+        "Yüksek nem - terleme artıyor",
+        "Bol su için",
+        "Hafif kıyafetler tercih edin"
+      );
+    } else if (weather.humidity < 30) {
+      activities.weather_specific.push(
+        "Düşük nem - cilt kuruluğu riski",
+        "Nemlendirici kullanın",
+        "Bol su için"
       );
     }
   }

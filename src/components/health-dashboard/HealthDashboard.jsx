@@ -209,6 +209,13 @@ const getWeatherData = async (latitude, longitude) => {
   }
 };
 
+// Rüzgar yönünü belirle
+const getWindDirection = (degrees) => {
+  const directions = ['K', 'KKD', 'KD', 'DKD', 'D', 'DGD', 'GD', 'GKD', 'G', 'GKB', 'KB', 'KKB'];
+  const index = Math.round(degrees / 30) % 12;
+  return directions[index];
+};
+
 // Konuma özel kapsamlı etkinlik önerileri
 const getLocationBasedActivities = (city, weather, temperature) => {
   const activities = {
@@ -513,7 +520,7 @@ ${bmi ? `VKİ: ${bmi.value} (${bmi.status})` : ""}
 
 Konum ve Hava Durumu:
 ${cityInfo ? `Şehir: ${cityInfo.city}, ${cityInfo.country}` : "Konum: Belirtilmemiş"}
-${weatherData ? `Sıcaklık: ${weatherData.temperature}°C, Hissedilen: ${weatherData.apparentTemperature}°C, Nem: ${weatherData.humidity}%, Rüzgar: ${weatherData.windSpeed} km/s, Basınç: ${weatherData.pressure} hPa` : "Hava durumu: Belirtilmemiş"}
+${weatherData ? `Sıcaklık: ${weatherData.temperature}°C, Hissedilen: ${weatherData.apparentTemperature}°C, Nem: ${weatherData.humidity}%, Rüzgar: ${weatherData.windSpeed} km/s (${getWindDirection(weatherData.windDirection)}), Basınç: ${weatherData.pressure} hPa, UV İndeksi: ${weatherData.uvIndex}, Bulut Oranı: ${weatherData.cloudCover}%, Yağış: ${weatherData.precipitation}mm, Görüş: ${weatherData.visibility}km, ${weatherData.isDay ? 'Gündüz' : 'Gece'}` : "Hava durumu: Belirtilmemiş"}
 
 Su Tüketimi:
 - Dün içilen: ${healthData.waterData?.yesterday || 0} ml
@@ -580,7 +587,15 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
         "windSpeed": ${weatherData?.windSpeed || "null"},
         "windDirection": ${weatherData?.windDirection || "null"},
         "pressure": ${weatherData?.pressure || "null"},
-        "weatherCondition": ${weatherData?.weathercode || "null"}
+        "weatherCondition": ${weatherData?.weathercode || "null"},
+        "uvIndex": ${weatherData?.uvIndex || "null"},
+        "cloudCover": ${weatherData?.cloudCover || "null"},
+        "precipitation": ${weatherData?.precipitation || "null"},
+        "rain": ${weatherData?.rain || "null"},
+        "showers": ${weatherData?.showers || "null"},
+        "snowfall": ${weatherData?.snowfall || "null"},
+        "visibility": ${weatherData?.visibility || "null"},
+        "isDay": ${weatherData?.isDay || "null"}
       }
     },
     "nutrition": {

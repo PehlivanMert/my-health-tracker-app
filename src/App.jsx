@@ -42,6 +42,10 @@ import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import background from "./assets/background.jpg";
 
+// Framer Motion ve React Icons
+import { motion } from "framer-motion";
+import { FaGithub, FaLinkedin, FaEnvelope, FaMedium, FaFileAlt, FaPhone } from "react-icons/fa";
+
 import "react-toastify/dist/ReactToastify.css";
 import "tippy.js/dist/tippy.css";
 import "./App.css";
@@ -52,6 +56,7 @@ import {
   initialExercises,
   initialSupplements,
   initialRoutines,
+  socialLinks,
 } from "./utils/constant/ConstantData";
 import DailyRoutine from "./components/daily-routine/DailyRoutine";
 import Exercises from "./components/exercises/exercise";
@@ -1187,20 +1192,13 @@ function App() {
             {/* Footer yalnızca PWA dışı modda gösterilsin */}
             {!isPWA && (
               <Box
-                className="footer-container"
+                component="footer"
                 sx={{
-                  display: "flex",
-                  flexDirection: { xs: "column", sm: "row" },
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  p: 1.5,
-                  background:
-                    "linear-gradient(135deg, #f0f8ff 0%, #e6f7ff 100%)",
-                  borderTop: "1px solid rgba(33, 150, 243, 0.1)",
                   position: "relative",
-                  bottom: 0,
-                  left: 0,
-                  width: "100%",
+                  overflow: "hidden",
+                  background: "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
+                  py: 3,
+                  px: 2,
                   "&::before": {
                     content: '""',
                     position: "absolute",
@@ -1208,44 +1206,191 @@ function App() {
                     left: 0,
                     right: 0,
                     height: "3px",
-                    background:
-                      "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
-                    opacity: 0.5,
+                    background: "linear-gradient(90deg, #2196F3 0%, #00BCD4 50%, #3F51B5 100%)",
+                    opacity: 0.7,
                   },
-                  boxShadow: "0 -4px 20px rgba(0, 0, 0, 0.05)",
-                  gap: { xs: 2, sm: 0 },
                 }}
               >
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontWeight: 600,
-                    background:
-                      "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                    transition: "all 0.3s ease",
-                    "&:hover": { transform: "translateX(5px)" },
-                  }}
-                >
-                  © 2025 Sağlık ve Rutin Takip Sistemi
-                </Typography>
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 2,
-                    background: "rgba(255, 255, 255, 0.8)",
-                    backdropFilter: "blur(8px)",
-                    padding: "8px 16px",
-                    borderRadius: 3,
-                    transition: "all 0.3s ease",
-                    "&:hover": {
-                      transform: "translateY(-2px)",
-                      boxShadow: "0 4px 15px rgba(33, 150, 243, 0.1)",
-                    },
-                  }}
-                ></Box>
+                {/* Animated background particles */}
+                {[...Array(8)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    style={{
+                      position: "absolute",
+                      width: "6px",
+                      height: "6px",
+                      background: "linear-gradient(45deg, #64B5F6, #E1BEE7)",
+                      borderRadius: "50%",
+                      opacity: 0.3,
+                      zIndex: 0,
+                    }}
+                    initial={{
+                      x: Math.random() * window.innerWidth,
+                      y: Math.random() * window.innerHeight,
+                      scale: Math.random() * 0.7 + 0.3,
+                    }}
+                    animate={{
+                      y: [0, Math.random() * window.innerHeight],
+                      opacity: [0.2, 0.5, 0.2],
+                    }}
+                    transition={{
+                      duration: Math.random() * 8 + 6,
+                      repeat: Infinity,
+                      ease: "linear",
+                      delay: Math.random() * 2,
+                    }}
+                  />
+                ))}
+
+                <Container maxWidth="lg" sx={{ position: "relative", zIndex: 1 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 2,
+                    }}
+                  >
+                    {/* Copyright ve Made with love */}
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      whileInView={{ opacity: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: 0.2 }}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: "12px",
+                      }}
+                    >
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: 0.3, type: "spring", stiffness: 100 }}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
+                      >
+                        <motion.span
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          whileInView={{ opacity: 1, scale: 1 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: 0.4 }}
+                          style={{
+                            fontSize: "14px",
+                            color: "rgba(255, 255, 255, 0.7)",
+                          }}
+                        >
+                          © {new Date().getFullYear()}
+                        </motion.span>
+
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          whileInView={{ opacity: 1, scale: 1 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            color: "rgba(255, 255, 255, 0.8)",
+                            background: "rgba(255, 255, 255, 0.1)",
+                            backdropFilter: "blur(10px)",
+                            padding: "8px 20px",
+                            borderRadius: "25px",
+                            border: "1px solid rgba(255, 255, 255, 0.2)",
+                            transition: "all 0.3s ease",
+                            cursor: "pointer",
+                          }}
+                          whileHover={{
+                            border: "1px solid rgba(255, 255, 255, 0.4)",
+                            boxShadow: "0 4px 15px rgba(255, 255, 255, 0.1)",
+                          }}
+                        >
+                          <span style={{ fontSize: "12px", fontWeight: 500 }}>Made with</span>
+                          <motion.span
+                            animate={{
+                              scale: [1, 1.2, 1],
+                              rotate: [0, 10, -10, 0]
+                            }}
+                            transition={{
+                              duration: 2,
+                              repeat: Infinity,
+                              repeatType: "reverse"
+                            }}
+                            style={{
+                              color: "#ff6b6b",
+                              fontSize: "14px",
+                            }}
+                          >
+                            ❤
+                          </motion.span>
+                          <span 
+                            style={{ 
+                              fontSize: "12px", 
+                              fontWeight: 500,
+                              background: "linear-gradient(45deg, #64B5F6, #E1BEE7)",
+                              WebkitBackgroundClip: "text",
+                              WebkitTextFillColor: "transparent",
+                              backgroundClip: "text",
+                            }}
+                          >
+                            by Mert Pehlivan
+                          </span>
+                        </motion.div>
+
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: 0.6 }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            fontSize: "14px",
+                            color: "rgba(255, 255, 255, 0.7)",
+                          }}
+                        >
+                          <span>StayHealthyWith.me</span>
+                          <motion.a
+                            href="mailto:s.mertpehlivan@proton.me"
+                            whileHover={{ scale: 1.2, rotate: 5 }}
+                            style={{
+                              color: "rgba(255, 255, 255, 0.7)",
+                              fontSize: "16px",
+                              transition: "color 0.3s ease",
+                              cursor: "pointer",
+                            }}
+                            onMouseEnter={(e) => e.target.style.color = "rgba(255, 255, 255, 1)"}
+                            onMouseLeave={(e) => e.target.style.color = "rgba(255, 255, 255, 0.7)"}
+                          >
+                            <FaEnvelope />
+                          </motion.a>
+                        </motion.div>
+
+                        <motion.span
+                          initial={{ opacity: 0, y: 10 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: 0.7 }}
+                          style={{
+                            fontSize: "12px",
+                            color: "rgba(255, 255, 255, 0.6)",
+                          }}
+                        >
+                          All rights reserved
+                        </motion.span>
+                      </motion.div>
+                    </motion.div>
+                  </Box>
+                </Container>
               </Box>
             )}
 

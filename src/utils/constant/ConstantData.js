@@ -228,3 +228,13 @@ export const defaultEvents = [
     },
   },
 ];
+
+// Sosyal medya linkleri
+export const socialLinks = [
+  {
+    id: 1,
+    name: "Email",
+    url: "mailto:s.mertpehlivan@proton.me",
+    icon: "mail"
+  }
+];

@@ -15,10 +15,34 @@
     />
     <meta http-equiv="ScreenOrientation" content="autoRotate:enable" />
     <meta name="theme-color" content="#1976d2" />
-    <meta
-      name="Sağlık ve Rutin Takip Sistemi"
-      content="Sağlık ve Rutin Takip Sistemi"
-    />
+    
+    <!-- SEO Meta Tags for Google Visibility -->
+    <title>StayHealthyWith.me - Kişisel Sağlık ve Rutin Takip Sistemi</title>
+    <meta name="description" content="StayHealthyWith.me ile sağlığınızı takip edin. Su tüketimi, vitamin takibi, egzersiz rutinleri ve günlük aktivitelerinizi kolayca yönetin. Ücretsiz sağlık takip uygulaması." />
+    <meta name="keywords" content="sağlık takip, su tüketimi, vitamin takibi, egzersiz rutini, sağlık uygulaması, wellness tracker, health tracking, stayhealthywith.me" />
+    <meta name="author" content="StayHealthyWith.me" />
+    <meta name="robots" content="index, follow" />
+    <meta name="googlebot" content="index, follow" />
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="StayHealthyWith.me - Kişisel Sağlık Takip Sistemi" />
+    <meta property="og:description" content="Sağlığınızı takip etmek hiç bu kadar kolay olmamıştı. Su tüketimi, vitamin takibi ve egzersiz rutinlerinizi yönetin." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://stayhealthywith.me" />
+    <meta property="og:image" content="/logo4.jpeg" />
+    <meta property="og:site_name" content="StayHealthyWith.me" />
+    <meta property="og:locale" content="tr_TR" />
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="StayHealthyWith.me - Kişisel Sağlık Takip Sistemi" />
+    <meta name="twitter:description" content="Sağlığınızı takip etmek hiç bu kadar kolay olmamıştı. Su tüketimi, vitamin takibi ve egzersiz rutinlerinizi yönetin." />
+    <meta name="twitter:image" content="/logo4.jpeg" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://stayhealthywith.me" />
+    
+    <!-- PWA Meta Tags -->
     <link rel="apple-touch-icon" href="/logo4.jpeg" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -26,14 +50,51 @@
       name="apple-mobile-web-app-status-bar-style"
       content="black-translucent"
     />
-    <meta name="apple-mobile-web-app-title" content="Sağlık Takip Sistemi" />
+    <meta name="apple-mobile-web-app-title" content="StayHealthyWith.me" />
     <link rel="apple-touch-icon" href="/logo4.jpeg" />
     <link rel="apple-touch-startup-image" href="/logo4.jpeg" />
+    
+    <!-- Structured Data for Google -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "StayHealthyWith.me",
+      "description": "Kişisel sağlık ve rutin takip sistemi. Su tüketimi, vitamin takibi, egzersiz rutinleri ve günlük aktivitelerinizi kolayca yönetin.",
+      "url": "https://stayhealthywith.me",
+      "applicationCategory": "HealthApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "TRY"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "StayHealthyWith.me"
+      }
+    }
+    </script>
+    
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-89Q2T4GLX7"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-89Q2T4GLX7', {
+        page_title: 'StayHealthyWith.me - Kişisel Sağlık Takip Sistemi',
+        page_location: 'https://stayhealthywith.me'
+      });
+    </script>
+    
+    <!-- Google Search Console Verification -->
+    <meta name="google-site-verification" content="your-verification-code-here" />
+    
     <!--
       manifest.json provides metadata used when your web app is installed on a
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
     -->
-    <title>Sağlık ve Rutin Takip Sistemi</title>
   </head>
   <body>
     <div id="root"></div>

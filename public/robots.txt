@@ -11,7 +11,7 @@ Disallow: /api/
 Disallow: /auth/
 
 # Crawl-delay
-Crawl-delay: 10
+Crawl-delay: 5
 
 # Sitemap
-Sitemap: https://my-health-tracker-app.netlify.app/sitemap.xml
+Sitemap: https://stayhealthywith.me/sitemap.xml

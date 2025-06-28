@@ -68,11 +68,57 @@ const WeatherWidget = () => {
   };
 
   useEffect(() => {
-    navigator.geolocation.getCurrentPosition(
-      (position) =>
-        fetchWeather(position.coords.latitude, position.coords.longitude),
-      (error) => toast.warning("Konum izni verilmedi")
-    );
+    // Konum izni kontrolü
+    if (!navigator.geolocation) {
+      toast.error("Tarayıcınız konum servisini desteklemiyor");
+      return;
+    }
+
+    // Konum izni durumunu kontrol et
+    navigator.permissions.query({ name: 'geolocation' }).then((permissionStatus) => {
+      console.log('Konum izni durumu:', permissionStatus.state);
+      
+      if (permissionStatus.state === 'denied') {
+        toast.warning("Konum izni reddedildi. Hava durumu gösterilemiyor.");
+        return;
+      }
+      
+      // Konum al
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          console.log('Konum alındı:', position.coords);
+          fetchWeather(position.coords.latitude, position.coords.longitude);
+        },
+        (error) => {
+          console.error('Konum hatası:', error);
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              toast.warning("Konum izni verilmedi. Hava durumu gösterilemiyor.");
+              break;
+            case error.POSITION_UNAVAILABLE:
+              toast.error("Konum bilgisi alınamadı");
+              break;
+            case error.TIMEOUT:
+              toast.error("Konum alma zaman aşımına uğradı");
+              break;
+            default:
+              toast.error("Konum alınırken bir hata oluştu");
+          }
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000 // 5 dakika cache
+        }
+      );
+    }).catch((error) => {
+      console.error('İzin sorgulama hatası:', error);
+      // Fallback olarak direkt konum iste
+      navigator.geolocation.getCurrentPosition(
+        (position) => fetchWeather(position.coords.latitude, position.coords.longitude),
+        (error) => toast.warning("Konum izni verilmedi")
+      );
+    });
   }, []);
 
   // Rüzgar yönünü ok yönüne çevir

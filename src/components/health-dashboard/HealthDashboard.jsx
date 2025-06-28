@@ -82,12 +82,57 @@ const getUserLocation = () => {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error("Tarayıcınız konum servisini desteklemiyor."));
-    } else {
+      return;
+    }
+
+    // Konum izni durumunu kontrol et
+    navigator.permissions.query({ name: 'geolocation' }).then((permissionStatus) => {
+      console.log('HealthDashboard - Konum izni durumu:', permissionStatus.state);
+      
+      if (permissionStatus.state === 'denied') {
+        reject(new Error("Konum izni reddedildi"));
+        return;
+      }
+      
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          console.log('HealthDashboard - Konum alındı:', position.coords);
+          resolve(position.coords);
+        },
+        (error) => {
+          console.error('HealthDashboard - Konum hatası:', error);
+          let errorMessage = "Konum alınamadı";
+          
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = "Konum izni verilmedi";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = "Konum bilgisi alınamadı";
+              break;
+            case error.TIMEOUT:
+              errorMessage = "Konum alma zaman aşımına uğradı";
+              break;
+            default:
+              errorMessage = "Konum alınırken bir hata oluştu";
+          }
+          
+          reject(new Error(errorMessage));
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000 // 5 dakika cache
+        }
+      );
+    }).catch((error) => {
+      console.error('HealthDashboard - İzin sorgulama hatası:', error);
+      // Fallback olarak direkt konum iste
       navigator.geolocation.getCurrentPosition(
         (position) => resolve(position.coords),
-        (error) => reject(error)
+        (error) => reject(new Error("Konum izni verilmedi"))
       );
-    }
+    });
   });
 };
 

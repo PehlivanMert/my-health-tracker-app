@@ -54,7 +54,7 @@ export const calculateDailyWaterTarget = (bmr, multiplier = 1.4) => {
 };
 
 /**
- * Kullanıcıya ait profil ve su verilerini Firestore’dan getirir.
+ * Kullanıcıya ait profil ve su verilerini Firestore'dan getirir.
  */
 const fetchUserData = async (user) => {
   if (!user || !user.uid) return {};
@@ -241,12 +241,57 @@ const getUserLocation = () => {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error("Tarayıcınız konum servisini desteklemiyor."));
-    } else {
+      return;
+    }
+
+    // Konum izni durumunu kontrol et
+    navigator.permissions.query({ name: 'geolocation' }).then((permissionStatus) => {
+      console.log('NotificationScheduler - Konum izni durumu:', permissionStatus.state);
+      
+      if (permissionStatus.state === 'denied') {
+        reject(new Error("Konum izni reddedildi"));
+        return;
+      }
+      
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          console.log('NotificationScheduler - Konum alındı:', position.coords);
+          resolve(position.coords);
+        },
+        (error) => {
+          console.error('NotificationScheduler - Konum hatası:', error);
+          let errorMessage = "Konum alınamadı";
+          
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = "Konum izni verilmedi";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = "Konum bilgisi alınamadı";
+              break;
+            case error.TIMEOUT:
+              errorMessage = "Konum alma zaman aşımına uğradı";
+              break;
+            default:
+              errorMessage = "Konum alınırken bir hata oluştu";
+          }
+          
+          reject(new Error(errorMessage));
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000 // 5 dakika cache
+        }
+      );
+    }).catch((error) => {
+      console.error('NotificationScheduler - İzin sorgulama hatası:', error);
+      // Fallback olarak direkt konum iste
       navigator.geolocation.getCurrentPosition(
         (position) => resolve(position.coords),
-        (error) => reject(error)
+        (error) => reject(new Error("Konum izni verilmedi"))
       );
-    }
+    });
   });
 };
 
@@ -289,7 +334,7 @@ export const getWeatherData = async () => {
  * - Kalan dakika, pencere bitişi (windowEnd) ile mevcut zaman (now) arasından hesaplanır.
  * - İlk bildirim zamanı: Eğer now pencere içindeyse, ilk bildirim now + interval;
  *   aksi halde pencere başlangıcı kullanılır.
- * - Eğer kullanıcı su hedefine ulaştıysa, yeni bildirim hesaplanmaz; bunun yerine UI’da
+ * - Eğer kullanıcı su hedefine ulaştıysa, yeni bildirim hesaplanmaz; bunun yerine UI'da
  *   "Günlük su hedefinize ulaştınız!" yazısı gösterilir.
  */
 export const computeWaterReminderTimes = async (user) => {
@@ -503,9 +548,9 @@ export const computeWaterReminderTimes = async (user) => {
 };
 
 /**
- * Firestore’daki reminderTimes array’inden:
+ * Firestore'daki reminderTimes array'inden:
  * - Eğer ilk bildirim 1 dakika sonrasından daha yakınsa, silinir.
- * - Kalan array’in ilk elemanı nextWaterReminderTime/Message olarak set edilir.
+ * - Kalan array'in ilk elemanı nextWaterReminderTime/Message olarak set edilir.
  * - Eğer array boşsa, computeWaterReminderTimes tekrar çalıştırılır.
  */
 export const popNextReminder = async (user) => {
@@ -560,7 +605,7 @@ export const popNextReminder = async (user) => {
 };
 
 /**
- * Firestore’daki reminderTimes array’inden,
+ * Firestore'daki reminderTimes array'inden,
  * en az 1 dakika sonrasındaki ilk bildirimi bularak nextWaterReminderTime/Message olarak kaydeder.
  */
 export const saveNextWaterReminderTime = async (user) => {
@@ -619,7 +664,7 @@ export const saveNextWaterReminderTime = async (user) => {
 
 /**
  * Su bildirimlerinin planlamasını tetikler.
- * - İlk, tüm bildirimler hesaplanıp Firestore’a kaydedilir.
+ * - İlk, tüm bildirimler hesaplanıp Firestore'a kaydedilir.
  * - Ardından, saveNextWaterReminderTime ile en az 1 dakika sonrası olan bildirim,
  *   nextWaterReminderTime/Message alanlarına set edilir.
  *

@@ -282,10 +282,15 @@ const WeatherWidget = () => {
                   fontSize: isMobile ? "0.65rem" : "0.7rem",
                   fontWeight: 600,
                   color: "rgba(255,255,255,0.8)",
-                  textShadow: "0 1px 2px rgba(0,0,0,0.3)"
+                  textShadow: "0 1px 2px rgba(0,0,0,0.3)",
+                  whiteSpace: "nowrap"
                 }}
               >
-                {Math.round(weather.windSpeed)} km/s {getWindDirection(weather.windDirection)}
+                {isMobile ? (
+                  `${Math.round(weather.windSpeed)} ${getWindDirection(weather.windDirection)}`
+                ) : (
+                  `${Math.round(weather.windSpeed)} km/s ${getWindDirection(weather.windDirection)}`
+                )}
               </Typography>
             </Box>
           )}

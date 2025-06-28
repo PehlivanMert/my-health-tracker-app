@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Box, Typography, useMediaQuery, useTheme } from "@mui/material";
-import { WiDaySunny, WiCloudy, WiRain, WiStrongWind } from "react-icons/wi";
-import { LocationOn, Opacity, Air } from "@mui/icons-material";
+import { Box, Typography, useMediaQuery, useTheme, Chip } from "@mui/material";
+import { WiDaySunny, WiCloudy, WiRain, WiStrongWind, WiSnow, WiFog } from "react-icons/wi";
+import { LocationOn, Opacity, Air, Thermostat } from "@mui/icons-material";
 import { toast } from "react-toastify";
 
 const WeatherWidget = () => {
@@ -9,6 +9,7 @@ const WeatherWidget = () => {
   const [cityName, setCityName] = useState(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isTablet = useMediaQuery(theme.breakpoints.down("md"));
 
   // Koordinatlardan şehir ismini al
   const getCityFromCoordinates = async (lat, lon) => {
@@ -19,7 +20,6 @@ const WeatherWidget = () => {
       const data = await response.json();
       
       if (data && data.address) {
-        // Şehir ismini öncelik sırasına göre al
         const city = data.address.city || 
                      data.address.town || 
                      data.address.village || 
@@ -39,7 +39,6 @@ const WeatherWidget = () => {
 
   const fetchWeather = async (lat, lon) => {
     try {
-      // Hava durumu verisi - daha fazla parametre ekledik
       const weatherResponse = await fetch(
         `${
           import.meta.env.VITE_OPEN_METEO_API_URL
@@ -48,17 +47,18 @@ const WeatherWidget = () => {
       const weatherData = await weatherResponse.json();
       
       if (weatherData.current) {
-        setWeather({
+        const weatherInfo = {
           temperature: weatherData.current.temperature_2m,
           weathercode: weatherData.current.weather_code,
           humidity: weatherData.current.relative_humidity_2m,
           windSpeed: weatherData.current.wind_speed_10m,
           windDirection: weatherData.current.wind_direction_10m,
           apparentTemperature: weatherData.current.apparent_temperature,
-        });
+        };
+        
+        setWeather(weatherInfo);
       }
 
-      // Şehir ismi
       const city = await getCityFromCoordinates(lat, lon);
       setCityName(city);
       
@@ -68,13 +68,11 @@ const WeatherWidget = () => {
   };
 
   useEffect(() => {
-    // Konum izni kontrolü
     if (!navigator.geolocation) {
       toast.error("Tarayıcınız konum servisini desteklemiyor");
       return;
     }
 
-    // Konum izni durumunu kontrol et
     navigator.permissions.query({ name: 'geolocation' }).then((permissionStatus) => {
       console.log('Konum izni durumu:', permissionStatus.state);
       
@@ -83,7 +81,6 @@ const WeatherWidget = () => {
         return;
       }
       
-      // Konum al
       navigator.geolocation.getCurrentPosition(
         (position) => {
           console.log('Konum alındı:', position.coords);
@@ -108,12 +105,11 @@ const WeatherWidget = () => {
         {
           enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 300000 // 5 dakika cache
+          maximumAge: 300000
         }
       );
     }).catch((error) => {
       console.error('İzin sorgulama hatası:', error);
-      // Fallback olarak direkt konum iste
       navigator.geolocation.getCurrentPosition(
         (position) => fetchWeather(position.coords.latitude, position.coords.longitude),
         (error) => toast.warning("Konum izni verilmedi")
@@ -121,235 +117,180 @@ const WeatherWidget = () => {
     });
   }, []);
 
-  // Rüzgar yönünü ok yönüne çevir
+  // Hava durumu ikonunu belirle
+  const getWeatherIcon = (weathercode) => {
+    if (weathercode < 2) return <WiDaySunny size={isMobile ? 24 : 28} />;
+    if (weathercode < 4) return <WiCloudy size={isMobile ? 24 : 28} />;
+    if (weathercode < 50) return <WiRain size={isMobile ? 24 : 28} />;
+    if (weathercode < 70) return <WiSnow size={isMobile ? 24 : 28} />;
+    if (weathercode < 80) return <WiRain size={isMobile ? 24 : 28} />;
+    if (weathercode < 90) return <WiSnow size={isMobile ? 24 : 28} />;
+    if (weathercode < 100) return <WiFog size={isMobile ? 24 : 28} />;
+    return <WiDaySunny size={isMobile ? 24 : 28} />;
+  };
+
+  // Rüzgar yönünü belirle
   const getWindDirection = (degrees) => {
     const directions = ['K', 'KKD', 'KD', 'DKD', 'D', 'DGD', 'GD', 'GKD', 'G', 'GKB', 'KB', 'KKB'];
     const index = Math.round(degrees / 30) % 12;
     return directions[index];
   };
 
-  // Mobil için kompakt layout
-  if (isMobile) {
+  // Hissedilen sıcaklık farkını belirle
+  const getApparentTempDiff = () => {
+    if (!weather?.apparentTemperature) {
+      return null;
+    }
+    const diff = weather.apparentTemperature - weather.temperature;
+    // Fark 1°C'den fazlaysa göster (daha hassas)
+    if (Math.abs(diff) < 1) return null;
+    return diff;
+  };
+
+  const handleWeatherClick = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const weatherUrl = `${
+            import.meta.env.VITE_WEATHER_COM_URL
+          }/${latitude},${longitude}`;
+          window.open(weatherUrl, "_blank");
+        },
+        (error) => toast.error("Konum erişimi reddedildi")
+      );
+    }
+  };
+
+  if (!weather) {
     return (
       <Box
-        className="weather-box"
-        onClick={() => {
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-              (position) => {
-                const { latitude, longitude } = position.coords;
-                const weatherUrl = `${
-                  import.meta.env.VITE_WEATHER_COM_URL
-                }/${latitude},${longitude}`;
-                window.open(weatherUrl, "_blank");
-              },
-              (error) => toast.error("Konum erişimi reddedildi")
-            );
-          }
-        }}
-        sx={{ 
-          cursor: "pointer",
+        sx={{
           display: "flex",
-          flexDirection: "column",
           alignItems: "center",
-          gap: 0.3,
-          minWidth: "100px"
+          gap: 1,
+          p: 1,
+          borderRadius: 2,
+          bgcolor: "rgba(255,255,255,0.1)",
+          backdropFilter: "blur(10px)",
+          border: "1px solid rgba(255,255,255,0.2)",
+          minWidth: isMobile ? "120px" : "140px",
+          height: isMobile ? "60px" : "70px",
+          justifyContent: "center"
         }}
       >
-        {weather ? (
-          <>
-            {/* Şehir ismi - üstte */}
-            {cityName && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 0.3, mb: 0.3 }}>
-                <LocationOn sx={{ fontSize: 14, color: "rgba(255,255,255,0.9)" }} />
-                <Typography variant="caption" sx={{ 
-                  fontSize: "0.8rem", 
-                  fontWeight: 600, 
-                  color: "rgba(255,255,255,0.9)",
-                  textShadow: "0 1px 2px rgba(0,0,0,0.3)"
-                }}>
-                  {cityName}
-                </Typography>
-              </Box>
-            )}
-
-            {/* Hava durumu ikonu ve sıcaklık - ortada */}
-            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.2 }}>
-              {weather.weathercode < 2 ? (
-                <WiDaySunny size={32} />
-              ) : weather.weathercode < 4 ? (
-                <WiCloudy size={32} />
-              ) : (
-                <WiRain size={32} />
-              )}
-              <Typography variant="body2" sx={{ 
-                fontWeight: 700, 
-                fontSize: "1rem", 
-                lineHeight: 1,
-                color: "rgba(255,255,255,0.95)",
-                textShadow: "0 1px 2px rgba(0,0,0,0.3)"
-              }}>
-                {Math.round(weather.temperature)}°C
-              </Typography>
-            </Box>
-
-            {/* Nem ve rüzgar - altta */}
-            <Box sx={{ display: "flex", gap: 0.8, mt: 0.3 }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 0.3 }}>
-                <Opacity sx={{ fontSize: 14, color: "rgba(255,255,255,0.8)" }} />
-                <Typography variant="caption" sx={{ 
-                  fontSize: "0.75rem", 
-                  fontWeight: 600,
-                  color: "rgba(255,255,255,0.8)",
-                  textShadow: "0 1px 2px rgba(0,0,0,0.3)"
-                }}>
-                  {Math.round(weather.humidity)}%
-                </Typography>
-              </Box>
-              {weather.windSpeed > 5 && (
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.3 }}>
-                  <Air sx={{ fontSize: 14, color: "rgba(255,255,255,0.8)" }} />
-                  <Typography variant="caption" sx={{ 
-                    fontSize: "0.75rem", 
-                    fontWeight: 600,
-                    color: "rgba(255,255,255,0.8)",
-                    textShadow: "0 1px 2px rgba(0,0,0,0.3)"
-                  }}>
-                    {Math.round(weather.windSpeed)}
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-          </>
-        ) : (
-          <Typography variant="body2" sx={{ fontSize: "0.8rem" }}>Yükleniyor...</Typography>
-        )}
+        <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.8)" }}>
+          Yükleniyor...
+        </Typography>
       </Box>
     );
   }
 
-  // Desktop için geniş layout
+  const apparentTempDiff = getApparentTempDiff();
+
   return (
     <Box
-      className="weather-box"
-      onClick={() => {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              const { latitude, longitude } = position.coords;
-              const weatherUrl = `${
-                import.meta.env.VITE_WEATHER_COM_URL
-              }/${latitude},${longitude}`;
-              window.open(weatherUrl, "_blank");
-            },
-            (error) => toast.error("Konum erişimi reddedildi")
-          );
-        }
-      }}
-      sx={{ 
+      onClick={handleWeatherClick}
+      sx={{
         cursor: "pointer",
         display: "flex",
-        flexDirection: "column",
         alignItems: "center",
-        gap: 0.5,
-        minWidth: "160px"
+        gap: isMobile ? 1 : 1.5,
+        p: isMobile ? 1 : 1.5,
+        borderRadius: 3,
+        bgcolor: "rgba(255,255,255,0.1)",
+        backdropFilter: "blur(10px)",
+        border: "1px solid rgba(255,255,255,0.2)",
+        minWidth: isMobile ? "140px" : "180px",
+        maxWidth: isMobile ? "160px" : "220px",
+        height: isMobile ? "70px" : "80px",
+        transition: "all 0.3s ease",
+        "&:hover": {
+          bgcolor: "rgba(255,255,255,0.15)",
+          transform: "translateY(-2px)",
+          boxShadow: "0 8px 25px rgba(0,0,0,0.15)"
+        }
       }}
     >
-      {weather ? (
-        <>
-          {/* Şehir ismi - en üstte */}
-          {cityName && (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.3, mb: 0.5 }}>
-              <LocationOn sx={{ fontSize: 14, color: "rgba(255,255,255,0.9)" }} />
-              <Typography variant="caption" sx={{ 
-                fontSize: "0.85rem", 
-                fontWeight: 600, 
-                color: "rgba(255,255,255,0.9)",
-                textShadow: "0 1px 2px rgba(0,0,0,0.3)"
-              }}>
-                {cityName}
-              </Typography>
-            </Box>
-          )}
+      {/* Sol taraf - Ana hava durumu */}
+      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5 }}>
+        {getWeatherIcon(weather.weathercode)}
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            fontWeight: 700, 
+            fontSize: isMobile ? "0.9rem" : "1rem",
+            lineHeight: 1,
+            color: "rgba(255,255,255,0.95)",
+            textShadow: "0 1px 2px rgba(0,0,0,0.3)"
+          }}
+        >
+          {weather.apparentTemperature ? Math.round(weather.apparentTemperature) : Math.round(weather.temperature)}°
+        </Typography>
+      </Box>
 
-          {/* Ana hava durumu bilgileri - yatay düzen */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2, width: "100%" }}>
-            {/* Sol taraf - Nem ve Rüzgar */}
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.4, alignItems: "flex-start" }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 0.4 }}>
-                <Opacity sx={{ fontSize: 14, color: "rgba(255,255,255,0.8)" }} />
-                <Typography variant="caption" sx={{ 
-                  fontSize: "0.8rem", 
+      {/* Orta - Detaylar */}
+      <Box sx={{ 
+        display: "flex", 
+        flexDirection: "column", 
+        gap: 0.3,
+        flex: 1,
+        minWidth: 0
+      }}>
+        {/* Şehir adı */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.3 }}>
+          <LocationOn sx={{ fontSize: isMobile ? 12 : 14, color: "rgba(255,255,255,0.8)" }} />
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              fontSize: isMobile ? "0.7rem" : "0.75rem",
+              fontWeight: 600, 
+              color: "rgba(255,255,255,0.9)",
+              textShadow: "0 1px 2px rgba(0,0,0,0.3)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap"
+            }}
+          >
+            {cityName}
+          </Typography>
+        </Box>
+
+        {/* Nem ve rüzgar */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.2 }}>
+            <Opacity sx={{ fontSize: isMobile ? 10 : 12, color: "rgba(255,255,255,0.7)" }} />
+            <Typography 
+              variant="caption" 
+              sx={{ 
+                fontSize: isMobile ? "0.65rem" : "0.7rem",
+                fontWeight: 600,
+                color: "rgba(255,255,255,0.8)",
+                textShadow: "0 1px 2px rgba(0,0,0,0.3)"
+              }}
+            >
+              {Math.round(weather.humidity)}%
+            </Typography>
+          </Box>
+          
+          {weather.windSpeed > 3 && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.2 }}>
+              <Air sx={{ fontSize: isMobile ? 10 : 12, color: "rgba(255,255,255,0.7)" }} />
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  fontSize: isMobile ? "0.65rem" : "0.7rem",
                   fontWeight: 600,
                   color: "rgba(255,255,255,0.8)",
                   textShadow: "0 1px 2px rgba(0,0,0,0.3)"
-                }}>
-                  {Math.round(weather.humidity)}%
-                </Typography>
-              </Box>
-              {weather.windSpeed > 5 && (
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.4 }}>
-                  <Air sx={{ fontSize: 14, color: "rgba(255,255,255,0.8)" }} />
-                  <Typography variant="caption" sx={{ 
-                    fontSize: "0.8rem", 
-                    fontWeight: 600,
-                    color: "rgba(255,255,255,0.8)",
-                    textShadow: "0 1px 2px rgba(0,0,0,0.3)"
-                  }}>
-                    {Math.round(weather.windSpeed)} km/s
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-
-            {/* Orta - Hava durumu ikonu ve sıcaklık */}
-            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.3 }}>
-              {weather.weathercode < 2 ? (
-                <WiDaySunny size={32} />
-              ) : weather.weathercode < 4 ? (
-                <WiCloudy size={32} />
-              ) : (
-                <WiRain size={32} />
-              )}
-              <Typography variant="body2" sx={{ 
-                fontWeight: 700, 
-                fontSize: "1rem", 
-                lineHeight: 1,
-                color: "rgba(255,255,255,0.95)",
-                textShadow: "0 1px 2px rgba(0,0,0,0.3)"
-              }}>
-                {Math.round(weather.temperature)}°C
+                }}
+              >
+                {Math.round(weather.windSpeed)} km/s {getWindDirection(weather.windDirection)}
               </Typography>
             </Box>
-
-            {/* Sağ taraf - Hissedilen sıcaklık */}
-            {weather.apparentTemperature && Math.abs(weather.apparentTemperature - weather.temperature) > 2 && (
-              <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-                <Typography variant="caption" sx={{ 
-                  fontSize: "0.7rem", 
-                  opacity: 0.8, 
-                  lineHeight: 1,
-                  color: "rgba(255,255,255,0.8)",
-                  textShadow: "0 1px 2px rgba(0,0,0,0.3)"
-                }}>
-                  Hissedilen
-                </Typography>
-                <Typography variant="caption" sx={{ 
-                  fontSize: "0.85rem", 
-                  fontWeight: 600, 
-                  lineHeight: 1,
-                  color: "rgba(255,255,255,0.9)",
-                  textShadow: "0 1px 2px rgba(0,0,0,0.3)"
-                }}>
-                  {Math.round(weather.apparentTemperature)}°C
-                </Typography>
-              </Box>
-            )}
-          </Box>
-        </>
-      ) : (
-        <Typography variant="body2" sx={{ fontSize: "0.8rem" }}>Yükleniyor...</Typography>
-      )}
+          )}
+        </Box>
+      </Box>
     </Box>
   );
 };

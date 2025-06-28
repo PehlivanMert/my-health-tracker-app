@@ -211,16 +211,22 @@ const resetDailyWaterIntake = async (
 ) => {
   const ref = getWaterDocRef();
   const todayStr = getTurkeyTime().toLocaleDateString("en-CA");
+  
+  // Eğer bugün zaten reset yapılmışsa, tekrar yapma
+  if (currentFirestoreData.lastResetDate === todayStr) {
+    return;
+  }
+  
   const newHistoryEntry = {
     date: currentFirestoreData.lastResetDate || todayStr,
-    intake: currentFirestoreData.waterIntake,
+    intake: currentFirestoreData.waterIntake || 0,
   };
 
   try {
     // Güncel verilerden history dizisine yeni entry ekleniyor; böylece eski kayıtlar korunuyor.
     await updateDoc(ref, {
       waterIntake: 0,
-      yesterdayWaterIntake: currentFirestoreData.waterIntake,
+      yesterdayWaterIntake: currentFirestoreData.waterIntake || 0,
       lastResetDate: todayStr,
       history: arrayUnion(newHistoryEntry),
     });
@@ -261,7 +267,9 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   const checkIfResetNeeded = async (data) => {
     const nowTurkey = getTurkeyTime();
     const todayStr = nowTurkey.toLocaleDateString("en-CA");
-    if (data.lastResetDate !== todayStr) {
+    
+    // Eğer lastResetDate yoksa veya bugünden farklıysa reset yap
+    if (!data.lastResetDate || data.lastResetDate !== todayStr) {
       // NOT: Burada state'deki waterData yerine, Firestore'dan çekilen data (en güncel veri) kullanılıyor.
       await resetDailyWaterIntake(getWaterDocRef, data, fetchWaterData);
     }

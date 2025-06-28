@@ -38,9 +38,24 @@ const WaterConsumptionChart = ({ waterHistory, nextReminder }) => {
   const [timeRange, setTimeRange] = useState("month");
   const [displayType, setDisplayType] = useState("area");
   const now = new Date();
+  
+  // Su geçmişi verilerini düzgün şekilde filtrele ve işle
   const filteredData = waterHistory
     .filter((entry) => {
-      const entryDate = new Date(entry.date + "T00:00:00");
+      // Tarih formatını kontrol et ve düzelt
+      let entryDate;
+      if (typeof entry.date === 'string') {
+        // Eğer tarih string ise, ISO formatına çevir
+        if (entry.date.includes('T')) {
+          entryDate = new Date(entry.date);
+        } else {
+          // YYYY-MM-DD formatında ise
+          entryDate = new Date(entry.date + 'T00:00:00');
+        }
+      } else {
+        entryDate = new Date(entry.date);
+      }
+
       if (timeRange === "year") {
         const oneYearAgo = new Date();
         oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
@@ -61,10 +76,26 @@ const WaterConsumptionChart = ({ waterHistory, nextReminder }) => {
       }
       return true;
     })
-    .map((entry) => ({
-      ...entry,
-      date: new Date(entry.date + "T00:00:00").toLocaleDateString("tr-TR"),
-    }));
+    .map((entry) => {
+      // Tarih formatını düzelt
+      let entryDate;
+      if (typeof entry.date === 'string') {
+        if (entry.date.includes('T')) {
+          entryDate = new Date(entry.date);
+        } else {
+          entryDate = new Date(entry.date + 'T00:00:00');
+        }
+      } else {
+        entryDate = new Date(entry.date);
+      }
+      
+      return {
+        ...entry,
+        date: entryDate.toLocaleDateString("tr-TR"),
+        intake: entry.intake || 0
+      };
+    })
+    .sort((a, b) => new Date(a.date) - new Date(b.date)); // Tarihe göre sırala
   const averageWaterIntake =
     filteredData.length > 0
       ? (

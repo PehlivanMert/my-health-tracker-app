@@ -431,7 +431,7 @@ const WellnessTracker = ({ user }) => {
             background: "transparent",
             boxShadow: "none",
             color: "#fff",
-            mb: { xs: 2, sm: 3, md: 4 },
+            mt: { xs: 2, sm: 3, md: 4 },
             "&::before": { display: "none" },
           }}
         >
@@ -441,11 +441,14 @@ const WellnessTracker = ({ user }) => {
               color: "#fff",
               fontSize: { xs: "1.1rem", sm: "1.3rem", md: "1.5rem" },
             }}>
-              Su Tüketimi
+              💧 Su Takibi
             </Typography>
           </StyledAccordionSummary>
           <AccordionDetails sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
-            <WaterTracker user={user} />
+            <WaterTracker 
+              user={user} 
+              onWaterDataChange={(data) => setWaterData(data)}
+            />
           </AccordionDetails>
         </Accordion>
 

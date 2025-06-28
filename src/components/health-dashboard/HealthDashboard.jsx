@@ -94,7 +94,7 @@ const getUserLocation = () => {
       
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          fetchWeather(position.coords.latitude, position.coords.longitude);
+          resolve(position.coords);
         },
         (error) => {
           console.error('HealthDashboard - Konum hatası:', error);
@@ -346,7 +346,7 @@ const HealthDashboard = ({ user }) => {
         setGeminiUsage(docSnap.data());
       } else {
         // Eğer doküman yoksa oluştur
-        const todayStr = new Date().toISOString().slice(0, 10);
+        const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Istanbul" });
         const initialUsage = { date: todayStr, count: 0 };
         await setDoc(usageDocRef, initialUsage);
         setGeminiUsage(initialUsage);
@@ -361,14 +361,14 @@ const HealthDashboard = ({ user }) => {
   // Gemini kullanım sınırını kontrol eden fonksiyon: Eğer kullanım sayısı 2'ye ulaşmışsa false döner.
   const canUseGemini = () => {
     if (!geminiUsage) return true; // Veriler henüz yüklenmediyse true döndür (buton aktif olsun)
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Istanbul" });
     if (geminiUsage.date !== todayStr) return true; // Yeni gün, sayaç sıfırlanır
     return geminiUsage.count < 2;
   };
 
   // Gemini API kullanımı sonrası sayacı bir artıran fonksiyon
   const incrementGeminiUsage = async () => {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Istanbul" });
     const usageDocRef = doc(db, "users", user.uid, "apiUsage", "healthDashboard");
     let updatedUsage = { ...geminiUsage };
     if (geminiUsage.date !== todayStr) {
@@ -520,7 +520,7 @@ ${bmi ? `VKİ: ${bmi.value} (${bmi.status})` : ""}
 
 Konum ve Hava Durumu:
 ${cityInfo ? `Şehir: ${cityInfo.city}, ${cityInfo.country}` : "Konum: Belirtilmemiş"}
-${weatherData ? `Sıcaklık: ${weatherData.temperature}°C, Hissedilen: ${weatherData.apparentTemperature}°C, Nem: ${weatherData.humidity}%, Rüzgar: ${weatherData.windSpeed} km/s (${getWindDirection(weatherData.windDirection)}), Basınç: ${weatherData.pressure} hPa, UV İndeksi: ${weatherData.uvIndex}, Bulut Oranı: ${weatherData.cloudCover}%, Yağış: ${weatherData.precipitation}mm, Görüş: ${weatherData.visibility}km, ${weatherData.isDay ? 'Gündüz' : 'Gece'}` : "Hava durumu: Belirtilmemiş"}
+ ${weatherData ? `Sıcaklık: ${weatherData.temperature}°C, Hissedilen: ${weatherData.apparentTemperature}°C, Nem: ${weatherData.humidity}%, Rüzgar: ${weatherData.windSpeed} km/s (${getWindDirection(weatherData.windDirection)}), Basınç: ${weatherData.pressure} hPa, UV İndeksi: ${weatherData.uvIndex}, Bulut Oranı: ${weatherData.cloudCover}%, Yağış: ${weatherData.precipitation}mm, Görüş: ${weatherData.visibility}km, ${weatherData.isDay ? 'Gündüz' : 'Gece'}` : "Hava durumu: Belirtilmemiş"}
 
 Su Tüketimi:
 - Dün içilen: ${healthData.waterData?.yesterday || 0} ml

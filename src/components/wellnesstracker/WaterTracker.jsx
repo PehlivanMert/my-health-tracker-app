@@ -47,98 +47,311 @@ const particleFloat = keyframes`
   100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
 `;
 
-const AchievementOverlay = styled(Box)(({ theme }) => ({
+const slideInFromBottom = keyframes`
+  0% { 
+    transform: translateY(100vh) scale(0.8); 
+    opacity: 0; 
+  }
+  50% { 
+    transform: translateY(-20px) scale(1.1); 
+    opacity: 1; 
+  }
+  100% { 
+    transform: translateY(0) scale(1); 
+    opacity: 1; 
+  }
+`;
+
+const bounce = keyframes`
+  0%, 20%, 53%, 80%, 100% { 
+    transform: translate3d(0,0,0); 
+  }
+  40%, 43% { 
+    transform: translate3d(0, -30px, 0); 
+  }
+  70% { 
+    transform: translate3d(0, -15px, 0); 
+  }
+  90% { 
+    transform: translate3d(0, -4px, 0); 
+  }
+`;
+
+const shimmer = keyframes`
+  0% { 
+    background-position: -200% center; 
+  }
+  100% { 
+    background-position: 200% center; 
+  }
+`;
+
+const rotate = keyframes`
+  from { 
+    transform: rotate(0deg); 
+  }
+  to { 
+    transform: rotate(360deg); 
+  }
+`;
+
+const ModernAchievementOverlay = styled(Box)(({ theme }) => ({
   position: "fixed",
   top: 0,
   left: 0,
   width: "100vw",
   height: "100vh",
-  background: "radial-gradient(circle at center, #000814 0%, #001220 100%)",
+  background: "radial-gradient(circle at center, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.95) 100%)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   zIndex: 9999,
   overflow: "hidden",
+  backdropFilter: "blur(10px)",
+  animation: `${fadeIn} 0.5s ease-out`,
   "&::before": {
     content: '""',
     position: "absolute",
-    width: "150%",
-    height: "150%",
-    background: `linear-gradient(
-      45deg,
-      ${alpha(theme.palette.primary.main, 0.1)} 0%,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: `linear-gradient(45deg, 
+      ${alpha(theme.palette.primary.main, 0.1)} 0%, 
+      ${alpha(theme.palette.secondary.main, 0.1)} 25%,
+      ${alpha("#4CAF50", 0.1)} 50%,
+      ${alpha(theme.palette.primary.main, 0.1)} 75%,
       ${alpha(theme.palette.secondary.main, 0.1)} 100%
     )`,
-    animation: `${particleFloat} 20s linear infinite`,
+    animation: `${particleFloat} 15s linear infinite`,
     pointerEvents: "none",
   },
 }));
 
-const NeonText = styled(Typography)(({ theme }) => ({
-  textAlign: "center",
+const ModernAchievementCard = styled(Box)(({ theme }) => ({
   position: "relative",
+  background: "rgba(255, 255, 255, 0.1)",
+  backdropFilter: "blur(20px)",
+  borderRadius: "24px",
+  padding: theme.spacing(4),
+  border: "1px solid rgba(255, 255, 255, 0.2)",
+  boxShadow: "0 25px 50px rgba(0, 0, 0, 0.3)",
+  textAlign: "center",
+  maxWidth: "90vw",
+  width: "400px",
+  animation: `${slideInFromBottom} 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55)`,
+  [theme.breakpoints.down("sm")]: {
+    padding: theme.spacing(3),
+    width: "85vw",
+    borderRadius: "20px",
+  },
   "&::before": {
-    content: "attr(data-text)",
+    content: '""',
     position: "absolute",
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
-    filter: "blur(15px)",
-    color: theme.palette.primary.main,
-    mixBlendMode: "screen",
+    top: -2,
+    left: -2,
+    right: -2,
+    bottom: -2,
+    background: `linear-gradient(45deg, 
+      ${theme.palette.primary.main}, 
+      ${theme.palette.secondary.main}, 
+      #4CAF50, 
+      ${theme.palette.primary.main}
+    )`,
+    borderRadius: "26px",
+    zIndex: -1,
+    backgroundSize: "400% 400%",
+    animation: `${shimmer} 3s ease-in-out infinite`,
+    [theme.breakpoints.down("sm")]: {
+      borderRadius: "22px",
+    },
   },
 }));
 
-const AchievementAnimation = ({ message, onComplete }) => {
-  const theme = useTheme();
-  return (
-    <AchievementOverlay onClick={onComplete}>
-      <Box sx={{ position: "relative", textAlign: "center" }}>
-        {/* Particle System */}
-        {[...Array(50)].map((_, i) => (
-          <Box
-            key={i}
-            sx={{
-              position: "absolute",
-              top: Math.random() * 100 + "%",
-              left: Math.random() * 100 + "%",
-              width: 8,
-              height: 8,
-              background: `radial-gradient(${theme.palette.primary.main}, transparent)`,
-              borderRadius: "50%",
-              animation: `${particleFloat} ${
-                5 + Math.random() * 10
-              }s linear infinite`,
-              opacity: 0.6,
-            }}
-          />
-        ))}
+const ModernNeonText = styled(Typography)(({ theme }) => ({
+  textAlign: "center",
+  position: "relative",
+  fontWeight: 800,
+  background: `linear-gradient(45deg, 
+    ${theme.palette.primary.main} 0%, 
+    ${theme.palette.secondary.main} 25%, 
+    #4CAF50 50%, 
+    ${theme.palette.primary.main} 75%, 
+    ${theme.palette.secondary.main} 100%
+  )`,
+  backgroundSize: "200% 200%",
+  WebkitBackgroundClip: "text",
+  WebkitTextFillColor: "transparent",
+  backgroundClip: "text",
+  animation: `${shimmer} 2s ease-in-out infinite, ${bounce} 2s ease-in-out infinite`,
+  fontSize: "2.5rem",
+  lineHeight: 1.2,
+  textShadow: `0 0 20px ${alpha(theme.palette.primary.main, 0.5)}`,
+  [theme.breakpoints.down("sm")]: {
+    fontSize: "2rem",
+  },
+  [theme.breakpoints.down("xs")]: {
+    fontSize: "1.8rem",
+  },
+}));
 
-        <NeonText
-          data-text={message}
-          variant="h2"
+const ModernIconContainer = styled(Box)(({ theme }) => ({
+  position: "relative",
+  width: "120px",
+  height: "120px",
+  margin: "0 auto 20px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: "50%",
+  background: `linear-gradient(45deg, 
+    ${theme.palette.primary.main}, 
+    ${theme.palette.secondary.main}, 
+    #4CAF50
+  )`,
+  backgroundSize: "200% 200%",
+  animation: `${shimmer} 2s ease-in-out infinite, ${rotate} 10s linear infinite`,
+  boxShadow: `0 0 30px ${alpha(theme.palette.primary.main, 0.5)}`,
+  [theme.breakpoints.down("sm")]: {
+    width: "100px",
+    height: "100px",
+  },
+  "&::before": {
+    content: '""',
+    position: "absolute",
+    top: -5,
+    left: -5,
+    right: -5,
+    bottom: -5,
+    borderRadius: "50%",
+    background: `linear-gradient(45deg, 
+      ${theme.palette.primary.main}, 
+      ${theme.palette.secondary.main}, 
+      #4CAF50
+    )`,
+    backgroundSize: "200% 200%",
+    animation: `${shimmer} 2s ease-in-out infinite reverse`,
+    zIndex: -1,
+    opacity: 0.3,
+  },
+}));
+
+const ModernParticle = styled(Box)(({ theme, delay, duration, size }) => ({
+  position: "absolute",
+  width: size || 8,
+  height: size || 8,
+  background: `radial-gradient(circle, ${theme.palette.primary.main}, transparent)`,
+  borderRadius: "50%",
+  animation: `${particleFloat} ${duration || 5}s linear infinite`,
+  animationDelay: `${delay || 0}s`,
+  opacity: 0.7,
+  filter: "blur(1px)",
+}));
+
+const ModernAchievementAnimation = ({ message, onComplete }) => {
+  const theme = useTheme();
+  
+  return (
+    <ModernAchievementOverlay onClick={onComplete}>
+      {/* Enhanced Particle System */}
+      {[...Array(30)].map((_, i) => (
+        <ModernParticle
+          key={i}
+          delay={Math.random() * 3}
+          duration={5 + Math.random() * 10}
+          size={4 + Math.random() * 8}
           sx={{
-            background: `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.secondary.main} 90%)`,
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            animation: `${pulse} 1.5s ease-in-out infinite`,
-            fontSize: "3.5rem",
-            textShadow: `0 0 10px ${alpha(theme.palette.primary.main, 0.5)}`,
-            px: 4,
-            py: 6,
-            borderRadius: 4,
-            cursor: "pointer",
-            transition: "transform 0.3s ease",
-            "&:hover": {
-              transform: "scale(1.05)",
-            },
+            top: Math.random() * 100 + "%",
+            left: Math.random() * 100 + "%",
+          }}
+        />
+      ))}
+      
+      {/* Floating Icons */}
+      {["💧", "🚀", "🎉", "🌊", "⭐"].map((icon, i) => (
+        <Box
+          key={i}
+          sx={{
+            position: "absolute",
+            top: Math.random() * 80 + 10 + "%",
+            left: Math.random() * 80 + 10 + "%",
+            fontSize: { xs: "2rem", sm: "2.5rem" },
+            animation: `${bounce} ${2 + Math.random() * 2}s ease-in-out infinite`,
+            animationDelay: `${Math.random() * 2}s`,
+            opacity: 0.8,
+            filter: "blur(0.5px)",
+            pointerEvents: "none",
           }}
         >
+          {icon}
+        </Box>
+      ))}
+
+      <ModernAchievementCard>
+        <ModernIconContainer>
+          <Box
+            component="span"
+            sx={{
+              fontSize: { xs: "3rem", sm: "4rem" },
+              color: "#fff",
+              filter: "drop-shadow(0 0 10px rgba(255,255,255,0.5))",
+            }}
+          >
+            🎯
+          </Box>
+        </ModernIconContainer>
+        
+        <ModernNeonText variant="h2">
           {message}
-        </NeonText>
-      </Box>
-    </AchievementOverlay>
+        </ModernNeonText>
+        
+        <Typography
+          variant="body1"
+          sx={{
+            color: "rgba(255,255,255,0.8)",
+            mt: 2,
+            fontSize: { xs: "0.9rem", sm: "1rem" },
+            fontWeight: 500,
+          }}
+        >
+          Tebrikler! Hedefinize ulaştınız! 🎊
+        </Typography>
+        
+        <Box
+          sx={{
+            mt: 3,
+            display: "flex",
+            justifyContent: "center",
+            gap: 1,
+          }}
+        >
+          {["🏆", "💪", "🌟", "🔥", "✨"].map((emoji, i) => (
+            <Box
+              key={i}
+              sx={{
+                fontSize: { xs: "1.5rem", sm: "2rem" },
+                animation: `${bounce} ${1.5 + i * 0.2}s ease-in-out infinite`,
+                animationDelay: `${i * 0.1}s`,
+              }}
+            >
+              {emoji}
+            </Box>
+          ))}
+        </Box>
+        
+        <Typography
+          variant="caption"
+          sx={{
+            display: "block",
+            color: "rgba(255,255,255,0.6)",
+            mt: 2,
+            fontSize: { xs: "0.75rem", sm: "0.8rem" },
+          }}
+        >
+          Kapatmak için tıklayın
+        </Typography>
+      </ModernAchievementCard>
+    </ModernAchievementOverlay>
   );
 };
 
@@ -467,16 +680,40 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
       {showConfetti && (
         <Confetti
           recycle={false}
-          numberOfPieces={1200}
-          colors={["#2196F3", "#64B5F6", "#BBDEFB", "#E3F2FD", "#FFFFFF"]}
+          numberOfPieces={800}
+          colors={[
+            "#2196F3", 
+            "#64B5F6", 
+            "#BBDEFB", 
+            "#E3F2FD", 
+            "#FFFFFF",
+            "#4CAF50",
+            "#81C784",
+            "#C8E6C9",
+            "#FF9800",
+            "#FFB74D"
+          ]}
           drawShape={(ctx) => {
+            const shapes = ['circle', 'square', 'triangle'];
+            const shape = shapes[Math.floor(Math.random() * shapes.length)];
+            
             ctx.beginPath();
-            ctx.arc(0, 0, 5, 0, 2 * Math.PI);
+            if (shape === 'circle') {
+              ctx.arc(0, 0, 4, 0, 2 * Math.PI);
+            } else if (shape === 'square') {
+              ctx.rect(-3, -3, 6, 6);
+            } else if (shape === 'triangle') {
+              ctx.moveTo(0, -4);
+              ctx.lineTo(-3, 3);
+              ctx.lineTo(3, 3);
+              ctx.closePath();
+            }
             ctx.fill();
           }}
-          gravity={0.15}
-          wind={0.02}
-          initialVelocityY={15}
+          gravity={0.12}
+          wind={0.03}
+          initialVelocityY={12}
+          initialVelocityX={2}
           confettiSource={{
             x: window.innerWidth / 2,
             y: window.innerHeight,
@@ -484,12 +721,20 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
             h: 0,
           }}
           onConfettiComplete={() => setShowConfetti(false)}
-          tweenDuration={5000}
-          style={{ pointerEvents: "none" }}
+          tweenDuration={4000}
+          style={{ 
+            pointerEvents: "none",
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            zIndex: 9998
+          }}
         />
       )}
       {achievement && (
-        <AchievementAnimation
+        <ModernAchievementAnimation
           message={achievement}
           onComplete={() => setAchievement(null)}
         />

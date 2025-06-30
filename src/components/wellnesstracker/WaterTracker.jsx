@@ -381,15 +381,18 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     const ref = getWaterDocRef();
     try {
       await setDoc(ref, { [field]: value }, { merge: true });
+      // Eğer aktivite seviyesi değiştiyse, önce bildirimleri ve hedefi güncelle, sonra fetchWaterData ile UI'yı güncelle
+      if (field === "activityLevel") {
+        const result = await scheduleWaterNotifications(user);
+        setNextReminder(result.nextReminder);
+        await fetchWaterData(); // En son çağır, UI güncellensin
+        return;
+      }
       await fetchWaterData();
       const result = await scheduleWaterNotifications(user);
-      console.log(
-        "handleWaterSettingChange - Bildirimler yeniden hesaplandı:",
-        result
-      );
       setNextReminder(result.nextReminder);
     } catch (error) {
-      console.error("Error updating water settings:", error);
+      console.error("handleWaterSettingChange error:", error);
     }
   };
 

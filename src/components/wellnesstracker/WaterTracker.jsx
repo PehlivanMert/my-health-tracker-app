@@ -207,23 +207,30 @@ const getTurkeyTime = () =>
 const resetDailyWaterIntake = async (
   getWaterDocRef,
   currentFirestoreData,
-  fetchWaterData
+  fetchWaterData,
+  user
 ) => {
   const ref = getWaterDocRef();
   const todayStr = getTurkeyTime().toLocaleDateString("en-CA");
-  
+
   // Eğer bugün zaten reset yapılmışsa, tekrar yapma
   if (currentFirestoreData.lastResetDate === todayStr) {
     return;
   }
-  
+
+  // Dünkü su tüketimini history'ye kaydet (sadece intake > 0 ise veya her zaman kaydetmek isteniyorsa)
+  const yesterday = new Date(getTurkeyTime());
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toLocaleDateString("en-CA");
+
+  // Sadece dünkü intake'i kaydet, yeni gün için 0'lı kayıt eklenmesin
   const newHistoryEntry = {
-    date: currentFirestoreData.lastResetDate || todayStr,
+    date: yesterdayStr,
     intake: currentFirestoreData.waterIntake || 0,
   };
 
   try {
-    // Güncel verilerden history dizisine yeni entry ekleniyor; böylece eski kayıtlar korunuyor.
+    // Sadece dünkü intake'i, dünkü tarih ile kaydet
     await updateDoc(ref, {
       waterIntake: 0,
       yesterdayWaterIntake: currentFirestoreData.waterIntake || 0,
@@ -231,6 +238,12 @@ const resetDailyWaterIntake = async (
       history: arrayUnion(newHistoryEntry),
     });
     await fetchWaterData();
+
+    // Gün sonu özeti bildirimi gönder
+    const waterIntake = currentFirestoreData.waterIntake || 0;
+    const dailyTarget = currentFirestoreData.dailyWaterTarget || 2000;
+    await sendDailyWaterSummary(user, waterIntake, dailyTarget);
+    console.log(`Gün sonu özeti: ${waterIntake}ml`);
   } catch (error) {
     console.error("Reset işlemi sırasında hata oluştu:", error);
   }
@@ -271,7 +284,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     // Eğer lastResetDate yoksa veya bugünden farklıysa reset yap
     if (!data.lastResetDate || data.lastResetDate !== todayStr) {
       // NOT: Burada state'deki waterData yerine, Firestore'dan çekilen data (en güncel veri) kullanılıyor.
-      await resetDailyWaterIntake(getWaterDocRef, data, fetchWaterData);
+      await resetDailyWaterIntake(getWaterDocRef, data, fetchWaterData, user);
     }
   };
 
@@ -397,7 +410,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
 
       const timeoutId = setTimeout(async () => {
         // Burada state'deki waterData yerine, fetchWaterData ile çekilen en güncel veriyi kullanmak daha sağlıklı olabilir.
-        await resetDailyWaterIntake(getWaterDocRef, waterData, fetchWaterData);
+        await resetDailyWaterIntake(getWaterDocRef, waterData, fetchWaterData, user);
         scheduleReset(); // Bir sonraki gün için yeniden zamanla
       }, msUntilMidnight);
 

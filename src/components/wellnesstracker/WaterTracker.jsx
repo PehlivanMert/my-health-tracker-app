@@ -682,56 +682,71 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Günlük Hedef"
-              type="number"
-              value={waterData.dailyWaterTarget}
-              onChange={(e) =>
-                handleWaterSettingChange(
-                  "dailyWaterTarget",
-                  Number(e.target.value)
-                )
+            <Tooltip
+              title={
+                waterData.waterNotificationOption === "smart"
+                  ? "Günlük hedef, hava ve aktiviteye göre otomatik hesaplanıyor."
+                  : "Günlük hedefi kendin belirleyebilirsin."
               }
-              variant="filled"
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <CheckCircle
-                      sx={{
-                        color: "#4CAF50",
-                        fontSize: 28,
-                        filter: "drop-shadow(0 2px 4px rgba(76,175,80,0.3))",
-                      }}
-                    />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">ml</InputAdornment>
-                ),
-                sx: {
-                  background: "rgba(255,255,255,0.1)",
-                  borderRadius: "12px",
-                  border: "1px solid rgba(76,175,80,0.3)",
-                  color: "#fff",
-                  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                  "&:hover": {
-                    background: "rgba(255,255,255,0.15)",
-                    transform: "translateY(-2px)",
-                  },
-                  "&.Mui-focused": {
-                    boxShadow: "0 0 15px rgba(76,175,80,0.4)",
-                    borderColor: "#4CAF50",
-                  },
-                },
-              }}
-              InputLabelProps={{
-                sx: {
-                  color: "rgba(255,255,255,0.7)",
-                  "&.Mui-focused": { color: "#4CAF50" },
-                },
-              }}
-            />
+              arrow
+              placement="top"
+            >
+              <span>
+                <TextField
+                  fullWidth
+                  label="Günlük Hedef"
+                  type="number"
+                  value={waterData.dailyWaterTarget}
+                  onChange={(e) => {
+                    if (waterData.waterNotificationOption === "custom") {
+                      handleWaterSettingChange(
+                        "dailyWaterTarget",
+                        Number(e.target.value)
+                      );
+                    }
+                  }}
+                  variant="filled"
+                  disabled={waterData.waterNotificationOption === "smart"}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <CheckCircle
+                          sx={{
+                            color: "#4CAF50",
+                            fontSize: 28,
+                            filter: "drop-shadow(0 2px 4px rgba(76,175,80,0.3))",
+                          }}
+                        />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">ml</InputAdornment>
+                    ),
+                    sx: {
+                      background: "rgba(255,255,255,0.1)",
+                      borderRadius: "12px",
+                      border: "1px solid rgba(76,175,80,0.3)",
+                      color: "#fff",
+                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                      "&:hover": {
+                        background: "rgba(255,255,255,0.15)",
+                        transform: "translateY(-2px)",
+                      },
+                      "&.Mui-focused": {
+                        boxShadow: "0 0 15px rgba(76,175,80,0.4)",
+                        borderColor: "#4CAF50",
+                      },
+                    },
+                  }}
+                  InputLabelProps={{
+                    sx: {
+                      color: "rgba(255,255,255,0.7)",
+                      "&.Mui-focused": { color: "#4CAF50" },
+                    },
+                  }}
+                />
+              </span>
+            </Tooltip>
           </Grid>
         </Grid>
       </Box>

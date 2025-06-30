@@ -368,6 +368,57 @@ export const getWeatherData = async () => {
 };
 
 /**
+ * 24 saatlik ortalama hava durumu verisini çeker ve döndürür.
+ * Sadece günün başında (00:00'da) çağrılmalı, gün boyunca sabit kalmalı.
+ */
+export const getDailyAverageWeatherData = async () => {
+  try {
+    // A. Konum izni iste ve koordinatları al
+    const { latitude, longitude } = await getUserLocation();
+    console.log("Konum alındı:", { latitude, longitude });
+
+    // B. Bugünün tarihi (Türkiye saatiyle)
+    const now = getTurkeyTime();
+    const todayStr = now.toLocaleDateString("en-CA", { timeZone: "Europe/Istanbul" });
+
+    // C. API isteği - 24 saatlik saatlik veriler
+    const response = await fetch(
+      `${import.meta.env.VITE_OPEN_METEO_API_URL}?latitude=${latitude}&longitude=${longitude}` +
+        `&hourly=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,apparent_temperature,pressure_msl,cloud_cover,precipitation,rain,showers,snowfall,visibility,uv_index,is_day` +
+        `&start_date=${todayStr}&end_date=${todayStr}&timezone=Europe/Istanbul`
+    );
+    const data = await response.json();
+    if (!data.hourly) {
+      throw new Error("Saatlik hava durumu verisi alınamadı");
+    }
+    // D. 24 saatlik ortalamaları hesapla
+    const avg = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
+    const getArr = (key) => data.hourly[key] || [];
+    const result = {
+      temperature: avg(getArr("temperature_2m")),
+      humidity: avg(getArr("relative_humidity_2m")),
+      windSpeed: avg(getArr("wind_speed_10m")),
+      windDirection: avg(getArr("wind_direction_10m")),
+      apparentTemperature: avg(getArr("apparent_temperature")),
+      pressure: avg(getArr("pressure_msl")),
+      cloudCover: avg(getArr("cloud_cover")),
+      precipitation: avg(getArr("precipitation")),
+      rain: avg(getArr("rain")),
+      showers: avg(getArr("showers")),
+      snowfall: avg(getArr("snowfall")),
+      visibility: avg(getArr("visibility")),
+      uvIndex: avg(getArr("uv_index")),
+      isDay: Math.round(avg(getArr("is_day"))),
+      weathercode: getArr("weather_code")[12] || 0, // Öğlenin kodunu al (temsilci)
+    };
+    return result;
+  } catch (error) {
+    console.error("Günlük ortalama hava durumu hatası:", error.message);
+    return null;
+  }
+};
+
+/**
  * Su bildirimlerini hesaplar.
  * - Kalan dakika, pencere bitişi (windowEnd) ile mevcut zaman (now) arasından hesaplanır.
  * - İlk bildirim zamanı: Eğer now pencere içindeyse, ilk bildirim now + interval;
@@ -412,45 +463,38 @@ export const computeWaterReminderTimes = async (user) => {
       age = calculateAge(profile.birthDate);
     }
     const bmr = calculateBMR(gender, weight, height, age);
-    let temperature = 20;
-    let humidity = 50;
 
-    // Hava durumu kontrolü:
-    const weather = await getWeatherData(); // Parametre gerekmez
-    if (weather) {
-      temperature = weather.temperature;
-      humidity = weather.humidity;
-    } else {
-      console.warn("Varsayılan sıcaklık ve nem kullanılıyor.");
+    // --- GÜNLÜK ORTALAMA HAVA DURUMU ---
+    // Sadece günün başında (00:00'da) veya dailyWeatherAverages kaydedilmemişse çekilecek
+    let dailyWeatherAverages = data.dailyWeatherAverages;
+    let todayStr = now.toLocaleDateString("en-CA", { timeZone: "Europe/Istanbul" });
+    if (!dailyWeatherAverages || dailyWeatherAverages.date !== todayStr) {
+      const avgWeather = await getDailyAverageWeatherData();
+      if (avgWeather) {
+        dailyWeatherAverages = { ...avgWeather, date: todayStr };
+        // Firestore'a kaydet
+        const waterRef = doc(db, "users", user.uid, "water", "current");
+        await setDoc(waterRef, { dailyWeatherAverages }, { merge: true });
+      }
     }
+    // Ortalamaları kullan
+    const weather = dailyWeatherAverages || {};
+    const temperature = weather.temperature || 20;
+    const humidity = weather.humidity || 50;
+    const windSpeed = weather.windSpeed || 10;
+    const uvIndex = weather.uvIndex || 3;
+    const cloudCover = weather.cloudCover || 50;
+    const precipitation = weather.precipitation || 0;
+    const isDay = weather.isDay || 1;
 
     // Temel çarpanlar
     const humidityMultiplier = 1 + Math.abs(50 - humidity) / 200;
     const weatherMultiplier = 1 + (temperature - 20) / 100;
-    
-    // Yeni eklenen çarpanlar
-    let windMultiplier = 1.0;
-    let uvMultiplier = 1.0;
-    let cloudMultiplier = 1.0;
-    let precipitationMultiplier = 1.0;
-    let dayNightMultiplier = 1.0;
-
-    if (weather) {
-      // Rüzgar çarpanı (10 km/h altı etkisiz)
-      windMultiplier = 1 + Math.max(0, (weather.windSpeed - 10)) / 100;
-      
-      // UV çarpanı (3 altı etkisiz)
-      uvMultiplier = 1 + Math.max(0, (weather.uvIndex - 3)) / 20;
-      
-      // Bulut çarpanı (bulut arttıkça su ihtiyacı azalır)
-      cloudMultiplier = 1 - (weather.cloudCover / 200);
-      
-      // Yağış çarpanı (yağış varsa su ihtiyacı azalır)
-      precipitationMultiplier = (weather.precipitation > 0 || weather.rain > 0 || weather.showers > 0) ? 0.9 : 1.0;
-      
-      // Gündüz/gece çarpanı
-      dayNightMultiplier = weather.isDay ? 1.1 : 0.9;
-    }
+    let windMultiplier = 1 + Math.max(0, (windSpeed - 10)) / 100;
+    let uvMultiplier = 1 + Math.max(0, (uvIndex - 3)) / 20;
+    let cloudMultiplier = 1 - (cloudCover / 200);
+    let precipitationMultiplier = precipitation > 0 ? 0.9 : 1.0;
+    let dayNightMultiplier = isDay ? 1.1 : 0.9;
 
     const activityMap = {
       çok_düşük: 0.9,
@@ -465,16 +509,17 @@ export const computeWaterReminderTimes = async (user) => {
     const activityMultiplier = activityMap[activityLevel] || 1.1;
 
     const finalMultiplier =
-      1.4 * 
-      weatherMultiplier * 
-      humidityMultiplier * 
+      1.4 *
+      weatherMultiplier *
+      humidityMultiplier *
       activityMultiplier *
       windMultiplier *
       uvMultiplier *
       cloudMultiplier *
       precipitationMultiplier *
       dayNightMultiplier;
-      
+
+    // --- GÜNLÜK SU HEDEFİ ARTIK SABİT ---
     const dailyWaterTarget = calculateDailyWaterTarget(bmr, finalMultiplier);
     const waterIntake = data.waterIntake || 0;
     const remainingTarget = Math.max(dailyWaterTarget - waterIntake, 0);
@@ -497,21 +542,19 @@ export const computeWaterReminderTimes = async (user) => {
     const waterRef = doc(db, "users", user.uid, "water", "current");
     await setDoc(
       waterRef,
-      { bmr, dailyWaterTarget, glassSize, waterNotificationOption: "smart" },
+      {
+        bmr,
+        dailyWaterTarget,
+        glassSize,
+        waterNotificationOption: "smart",
+        dailyWeatherAverages,
+      },
       { merge: true }
     );
 
-    // Kalan dakikayı, pencere bitişi ile mevcut zaman arasından hesaplıyoruz.
+    // Bildirim aralığı ve zamanlaması aynı kalacak
     const remainingMinutes = (windowEnd.getTime() - now.getTime()) / 60000;
     const interval = Math.max(15, Math.floor(remainingMinutes / numGlasses));
-    console.log(
-      "computeWaterReminderTimes - Kalan dakika:",
-      remainingMinutes,
-      "Interval (dk):",
-      interval
-    );
-
-    // İlk bildirim zamanı: Eğer now pencere içindeyse, ilk bildirim now + interval; değilse pencere başlangıcı.
     let startTime;
     if (
       now.getTime() >= windowStart.getTime() &&
@@ -521,18 +564,11 @@ export const computeWaterReminderTimes = async (user) => {
     } else {
       startTime = windowStart.getTime();
     }
-
-    for (let i = 0; i < numGlasses && startTime <= windowEnd.getTime(); i++) {
+    while (startTime <= windowEnd.getTime()) {
       const reminderTime = new Date(startTime);
-      reminderTime.setSeconds(0, 0); // Saniyeleri ve milisaniyeleri 0 yap
+      reminderTime.setSeconds(0, 0);
       const message = getMotivationalMessageForTime(reminderTime);
       reminderSchedule.push({ time: reminderTime, message });
-      console.log(
-        "computeWaterReminderTimes - Eklenen smart bildirim zamanı:",
-        reminderTime,
-        "Mesaj:",
-        message
-      );
       startTime += interval * 60000;
     }
   } else if (mode === "custom") {

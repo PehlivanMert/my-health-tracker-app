@@ -509,16 +509,16 @@ export const computeWaterReminderTimes = async (user) => {
     const activityMultiplier = activityMap[activityLevel] || 1.1;
 
     const finalMultiplier =
-      1.4 *
-      weatherMultiplier *
-      humidityMultiplier *
+      1.4 * 
+      weatherMultiplier * 
+      humidityMultiplier * 
       activityMultiplier *
       windMultiplier *
       uvMultiplier *
       cloudMultiplier *
       precipitationMultiplier *
       dayNightMultiplier;
-
+      
     // --- GÜNLÜK SU HEDEFİ ARTIK SABİT ---
     const dailyWaterTarget = calculateDailyWaterTarget(bmr, finalMultiplier);
     const waterIntake = data.waterIntake || 0;

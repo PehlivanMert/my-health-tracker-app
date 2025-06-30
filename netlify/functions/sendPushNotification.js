@@ -374,6 +374,13 @@ exports.handler = async function (event, context) {
             const eventData = docSnap.data();
             if (!eventData.notification || eventData.notification === "none")
               return;
+            
+            // eventData.start null check ekle
+            if (!eventData.start) {
+              console.log(`Kullanıcı ${userDoc.id} için takvim etkinliği ${eventData.title || 'Bilinmeyen'} başlangıç zamanı eksik, atlanıyor.`);
+              return;
+            }
+            
             const offsetMinutes =
               notificationOffsets[eventData.notification] || 0;
             const eventStart = eventData.start.toDate();
@@ -412,7 +419,7 @@ exports.handler = async function (event, context) {
 
         // ---------- Global Bildirim Penceresi Kontrolü (Su ve Takviye bildirimleri için) ----------
         let isWithinNotificationWindow = true;
-        if (userData.notificationWindow) {
+        if (userData.notificationWindow && userData.notificationWindow.start && userData.notificationWindow.end) {
           const [nowHour, nowMinute] = now
             .toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })
             .split(":")
@@ -448,184 +455,194 @@ exports.handler = async function (event, context) {
         if (isWithinNotificationWindow && waterSnap && waterSnap.exists) {
           const waterData = waterSnap.data();
 
-          // Mevcut su bildirim zamanı (nextWaterReminderTime) için bildirim:
-          if (waterData && waterData.nextWaterReminderTime) {
-            const nextReminder = new Date(waterData.nextWaterReminderTime);
-            const nextReminderTurkey = new Date(
-              nextReminder.toLocaleString("en-US", {
-                timeZone: "Europe/Istanbul",
-              })
-            );
-            console.log(
-              `sendPushNotification - Kullanıcı ${userDoc.id} için su bildirimi zamanı:`,
-              nextReminderTurkey
-            );
-            if (Math.abs(now - nextReminderTurkey) / 60000 < 0.5) {
-              notificationsForThisUser.push({
-                tokens: fcmTokens,
-                data: {
-                  title: "Su İçme Hatırlatması",
-                  body:
-                    waterData.nextWaterReminderMessage ||
-                    `Günlük su hedefin ${waterData.dailyWaterTarget} ml. Su içmeyi unutma!`,
-                  nextWaterReminderTime: waterData.nextWaterReminderTime,
-                  nextWaterReminderMessage: waterData.nextWaterReminderMessage,
-                  type: "water",
-                },
-              });
-            }
-          }
-
-          // GECE YARISI RESET BİLDİRİMİ: Eğer mevcut zaman gece yarısına yakınsa (±1 dakika)
-          const midnight = new Date(now);
-          midnight.setHours(0, 0, 0, 0);
-          if (Math.abs(now.getTime() - midnight.getTime()) < 60000) {
-            let resetMessage = "";
-            if (waterData.waterIntake >= waterData.dailyWaterTarget) {
-              // Başarı mesajları (10 adet)
-              const successMessages = [
-                "Harika! Bugün su hedefini gerçekleştirdin!",
-                "Mükemmel, su hedefin tamamlandı!",
-                "Tebrikler! Vücudun için gereken suyu aldın!",
-                "Su hedefine ulaştın, sağlığın için büyük bir adım!",
-                "Bugün suyu tamamlama başarın takdire şayan!",
-                "Su hedefini aştın, süper bir performans!",
-                "Bugün su içmeyi ihmal etmedin, tebrikler!",
-                "Sağlığın için harika bir gün, su hedefine ulaştın!",
-                "Günlük su hedefin tamamlandı, mükemmel!",
-                "Bugün su hedefine ulaşman motivasyonunu artırıyor!",
-              ];
-              resetMessage =
-                successMessages[
-                  Math.floor(Math.random() * successMessages.length)
-                ];
-            } else {
-              // Başarısız mesajlar (10 adet)
-              const failMessages = [
-                `Bugün ${waterData.waterIntake} ml su içtin, hedefin ${waterData.dailyWaterTarget} ml. Yarın daha iyi yapabilirsin!`,
-                `Su hedefin ${waterData.dailyWaterTarget} ml idi, ancak bugün sadece ${waterData.waterIntake} ml içtin.`,
-                `Hedefin ${waterData.dailyWaterTarget} ml, bugün ${waterData.waterIntake} ml su içtin. Biraz daha çabalayalım!`,
-                `Yeterince su içemedin: ${waterData.waterIntake} ml / ${waterData.dailyWaterTarget} ml.`,
-                `Bugün su hedefine ulaşamadın (${waterData.waterIntake} / ${waterData.dailyWaterTarget} ml). Yarın şansın daha iyi olsun!`,
-                `Hedefin ${waterData.dailyWaterTarget} ml, ancak bugün ${waterData.waterIntake} ml su içtin. Daha fazlasını dene!`,
-                `Su alımında eksik kaldın: ${waterData.waterIntake} ml içtin, hedefin ${waterData.dailyWaterTarget} ml.`,
-                `Günlük hedefin ${waterData.dailyWaterTarget} ml, bugün ${waterData.waterIntake} ml su içtin. Hedefe yaklaşabilirsin!`,
-                `Bugün su alımın hedefin altındaydı (${waterData.waterIntake} / ${waterData.dailyWaterTarget} ml). Yarın daha iyi yap!`,
-                `Su hedefin ${waterData.dailyWaterTarget} ml, fakat bugün sadece ${waterData.waterIntake} ml içtin. Bir sonraki sefer daha dikkatli!`,
-              ];
-              resetMessage =
-                failMessages[Math.floor(Math.random() * failMessages.length)];
-            }
-            console.log(
-              `sendPushNotification - Kullanıcı ${userDoc.id} için gece yarısı su reset bildirimi zamanı:`,
-              now
-            );
-            notificationsForThisUser.push({
-              tokens: fcmTokens,
-              data: {
-                title: "Günlük Su Reset Bildirimi",
-                body: resetMessage,
-                type: "water-reset",
-              },
-            });
-          }
-        }
-
-        // ---------- Takviye Bildirimleri (Global bildirim penceresi kontrolü geçerse) ----------
-        if (isWithinNotificationWindow && suppSnapshot) {
-          // Bugünkü takviye tüketimini çek
-          const supplementConsumptionToday = await getSupplementConsumptionStats(userDoc.id);
-          const turkeyTime = getTurkeyTime();
-          const currentDateStr = turkeyTime.toLocaleDateString("en-CA");
-          const nowHour = turkeyTime.getHours();
-          const nowMinute = turkeyTime.getMinutes();
-          const nowTotal = nowHour * 60 + nowMinute;
-          const [startH, startM] = userData.notificationWindow.start.split(":").map(Number);
-          const [endH, endM] = userData.notificationWindow.end.split(":").map(Number);
-          const startTotal = startH * 60 + startM;
-          const endTotal = endH * 60 + endM;
-          const isWindowStart = nowTotal === startTotal;
-          const isWindowEnd = nowTotal === endTotal;
-          const isMidnight = nowHour === 0 && nowMinute === 0;
-
-          suppSnapshot.forEach((docSnap) => {
-            const suppData = docSnap.data();
-            if (
-              suppData.notification !== "none" &&
-              suppData.nextSupplementReminderTime &&
-              suppData.quantity > 0
-            ) {
-              const suppName = suppData.name;
-              const dailyUsage = suppData.dailyUsage || 1;
-              const consumedToday = supplementConsumptionToday[suppName] || 0;
-              const estimatedRemainingDays = Math.floor(suppData.quantity / dailyUsage);
-
-              // 1. Kullanıcı günlük miktarı tamamladıysa hiçbir bildirim atma
-              if (consumedToday >= dailyUsage) {
-                return;
-              }
-
-              // 2. 14/7/3/1 gün kaldı bildirimi pencere başında
-              if ([14, 7, 3, 1].includes(estimatedRemainingDays) && isWindowStart) {
-                const motivasyonlar = [
-                  `Harika gidiyorsun! ${suppName} takviyenden sadece ${estimatedRemainingDays} gün kaldı, sağlığın için istikrarlı ol!`,
-                  `Az kaldı! ${suppName} takviyenden ${estimatedRemainingDays} gün sonra yenilemen gerekebilir.`,
-                  `Motivasyonunu koru! ${suppName} takviyenden ${estimatedRemainingDays} gün sonra bitecek.`,
-                  `Düzenli kullanım harika! ${suppName} takviyenden ${estimatedRemainingDays} gün kaldı.`,
-                ];
-                notificationsForThisUser.push({
-                  tokens: fcmTokens,
-                  data: {
-                    title: `${suppName} Takviyenden ${estimatedRemainingDays} Gün Kaldı!`,
-                    body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
-                    supplementId: docSnap.id,
-                  },
-                });
-              }
-
-              // 3. Kullanıcı içme saati girdiyse, o saatte bildirim gönder
-              const nextReminder = new Date(suppData.nextSupplementReminderTime);
+          // Su verilerinin geçerli olduğunu kontrol et
+          if (!waterData || typeof waterData.dailyWaterTarget !== 'number' || typeof waterData.waterIntake !== 'number') {
+            console.log(`Kullanıcı ${userDoc.id} için su verileri eksik veya geçersiz, su bildirimleri atlanıyor.`);
+          } else {
+            // Mevcut su bildirim zamanı (nextWaterReminderTime) için bildirim:
+            if (waterData.nextWaterReminderTime) {
+              const nextReminder = new Date(waterData.nextWaterReminderTime);
               const nextReminderTurkey = new Date(
                 nextReminder.toLocaleString("en-US", {
                   timeZone: "Europe/Istanbul",
                 })
               );
+              console.log(
+                `sendPushNotification - Kullanıcı ${userDoc.id} için su bildirimi zamanı:`,
+                nextReminderTurkey
+              );
               if (Math.abs(now - nextReminderTurkey) / 60000 < 0.5) {
-                const motivasyonlar = [
-                  `Takviyeni almayı unutma! Düzenli kullanım sağlığın için çok önemli.`,
-                  `Bugün de ${suppName} takviyeni alırsan zinciri bozmayacaksın!`,
-                  `Vücudun sana teşekkür edecek! ${suppName} takviyeni almayı unutma.`,
-                  `Sağlıklı bir gün için ${suppName} takviyeni şimdi alabilirsin!`,
-                ];
                 notificationsForThisUser.push({
                   tokens: fcmTokens,
                   data: {
-                    title: `${suppName} Takviyesi Zamanı!`,
-                    body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
-                    supplementId: docSnap.id,
-                  },
-                });
-              }
-
-              // 4. Pencere bitişinde veya gece yarısı hatırlatma (kullanıcı tamamlamadıysa)
-              if ((isWindowEnd || isMidnight) && consumedToday < dailyUsage) {
-                const motivasyonlar = [
-                  `Bugün ${suppName} takviyeni henüz almadın. Sağlığın için düzenli kullanımı unutma!`,
-                  `Takviyeni bugün almadın, yarın daha dikkatli olabilirsin!`,
-                  `Düzenli kullanım önemli! ${suppName} takviyeni bugün almadın.`,
-                  `Unutma, istikrar sağlığın anahtarı! Bugün ${suppName} takviyeni atladın.`,
-                ];
-                notificationsForThisUser.push({
-                  tokens: fcmTokens,
-                  data: {
-                    title: `${suppName} Takviyesi Unutuldu!`,
-                    body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
-                    supplementId: docSnap.id,
+                    title: "Su İçme Hatırlatması",
+                    body:
+                      waterData.nextWaterReminderMessage ||
+                      `Günlük su hedefin ${waterData.dailyWaterTarget} ml. Su içmeyi unutma!`,
+                    nextWaterReminderTime: waterData.nextWaterReminderTime,
+                    nextWaterReminderMessage: waterData.nextWaterReminderMessage,
+                    type: "water",
                   },
                 });
               }
             }
-          });
+
+            // GECE YARISI RESET BİLDİRİMİ: Eğer mevcut zaman gece yarısına yakınsa (±1 dakika)
+            const midnight = new Date(now);
+            midnight.setHours(0, 0, 0, 0);
+            if (Math.abs(now.getTime() - midnight.getTime()) < 60000) {
+              let resetMessage = "";
+              if (waterData.waterIntake >= waterData.dailyWaterTarget) {
+                // Başarı mesajları (10 adet)
+                const successMessages = [
+                  "Harika! Bugün su hedefini gerçekleştirdin!",
+                  "Mükemmel, su hedefin tamamlandı!",
+                  "Tebrikler! Vücudun için gereken suyu aldın!",
+                  "Su hedefine ulaştın, sağlığın için büyük bir adım!",
+                  "Bugün suyu tamamlama başarın takdire şayan!",
+                  "Su hedefini aştın, süper bir performans!",
+                  "Bugün su içmeyi ihmal etmedin, tebrikler!",
+                  "Sağlığın için harika bir gün, su hedefine ulaştın!",
+                  "Günlük su hedefin tamamlandı, mükemmel!",
+                  "Bugün su hedefine ulaşman motivasyonunu artırıyor!",
+                ];
+                resetMessage =
+                  successMessages[
+                    Math.floor(Math.random() * successMessages.length)
+                  ];
+              } else {
+                // Başarısız mesajlar (10 adet)
+                const failMessages = [
+                  `Bugün ${waterData.waterIntake} ml su içtin, hedefin ${waterData.dailyWaterTarget} ml. Yarın daha iyi yapabilirsin!`,
+                  `Su hedefin ${waterData.dailyWaterTarget} ml idi, ancak bugün sadece ${waterData.waterIntake} ml içtin.`,
+                  `Hedefin ${waterData.dailyWaterTarget} ml, bugün ${waterData.waterIntake} ml su içtin. Biraz daha çabalayalım!`,
+                  `Yeterince su içemedin: ${waterData.waterIntake} ml / ${waterData.dailyWaterTarget} ml.`,
+                  `Bugün su hedefine ulaşamadın (${waterData.waterIntake} / ${waterData.dailyWaterTarget} ml). Yarın şansın daha iyi olsun!`,
+                  `Hedefin ${waterData.dailyWaterTarget} ml, ancak bugün ${waterData.waterIntake} ml su içtin. Daha fazlasını dene!`,
+                  `Su alımında eksik kaldın: ${waterData.waterIntake} ml içtin, hedefin ${waterData.dailyWaterTarget} ml.`,
+                  `Günlük hedefin ${waterData.dailyWaterTarget} ml, bugün ${waterData.waterIntake} ml su içtin. Hedefe yaklaşabilirsin!`,
+                  `Bugün su alımın hedefin altındaydı (${waterData.waterIntake} / ${waterData.dailyWaterTarget} ml). Yarın daha iyi yap!`,
+                  `Su hedefin ${waterData.dailyWaterTarget} ml, fakat bugün sadece ${waterData.waterIntake} ml içtin. Bir sonraki sefer daha dikkatli!`,
+                ];
+                resetMessage =
+                  failMessages[Math.floor(Math.random() * failMessages.length)];
+              }
+              console.log(
+                `sendPushNotification - Kullanıcı ${userDoc.id} için gece yarısı su reset bildirimi zamanı:`,
+                now
+              );
+              notificationsForThisUser.push({
+                tokens: fcmTokens,
+                data: {
+                  title: "Günlük Su Reset Bildirimi",
+                  body: resetMessage,
+                  type: "water-reset",
+                },
+              });
+            }
+          }
+        }
+
+        // ---------- Takviye Bildirimleri (Global bildirim penceresi kontrolü geçerse) ----------
+        if (isWithinNotificationWindow && suppSnapshot) {
+          // Bildirim penceresi kontrolü için güvenli erişim
+          if (!userData.notificationWindow || !userData.notificationWindow.start || !userData.notificationWindow.end) {
+            console.log(`Kullanıcı ${userDoc.id} için bildirim penceresi ayarları eksik, takviye bildirimleri atlanıyor.`);
+          } else {
+            // Bugünkü takviye tüketimini çek
+            const supplementConsumptionToday = await getSupplementConsumptionStats(userDoc.id);
+            const turkeyTime = getTurkeyTime();
+            const currentDateStr = turkeyTime.toLocaleDateString("en-CA");
+            const nowHour = turkeyTime.getHours();
+            const nowMinute = turkeyTime.getMinutes();
+            const nowTotal = nowHour * 60 + nowMinute;
+            const [startH, startM] = userData.notificationWindow.start.split(":").map(Number);
+            const [endH, endM] = userData.notificationWindow.end.split(":").map(Number);
+            const startTotal = startH * 60 + startM;
+            const endTotal = endH * 60 + endM;
+            const isWindowStart = nowTotal === startTotal;
+            const isWindowEnd = nowTotal === endTotal;
+            const isMidnight = nowHour === 0 && nowMinute === 0;
+
+            suppSnapshot.forEach((docSnap) => {
+              const suppData = docSnap.data();
+              if (
+                suppData.notification !== "none" &&
+                suppData.nextSupplementReminderTime &&
+                suppData.quantity > 0
+              ) {
+                const suppName = suppData.name || 'Bilinmeyen Takviye';
+                const dailyUsage = suppData.dailyUsage || 1;
+                const consumedToday = supplementConsumptionToday[suppName] || 0;
+                const estimatedRemainingDays = Math.floor(suppData.quantity / dailyUsage);
+
+                // 1. Kullanıcı günlük miktarı tamamladıysa hiçbir bildirim atma
+                if (consumedToday >= dailyUsage) {
+                  return;
+                }
+
+                // 2. 14/7/3/1 gün kaldı bildirimi pencere başında
+                if ([14, 7, 3, 1].includes(estimatedRemainingDays) && isWindowStart) {
+                  const motivasyonlar = [
+                    `Harika gidiyorsun! ${suppName} takviyenden sadece ${estimatedRemainingDays} gün kaldı, sağlığın için istikrarlı ol!`,
+                    `Az kaldı! ${suppName} takviyenden ${estimatedRemainingDays} gün sonra yenilemen gerekebilir.`,
+                    `Motivasyonunu koru! ${suppName} takviyenden ${estimatedRemainingDays} gün sonra bitecek.`,
+                    `Düzenli kullanım harika! ${suppName} takviyenden ${estimatedRemainingDays} gün kaldı.`,
+                  ];
+                  notificationsForThisUser.push({
+                    tokens: fcmTokens,
+                    data: {
+                      title: `${suppName} Takviyenden ${estimatedRemainingDays} Gün Kaldı!`,
+                      body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
+                      supplementId: docSnap.id,
+                    },
+                  });
+                }
+
+                // 3. Kullanıcı içme saati girdiyse, o saatte bildirim gönder
+                const nextReminder = new Date(suppData.nextSupplementReminderTime);
+                const nextReminderTurkey = new Date(
+                  nextReminder.toLocaleString("en-US", {
+                    timeZone: "Europe/Istanbul",
+                  })
+                );
+                if (Math.abs(now - nextReminderTurkey) / 60000 < 0.5) {
+                  const motivasyonlar = [
+                    `Takviyeni almayı unutma! Düzenli kullanım sağlığın için çok önemli.`,
+                    `Bugün de ${suppName} takviyeni alırsan zinciri bozmayacaksın!`,
+                    `Vücudun sana teşekkür edecek! ${suppName} takviyeni almayı unutma.`,
+                    `Sağlıklı bir gün için ${suppName} takviyeni şimdi alabilirsin!`,
+                  ];
+                  notificationsForThisUser.push({
+                    tokens: fcmTokens,
+                    data: {
+                      title: `${suppName} Takviyesi Zamanı!`,
+                      body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
+                      supplementId: docSnap.id,
+                    },
+                  });
+                }
+
+                // 4. Pencere bitişinde veya gece yarısı hatırlatma (kullanıcı tamamlamadıysa)
+                if ((isWindowEnd || isMidnight) && consumedToday < dailyUsage) {
+                  const motivasyonlar = [
+                    `Bugün ${suppName} takviyeni henüz almadın. Sağlığın için düzenli kullanımı unutma!`,
+                    `Takviyeni bugün almadın, yarın daha dikkatli olabilirsin!`,
+                    `Düzenli kullanım önemli! ${suppName} takviyeni bugün almadın.`,
+                    `Unutma, istikrar sağlığın anahtarı! Bugün ${suppName} takviyeni atladın.`,
+                  ];
+                  notificationsForThisUser.push({
+                    tokens: fcmTokens,
+                    data: {
+                      title: `${suppName} Takviyesi Unutuldu!`,
+                      body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
+                      supplementId: docSnap.id,
+                    },
+                  });
+                }
+              }
+            });
+          }
         }
 
         // Kullanıcıya ait bildirimler varsa, kullanıcı ID'si ile birlikte ekle

@@ -115,13 +115,19 @@ const SupplementConsumptionChart = ({
     "#795548",
   ];
   const filteredData = getFilteredData();
+  const activeSuppNames = supplements ? supplements.map(s => s.name) : [];
+
   const suppKeys =
     filteredData.length > 0
       ? Array.from(
           new Set(
             filteredData.flatMap((day) =>
               Object.keys(day).filter(
-                (key) => key !== "date" && key !== "total" && key !== "fullDate"
+                (key) =>
+                  key !== "date" &&
+                  key !== "total" &&
+                  key !== "fullDate" &&
+                  day[key] > 0
               )
             )
           )

@@ -263,7 +263,8 @@ const DailyRoutine = ({ user }) => {
         const docSnap = await getDoc(userRef);
         if (docSnap.exists()) {
           let data = docSnap.data();
-          setRoutines(data.routines || initialRoutines);
+          // Kullanıcının mevcut rutinleri varsa onları kullan, yoksa boş dizi
+          setRoutines(data.routines || []);
           setWeeklyStats(data.weeklyStats || { added: 0, completed: 0 });
           setMonthlyStats(data.monthlyStats || { added: 0, completed: 0 });
           
@@ -288,13 +289,14 @@ const DailyRoutine = ({ user }) => {
             monthly: data.lastResetMonthly || currentMonthStr,
           });
         } else {
+          // Yeni kullanıcı için boş rutin listesi ile başla
           const initialData = {
-            routines: initialRoutines,
+            routines: [],
             weeklyStats: { added: 0, completed: 0 },
             monthlyStats: { added: 0, completed: 0 },
           };
           await setDoc(userRef, initialData);
-          setRoutines(initialRoutines);
+          setRoutines([]);
           setWeeklyStats({ added: 0, completed: 0 });
           setMonthlyStats({ added: 0, completed: 0 });
           

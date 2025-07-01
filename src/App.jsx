@@ -219,7 +219,7 @@ function App() {
   }, []);
 
   // Egzersiz
-  const [exercises, setExercises] = useState(initialExercises);
+  const [exercises, setExercises] = useState([]);
   const [editingExercise, setEditingExercise] = useState(null);
   const handleExerciseSubmit = useCallback((exercise) => {
     setExercises((prev) =>
@@ -240,7 +240,8 @@ function App() {
         const docSnap = await getDoc(userDocRef, { source: "server" });
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setExercises(data.exercises ?? initialExercises);
+          // Kullanıcının mevcut egzersizleri varsa onları kullan, yoksa boş dizi
+          setExercises(data.exercises || []);
           if (
             data.profile &&
             data.profile.birthDate &&
@@ -253,11 +254,12 @@ function App() {
           }
           isInitialLoad.current = false;
         } else {
+          // Yeni kullanıcı için boş egzersiz listesi ile başla
           const initialData = {
-            exercises: initialExercises,
+            exercises: [],
           };
           await setDoc(userDocRef, initialData);
-          setExercises(initialExercises);
+          setExercises([]);
         }
       } catch (error) {
         console.error("Veri yükleme hatası:", error);

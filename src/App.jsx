@@ -40,6 +40,7 @@ import FavoriteIcon from "@mui/icons-material/Favorite";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import PersonIcon from "@mui/icons-material/Person";
 import background from "./assets/background.jpg";
 
 // Framer Motion ve React Icons
@@ -345,6 +346,7 @@ function App() {
   // --- Avatar Menüsü & Profil Modal ---
   const [anchorEl, setAnchorEl] = useState(null);
   const [openProfileModal, setOpenProfileModal] = useState(false);
+  const [openProfileCompletionModal, setOpenProfileCompletionModal] = useState(false);
   const [profileData, setProfileData] = useState({
     username: "",
     firstName: "",
@@ -356,6 +358,44 @@ function App() {
     gender: "",
   });
   const [showWelcome, setShowWelcome] = useState(false);
+
+  // Profil bilgilerinin tamamlanıp tamamlanmadığını kontrol eden fonksiyon
+  const isProfileComplete = (profile) => {
+    return (
+      profile.firstName &&
+      profile.lastName &&
+      profile.height &&
+      profile.weight &&
+      profile.birthDate &&
+      profile.gender
+    );
+  };
+
+  // Profil tamamlama pop-up'ını kontrol eden fonksiyon
+  const checkAndShowProfileCompletion = async (profile) => {
+    if (!isProfileComplete(profile)) {
+      try {
+        // Firestore'dan profil tamamlama durumunu kontrol et
+        const userDocRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(userDocRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const profileCompletionShown = data.profileCompletionShown;
+          
+          if (!profileCompletionShown) {
+            setOpenProfileCompletionModal(true);
+          }
+        } else {
+          // Kullanıcı dokümanı yoksa pop-up'ı göster
+          setOpenProfileCompletionModal(true);
+        }
+      } catch (error) {
+        console.error("Profil tamamlama durumu kontrol hatası:", error);
+        // Hata durumunda pop-up'ı göster
+        setOpenProfileCompletionModal(true);
+      }
+    }
+  };
 
   // Doğum günü animasyonu
   const [showBirthdayAnimation, setShowBirthdayAnimation] = useState(false);
@@ -411,9 +451,12 @@ function App() {
           // Varsayılan değerler ve diğer alanlar:
           prof.gender = prof.gender || "";
           setProfileData(prof);
+          
+          // Profil tamamlama kontrolü
+          await checkAndShowProfileCompletion(prof);
         } else {
           // Profil verisi yoksa, varsayılan olarak ayarlayın
-          setProfileData({
+          const defaultProfile = {
             username: user.email,
             firstName: "",
             lastName: "",
@@ -423,7 +466,11 @@ function App() {
             birthDate: "",
             gender: "",
             age: null,
-          });
+          };
+          setProfileData(defaultProfile);
+          
+          // Profil tamamlama kontrolü
+          await checkAndShowProfileCompletion(defaultProfile);
         }
       };
 
@@ -463,6 +510,20 @@ function App() {
   const handleProfileClose = () => {
     setOpenProfileModal(false);
   };
+  
+  const handleProfileCompletionClose = async () => {
+    setOpenProfileCompletionModal(false);
+    // Kullanıcı pop-up'ı kapattığında Firestore'a kaydet
+    try {
+      const userDocRef = doc(db, "users", user.uid);
+      await updateDoc(userDocRef, {
+        profileCompletionShown: true
+      });
+    } catch (error) {
+      console.error("Profil tamamlama durumu kaydetme hatası:", error);
+    }
+  };
+  
   const handleProfileChange = (e) => {
     const { name, value } = e.target;
     setProfileData((prev) => ({ ...prev, [name]: value }));
@@ -487,6 +548,15 @@ function App() {
 
       toast.success("Profil başarıyla güncellendi");
       setOpenProfileModal(false);
+      
+      // Eğer profil tamamlandıysa, profil tamamlama pop-up'ını da kapat
+      if (isProfileComplete(profileToSave)) {
+        setOpenProfileCompletionModal(false);
+        // Firestore'a profil tamamlama durumunu kaydet
+        await updateDoc(userDocRef, {
+          profileCompletionShown: true
+        });
+      }
     } catch (error) {
       toast.error("Güncelleme hatası: " + error.message);
     }
@@ -973,6 +1043,225 @@ function App() {
                   );
               }}
             />
+
+            {/* Profil Tamamlama Dialog */}
+            <Dialog
+              open={openProfileCompletionModal}
+              onClose={handleProfileCompletionClose}
+              fullWidth
+              maxWidth="md"
+              disableEscapeKeyDown
+              disableBackdropClick
+              sx={{
+                "& .MuiPaper-root": {
+                  background:
+                    "linear-gradient(145deg, #fff3e0 0%, #ffe0b2 100%)",
+                  borderRadius: "20px",
+                  boxShadow: "0 8px 32px rgba(255, 152, 0, 0.3)",
+                },
+              }}
+            >
+              <DialogTitle
+                sx={{
+                  background:
+                    "linear-gradient(45deg, #FF9800 30%, #F57C00 90%)",
+                  color: "white",
+                  fontWeight: "bold",
+                  borderRadius: "20px 20px 0 0",
+                  py: 3,
+                  textAlign: "center",
+                }}
+              >
+                <Box display="flex" alignItems="center" justifyContent="center" gap={2}>
+                  <PersonIcon sx={{ fontSize: 40 }} />
+                  <Typography variant="h5">
+                    Profil Bilgilerinizi Tamamlayın
+                  </Typography>
+                </Box>
+              </DialogTitle>
+
+              <DialogContent sx={{ pt: 3 }}>
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="body1" sx={{ color: "#d84315", mb: 2 }}>
+                    🎯 Daha iyi bir deneyim için lütfen profil bilgilerinizi tamamlayın.
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: "#666", mb: 2 }}>
+                    Bu bilgiler sağlık önerilerinizi kişiselleştirmek ve size daha iyi hizmet vermek için kullanılır.
+                  </Typography>
+                </Box>
+
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                    gap: 3,
+                    my: 2,
+                  }}
+                >
+                  <TextField
+                    label="İsim *"
+                    name="firstName"
+                    fullWidth
+                    value={profileData.firstName || ""}
+                    onChange={handleProfileChange}
+                    variant="outlined"
+                    required
+                    sx={{ background: "rgba(255,255,255,0.9)" }}
+                  />
+                  <TextField
+                    label="Soyisim *"
+                    name="lastName"
+                    fullWidth
+                    value={profileData.lastName || ""}
+                    onChange={handleProfileChange}
+                    variant="outlined"
+                    required
+                    sx={{ background: "rgba(255,255,255,0.9)" }}
+                  />
+                  <FormControl
+                    fullWidth
+                    required
+                    sx={{ background: "rgba(255,255,255,0.9)" }}
+                  >
+                    <InputLabel id="gender-label">Cinsiyet *</InputLabel>
+                    <Select
+                      labelId="gender-label"
+                      name="gender"
+                      value={profileData.gender}
+                      onChange={handleProfileChange}
+                    >
+                      <MenuItem value="male">Erkek</MenuItem>
+                      <MenuItem value="female">Kadın</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <TextField
+                    label="Doğum Tarihi *"
+                    name="birthDate"
+                    type="date"
+                    fullWidth
+                    required
+                    InputLabelProps={{ shrink: true }}
+                    value={
+                      profileData.birthDate
+                        ? format(profileData.birthDate, "yyyy-MM-dd")
+                        : ""
+                    }
+                    onChange={handleProfileChange}
+                    variant="outlined"
+                    sx={{ background: "rgba(255,255,255,0.9)" }}
+                  />
+                  <TextField
+                    label="Boy (cm) *"
+                    name="height"
+                    type="number"
+                    fullWidth
+                    required
+                    value={profileData.height || ""}
+                    onChange={handleProfileChange}
+                    variant="outlined"
+                    sx={{ background: "rgba(255,255,255,0.9)" }}
+                    inputProps={{ min: 0, max: 300 }}
+                  />
+                  <TextField
+                    label="Kilo (kg) *"
+                    name="weight"
+                    type="number"
+                    fullWidth
+                    required
+                    value={profileData.weight || ""}
+                    onChange={handleProfileChange}
+                    variant="outlined"
+                    sx={{ background: "rgba(255,255,255,0.9)" }}
+                    inputProps={{ min: 0, max: 500 }}
+                  />
+                </Box>
+
+                <Typography
+                  variant="h6"
+                  sx={{ mt: 2, mb: 1, color: "#FF9800" }}
+                >
+                  Avatar Seçimi
+                </Typography>
+
+                <Box
+                  sx={{
+                    display: "flex",
+                    gap: 2,
+                    overflowX: "auto",
+                    pb: 2,
+                    "&::-webkit-scrollbar": {
+                      height: "6px",
+                    },
+                    "&::-webkit-scrollbar-thumb": {
+                      background: "#FF9800",
+                      borderRadius: "4px",
+                    },
+                  }}
+                >
+                  {availableAvatars?.map((url) => (
+                    <Avatar
+                      key={url}
+                      src={url}
+                      alt="Profil avatarı"
+                      sx={{
+                        cursor: "pointer",
+                        width: 80,
+                        height: 80,
+                        border:
+                          profileData.profileImage === url
+                            ? "3px solid #FF9800"
+                            : "2px solid #e0e0e0",
+                        transition: "all 0.3s ease",
+                        "&:hover": {
+                          transform: "scale(1.1)",
+                          boxShadow: "0 4px 15px rgba(255, 152, 0, 0.3)",
+                        },
+                      }}
+                      onClick={() => handleAvatarSelect(url)}
+                    />
+                  ))}
+                </Box>
+              </DialogContent>
+
+              <DialogActions
+                sx={{
+                  px: 3,
+                  py: 2,
+                  background: "rgba(255,255,255,0.9)",
+                  borderRadius: "0 0 20px 20px",
+                }}
+              >
+                <Button
+                  onClick={handleProfileCompletionClose}
+                  sx={{
+                    color: "#FF9800",
+                    border: "2px solid #FF9800",
+                    "&:hover": { background: "#FF980022" },
+                  }}
+                >
+                  Daha Sonra
+                </Button>
+                <Button
+                  onClick={handleProfileSave}
+                  disabled={!isProfileComplete(profileData)}
+                  sx={{
+                    background:
+                      "linear-gradient(45deg, #FF9800 30%, #F57C00 90%)",
+                    color: "white",
+                    ml: 1,
+                    "&:hover": {
+                      boxShadow: "0 3px 10px rgba(255, 152, 0, 0.5)",
+                    },
+                    "&:disabled": {
+                      background: "#ccc",
+                      color: "#666",
+                    },
+                  }}
+                >
+                  Profili Tamamla
+                </Button>
+              </DialogActions>
+            </Dialog>
 
             {/* İçerik Alanı */}
             {isPWA ? (

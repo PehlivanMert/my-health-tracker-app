@@ -84,7 +84,9 @@ export const handleRegister = async (
         notificationWindow: {
           start: "08:00",
           end: "22:00"
-        }
+        },
+        // Profil tamamlama durumu - yeni kullanıcılar için false
+        profileCompletionShown: false
       },
       { merge: true }
     );

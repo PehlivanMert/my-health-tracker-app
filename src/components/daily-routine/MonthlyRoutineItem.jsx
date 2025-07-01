@@ -48,14 +48,22 @@ const MonthlyRoutineItem = ({
     return hour * 60 + minute;
   };
 
-  const formatTimeCountdown = (targetTimeStr, now = new Date()) => {
+  const formatTimeCountdown = (targetTimeStr, routineDate, now = new Date()) => {
     const nowInTurkey = new Date(
       now.toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
     );
     const [targetHour, targetMinute] = targetTimeStr.split(":").map(Number);
-    const targetDate = new Date(nowInTurkey);
+    
+    // Rutinin tarihini kullanarak hedef tarihi oluştur
+    const routineDateObj = new Date(routineDate);
+    const targetDate = new Date(routineDateObj);
     targetDate.setHours(targetHour, targetMinute, 0, 0);
-    if (targetDate < nowInTurkey) targetDate.setDate(targetDate.getDate() + 1);
+    
+    // Eğer hedef tarih geçmişse, bir sonraki güne ayarla
+    if (targetDate < nowInTurkey) {
+      targetDate.setDate(targetDate.getDate() + 1);
+    }
+    
     let remainingSeconds = Math.floor((targetDate - nowInTurkey) / 1000);
     remainingSeconds = remainingSeconds > 0 ? remainingSeconds : 0;
     const hours = String(Math.floor(remainingSeconds / 3600)).padStart(2, "0");
@@ -68,9 +76,20 @@ const MonthlyRoutineItem = ({
 
   const getCountdownMessage = () => {
     const currentMin = currentTime.getHours() * 60 + currentTime.getMinutes();
+    
+    // Rutinin tarihini kontrol et
+    const routineDate = routine.date ? new Date(routine.date) : new Date();
+    const todayStr = currentTime.toLocaleDateString("en-CA");
+    const routineDateStr = routineDate.toLocaleDateString("en-CA");
+    
+    // Eğer rutin bugün değilse, geri sayım gösterme
+    if (routineDateStr !== todayStr) {
+      return `Tarih: ${routineDateStr}`;
+    }
+    
     if (!routine.endTime) {
       return currentMin < getMinutesFromTime(routine.time)
-        ? `Başlamaya Kalan: ${formatTimeCountdown(routine.time, currentTime)}`
+        ? `Başlamaya Kalan: ${formatTimeCountdown(routine.time, routine.date, currentTime)}`
         : "";
     } else {
       const startMin = getMinutesFromTime(routine.time);
@@ -78,16 +97,18 @@ const MonthlyRoutineItem = ({
       if (currentMin < startMin) {
         return `Başlamaya Kalan: ${formatTimeCountdown(
           routine.time,
+          routine.date,
           currentTime
         )}`;
       } else if (currentMin >= startMin && currentMin < endMin) {
         return `Bitmesine Kalan: ${formatTimeCountdown(
           routine.endTime,
+          routine.date,
           currentTime
         )}`;
       } else {
         return !isRoutineCompleted
-          ? `Başlamaya Kalan: ${formatTimeCountdown(routine.time, currentTime)}`
+          ? `Başlamaya Kalan: ${formatTimeCountdown(routine.time, routine.date, currentTime)}`
           : "Süre Doldu";
       }
     }

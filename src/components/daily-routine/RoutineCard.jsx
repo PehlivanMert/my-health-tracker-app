@@ -165,7 +165,7 @@ const RoutineCard = ({
   const isActive = !isRoutineCompleted && progress > 0 && progress < 100;
 
   // Geri sayım mesajı (Türkiye saati üzerinden hesaplanır)
-  const formatTimeCountdown = (targetTimeStr, now = new Date()) => {
+  const formatTimeCountdown = (targetTimeStr, routineDate, now = new Date()) => {
     const nowInTurkey = new Date(
       now.toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
     );
@@ -173,9 +173,17 @@ const RoutineCard = ({
       .trim()
       .split(":")
       .map(Number);
-    const targetDate = new Date(nowInTurkey);
+    
+    // Rutinin tarihini kullanarak hedef tarihi oluştur
+    const routineDateObj = new Date(routineDate);
+    const targetDate = new Date(routineDateObj);
     targetDate.setHours(targetHour, targetMinute, 0, 0);
-    if (targetDate < nowInTurkey) targetDate.setDate(targetDate.getDate() + 1);
+    
+    // Eğer hedef tarih geçmişse, bir sonraki güne ayarla
+    if (targetDate < nowInTurkey) {
+      targetDate.setDate(targetDate.getDate() + 1);
+    }
+    
     let remainingSeconds = Math.floor((targetDate - nowInTurkey) / 1000);
     remainingSeconds = remainingSeconds > 0 ? remainingSeconds : 0;
     const hours = String(Math.floor(remainingSeconds / 3600)).padStart(2, "0");
@@ -193,24 +201,36 @@ const RoutineCard = ({
     );
     const currentMinTurkey =
       nowInTurkey.getHours() * 60 + nowInTurkey.getMinutes();
+    
+    // Rutinin tarihini kontrol et
+    const routineDate = routine.date ? new Date(routine.date) : new Date();
+    const todayStr = nowInTurkey.toLocaleDateString("en-CA");
+    const routineDateStr = routineDate.toLocaleDateString("en-CA");
+    
+    // Eğer rutin bugün değilse, geri sayım gösterme
+    if (routineDateStr !== todayStr) {
+      return `Tarih: ${routineDateStr}`;
+    }
+    
     if (!routine.endTime) {
       return currentMinTurkey < getMinutesFromTime(routine.time)
-        ? `Starting in: ${formatTimeCountdown(routine.time, nowInTurkey)}`
+        ? `Başlamaya Kalan: ${formatTimeCountdown(routine.time, routine.date, nowInTurkey)}`
         : "";
     } else {
       const start = getMinutesFromTime(routine.time);
       const end = getMinutesFromTime(routine.endTime);
       if (currentMinTurkey < start) {
-        return `Starting in: ${formatTimeCountdown(routine.time, nowInTurkey)}`;
+        return `Başlamaya Kalan: ${formatTimeCountdown(routine.time, routine.date, nowInTurkey)}`;
       } else if (currentMinTurkey >= start && currentMinTurkey <= end) {
-        return `Ending in: ${formatTimeCountdown(
+        return `Bitmesine Kalan: ${formatTimeCountdown(
           routine.endTime,
+          routine.date,
           nowInTurkey
         )}`;
       } else {
         return !isRoutineCompleted
-          ? `Starting in: ${formatTimeCountdown(routine.time, nowInTurkey)}`
-          : "Time's up";
+          ? `Başlamaya Kalan: ${formatTimeCountdown(routine.time, routine.date, nowInTurkey)}`
+          : "Süre Doldu";
       }
     }
   };

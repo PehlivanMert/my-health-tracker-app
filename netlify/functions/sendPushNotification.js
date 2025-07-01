@@ -419,16 +419,18 @@ exports.handler = async function (event, context) {
 
         // ---------- Global Bildirim Penceresi Kontrolü (Su ve Takviye bildirimleri için) ----------
         let isWithinNotificationWindow = true;
-        if (userData.notificationWindow && userData.notificationWindow.start && userData.notificationWindow.end) {
+        let notificationWindow = userData.notificationWindow;
+        
+        if (notificationWindow && notificationWindow.start && notificationWindow.end) {
           const [nowHour, nowMinute] = now
             .toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })
             .split(":")
             .map(Number);
           const nowTotal = nowHour * 60 + nowMinute;
-          const [startH, startM] = userData.notificationWindow.start
+          const [startH, startM] = notificationWindow.start
             .split(":")
             .map(Number);
-          const [endH, endM] = userData.notificationWindow.end
+          const [endH, endM] = notificationWindow.end
             .split(":")
             .map(Number);
           const startTotal = startH * 60 + startM;
@@ -449,6 +451,10 @@ exports.handler = async function (event, context) {
             // Bildirim gönderimini atla
             return;
           }
+        } else {
+          // Bildirim penceresi yoksa varsayılan değerleri kullan
+          notificationWindow = { start: "08:00", end: "22:00" };
+          console.log(`Kullanıcı ${userDoc.id} için bildirim penceresi ayarları eksik, varsayılan değerler kullanılıyor:`, notificationWindow);
         }
 
         // ---------- Su Bildirimleri (Global bildirim penceresi kontrolü geçerse) ----------
@@ -545,104 +551,105 @@ exports.handler = async function (event, context) {
 
         // ---------- Takviye Bildirimleri (Global bildirim penceresi kontrolü geçerse) ----------
         if (isWithinNotificationWindow && suppSnapshot) {
-          // Bildirim penceresi kontrolü için güvenli erişim
-          if (!userData.notificationWindow || !userData.notificationWindow.start || !userData.notificationWindow.end) {
-            console.log(`Kullanıcı ${userDoc.id} için bildirim penceresi ayarları eksik, takviye bildirimleri atlanıyor.`);
-          } else {
-            // Bugünkü takviye tüketimini çek
-            const supplementConsumptionToday = await getSupplementConsumptionStats(userDoc.id);
-            const turkeyTime = getTurkeyTime();
-            const currentDateStr = turkeyTime.toLocaleDateString("en-CA");
-            const nowHour = turkeyTime.getHours();
-            const nowMinute = turkeyTime.getMinutes();
-            const nowTotal = nowHour * 60 + nowMinute;
-            const [startH, startM] = userData.notificationWindow.start.split(":").map(Number);
-            const [endH, endM] = userData.notificationWindow.end.split(":").map(Number);
-            const startTotal = startH * 60 + startM;
-            const endTotal = endH * 60 + endM;
-            const isWindowStart = nowTotal === startTotal;
-            const isWindowEnd = nowTotal === endTotal;
-            const isMidnight = nowHour === 0 && nowMinute === 0;
-
-            suppSnapshot.forEach((docSnap) => {
-              const suppData = docSnap.data();
-              if (
-                suppData.notification !== "none" &&
-                suppData.nextSupplementReminderTime &&
-                suppData.quantity > 0
-              ) {
-                const suppName = suppData.name || 'Bilinmeyen Takviye';
-                const dailyUsage = suppData.dailyUsage || 1;
-                const consumedToday = supplementConsumptionToday[suppName] || 0;
-                const estimatedRemainingDays = Math.floor(suppData.quantity / dailyUsage);
-
-                // 1. Kullanıcı günlük miktarı tamamladıysa hiçbir bildirim atma
-                if (consumedToday >= dailyUsage) {
-                  return;
-                }
-
-                // 2. 14/7/3/1 gün kaldı bildirimi pencere başında
-                if ([14, 7, 3, 1].includes(estimatedRemainingDays) && isWindowStart) {
-                  const motivasyonlar = [
-                    `Harika gidiyorsun! ${suppName} takviyenden sadece ${estimatedRemainingDays} gün kaldı, sağlığın için istikrarlı ol!`,
-                    `Az kaldı! ${suppName} takviyenden ${estimatedRemainingDays} gün sonra yenilemen gerekebilir.`,
-                    `Motivasyonunu koru! ${suppName} takviyenden ${estimatedRemainingDays} gün sonra bitecek.`,
-                    `Düzenli kullanım harika! ${suppName} takviyenden ${estimatedRemainingDays} gün kaldı.`,
-                  ];
-                  notificationsForThisUser.push({
-                    tokens: fcmTokens,
-                    data: {
-                      title: `${suppName} Takviyenden ${estimatedRemainingDays} Gün Kaldı!`,
-                      body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
-                      supplementId: docSnap.id,
-                    },
-                  });
-                }
-
-                // 3. Kullanıcı içme saati girdiyse, o saatte bildirim gönder
-                const nextReminder = new Date(suppData.nextSupplementReminderTime);
-                const nextReminderTurkey = new Date(
-                  nextReminder.toLocaleString("en-US", {
-                    timeZone: "Europe/Istanbul",
-                  })
-                );
-                if (Math.abs(now - nextReminderTurkey) / 60000 < 0.5) {
-                  const motivasyonlar = [
-                    `Takviyeni almayı unutma! Düzenli kullanım sağlığın için çok önemli.`,
-                    `Bugün de ${suppName} takviyeni alırsan zinciri bozmayacaksın!`,
-                    `Vücudun sana teşekkür edecek! ${suppName} takviyeni almayı unutma.`,
-                    `Sağlıklı bir gün için ${suppName} takviyeni şimdi alabilirsin!`,
-                  ];
-                  notificationsForThisUser.push({
-                    tokens: fcmTokens,
-                    data: {
-                      title: `${suppName} Takviyesi Zamanı!`,
-                      body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
-                      supplementId: docSnap.id,
-                    },
-                  });
-                }
-
-                // 4. Pencere bitişinde veya gece yarısı hatırlatma (kullanıcı tamamlamadıysa)
-                if ((isWindowEnd || isMidnight) && consumedToday < dailyUsage) {
-                  const motivasyonlar = [
-                    `Bugün ${suppName} takviyeni henüz almadın. Sağlığın için düzenli kullanımı unutma!`,
-                    `Takviyeni bugün almadın, yarın daha dikkatli olabilirsin!`,
-                    `Düzenli kullanım önemli! ${suppName} takviyeni bugün almadın.`,
-                    `Unutma, istikrar sağlığın anahtarı! Bugün ${suppName} takviyeni atladın.`,
-                  ];
-                  notificationsForThisUser.push({
-                    tokens: fcmTokens,
-                    data: {
-                      title: `${suppName} Takviyesi Unutuldu!`,
-                      body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
-                      supplementId: docSnap.id,
-                    },
-                  });
-                }
-              }
-            });
+          // Bildirim penceresi kontrolü için güvenli erişim - varsayılan değerlerle
+          if (!notificationWindow || !notificationWindow.start || !notificationWindow.end) {
+            notificationWindow = { start: "08:00", end: "22:00" };
+            console.log(`Kullanıcı ${userDoc.id} için varsayılan bildirim penceresi kullanılıyor:`, notificationWindow);
           }
+          
+          // Bugünkü takviye tüketimini çek
+          const supplementConsumptionToday = await getSupplementConsumptionStats(userDoc.id);
+          const turkeyTime = getTurkeyTime();
+          const currentDateStr = turkeyTime.toLocaleDateString("en-CA");
+          const nowHour = turkeyTime.getHours();
+          const nowMinute = turkeyTime.getMinutes();
+          const nowTotal = nowHour * 60 + nowMinute;
+          const [startH, startM] = notificationWindow.start.split(":").map(Number);
+          const [endH, endM] = notificationWindow.end.split(":").map(Number);
+          const startTotal = startH * 60 + startM;
+          const endTotal = endH * 60 + endM;
+          const isWindowStart = nowTotal === startTotal;
+          const isWindowEnd = nowTotal === endTotal;
+          const isMidnight = nowHour === 0 && nowMinute === 0;
+
+          suppSnapshot.forEach((docSnap) => {
+            const suppData = docSnap.data();
+            if (
+              suppData.notification !== "none" &&
+              suppData.nextSupplementReminderTime &&
+              suppData.quantity > 0
+            ) {
+              const suppName = suppData.name || 'Bilinmeyen Takviye';
+              const dailyUsage = suppData.dailyUsage || 1;
+              const consumedToday = supplementConsumptionToday[suppName] || 0;
+              const estimatedRemainingDays = Math.floor(suppData.quantity / dailyUsage);
+
+              // 1. Kullanıcı günlük miktarı tamamladıysa hiçbir bildirim atma
+              if (consumedToday >= dailyUsage) {
+                return;
+              }
+
+              // 2. 14/7/3/1 gün kaldı bildirimi pencere başında
+              if ([14, 7, 3, 1].includes(estimatedRemainingDays) && isWindowStart) {
+                const motivasyonlar = [
+                  `Harika gidiyorsun! ${suppName} takviyenden sadece ${estimatedRemainingDays} gün kaldı, sağlığın için istikrarlı ol!`,
+                  `Az kaldı! ${suppName} takviyenden ${estimatedRemainingDays} gün sonra yenilemen gerekebilir.`,
+                  `Motivasyonunu koru! ${suppName} takviyenden ${estimatedRemainingDays} gün sonra bitecek.`,
+                  `Düzenli kullanım harika! ${suppName} takviyenden ${estimatedRemainingDays} gün kaldı.`,
+                ];
+                notificationsForThisUser.push({
+                  tokens: fcmTokens,
+                  data: {
+                    title: `${suppName} Takviyenden ${estimatedRemainingDays} Gün Kaldı!`,
+                    body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
+                    supplementId: docSnap.id,
+                  },
+                });
+              }
+
+              // 3. Kullanıcı içme saati girdiyse, o saatte bildirim gönder
+              const nextReminder = new Date(suppData.nextSupplementReminderTime);
+              const nextReminderTurkey = new Date(
+                nextReminder.toLocaleString("en-US", {
+                  timeZone: "Europe/Istanbul",
+                })
+              );
+              if (Math.abs(now - nextReminderTurkey) / 60000 < 0.5) {
+                const motivasyonlar = [
+                  `Takviyeni almayı unutma! Düzenli kullanım sağlığın için çok önemli.`,
+                  `Bugün de ${suppName} takviyeni alırsan zinciri bozmayacaksın!`,
+                  `Vücudun sana teşekkür edecek! ${suppName} takviyeni almayı unutma.`,
+                  `Sağlıklı bir gün için ${suppName} takviyeni şimdi alabilirsin!`,
+                ];
+                notificationsForThisUser.push({
+                  tokens: fcmTokens,
+                  data: {
+                    title: `${suppName} Takviyesi Zamanı!`,
+                    body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
+                    supplementId: docSnap.id,
+                  },
+                });
+              }
+
+              // 4. Pencere bitişinde veya gece yarısı hatırlatma (kullanıcı tamamlamadıysa)
+              if ((isWindowEnd || isMidnight) && consumedToday < dailyUsage) {
+                const motivasyonlar = [
+                  `Bugün ${suppName} takviyeni henüz almadın. Sağlığın için düzenli kullanımı unutma!`,
+                  `Takviyeni bugün almadın, yarın daha dikkatli olabilirsin!`,
+                  `Düzenli kullanım önemli! ${suppName} takviyeni bugün almadın.`,
+                  `Unutma, istikrar sağlığın anahtarı! Bugün ${suppName} takviyeni atladın.`,
+                ];
+                notificationsForThisUser.push({
+                  tokens: fcmTokens,
+                  data: {
+                    title: `${suppName} Takviyesi Unutuldu!`,
+                    body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
+                    supplementId: docSnap.id,
+                  },
+                });
+              }
+            }
+          });
         }
 
         // Kullanıcıya ait bildirimler varsa, kullanıcı ID'si ile birlikte ekle

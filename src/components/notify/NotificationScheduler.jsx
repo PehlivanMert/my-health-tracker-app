@@ -434,8 +434,13 @@ export const computeWaterReminderTimes = async (user) => {
   const mode = data.waterNotificationOption || "smart";
   console.log("computeWaterReminderTimes - Bildirim modu:", mode);
 
-  const globalWindow = (await getGlobalNotificationWindow(user)) ||
-    data.notificationWindow || { start: "08:00", end: "22:00" };
+  // Global bildirim penceresi kontrolü - varsayılan değerlerle güvenli erişim
+  let globalWindow = await getGlobalNotificationWindow(user);
+  if (!globalWindow) {
+    globalWindow = data.notificationWindow || { start: "08:00", end: "22:00" };
+    console.log("computeWaterReminderTimes - Varsayılan bildirim penceresi kullanılıyor:", globalWindow);
+  }
+  
   const { windowStart, windowEnd } = computeWindowTimes(globalWindow);
   const now = getTurkeyTime();
   let reminderSchedule = [];

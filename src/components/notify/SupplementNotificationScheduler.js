@@ -147,10 +147,11 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
   }
 
   // Global bildirim penceresi (değeri doğru; bu alana dokunmuyoruz)
-  const globalNotifWindow = (await getGlobalNotificationWindow(user)) || {
-    start: "08:00",
-    end: "22:00",
-  };
+  let globalNotifWindow = await getGlobalNotificationWindow(user);
+  if (!globalNotifWindow) {
+    globalNotifWindow = { start: "08:00", end: "22:00" };
+    console.log("computeSupplementReminderTimes - Varsayılan bildirim penceresi kullanılıyor:", globalNotifWindow);
+  }
   const { windowStart, windowEnd } = computeWindowTimes(globalNotifWindow);
 
   // Manuel bildirim zamanı varsa

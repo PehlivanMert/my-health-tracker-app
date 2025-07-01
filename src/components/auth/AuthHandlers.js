@@ -80,6 +80,28 @@ export const handleRegister = async (
           username: loginData.username,
           weight: "",
         },
+        // Varsayılan bildirim penceresi ayarları
+        notificationWindow: {
+          start: "08:00",
+          end: "22:00"
+        }
+      },
+      { merge: true }
+    );
+
+    // Su verilerini varsayılan değerlerle başlat
+    await setDoc(
+      doc(db, "users", userCredential.user.uid, "water", "current"),
+      {
+        waterIntake: 0,
+        dailyWaterTarget: 2000,
+        glassSize: 250,
+        waterNotificationOption: "smart",
+        activityLevel: "orta",
+        notificationWindow: {
+          start: "08:00",
+          end: "22:00"
+        }
       },
       { merge: true }
     );

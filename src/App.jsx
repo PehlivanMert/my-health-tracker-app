@@ -513,15 +513,6 @@ function App() {
   
   const handleProfileCompletionClose = async () => {
     setOpenProfileCompletionModal(false);
-    // Kullanıcı pop-up'ı kapattığında Firestore'a kaydet
-    try {
-      const userDocRef = doc(db, "users", user.uid);
-      await updateDoc(userDocRef, {
-        profileCompletionShown: true
-      });
-    } catch (error) {
-      console.error("Profil tamamlama durumu kaydetme hatası:", error);
-    }
   };
   
   const handleProfileChange = (e) => {
@@ -542,21 +533,26 @@ function App() {
         profileToSave.birthDate = new Date(year, month - 1, day);
       }
 
-      await updateDoc(userDocRef, {
-        profile: profileToSave,
-      });
+      // Yaşı hesapla ve profile ekle
+      if (profileToSave.birthDate) {
+        profileToSave.age = computeAge(profileToSave.birthDate);
+      }
+
+      // Profil eksiksizse profileCompletionShown: true olarak kaydet
+      if (isProfileComplete(profileToSave)) {
+        await updateDoc(userDocRef, {
+          profile: profileToSave,
+          profileCompletionShown: true
+        });
+        setOpenProfileCompletionModal(false);
+      } else {
+        await updateDoc(userDocRef, {
+          profile: profileToSave
+        });
+      }
 
       toast.success("Profil başarıyla güncellendi");
       setOpenProfileModal(false);
-      
-      // Eğer profil tamamlandıysa, profil tamamlama pop-up'ını da kapat
-      if (isProfileComplete(profileToSave)) {
-        setOpenProfileCompletionModal(false);
-        // Firestore'a profil tamamlama durumunu kaydet
-        await updateDoc(userDocRef, {
-          profileCompletionShown: true
-        });
-      }
     } catch (error) {
       toast.error("Güncelleme hatası: " + error.message);
     }

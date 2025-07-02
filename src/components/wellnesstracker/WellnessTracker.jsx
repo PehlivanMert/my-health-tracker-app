@@ -778,7 +778,7 @@ const WellnessTracker = ({ user }) => {
           <AccordionDetails sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
             <Grid container spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mt: 2 }}>
               <Grid item xs={12} md={6}>
-                <WaterConsumptionChart waterHistory={waterData.history} />
+                <WaterConsumptionChart waterHistory={Array.isArray(waterData.history) ? waterData.history : []} />
               </Grid>
               <Grid item xs={12} md={6}>
                 <SupplementConsumptionChart

@@ -518,8 +518,8 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         waterNotificationOption: data.waterNotificationOption || "smart",
         customNotificationInterval: data.customNotificationInterval || 1,
         notificationWindow: data.notificationWindow || {
-          start: "07:00",
-          end: "21:00",
+          start: "08:00",
+          end: "22:00",
         },
         nextWaterReminderTime: data.nextWaterReminderTime || null,
         nextWaterReminderMessage: data.nextWaterReminderMessage || null,
@@ -528,6 +528,37 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
       setDataFetched(true);
       await checkIfResetNeeded(data);
       if (onWaterDataChange) onWaterDataChange(data);
+    } else {
+      // Doküman yoksa default değerlerle state'i güncelle
+      setWaterData({
+        waterIntake: 0,
+        dailyWaterTarget: 2000,
+        glassSize: 250,
+        history: [],
+        yesterdayWaterIntake: 0,
+        lastResetDate: null,
+        waterNotificationOption: "smart",
+        customNotificationInterval: 1,
+        notificationWindow: { start: "08:00", end: "22:00" },
+        nextWaterReminderTime: null,
+        nextWaterReminderMessage: null,
+        activityLevel: "orta",
+      });
+      setDataFetched(true);
+      if (onWaterDataChange) onWaterDataChange({
+        waterIntake: 0,
+        dailyWaterTarget: 2000,
+        glassSize: 250,
+        history: [],
+        yesterdayWaterIntake: 0,
+        lastResetDate: null,
+        waterNotificationOption: "smart",
+        customNotificationInterval: 1,
+        notificationWindow: { start: "08:00", end: "22:00" },
+        nextWaterReminderTime: null,
+        nextWaterReminderMessage: null,
+        activityLevel: "orta",
+      });
     }
   };
 

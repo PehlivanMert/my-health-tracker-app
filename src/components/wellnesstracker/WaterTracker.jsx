@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box,
   Card,
@@ -476,7 +476,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     lastResetDate: null,
     waterNotificationOption: "smart",
     customNotificationInterval: 1,
-    notificationWindow: { start: "07:00", end: "21:00" },
+    notificationWindow: { start: "08:00", end: "22:00" },
     nextWaterReminderTime: null,
     nextWaterReminderMessage: null,
     activityLevel: "orta",
@@ -485,18 +485,22 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [achievement, setAchievement] = useState(null);
   const [nextReminder, setNextReminder] = useState(null);
-  const [waterNotifDialogOpen, setWaterNotifDialogOpen] = useState(false);
   const [weatherSuggestion, setWeatherSuggestion] = useState("");
+  const [waterNotifDialogOpen, setWaterNotifDialogOpen] = useState(false);
+  
+  // Korumalı veri yönetimi için ref'ler
+  const lastWaterDataState = useRef(null);
+  const isDataLoading = useRef(true);
+  const isInitialLoad = useRef(true);
 
   const theme = useTheme();
 
   const getWaterDocRef = () => doc(db, "users", user.uid, "water", "current");
 
-  // Güncelleme öncesinde Firestore'dan çekilen veriyi kullanarak sıfırlama gerekip gerekmediğini kontrol ediyoruz.
   const checkIfResetNeeded = async (data) => {
-    const nowTurkey = getTurkeyTime();
-    const todayStr = nowTurkey.toLocaleDateString("en-CA");
-    
+    const todayStr = getTurkeyTime().toLocaleDateString("en-CA", {
+      timeZone: "Europe/Istanbul",
+    });
     // Eğer lastResetDate yoksa veya bugünden farklıysa reset yap
     if (!data.lastResetDate || data.lastResetDate !== todayStr) {
       // NOT: Burada state'deki waterData yerine, Firestore'dan çekilen data (en güncel veri) kullanılıyor.
@@ -509,7 +513,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     const docSnap = await getDoc(ref);
     if (docSnap.exists()) {
       const data = docSnap.data();
-      setWaterData({
+      const newWaterData = {
         waterIntake: data.waterIntake || 0,
         dailyWaterTarget: data.dailyWaterTarget || 2000,
         glassSize: data.glassSize || 250,
@@ -527,13 +531,16 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         nextWaterReminderTime: data.nextWaterReminderTime || null,
         nextWaterReminderMessage: data.nextWaterReminderMessage || null,
         activityLevel: data.activityLevel || "orta",
-      });
+      };
+      setWaterData(newWaterData);
+      lastWaterDataState.current = { ...newWaterData };
       setDataFetched(true);
+      isDataLoading.current = false;
       await checkIfResetNeeded(data);
       if (onWaterDataChange) onWaterDataChange(data);
     } else {
       // Doküman yoksa default değerlerle state'i güncelle
-      setWaterData({
+      const defaultWaterData = {
         waterIntake: 0,
         dailyWaterTarget: 2000,
         glassSize: 250,
@@ -546,22 +553,12 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         nextWaterReminderTime: null,
         nextWaterReminderMessage: null,
         activityLevel: "orta",
-      });
+      };
+      setWaterData(defaultWaterData);
+      lastWaterDataState.current = { ...defaultWaterData };
       setDataFetched(true);
-      if (onWaterDataChange) onWaterDataChange({
-        waterIntake: 0,
-        dailyWaterTarget: 2000,
-        glassSize: 250,
-        history: [],
-        yesterdayWaterIntake: 0,
-        lastResetDate: null,
-        waterNotificationOption: "smart",
-        customNotificationInterval: 1,
-        notificationWindow: { start: "08:00", end: "22:00" },
-        nextWaterReminderTime: null,
-        nextWaterReminderMessage: null,
-        activityLevel: "orta",
-      });
+      isDataLoading.current = false;
+      if (onWaterDataChange) onWaterDataChange(defaultWaterData);
     }
   };
 
@@ -726,6 +723,27 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     waterData.notificationWindow?.start,
     waterData.notificationWindow?.end,
   ]);
+
+  // Su verisi değişikliklerini izle ve korumalı güncelleme yap
+  useEffect(() => {
+    if (!user || isInitialLoad.current || isDataLoading.current) return;
+    
+    // Sadece gerçek değişiklik varsa güncelle
+    const hasRealChange = JSON.stringify(waterData) !== JSON.stringify(lastWaterDataState.current);
+    
+    if (hasRealChange) {
+      const updateWaterDataInFirestore = async () => {
+        try {
+          const ref = getWaterDocRef();
+          await setDoc(ref, waterData, { merge: true });
+          lastWaterDataState.current = { ...waterData };
+        } catch (error) {
+          console.error("Su verisi güncelleme hatası:", error);
+        }
+      };
+      updateWaterDataInFirestore();
+    }
+  }, [waterData, user]);
 
   return (
     <Box sx={{ textAlign: "center", mb: 6 }}>

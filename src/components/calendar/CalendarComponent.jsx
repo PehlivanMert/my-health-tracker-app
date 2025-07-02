@@ -208,6 +208,11 @@ const CalendarComponent = ({ user }) => {
     recurrenceUntil: DateTime.local().plus({ months: 1 }),
   });
 
+  // Korumalı veri yönetimi için ref'ler
+  const lastEventsState = useRef([]);
+  const isDataLoading = useRef(true);
+  const isInitialLoad = useRef(true);
+
   // Etkinlikleri Firestore'dan çek
   const fetchEvents = useCallback(async () => {
     if (!user) return;
@@ -293,8 +298,11 @@ const CalendarComponent = ({ user }) => {
         return baseEvent;
       });
       setEvents(eventsData);
+      lastEventsState.current = [...eventsData];
+      isDataLoading.current = false;
     } catch (error) {
       toast.error(`Etkinlikler yüklenemedi: ${error.message}`);
+      isDataLoading.current = false;
     }
   }, [user, calendarColors.limon]);
 
@@ -303,6 +311,23 @@ const CalendarComponent = ({ user }) => {
     // Bildirim izni isteği
     requestNotificationPermission();
   }, [fetchEvents]);
+
+  // Takvim olayları değişikliklerini izle ve korumalı güncelleme yap
+  useEffect(() => {
+    if (!user || isInitialLoad.current || isDataLoading.current) return;
+    
+    // Sadece gerçek değişiklik varsa güncelle
+    const hasRealChange = JSON.stringify(events) !== JSON.stringify(lastEventsState.current);
+    
+    // Boş diziye geçiş kontrolü
+    const eventsEmpty = Array.isArray(events) && events.length === 0;
+    const wasEventsEmpty = Array.isArray(lastEventsState.current) && lastEventsState.current.length === 0;
+    
+    if (hasRealChange && !(eventsEmpty && !wasEventsEmpty)) {
+      // Takvim olayları ayrı koleksiyonlarda tutulduğu için burada sadece state'i güncelle
+      lastEventsState.current = [...events];
+    }
+  }, [events, user]);
 
   // Yeni etkinlik oluştur
   const handleCreateEvent = async () => {

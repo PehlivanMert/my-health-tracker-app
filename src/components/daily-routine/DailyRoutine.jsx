@@ -153,6 +153,10 @@ const DailyRoutine = ({ user }) => {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
 
   const newRoutineButtonRef = useRef();
+  const lastRoutinesState = useRef([]);
+  const lastWeeklyStatsState = useRef({ added: 0, completed: 0 });
+  const lastMonthlyStatsState = useRef({ added: 0, completed: 0 });
+  const isDataLoading = useRef(true);
 
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -264,9 +268,18 @@ const DailyRoutine = ({ user }) => {
         if (docSnap.exists()) {
           let data = docSnap.data();
           // Kullanıcının mevcut rutinleri varsa onları kullan, yoksa boş dizi
-          setRoutines(data.routines || []);
-          setWeeklyStats(data.weeklyStats || { added: 0, completed: 0 });
-          setMonthlyStats(data.monthlyStats || { added: 0, completed: 0 });
+          const routinesData = data.routines || [];
+          const weeklyStatsData = data.weeklyStats || { added: 0, completed: 0 };
+          const monthlyStatsData = data.monthlyStats || { added: 0, completed: 0 };
+          
+          setRoutines(routinesData);
+          setWeeklyStats(weeklyStatsData);
+          setMonthlyStats(monthlyStatsData);
+          
+          // State'leri kaydet
+          lastRoutinesState.current = [...routinesData];
+          lastWeeklyStatsState.current = { ...weeklyStatsData };
+          lastMonthlyStatsState.current = { ...monthlyStatsData };
           
           // Reset data'yı yükle
           const todayStr = getTurkeyLocalDateString(new Date());
@@ -300,6 +313,11 @@ const DailyRoutine = ({ user }) => {
           setWeeklyStats({ added: 0, completed: 0 });
           setMonthlyStats({ added: 0, completed: 0 });
           
+          // State'leri kaydet
+          lastRoutinesState.current = [];
+          lastWeeklyStatsState.current = { added: 0, completed: 0 };
+          lastMonthlyStatsState.current = { added: 0, completed: 0 };
+          
           // İlk yükleme için reset data'yı ayarla
           const todayStr = getTurkeyLocalDateString(new Date());
           const getTurkeyTime = (date = new Date()) =>
@@ -322,27 +340,45 @@ const DailyRoutine = ({ user }) => {
           });
         }
         isInitialLoad.current = false;
+        isDataLoading.current = false;
       } catch (error) {
         console.error("Data load error:", error);
         showToast("Veriler yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.", "error");
+        isDataLoading.current = false;
       }
     };
     loadData();
   }, [user]);
 
   useEffect(() => {
-    if (!user || isInitialLoad.current) return;
-    const saveData = async () => {
-      if (!user || isInitialLoad.current) return;
-      try {
-        const userRef = doc(db, "users", user.uid);
-        await updateDoc(userRef, { routines, weeklyStats, monthlyStats });
-      } catch (error) {
-        console.error("Data save error:", error);
-        showToast("Veriler kaydedilirken bir hata oluştu. Değişiklikleriniz kaydedilemedi.", "error");
-      }
-    };
-    saveData();
+    if (!user || isInitialLoad.current || isDataLoading.current) return;
+    
+    // Sadece gerçek değişiklik varsa güncelle
+    const routinesChanged = JSON.stringify(routines) !== JSON.stringify(lastRoutinesState.current);
+    const weeklyStatsChanged = JSON.stringify(weeklyStats) !== JSON.stringify(lastWeeklyStatsState.current);
+    const monthlyStatsChanged = JSON.stringify(monthlyStats) !== JSON.stringify(lastMonthlyStatsState.current);
+    
+    // Boş diziye geçiş kontrolü
+    const routinesEmpty = Array.isArray(routines) && routines.length === 0;
+    const wasRoutinesEmpty = Array.isArray(lastRoutinesState.current) && lastRoutinesState.current.length === 0;
+    
+    if ((routinesChanged || weeklyStatsChanged || monthlyStatsChanged) && !(routinesEmpty && !wasRoutinesEmpty)) {
+      const saveData = async () => {
+        try {
+          const userRef = doc(db, "users", user.uid);
+          await updateDoc(userRef, { routines, weeklyStats, monthlyStats });
+          
+          // State'leri güncelle
+          lastRoutinesState.current = [...routines];
+          lastWeeklyStatsState.current = { ...weeklyStats };
+          lastMonthlyStatsState.current = { ...monthlyStats };
+        } catch (error) {
+          console.error("Data save error:", error);
+          showToast("Veriler kaydedilirken bir hata oluştu. Değişiklikleriniz kaydedilemedi.", "error");
+        }
+      };
+      saveData();
+    }
   }, [routines, weeklyStats, monthlyStats, user]);
 
   const filteredRoutines = routines.filter((r) => {

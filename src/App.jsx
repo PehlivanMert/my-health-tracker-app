@@ -233,6 +233,13 @@ function App() {
 
   // Firestore'dan Kullanıcı Verilerini Yükleme
   const isInitialLoad = useRef(true);
+  const isDataLoading = useRef(true);
+  const lastExercisesState = useRef([]);
+  const lastRoutinesState = useRef([]);
+  const lastWaterDataState = useRef(null);
+  const lastCalendarEventsState = useRef([]);
+  const lastSupplementsState = useRef([]);
+
   useEffect(() => {
     const loadUserData = async () => {
       if (!user) return;
@@ -242,7 +249,10 @@ function App() {
         if (docSnap.exists()) {
           const data = docSnap.data();
           // Kullanıcının mevcut egzersizleri varsa onları kullan, yoksa boş dizi
-          setExercises(data.exercises || []);
+          const exercisesData = data.exercises || [];
+          setExercises(exercisesData);
+          lastExercisesState.current = exercisesData;
+          
           if (
             data.profile &&
             data.profile.birthDate &&
@@ -254,6 +264,7 @@ function App() {
             );
           }
           isInitialLoad.current = false;
+          isDataLoading.current = false;
         } else {
           // Yeni kullanıcı için boş egzersiz listesi ile başla
           const initialData = {
@@ -261,26 +272,40 @@ function App() {
           };
           await setDoc(userDocRef, initialData);
           setExercises([]);
+          lastExercisesState.current = [];
+          isInitialLoad.current = false;
+          isDataLoading.current = false;
         }
       } catch (error) {
         console.error("Veri yükleme hatası:", error);
+        isDataLoading.current = false;
       }
     };
     loadUserData();
   }, [user]);
 
-  // Egzersiz Güncelleme
+  // Egzersiz Güncelleme - Korumalı
   useEffect(() => {
-    if (!user || isInitialLoad.current) return;
-    const updateExercisesInFirestore = async () => {
-      try {
-        const userDocRef = doc(db, "users", user.uid);
-        await updateDoc(userDocRef, { exercises });
-      } catch (error) {
-        console.error("Veri kaydetme hatası:", error);
-      }
-    };
-    updateExercisesInFirestore();
+    if (!user || isInitialLoad.current || isDataLoading.current) return;
+    
+    // Sadece gerçek değişiklik varsa güncelle
+    const hasRealChange = JSON.stringify(exercises) !== JSON.stringify(lastExercisesState.current);
+    const isEmptyArray = Array.isArray(exercises) && exercises.length === 0;
+    const wasEmptyArray = Array.isArray(lastExercisesState.current) && lastExercisesState.current.length === 0;
+    
+    // Boş diziye geçiş sadece gerçekten silme işlemi ise yapılsın
+    if (hasRealChange && !(isEmptyArray && !wasEmptyArray)) {
+      const updateExercisesInFirestore = async () => {
+        try {
+          const userDocRef = doc(db, "users", user.uid);
+          await updateDoc(userDocRef, { exercises });
+          lastExercisesState.current = [...exercises];
+        } catch (error) {
+          console.error("Veri kaydetme hatası:", error);
+        }
+      };
+      updateExercisesInFirestore();
+    }
   }, [exercises, user]);
 
   // Firebase Auth: Kullanıcı Oturumunu İzleme

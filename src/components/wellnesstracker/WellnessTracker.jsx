@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box,
   Container,
@@ -172,6 +172,12 @@ const WellnessTracker = ({ user }) => {
     setSupplementNotificationDialogOpen,
   ] = useState(false);
 
+  // Korumalı veri yönetimi için ref'ler
+  const lastSupplementsState = useRef([]);
+  const lastSupplementConsumptionState = useRef({});
+  const isDataLoading = useRef(true);
+  const isInitialLoad = useRef(true);
+
   const getSupplementsRef = () =>
     collection(db, "users", user.uid, "supplements");
 
@@ -184,8 +190,11 @@ const WellnessTracker = ({ user }) => {
         ...doc.data(),
       }));
       setSupplements(supplementsData);
+      lastSupplementsState.current = [...supplementsData];
+      isDataLoading.current = false;
     } catch (error) {
       console.error("Error fetching supplements:", error);
+      isDataLoading.current = false;
     }
   };
 
@@ -197,14 +206,47 @@ const WellnessTracker = ({ user }) => {
       const today = new Date().toLocaleDateString("en-CA", {
         timeZone: "Europe/Istanbul",
       });
-      setSupplementConsumptionToday(data[today] || {});
+      const consumptionData = data[today] || {};
+      setSupplementConsumptionToday(consumptionData);
+      lastSupplementConsumptionState.current = { ...consumptionData };
+    } else {
+      setSupplementConsumptionToday({});
+      lastSupplementConsumptionState.current = {};
     }
   };
 
   useEffect(() => {
+    if (!user) return;
     fetchSupplements();
     fetchSupplementConsumptionToday();
   }, [user]);
+
+  // Takviye tüketim verisi değişikliklerini izle ve korumalı güncelleme yap
+  useEffect(() => {
+    if (!user || isInitialLoad.current || isDataLoading.current) return;
+    
+    // Sadece gerçek değişiklik varsa güncelle
+    const hasRealChange = JSON.stringify(supplementConsumptionToday) !== JSON.stringify(lastSupplementConsumptionState.current);
+    
+    if (hasRealChange) {
+      const updateSupplementConsumptionInFirestore = async () => {
+        try {
+          const today = new Date().toLocaleDateString("en-CA", {
+            timeZone: "Europe/Istanbul",
+          });
+          const statsDocRef = doc(db, "users", user.uid, "stats", "supplementConsumption");
+          const statsDocSnap = await getDoc(statsDocRef);
+          let updatedStats = statsDocSnap.exists() ? statsDocSnap.data() : {};
+          updatedStats[today] = supplementConsumptionToday;
+          await setDoc(statsDocRef, updatedStats);
+          lastSupplementConsumptionState.current = { ...supplementConsumptionToday };
+        } catch (error) {
+          console.error("Takviye tüketim verisi güncelleme hatası:", error);
+        }
+      };
+      updateSupplementConsumptionInFirestore();
+    }
+  }, [supplementConsumptionToday, user]);
 
   // supplements ve user güncellendiğinde nextSupplementReminderTime hesaplaması
   useEffect(() => {

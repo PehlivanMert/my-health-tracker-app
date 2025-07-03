@@ -148,37 +148,38 @@ const AnimatedButton = styled(Button)(({ theme }) => ({
 }));
 
 const CustomAccordion = styled(Accordion)(({ theme }) => ({
-  background: 'rgba(255,255,255,0.07)',
+  background: 'linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)',
   boxShadow: '0 4px 24px 0 rgba(33,150,243,0.10)',
-  borderRadius: 24,
   marginTop: theme.spacing(2),
   marginBottom: theme.spacing(2),
-  border: '1.5px solid rgba(33,150,243,0.13)',
   overflow: 'hidden',
-  transition: 'box-shadow 0.3s, border 0.3s',
+  border: 'none',
+  borderRadius: 0,
+  transition: 'box-shadow 0.3s',
   '&.Mui-expanded': {
     boxShadow: '0 8px 32px 0 rgba(33,150,243,0.18)',
-    border: '2px solid #2196F3',
+    border: 'none',
   },
 }));
 
 const CustomAccordionDetails = styled(AccordionDetails)(({ theme }) => ({
-  background: 'linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)',
-  borderRadius: 18,
+  background: 'transparent',
   margin: theme.spacing(0, 1, 1, 1),
   padding: theme.spacing(2, 2, 2, 2),
-  boxShadow: '0 2px 8px 0 rgba(33,150,243,0.08)',
+  boxShadow: 'none',
+  border: 'none',
+  borderRadius: 0,
   transition: 'max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s, background 0.3s',
   overflow: 'hidden',
   '&[aria-hidden="true"]': {
     maxHeight: 0,
     opacity: 0,
     padding: 0,
-    background: 'rgba(255,255,255,0.10)',
+    background: 'transparent',
   },
   '&[aria-hidden="false"]': {
     opacity: 1,
-    background: 'linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)',
+    background: 'transparent',
   },
 }));
 
@@ -521,7 +522,7 @@ const WellnessTracker = ({ user }) => {
         </CustomAccordion>
 
         {/* Takviye Listesi */}
-        <CustomAccordion defaultExpanded={true}>
+        <CustomAccordion defaultExpanded={false}>
           <StyledAccordionSummary>
             <Typography variant="h5" sx={{ 
               fontWeight: 700, 

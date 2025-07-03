@@ -27,8 +27,8 @@ const getTurkeyTime = () => {
   );
 };
 
-// Cache TTL: TEST: 1 dakika (60.000 ms) - normalde 10 dakika olmalı
-const CACHE_TTL = 60000;
+// Cache TTL: 10 dakika (600.000 ms)
+const CACHE_TTL = 600000;
 
 // Global cache değişkenleri
 let cachedUsers = null;
@@ -134,14 +134,14 @@ const getSupplementConsumptionStatsForMidnight = async (userId) => {
   const nowHour = turkeyTime.getHours();
   const nowMinute = turkeyTime.getMinutes();
   
-  // TEST: 00:26'da çalışacak şekilde ayarlandı (normalde 00:00 olmalı)
+  // Gece yarısı 00:00 kontrolü
   let checkDateStr;
-  if (nowHour === 0 && nowMinute === 26) {
+  if (nowHour === 0 && nowMinute === 0) {
     // Önceki günün tarihini hesapla
     const yesterday = new Date(turkeyTime);
     yesterday.setDate(yesterday.getDate() - 1);
     checkDateStr = yesterday.toLocaleDateString("en-CA");
-    console.log(`getSupplementConsumptionStatsForMidnight - TEST: 00:26 kontrolü, önceki günün tarihi: ${checkDateStr}`);
+    console.log(`getSupplementConsumptionStatsForMidnight - Gece yarısı 00:00 kontrolü, önceki günün tarihi: ${checkDateStr}`);
   } else {
     // Normal durumda bugünün tarihini kullan
     checkDateStr = turkeyTime.toLocaleDateString("en-CA");
@@ -527,9 +527,9 @@ exports.handler = async function (event, context) {
               }
             }
 
-            // GECE YARISI RESET BİLDİRİMİ: TEST: 00:26'da çalışacak şekilde ayarlandı
+            // GECE YARISI RESET BİLDİRİMİ: Gece yarısı 00:00 kontrolü
             const midnight = new Date(now);
-            midnight.setHours(0, 26, 0, 0);
+            midnight.setHours(0, 0, 0, 0);
             if (Math.abs(now.getTime() - midnight.getTime()) < 60000) {
               let resetMessage = "";
               if (waterData.waterIntake >= waterData.dailyWaterTarget) {
@@ -604,8 +604,8 @@ exports.handler = async function (event, context) {
           const endTotal = endH * 60 + endM;
           const isWindowStart = nowTotal === startTotal;
           const isWindowEnd = nowTotal === endTotal;
-          // TEST: 00:26'da çalışacak şekilde ayarlandı (normalde 00:00 olmalı)
-          const isMidnight = nowHour === 0 && nowMinute === 26;
+          // Gece yarısı 00:00 kontrolü
+          const isMidnight = nowHour === 0 && nowMinute === 0;
 
           suppSnapshot.forEach((docSnap) => {
             const suppData = docSnap.data();
@@ -673,7 +673,7 @@ exports.handler = async function (event, context) {
                   `consumedToday: ${consumedToday}, dailyUsage: ${dailyUsage}, isMidnight: ${isMidnight}, isWindowEnd: ${isWindowEnd}`
                 );
                 console.log(
-                  `sendPushNotification - TEST: 00:26 kontrolü tetiklendi - ${suppName} takviyesi için bildirim gönderiliyor`
+                  `sendPushNotification - Gece yarısı 00:00 kontrolü tetiklendi - ${suppName} takviyesi için bildirim gönderiliyor`
                 );
                 const motivasyonlar = [
                   `Bugün ${suppName} takviyeni henüz almadın. Sağlığın için düzenli kullanımı unutma!`,
@@ -691,7 +691,7 @@ exports.handler = async function (event, context) {
                 });
               } else if (isMidnight) {
                 console.log(
-                  `sendPushNotification - TEST: 00:26 kontrolü - ${suppName} takviyesi için bildirim gönderilmedi çünkü consumedToday (${consumedToday}) >= dailyUsage (${dailyUsage})`
+                  `sendPushNotification - Gece yarısı 00:00 kontrolü - ${suppName} takviyesi için bildirim gönderilmedi çünkü consumedToday (${consumedToday}) >= dailyUsage (${dailyUsage})`
                 );
               }
             }

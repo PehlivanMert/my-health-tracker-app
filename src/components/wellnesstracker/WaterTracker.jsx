@@ -476,12 +476,19 @@ const resetDailyWaterIntake = async (
 
 // ─────────────────────────────────────────────────────────────────
 
+// 500ml için özel SVG şişe ikonu
+const BottleIcon = (props) => (
+  <SvgIcon {...props} viewBox="0 0 24 24">
+    <path d="M9 2c0-.55.45-1 1-1h4c.55 0 1 .45 1 1v2.5c0 .28.22.5.5.5s.5.22.5.5V7c0 .28-.22.5-.5.5s-.5.22-.5.5V9c0 .55-.45 1-1 1h-2c-.55 0-1-.45-1-1V8c0-.28-.22-.5-.5-.5S9 7.28 9 7V5.5c0-.28.22-.5.5-.5s.5-.22.5-.5V2zm2 0v2h2V2h-2zm-2 7v13c0 1.1.9 2 2 2s2-.9 2-2V9h-4z" fill="#1976d2"/>
+  </SvgIcon>
+);
+
 const STANDARD_GLASS_SIZES = [
   { value: 100, label: "100ml", icon: <EmojiFoodBeverageIcon fontSize="small" sx={{ color: '#1976d2' }} />, desc: 'Çay Bardağı' },
   { value: 200, label: "200ml", icon: <LocalDrinkIcon fontSize="small" sx={{ color: '#2196f3' }} />, desc: 'Küçük Su Bardağı' },
   { value: 250, label: "250ml", icon: <WineBarIcon fontSize="small" sx={{ color: '#00bcd4' }} />, desc: 'Orta Bardak' },
   { value: 300, label: "300ml", icon: <SportsBarIcon fontSize="small" sx={{ color: '#43a047' }} />, desc: 'Kupa' },
-  { value: 500, label: "500ml", icon: <LocalBarIcon fontSize="small" sx={{ color: '#fbc02d' }} />, desc: 'Şişe' },
+  { value: 500, label: "500ml", icon: <BottleIcon fontSize="small" sx={{ color: '#1976d2' }} />, desc: 'Şişe' },
 ];
 
 const WaterTracker = ({ user, onWaterDataChange }) => {

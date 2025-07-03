@@ -31,6 +31,16 @@ import CheckCircle from "@mui/icons-material/CheckCircle";
 import CircularProgress from "@mui/material/CircularProgress";
 import InputAdornment from "@mui/material/InputAdornment";
 import { SportsBar } from "@mui/icons-material";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import EmojiFoodBeverageIcon from '@mui/icons-material/EmojiFoodBeverage';
+import LocalDrinkIcon from '@mui/icons-material/LocalDrink';
+import WineBarIcon from '@mui/icons-material/WineBar';
+import SportsBarIcon from '@mui/icons-material/SportsBar';
+import LocalBarIcon from '@mui/icons-material/LocalBar';
+import SvgIcon from '@mui/material/SvgIcon';
 
 // --- Animasyon ve stil tanımlamaları ---
 const pulse = keyframes`
@@ -466,6 +476,14 @@ const resetDailyWaterIntake = async (
 
 // ─────────────────────────────────────────────────────────────────
 
+const STANDARD_GLASS_SIZES = [
+  { value: 100, label: "100ml", icon: <EmojiFoodBeverageIcon fontSize="small" sx={{ color: '#1976d2' }} />, desc: 'Çay Bardağı' },
+  { value: 200, label: "200ml", icon: <LocalDrinkIcon fontSize="small" sx={{ color: '#2196f3' }} />, desc: 'Küçük Su Bardağı' },
+  { value: 250, label: "250ml", icon: <WineBarIcon fontSize="small" sx={{ color: '#00bcd4' }} />, desc: 'Orta Bardak' },
+  { value: 300, label: "300ml", icon: <SportsBarIcon fontSize="small" sx={{ color: '#43a047' }} />, desc: 'Kupa' },
+  { value: 500, label: "500ml", icon: <LocalBarIcon fontSize="small" sx={{ color: '#fbc02d' }} />, desc: 'Şişe' },
+];
+
 const WaterTracker = ({ user, onWaterDataChange }) => {
   const [waterData, setWaterData] = useState({
     waterIntake: 0,
@@ -494,6 +512,17 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   const isInitialLoad = useRef(true);
 
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
+
+  // For mobile/tablet menu
+  const [anchorEl, setAnchorEl] = useState(null);
+  const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
+  const handleMenuClose = () => setAnchorEl(null);
+  const handleStandardGlassSelect = (size) => {
+    handleWaterSettingChange("glassSize", size);
+    handleMenuClose();
+  };
 
   const getWaterDocRef = () => doc(db, "users", user.uid, "water", "current");
 
@@ -948,55 +977,68 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
       </WaterContainer>
 
       <Box sx={{ mt: 3, maxWidth: 500, mx: "auto" }}>
-        <Grid container spacing={2}>
+        <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Bardak Boyutu"
-              type="number"
-              value={waterData.glassSize}
-              onChange={(e) =>
-                handleWaterSettingChange("glassSize", Number(e.target.value))
-              }
-              variant="filled"
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SportsBar
-                      sx={{
-                        color: "#21CBF3",
-                        fontSize: 28,
-                        filter: "drop-shadow(0 2px 4px rgba(33,203,243,0.3))",
-                      }}
-                    />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">ml</InputAdornment>
-                ),
-                sx: {
-                  background: "rgba(255,255,255,0.1)",
-                  borderRadius: "12px",
-                  border: "1px solid rgba(33,203,243,0.3)",
-                  color: "#fff",
-                  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                  "&:hover": {
-                    background: "rgba(255,255,255,0.15)",
-                    transform: "translateY(-2px)",
+            <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+              <TextField
+                fullWidth
+                label="Bardak Boyutu"
+                type="number"
+                value={waterData.glassSize}
+                onChange={(e) => handleWaterSettingChange("glassSize", Number(e.target.value))}
+                variant="filled"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SportsBar sx={{ color: "#21CBF3", fontSize: 28, filter: "drop-shadow(0 2px 4px rgba(33,203,243,0.3))" }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">ml</InputAdornment>
+                  ),
+                  sx: {
+                    background: "rgba(255,255,255,0.1)",
+                    borderRadius: "12px",
+                    border: "1px solid rgba(33,203,243,0.3)",
+                    color: "#fff",
+                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                    "&:hover": {
+                      background: "rgba(255,255,255,0.15)",
+                      transform: "translateY(-2px)",
+                    },
+                    "&.Mui-focused": {
+                      boxShadow: "0 0 15px rgba(33,203,243,0.4)",
+                      borderColor: "#21CBF3",
+                    },
+                    minWidth: 0,
+                    flex: 1,
                   },
-                  "&.Mui-focused": {
-                    boxShadow: "0 0 15px rgba(33,203,243,0.4)",
-                    borderColor: "#21CBF3",
+                }}
+                InputLabelProps={{
+                  sx: {
+                    color: "rgba(255,255,255,0.7)",
+                    "&.Mui-focused": { color: "#21CBF3" },
                   },
-                },
-              }}
-              InputLabelProps={{
-                sx: {
-                  color: "rgba(255,255,255,0.7)",
-                  "&.Mui-focused": { color: "#21CBF3" },
-                },
-              }}
-            />
+                }}
+              />
+              {/* Her zaman ... menüsü */}
+              <IconButton onClick={handleMenuOpen} sx={{ ml: 1, color: "#21CBF3", width: 36, height: 36 }}>
+                <MoreVertIcon />
+              </IconButton>
+              <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
+                {STANDARD_GLASS_SIZES.map((glass) => (
+                  <MenuItem key={glass.value} onClick={() => handleStandardGlassSelect(glass.value)} selected={waterData.glassSize === glass.value}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {glass.icon}
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{glass.label}</Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>{glass.desc}</Typography>
+                      </Box>
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Menu>
+            </Box>
           </Grid>
 
           <Grid item xs={12} md={6}>

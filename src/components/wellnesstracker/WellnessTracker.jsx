@@ -147,6 +147,41 @@ const AnimatedButton = styled(Button)(({ theme }) => ({
   },
 }));
 
+const CustomAccordion = styled(Accordion)(({ theme }) => ({
+  background: 'rgba(255,255,255,0.07)',
+  boxShadow: '0 4px 24px 0 rgba(33,150,243,0.10)',
+  borderRadius: 24,
+  marginTop: theme.spacing(2),
+  marginBottom: theme.spacing(2),
+  border: '1.5px solid rgba(33,150,243,0.13)',
+  overflow: 'hidden',
+  transition: 'box-shadow 0.3s, border 0.3s',
+  '&.Mui-expanded': {
+    boxShadow: '0 8px 32px 0 rgba(33,150,243,0.18)',
+    border: '2px solid #2196F3',
+  },
+}));
+
+const CustomAccordionDetails = styled(AccordionDetails)(({ theme }) => ({
+  background: 'linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)',
+  borderRadius: 18,
+  margin: theme.spacing(0, 1, 1, 1),
+  padding: theme.spacing(2, 2, 2, 2),
+  boxShadow: '0 2px 8px 0 rgba(33,150,243,0.08)',
+  transition: 'max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s, background 0.3s',
+  overflow: 'hidden',
+  '&[aria-hidden="true"]': {
+    maxHeight: 0,
+    opacity: 0,
+    padding: 0,
+    background: 'rgba(255,255,255,0.10)',
+  },
+  '&[aria-hidden="false"]': {
+    opacity: 1,
+    background: 'linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)',
+  },
+}));
+
 const WellnessTracker = ({ user }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -467,16 +502,7 @@ const WellnessTracker = ({ user }) => {
         </Box>
 
         {/* Su Takibi */}
-        <Accordion
-          defaultExpanded={true}
-          sx={{
-            background: "transparent",
-            boxShadow: "none",
-            color: "#fff",
-            mt: { xs: 2, sm: 3, md: 4 },
-            "&::before": { display: "none" },
-          }}
-        >
+        <CustomAccordion defaultExpanded={true}>
           <StyledAccordionSummary>
             <Typography variant="h5" sx={{ 
               fontWeight: 700, 
@@ -486,25 +512,16 @@ const WellnessTracker = ({ user }) => {
               💧 Su Takibi
             </Typography>
           </StyledAccordionSummary>
-          <AccordionDetails sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+          <CustomAccordionDetails>
             <WaterTracker 
               user={user} 
               onWaterDataChange={(data) => setWaterData(data)}
             />
-          </AccordionDetails>
-        </Accordion>
+          </CustomAccordionDetails>
+        </CustomAccordion>
 
         {/* Takviye Listesi */}
-        <Accordion
-          defaultExpanded={true}
-          sx={{
-            background: "transparent",
-            boxShadow: "none",
-            color: "#fff",
-            mb: { xs: 2, sm: 3, md: 4 },
-            "&::before": { display: "none" },
-          }}
-        >
+        <CustomAccordion defaultExpanded={true}>
           <StyledAccordionSummary>
             <Typography variant="h5" sx={{ 
               fontWeight: 700, 
@@ -514,7 +531,7 @@ const WellnessTracker = ({ user }) => {
               Takviyelerim
             </Typography>
           </StyledAccordionSummary>
-          <AccordionDetails sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+          <CustomAccordionDetails>
             {supplements.length === 0 ? (
               <Box
                 sx={{
@@ -795,19 +812,10 @@ const WellnessTracker = ({ user }) => {
                 })}
               </Grid>
             )}
-          </AccordionDetails>
-        </Accordion>
+          </CustomAccordionDetails>
+        </CustomAccordion>
         
-        <Accordion
-          defaultExpanded={false}
-          sx={{
-            background: "transparent",
-            boxShadow: "none",
-            color: "#fff",
-            mt: { xs: 2, sm: 3, md: 4 },
-            "&::before": { display: "none" },
-          }}
-        >
+        <CustomAccordion defaultExpanded={false}>
           <StyledAccordionSummary>
             <Typography variant="h5" sx={{ 
               fontWeight: 700, 
@@ -817,7 +825,7 @@ const WellnessTracker = ({ user }) => {
               İstatistikler
             </Typography>
           </StyledAccordionSummary>
-          <AccordionDetails sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+          <CustomAccordionDetails>
             <Grid container spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mt: 2 }}>
               <Grid item xs={12} md={6}>
                 <WaterConsumptionChart waterHistory={Array.isArray(waterData.history) ? waterData.history : []} />
@@ -829,8 +837,8 @@ const WellnessTracker = ({ user }) => {
                 />
               </Grid>
             </Grid>
-          </AccordionDetails>
-        </Accordion>
+          </CustomAccordionDetails>
+        </CustomAccordion>
         <SupplementDialog
           openSupplementDialog={openSupplementDialog}
           onClose={() => {

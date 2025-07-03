@@ -119,14 +119,21 @@ const getSupplementIcon = (name) => {
 
 const StyledAccordionSummary = styled(AccordionSummary)(({ theme }) => ({
   background: "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)",
-  borderRadius: 25,
-  boxShadow: "0 3px 5px 2px rgba(33, 150, 243, 0.3)",
+  borderRadius: '24px !important',
+  boxShadow: "0 3px 5px 2px rgba(33, 150, 243, 0.13)",
   color: "white",
   padding: { xs: "8px 20px", sm: "10px 25px", md: "12px 35px" },
   transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
   cursor: "pointer",
+  display: 'flex',
+  alignItems: 'center',
+  gap: 1.5,
+  minHeight: 'unset',
   "& .MuiAccordionSummary-content": {
     margin: { xs: "4px 0", sm: "6px 0", md: "8px 0" },
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1.5,
   },
 }));
 
@@ -154,12 +161,12 @@ const CustomAccordion = styled(Accordion)(({ theme }) => ({
   marginBottom: theme.spacing(2),
   overflow: 'hidden',
   border: 'none',
-  borderRadius: 24,
+  borderRadius: '24px !important',
   transition: 'box-shadow 0.3s',
   '&.Mui-expanded': {
     boxShadow: '0 8px 32px 0 rgba(33,150,243,0.18)',
     border: 'none',
-    borderRadius: 24,
+    borderRadius: '24px !important',
   },
 }));
 
@@ -508,12 +515,13 @@ const WellnessTracker = ({ user }) => {
         {/* Su Takibi */}
         <CustomAccordion defaultExpanded={true}>
           <StyledAccordionSummary>
+            <WaterDropIcon sx={{ fontSize: { xs: 28, sm: 32, md: 36 }, color: '#fff', mr: 1 }} />
             <Typography variant="h5" sx={{ 
               fontWeight: 700, 
               color: "#fff",
               fontSize: { xs: "1.1rem", sm: "1.3rem", md: "1.5rem" },
             }}>
-              💧 Su Takibi
+              Su Takibi
             </Typography>
           </StyledAccordionSummary>
           <CustomAccordionDetails>
@@ -527,6 +535,7 @@ const WellnessTracker = ({ user }) => {
         {/* Takviye Listesi */}
         <CustomAccordion defaultExpanded={false}>
           <StyledAccordionSummary>
+            <Medication sx={{ fontSize: { xs: 28, sm: 32, md: 36 }, color: '#fff', mr: 1 }} />
             <Typography variant="h5" sx={{ 
               fontWeight: 700, 
               color: "#fff",
@@ -819,8 +828,9 @@ const WellnessTracker = ({ user }) => {
           </CustomAccordionDetails>
         </CustomAccordion>
         
-        <CustomAccordion defaultExpanded={false}>
+        <CustomAccordion defaultExpanded={false} sx={{ borderRadius: 24, overflow: 'hidden' }}>
           <StyledAccordionSummary>
+            <EmojiEventsIcon sx={{ fontSize: { xs: 28, sm: 32, md: 36 }, color: '#fff', mr: 1 }} />
             <Typography variant="h5" sx={{ 
               fontWeight: 700, 
               color: "#fff",
@@ -829,16 +839,20 @@ const WellnessTracker = ({ user }) => {
               İstatistikler
             </Typography>
           </StyledAccordionSummary>
-          <CustomAccordionDetails>
-            <Grid container spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mt: 2 }}>
-              <Grid item xs={12} md={6}>
-                <WaterConsumptionChart waterHistory={Array.isArray(waterData.history) ? waterData.history : []} />
+          <CustomAccordionDetails sx={{ borderRadius: 24, overflow: 'hidden' }}>
+            <Grid container spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mt: 2, borderRadius: 24, overflow: 'hidden' }}>
+              <Grid item xs={12} md={6} sx={{ borderRadius: 24, overflow: 'hidden' }}>
+                <Box sx={{ borderRadius: 24, overflow: 'hidden' }}>
+                  <WaterConsumptionChart waterHistory={Array.isArray(waterData.history) ? waterData.history : []} />
+                </Box>
               </Grid>
-              <Grid item xs={12} md={6}>
-                <SupplementConsumptionChart
-                  user={user}
-                  supplements={supplements}
-                />
+              <Grid item xs={12} md={6} sx={{ borderRadius: 24, overflow: 'hidden' }}>
+                <Box sx={{ borderRadius: 24, overflow: 'hidden' }}>
+                  <SupplementConsumptionChart
+                    user={user}
+                    supplements={supplements}
+                  />
+                </Box>
               </Grid>
             </Grid>
           </CustomAccordionDetails>

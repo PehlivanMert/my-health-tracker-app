@@ -557,7 +557,18 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
       "title": "💊 Takviye Kullanım Rehberi",
       "content": "Kullanım trendleri ve uzman görüşü (300-400 karakter)",
       "icon": "💡",
-      "recommendations": ["Öneri 1", "Öneri 2"]
+      "recommendations": ["Öneri 1", "Öneri 2"],
+      "supplementObjects": [
+        {
+          "name": "Takviye Adı",
+          "benefit": "Faydası",
+          "dosage": "Dozajı",
+          "timing": "Kullanım zamanı",
+          "caution": "Dikkat edilmesi gerekenler",
+          "naturalSources": "Doğal kaynaklar",
+          "scientificExplanation": "Bilimsel açıklama"
+        }
+      ]
     },
     "bmiAnalysis": {
       "title": "📊 VKİ Bilimsel Analizi",
@@ -726,18 +737,20 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 12. Kullanıcının yaşına ve ilgi alanlarına uygun içerik seç
 13. Türkçe ve yabancı içerikleri dengeli dağıt
 14. Hem eğitici hem eğlenceli içerikler öner
+15. Takviye bölümünde supplementObjects alanını doldur, her takviye için ayrı nesne olarak detaylı bilgi ver (name, benefit, dosage, timing, caution, naturalSources, scientificExplanation). Eğer öneri yoksa supplementObjects boş dizi olsun.
+16. supplementObjects alanı zorunlu, eksik bırakma.
 
 🎯 *AKTİVİTE ÖNERİLERİ İÇİN ÖZEL KURALLAR:*
-15. Her aktivite kategorisi için 5-8 öneri oluştur
-16. Şehir özel aktiviteleri ekle (müzeler, parklar, tarihi yerler, spor kulüpleri)
-17. Hava durumuna göre uygun aktiviteler seç (sıcak/soğuk/yağmurlu)
-18. Aktivite isimlerini emoji ile başlat (🏃‍♂️, 🏛️, 🎨, ⚽, 🧘‍♀️)
-19. Gerçek mekan isimleri kullan (varsa)
-20. Kullanıcının yaşına uygun aktiviteler öner
-21. Mevsimsel aktiviteleri dikkate al
-22. Hem ücretsiz hem ücretli aktiviteleri dahil et
-23. Erişilebilirlik ve güvenlik faktörlerini göz önünde bulundur
-24. Yerel kültür ve gelenekleri yansıt`;
+17. Her aktivite kategorisi için 5-8 öneri oluştur
+18. Şehir özel aktiviteleri ekle (müzeler, parklar, tarihi yerler, spor kulüpleri)
+19. Hava durumuna göre uygun aktiviteler seç (sıcak/soğuk/yağmurlu)
+20. Aktivite isimlerini emoji ile başlat (🏃‍♂️, 🏛️, 🎨, ⚽, 🧘‍♀️)
+21. Gerçek mekan isimleri kullan (varsa)
+22. Kullanıcının yaşına uygun aktiviteler öner
+23. Mevsimsel aktiviteleri dikkate al
+24. Hem ücretsiz hem ücretli aktiviteleri dahil et
+25. Erişilebilirlik ve güvenlik faktörlerini göz önünde bulundur
+26. Yerel kültür ve gelenekleri yansıt`;
 
       // Gemini AI kullanarak öneri oluştur
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
@@ -1309,9 +1322,11 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                                 📋 Öneriler:
                               </Typography>
                               <ul style={{ color: "rgba(255,255,255,0.9)", margin: 0, paddingLeft: 16, fontSize: { xs: "0.7rem", md: "0.75rem" } }}>
-                                {section.recommendations.map((rec, idx) => (
-                                  <li key={idx}>{rec}</li>
-                                ))}
+                                {section.recommendations
+                                  .filter(rec => typeof rec === 'string')
+                                  .map((rec, idx) => (
+                                    <li key={idx}>{rec}</li>
+                                  ))}
                               </ul>
                             </Box>
                           )}
@@ -1724,6 +1739,24 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                                     />
                                   </Box>
                                 </Box>
+                              ))}
+                            </Box>
+                          )}
+
+                          {section.supplementObjects && Array.isArray(section.supplementObjects) && section.supplementObjects.length > 0 && (
+                            <Box sx={{ mt: 2 }}>
+                              {section.supplementObjects.map((supp, idx) => (
+                                <Card key={idx} sx={{ mb: 2, background: "rgba(255,255,255,0.08)", borderRadius: "12px", boxShadow: 2 }}>
+                                  <CardContent sx={{ color: '#fff', py: { xs: 2, md: 2.5 }, px: { xs: 2, md: 3 } }}>
+                                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#fff', fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' } }}>{supp.name}</Typography>
+                                    {supp.benefit && <Typography sx={{ mb: 0.5, color: '#fff', fontSize: { xs: '0.85rem', md: '0.95rem' } }}><b>Fayda:</b> {supp.benefit}</Typography>}
+                                    {supp.dosage && <Typography sx={{ mb: 0.5, color: '#fff', fontSize: { xs: '0.85rem', md: '0.95rem' } }}><b>Doz:</b> {supp.dosage}</Typography>}
+                                    {supp.timing && <Typography sx={{ mb: 0.5, color: '#fff', fontSize: { xs: '0.85rem', md: '0.95rem' } }}><b>Zaman:</b> {supp.timing}</Typography>}
+                                    {supp.caution && <Typography sx={{ mb: 0.5, color: '#fff', fontSize: { xs: '0.85rem', md: '0.95rem' } }}><b>Dikkat:</b> {supp.caution}</Typography>}
+                                    {supp.naturalSources && <Typography sx={{ mb: 0.5, color: '#fff', fontSize: { xs: '0.85rem', md: '0.95rem' } }}><b>Doğal Kaynaklar:</b> {supp.naturalSources}</Typography>}
+                                    {supp.scientificExplanation && <Typography sx={{ mb: 0.5, color: '#fff', fontSize: { xs: '0.85rem', md: '0.95rem' } }}><b>Bilimsel Açıklama:</b> {supp.scientificExplanation}</Typography>}
+                                  </CardContent>
+                                </Card>
                               ))}
                             </Box>
                           )}

@@ -749,6 +749,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 13. Türkçe ve yabancı içerikleri dengeli dağıt
 14. Hem eğitici hem eğlenceli içerikler öner
 15. Takviye bölümünde currentSupplements alanını sadece kullanıcıda olanlar, extraSuggestions alanını ise kullanıcıda olmayan ama önerilen takviyeler için doldur. Her iki alanı da doldurmayı unutma. Her takviye için detaylı bilgi ver (name, benefit, dosage, timing, caution, naturalSources, scientificExplanation). Eğer öneri yoksa ilgili alanı boş dizi yap.
+16. Beslenme önerilerinde bir öneri içinde balık, tavuk ve kırmızı etten sadece birini öner. Bir günde ikisi veya üçü asla birlikte olmasın.
 
 🎯 *AKTİVİTE ÖNERİLERİ İÇİN ÖZEL KURALLAR:*
 16. Her aktivite kategorisi için 5-8 öneri oluştur

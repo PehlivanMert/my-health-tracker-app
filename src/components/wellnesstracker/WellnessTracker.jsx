@@ -154,11 +154,12 @@ const CustomAccordion = styled(Accordion)(({ theme }) => ({
   marginBottom: theme.spacing(2),
   overflow: 'hidden',
   border: 'none',
-  borderRadius: 0,
+  borderRadius: 24,
   transition: 'box-shadow 0.3s',
   '&.Mui-expanded': {
     boxShadow: '0 8px 32px 0 rgba(33,150,243,0.18)',
     border: 'none',
+    borderRadius: 24,
   },
 }));
 
@@ -168,7 +169,7 @@ const CustomAccordionDetails = styled(AccordionDetails)(({ theme }) => ({
   padding: theme.spacing(2, 2, 2, 2),
   boxShadow: 'none',
   border: 'none',
-  borderRadius: 0,
+  borderRadius: 24,
   transition: 'max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s, background 0.3s',
   overflow: 'hidden',
   '&[aria-hidden="true"]': {
@@ -176,10 +177,12 @@ const CustomAccordionDetails = styled(AccordionDetails)(({ theme }) => ({
     opacity: 0,
     padding: 0,
     background: 'transparent',
+    borderRadius: 24,
   },
   '&[aria-hidden="false"]': {
     opacity: 1,
     background: 'transparent',
+    borderRadius: 24,
   },
 }));
 

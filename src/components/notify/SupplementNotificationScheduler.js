@@ -306,6 +306,14 @@ export const getNextSupplementReminderTime = async (suppData, user) => {
 // saveNextSupplementReminderTime fonksiyonunu tekrar çağırmanız gerekir.
 // Bu örnekte, saveNextSupplementReminderTime fonksiyonu, yeni hesaplanan zamanı Firestore'a kaydediyor.
 export const saveNextSupplementReminderTime = async (user, suppData) => {
+  // Eğer notificationSchedule varsa, nextSupplementReminderTime'a gerek yok
+  if (suppData.notificationSchedule && suppData.notificationSchedule.length > 0) {
+    console.log(
+      "saveNextSupplementReminderTime - notificationSchedule kullanılıyor, nextSupplementReminderTime kaydedilmiyor"
+    );
+    return null;
+  }
+  
   const nextReminder = await getNextSupplementReminderTime(suppData, user);
   if (!nextReminder) {
     console.warn(

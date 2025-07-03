@@ -611,8 +611,7 @@ exports.handler = async function (event, context) {
             const suppData = docSnap.data();
             if (
               suppData.quantity > 0 &&
-              suppData.dailyUsage > 0 &&
-              suppData.nextSupplementReminderTime
+              suppData.dailyUsage > 0
             ) {
               const suppName = suppData.name || 'Bilinmeyen Takviye';
               const dailyUsage = suppData.dailyUsage || 1;
@@ -642,28 +641,58 @@ exports.handler = async function (event, context) {
                 });
               }
 
-              // 3. Kullanıcı içme saati girdiyse, o saatte bildirim gönder
-              const nextReminder = new Date(suppData.nextSupplementReminderTime);
-              const nextReminderTurkey = new Date(
-                nextReminder.toLocaleString("en-US", {
-                  timeZone: "Europe/Istanbul",
-                })
-              );
-              if (Math.abs(now - nextReminderTurkey) / 60000 < 0.5) {
-                const motivasyonlar = [
-                  `Takviyeni almayı unutma! Düzenli kullanım sağlığın için çok önemli.`,
-                  `Bugün de ${suppName} takviyeni alırsan zinciri bozmayacaksın!`,
-                  `Vücudun sana teşekkür edecek! ${suppName} takviyeni almayı unutma.`,
-                  `Sağlıklı bir gün için ${suppName} takviyeni şimdi alabilirsin!`,
-                ];
-                notificationsForThisUser.push({
-                  tokens: fcmTokens,
-                  data: {
-                    title: `${suppName} Takviyesi Zamanı!`,
-                    body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
-                    supplementId: docSnap.id,
-                  },
-                });
+              // 3. Kullanıcının girdiği tüm bildirim saatlerini kontrol et
+              if (suppData.notificationSchedule && suppData.notificationSchedule.length > 0) {
+                const currentTimeStr = `${nowHour.toString().padStart(2, '0')}:${nowMinute.toString().padStart(2, '0')}`;
+                
+                console.log(
+                  `sendPushNotification - ${suppName} için bildirim saatleri: ${suppData.notificationSchedule.join(', ')}, şu anki saat: ${currentTimeStr}`
+                );
+                
+                // Şu anki saat, bildirim saatlerinden biri mi kontrol et
+                if (suppData.notificationSchedule.includes(currentTimeStr)) {
+                  console.log(
+                    `sendPushNotification - ${suppName} için bildirim saati tetiklendi: ${currentTimeStr}`
+                  );
+                  const motivasyonlar = [
+                    `Takviyeni almayı unutma! Düzenli kullanım sağlığın için çok önemli.`,
+                    `Bugün de ${suppName} takviyeni alırsan zinciri bozmayacaksın!`,
+                    `Vücudun sana teşekkür edecek! ${suppName} takviyeni almayı unutma.`,
+                    `Sağlıklı bir gün için ${suppName} takviyeni şimdi alabilirsin!`,
+                  ];
+                  notificationsForThisUser.push({
+                    tokens: fcmTokens,
+                    data: {
+                      title: `${suppName} Takviyesi Zamanı!`,
+                      body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
+                      supplementId: docSnap.id,
+                    },
+                  });
+                }
+              } else {
+                // Eski sistem: nextSupplementReminderTime kontrolü (geriye uyumluluk için)
+                const nextReminder = new Date(suppData.nextSupplementReminderTime);
+                const nextReminderTurkey = new Date(
+                  nextReminder.toLocaleString("en-US", {
+                    timeZone: "Europe/Istanbul",
+                  })
+                );
+                if (Math.abs(now - nextReminderTurkey) / 60000 < 0.5) {
+                  const motivasyonlar = [
+                    `Takviyeni almayı unutma! Düzenli kullanım sağlığın için çok önemli.`,
+                    `Bugün de ${suppName} takviyeni alırsan zinciri bozmayacaksın!`,
+                    `Vücudun sana teşekkür edecek! ${suppName} takviyeni almayı unutma.`,
+                    `Sağlıklı bir gün için ${suppName} takviyeni şimdi alabilirsin!`,
+                  ];
+                  notificationsForThisUser.push({
+                    tokens: fcmTokens,
+                    data: {
+                      title: `${suppName} Takviyesi Zamanı!`,
+                      body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
+                      supplementId: docSnap.id,
+                    },
+                  });
+                }
               }
 
               // 4. Pencere bitişinde veya gece yarısı hatırlatma (kullanıcı tamamlamadıysa)

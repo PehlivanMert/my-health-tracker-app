@@ -10,7 +10,7 @@ export const getTurkeyTime = () => {
   return now;
 };
 
-// Global bildirim penceresini Firestore'dan alır.
+// Global bildirim penceresini Firestore'dan alır..
 // Global bildirim penceresine dokunmuyoruz, ancak verinin string ise obje haline çeviriyoruz.
 export const getGlobalNotificationWindow = async (user) => {
   try {

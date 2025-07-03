@@ -294,52 +294,55 @@ const WellnessTracker = ({ user }) => {
     }
   }, [supplementConsumptionToday, user]);
 
-  // supplements ve user güncellendiğinde nextSupplementReminderTime hesaplaması
+  // Takviye bildirim sistemini temizleme fonksiyonu
+  const cleanupSupplementNotifications = async () => {
+    if (!supplements.length || !user) return;
+
+    console.log("Takviye bildirim sistemi temizleniyor...");
+    
+    for (const supp of supplements) {
+      const suppDocRef = doc(db, "users", user.uid, "supplements", supp.id);
+      try {
+        // Gereksiz alanları temizle
+        await updateDoc(suppDocRef, {
+          lastNotificationTriggers: null,
+          globalNotificationWindow: null,
+          notificationsLastCalculated: null,
+          // Sadece gerekli alanları tut
+          nextSupplementReminderTime: null, // Yeniden hesaplanacak
+        });
+        console.log(`${supp.name} için bildirim sistemi temizlendi`);
+      } catch (error) {
+        console.error(`${supp.name} temizleme hatası:`, error);
+      }
+    }
+  };
+
+  // Takviye bildirimlerini yeniden hesaplama fonksiyonu
+  const recalculateAllSupplementNotifications = async () => {
+    if (!supplements.length || !user) return;
+
+    console.log("Tüm takviye bildirimleri yeniden hesaplanıyor...");
+    
+    for (const supp of supplements) {
+      try {
+        await saveNextSupplementReminderTime(user, supp);
+        console.log(`${supp.name} için bildirim zamanı yeniden hesaplandı`);
+      } catch (error) {
+        console.error(`${supp.name} hesaplama hatası:`, error);
+      }
+    }
+  };
+
   useEffect(() => {
     const checkAndUpdateReminders = async () => {
       if (!supplements.length || !user) return;
 
-      // Batch işlem için tüm supplementleri tek seferde kontrol et
-      const supplementsToUpdate = [];
+      // Önce temizlik yap
+      await cleanupSupplementNotifications();
       
-      for (const supp of supplements) {
-        const suppDocRef = doc(db, "users", user.uid, "supplements", supp.id);
-        try {
-          const suppSnap = await getDoc(suppDocRef);
-          
-          if (suppSnap.exists()) {
-            const data = suppSnap.data();
-            const lastCalculated = data.notificationsLastCalculated
-              ? new Date(data.notificationsLastCalculated)
-              : null;
-            const now = new Date();
-            const THRESHOLD = 60 * 60 * 1000; // 1 saat
-            if (
-              !lastCalculated ||
-              now.getTime() - lastCalculated.getTime() > THRESHOLD
-            ) {
-              supplementsToUpdate.push(supp);
-            }
-          }
-        } catch (error) {
-          console.error("Supplement kontrol hatası:", error);
-        }
-      }
-
-      // Batch güncelleme
-      if (supplementsToUpdate.length > 0) {
-        for (const supp of supplementsToUpdate) {
-          try {
-            await saveNextSupplementReminderTime(user, supp);
-            const suppDocRef = doc(db, "users", user.uid, "supplements", supp.id);
-            await updateDoc(suppDocRef, {
-              notificationsLastCalculated: new Date(),
-            });
-          } catch (error) {
-            console.error("Supplement reminder güncelleme hatası:", error);
-          }
-        }
-      }
+      // Sonra yeniden hesapla
+      await recalculateAllSupplementNotifications();
     };
 
     checkAndUpdateReminders();
@@ -426,12 +429,36 @@ const WellnessTracker = ({ user }) => {
 
   const handleSaveSupplementNotifications = async (notifications) => {
     try {
-      for (const [supplementId, notification] of Object.entries(notifications)) {
-        const supplementRef = doc(db, "users", user.uid, "supplements", supplementId);
-        await updateDoc(supplementRef, {
-          notificationTime: notification.time,
-          notificationEnabled: notification.enabled,
-        });
+      // notifications artık array formatında geliyor: [{id, notificationSchedule}, ...]
+      for (const notification of notifications) {
+        const supplementRef = doc(db, "users", user.uid, "supplements", notification.id);
+        
+        // notificationSchedule array'ini kontrol et
+        const updateData = {};
+        
+        if (notification.notificationSchedule && Array.isArray(notification.notificationSchedule)) {
+          updateData.notificationSchedule = notification.notificationSchedule;
+        }
+        
+        // Sadece tanımlı değerler varsa güncelle
+        if (Object.keys(updateData).length > 0) {
+          await updateDoc(supplementRef, updateData);
+          
+          // Takviye verilerini al ve nextSupplementReminderTime'ı yeniden hesapla
+          const supplementDoc = await getDoc(supplementRef);
+          if (supplementDoc.exists()) {
+            const supplementData = supplementDoc.data();
+            
+            // nextSupplementReminderTime'ı yeniden hesapla
+            await saveNextSupplementReminderTime(user, {
+              ...supplementData,
+              id: notification.id,
+              notificationSchedule: notification.notificationSchedule,
+            });
+            
+            console.log(`${supplementData.name} için bildirim zamanı yeniden hesaplandı`);
+          }
+        }
       }
       setSupplementNotificationDialogOpen(false);
     } catch (error) {

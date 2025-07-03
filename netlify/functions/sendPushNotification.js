@@ -610,9 +610,9 @@ exports.handler = async function (event, context) {
           suppSnapshot.forEach((docSnap) => {
             const suppData = docSnap.data();
             if (
-              suppData.notification !== "none" &&
-              suppData.nextSupplementReminderTime &&
-              suppData.quantity > 0
+              suppData.quantity > 0 &&
+              suppData.dailyUsage > 0 &&
+              suppData.nextSupplementReminderTime
             ) {
               const suppName = suppData.name || 'Bilinmeyen Takviye';
               const dailyUsage = suppData.dailyUsage || 1;

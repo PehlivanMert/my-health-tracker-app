@@ -314,15 +314,14 @@ export const saveNextSupplementReminderTime = async (user, suppData) => {
     return null;
   }
   const suppDocRef = doc(db, "users", user.uid, "supplements", suppData.id);
-  await setDoc(
-    suppDocRef,
-    {
-      nextSupplementReminderTime: nextReminder.toISOString(),
-      // Bildirim gönderildikten sonra consumption veya trigger verilerini güncellemek isterseniz,
-      // burada ilgili alanları (ör. lastNotificationTriggers) sıfırlayabilir veya güncelleyebilirsiniz.
-    },
-    { merge: true }
-  );
+  
+  // Sadece gerekli alanları kaydet
+  const updateData = {
+    nextSupplementReminderTime: nextReminder.toISOString(),
+    notificationsLastCalculated: new Date(),
+  };
+  
+  await setDoc(suppDocRef, updateData, { merge: true });
   console.log(
     "saveNextSupplementReminderTime - Kaydedilen sonraki takviye bildirimi zamanı:",
     nextReminder.toISOString()

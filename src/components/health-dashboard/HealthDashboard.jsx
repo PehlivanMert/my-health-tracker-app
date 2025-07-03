@@ -558,9 +558,20 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
       "content": "Kullanım trendleri ve uzman görüşü (300-400 karakter)",
       "icon": "💡",
       "recommendations": ["Öneri 1", "Öneri 2"],
-      "supplementObjects": [
+      "currentSupplements": [
         {
           "name": "Takviye Adı",
+          "benefit": "Faydası",
+          "dosage": "Dozajı",
+          "timing": "Kullanım zamanı",
+          "caution": "Dikkat edilmesi gerekenler",
+          "naturalSources": "Doğal kaynaklar",
+          "scientificExplanation": "Bilimsel açıklama"
+        }
+      ],
+      "extraSuggestions": [
+        {
+          "name": "Ekstra Takviye Adı",
           "benefit": "Faydası",
           "dosage": "Dozajı",
           "timing": "Kullanım zamanı",
@@ -737,20 +748,19 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 12. Kullanıcının yaşına ve ilgi alanlarına uygun içerik seç
 13. Türkçe ve yabancı içerikleri dengeli dağıt
 14. Hem eğitici hem eğlenceli içerikler öner
-15. Takviye bölümünde supplementObjects alanını doldur, her takviye için ayrı nesne olarak detaylı bilgi ver (name, benefit, dosage, timing, caution, naturalSources, scientificExplanation). Eğer öneri yoksa supplementObjects boş dizi olsun.
-16. supplementObjects alanı zorunlu, eksik bırakma.
+15. Takviye bölümünde currentSupplements alanını sadece kullanıcıda olanlar, extraSuggestions alanını ise kullanıcıda olmayan ama önerilen takviyeler için doldur. Her iki alanı da doldurmayı unutma. Her takviye için detaylı bilgi ver (name, benefit, dosage, timing, caution, naturalSources, scientificExplanation). Eğer öneri yoksa ilgili alanı boş dizi yap.
 
 🎯 *AKTİVİTE ÖNERİLERİ İÇİN ÖZEL KURALLAR:*
-17. Her aktivite kategorisi için 5-8 öneri oluştur
-18. Şehir özel aktiviteleri ekle (müzeler, parklar, tarihi yerler, spor kulüpleri)
-19. Hava durumuna göre uygun aktiviteler seç (sıcak/soğuk/yağmurlu)
-20. Aktivite isimlerini emoji ile başlat (🏃‍♂️, 🏛️, 🎨, ⚽, 🧘‍♀️)
-21. Gerçek mekan isimleri kullan (varsa)
-22. Kullanıcının yaşına uygun aktiviteler öner
-23. Mevsimsel aktiviteleri dikkate al
-24. Hem ücretsiz hem ücretli aktiviteleri dahil et
-25. Erişilebilirlik ve güvenlik faktörlerini göz önünde bulundur
-26. Yerel kültür ve gelenekleri yansıt`;
+16. Her aktivite kategorisi için 5-8 öneri oluştur
+17. Şehir özel aktiviteleri ekle (müzeler, parklar, tarihi yerler, spor kulüpleri)
+18. Hava durumuna göre uygun aktiviteler seç (sıcak/soğuk/yağmurlu)
+19. Aktivite isimlerini emoji ile başlat (🏃‍♂️, 🏛️, 🎨, ⚽, 🧘‍♀️)
+20. Gerçek mekan isimleri kullan (varsa)
+21. Kullanıcının yaşına uygun aktiviteler öner
+22. Mevsimsel aktiviteleri dikkate al
+23. Hem ücretsiz hem ücretli aktiviteleri dahil et
+24. Erişilebilirlik ve güvenlik faktörlerini göz önünde bulundur
+25. Yerel kültür ve gelenekleri yansıt`;
 
       // Gemini AI kullanarak öneri oluştur
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
@@ -1743,9 +1753,32 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                             </Box>
                           )}
 
-                          {section.supplementObjects && Array.isArray(section.supplementObjects) && section.supplementObjects.length > 0 && (
+                          {section.currentSupplements && Array.isArray(section.currentSupplements) && section.currentSupplements.length > 0 && (
                             <Box sx={{ mt: 2 }}>
-                              {section.supplementObjects.map((supp, idx) => (
+                              <Typography variant="subtitle2" sx={{ color: '#fff', mb: 1, fontWeight: 700, fontSize: { xs: '0.95rem', md: '1.1rem' } }}>
+                                Kullandıkların
+                              </Typography>
+                              {section.currentSupplements.map((supp, idx) => (
+                                <Card key={idx} sx={{ mb: 2, background: "rgba(255,255,255,0.08)", borderRadius: "12px", boxShadow: 2 }}>
+                                  <CardContent sx={{ color: '#fff', py: { xs: 2, md: 2.5 }, px: { xs: 2, md: 3 } }}>
+                                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#fff', fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' } }}>{supp.name}</Typography>
+                                    {supp.benefit && <Typography sx={{ mb: 0.5, color: '#fff', fontSize: { xs: '0.85rem', md: '0.95rem' } }}><b>Fayda:</b> {supp.benefit}</Typography>}
+                                    {supp.dosage && <Typography sx={{ mb: 0.5, color: '#fff', fontSize: { xs: '0.85rem', md: '0.95rem' } }}><b>Doz:</b> {supp.dosage}</Typography>}
+                                    {supp.timing && <Typography sx={{ mb: 0.5, color: '#fff', fontSize: { xs: '0.85rem', md: '0.95rem' } }}><b>Zaman:</b> {supp.timing}</Typography>}
+                                    {supp.caution && <Typography sx={{ mb: 0.5, color: '#fff', fontSize: { xs: '0.85rem', md: '0.95rem' } }}><b>Dikkat:</b> {supp.caution}</Typography>}
+                                    {supp.naturalSources && <Typography sx={{ mb: 0.5, color: '#fff', fontSize: { xs: '0.85rem', md: '0.95rem' } }}><b>Doğal Kaynaklar:</b> {supp.naturalSources}</Typography>}
+                                    {supp.scientificExplanation && <Typography sx={{ mb: 0.5, color: '#fff', fontSize: { xs: '0.85rem', md: '0.95rem' } }}><b>Bilimsel Açıklama:</b> {supp.scientificExplanation}</Typography>}
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </Box>
+                          )}
+                          {section.extraSuggestions && Array.isArray(section.extraSuggestions) && section.extraSuggestions.length > 0 && (
+                            <Box sx={{ mt: 2 }}>
+                              <Typography variant="subtitle2" sx={{ color: '#fff', mb: 1, fontWeight: 700, fontSize: { xs: '0.95rem', md: '1.1rem' } }}>
+                                Ekstra Önerilen Takviyeler
+                              </Typography>
+                              {section.extraSuggestions.map((supp, idx) => (
                                 <Card key={idx} sx={{ mb: 2, background: "rgba(255,255,255,0.08)", borderRadius: "12px", boxShadow: 2 }}>
                                   <CardContent sx={{ color: '#fff', py: { xs: 2, md: 2.5 }, px: { xs: 2, md: 3 } }}>
                                     <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#fff', fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' } }}>{supp.name}</Typography>

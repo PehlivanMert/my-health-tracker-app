@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Typography, IconButton, Tooltip, Fade } from "@mui/material";
+import { Box, Typography, IconButton, Tooltip, Fade, Menu, MenuItem, ListItemIcon, ListItemText } from "@mui/material";
 import { styled } from "@mui/material";
 import {
   DeleteForever,
@@ -8,6 +8,7 @@ import {
   AccessTime,
   Edit,
 } from "@mui/icons-material";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 
 const ActionButton = styled(IconButton)(({ theme, color }) => ({
   color: color || "#fff",
@@ -75,6 +76,42 @@ const RoutineCardActions = ({
       color: "rgba(35,35,45,0.95)",
     },
   };
+
+  // Mobile: show ... menu
+  const [anchorEl, setAnchorEl] = React.useState(null);
+  const open = Boolean(anchorEl);
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  if (isMobile) {
+    return (
+      <Box display="flex" alignItems="center">
+        <IconButton onClick={handleMenuOpen} size="small">
+          <MoreVertIcon />
+        </IconButton>
+        <Menu anchorEl={anchorEl} open={open} onClose={handleMenuClose}>
+          <MenuItem onClick={() => { handleMenuClose(); onEdit(routine); }}>
+            <ListItemIcon><Edit fontSize="small" /></ListItemIcon>
+            <ListItemText primary="Düzenle" />
+          </MenuItem>
+          <MenuItem onClick={() => { handleMenuClose(); onToggleNotification(routine.id); }}>
+            <ListItemIcon>
+              {notificationsEnabled[routine.id] ? <NotificationsActive fontSize="small" sx={{ color: "#FFA726" }} /> : <NotificationsOff fontSize="small" />}
+            </ListItemIcon>
+            <ListItemText primary={notificationsEnabled[routine.id] ? "Bildirim Kapat" : "Bildirim Aç"} />
+          </MenuItem>
+          <MenuItem onClick={() => { handleMenuClose(); onDelete(routine); }}>
+            <ListItemIcon><DeleteForever fontSize="small" sx={{ color: "#FF5252" }} /></ListItemIcon>
+            <ListItemText primary="Sil" />
+          </MenuItem>
+        </Menu>
+      </Box>
+    );
+  }
 
   return (
     <Box

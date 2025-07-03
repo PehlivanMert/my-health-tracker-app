@@ -740,7 +740,12 @@ const DailyRoutine = ({ user }) => {
     setOpenDeleteFilteredDialog(true);
   };
 
-  // DÜZENLENEN: Tüm bildirimleri aç/kapat fonksiyonu
+  // Tüm bildirimler aktif mi? Sadece bugünkü ve gelecekteki rutinler kontrol edilir
+  const today = new Date();
+  const todayStr = getTurkeyLocalDateString(today);
+  const todayAndFutureRoutines = routines.filter(r => r.date >= todayStr);
+  const allNotificationsEnabled = todayAndFutureRoutines.length > 0 && todayAndFutureRoutines.every(r => r.notificationEnabled);
+
   const toggleAllNotifications = () => {
     const allEnabled =
       routines.length > 0 && routines.every((r) => r.notificationEnabled);
@@ -790,9 +795,7 @@ const DailyRoutine = ({ user }) => {
           timeFilter={timeFilter}
           setTimeFilter={setTimeFilter}
           toggleAllNotifications={toggleAllNotifications}
-          allNotificationsEnabled={
-            routines.length > 0 && routines.every((r) => r.notificationEnabled)
-          }
+          allNotificationsEnabled={allNotificationsEnabled}
         />
         {timeFilter === "Monthly" ? (
           <MonthlyRoutines

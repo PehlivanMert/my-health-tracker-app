@@ -345,7 +345,7 @@ const RoutineCard = ({
                 <CategoryIcon color={cardColor}>
                   {getCategoryIcon(routine.category)}
                 </CategoryIcon>
-                {routine.category || "General"}
+                <span style={{ color: '#fff' }}>{routine.category || "General"}</span>
               </CategoryChip>
               <Typography
                 variant="caption"
@@ -384,35 +384,6 @@ const RoutineCard = ({
           onToggleNotification={onToggleNotification}
           isMobile={isMobile}
         />
-
-        <motion.div
-          variants={overlayVariants}
-          initial="hidden"
-          animate={hovered ? "visible" : "hidden"}
-          style={{
-            position: "absolute",
-            bottom: isMobile ? 8 : 10,
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 2,
-          }}
-        >
-          <Box
-            sx={{
-              backgroundColor: cardColor,
-              width: isMobile ? 30 : 40,
-              height: isMobile ? 30 : 40,
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: `0px 4px 10px ${cardColor}80`,
-              fontSize: isMobile ? "1rem" : "1.2rem",
-            }}
-          >
-            {getCategoryIcon(routine.category)}
-          </Box>
-        </motion.div>
       </Box>
     </StyledCard>
   );

@@ -128,6 +128,40 @@ const getSupplementConsumptionStats = async (userId) => {
   return {};
 };
 
+// Gece yarısı kontrolü için özel tüketim verisi alma fonksiyonu
+const getSupplementConsumptionStatsForMidnight = async (userId) => {
+  const turkeyTime = getTurkeyTime();
+  const nowHour = turkeyTime.getHours();
+  const nowMinute = turkeyTime.getMinutes();
+  
+  // TEST: 00:21'de çalışacak şekilde ayarlandı (normalde 00:00 olmalı)
+  let checkDateStr;
+  if (nowHour === 0 && nowMinute === 21) {
+    // Önceki günün tarihini hesapla
+    const yesterday = new Date(turkeyTime);
+    yesterday.setDate(yesterday.getDate() - 1);
+    checkDateStr = yesterday.toLocaleDateString("en-CA");
+    console.log(`getSupplementConsumptionStatsForMidnight - TEST: 00:21 kontrolü, önceki günün tarihi: ${checkDateStr}`);
+  } else {
+    // Normal durumda bugünün tarihini kullan
+    checkDateStr = turkeyTime.toLocaleDateString("en-CA");
+  }
+  
+  const statsRef = db
+    .collection("users")
+    .doc(userId)
+    .collection("stats")
+    .doc("supplementConsumption");
+  const statsSnap = await statsRef.get();
+  if (statsSnap.exists) {
+    const data = statsSnap.data();
+    const result = data[checkDateStr] || {};
+    console.log(`getSupplementConsumptionStatsForMidnight - Kontrol edilen tarih: ${checkDateStr}, bulunan veriler:`, result);
+    return result;
+  }
+  return {};
+};
+
 // sendEachForMulticast: Her bir token için ayrı ayrı bildirim gönderir ve geçersiz tokenları takip eder
 const sendEachForMulticast = async (msg, userId) => {
   const { tokens, data } = msg;
@@ -493,9 +527,9 @@ exports.handler = async function (event, context) {
               }
             }
 
-            // GECE YARISI RESET BİLDİRİMİ: Eğer mevcut zaman gece yarısına yakınsa (±1 dakika)
+            // GECE YARISI RESET BİLDİRİMİ: TEST: 00:21'de çalışacak şekilde ayarlandı
             const midnight = new Date(now);
-            midnight.setHours(0, 0, 0, 0);
+            midnight.setHours(0, 21, 0, 0);
             if (Math.abs(now.getTime() - midnight.getTime()) < 60000) {
               let resetMessage = "";
               if (waterData.waterIntake >= waterData.dailyWaterTarget) {
@@ -557,8 +591,8 @@ exports.handler = async function (event, context) {
             console.log(`Kullanıcı ${userDoc.id} için varsayılan bildirim penceresi kullanılıyor:`, notificationWindow);
           }
           
-          // Bugünkü takviye tüketimini çek
-          const supplementConsumptionToday = await getSupplementConsumptionStats(userDoc.id);
+          // Bugünkü takviye tüketimini çek (gece yarısı kontrolü için özel fonksiyon kullan)
+          const supplementConsumptionToday = await getSupplementConsumptionStatsForMidnight(userDoc.id);
           const turkeyTime = getTurkeyTime();
           const currentDateStr = turkeyTime.toLocaleDateString("en-CA");
           const nowHour = turkeyTime.getHours();
@@ -570,7 +604,8 @@ exports.handler = async function (event, context) {
           const endTotal = endH * 60 + endM;
           const isWindowStart = nowTotal === startTotal;
           const isWindowEnd = nowTotal === endTotal;
-          const isMidnight = nowHour === 0 && nowMinute === 0;
+          // TEST: 00:21'de çalışacak şekilde ayarlandı (normalde 00:00 olmalı)
+          const isMidnight = nowHour === 0 && nowMinute === 21;
 
           suppSnapshot.forEach((docSnap) => {
             const suppData = docSnap.data();
@@ -633,6 +668,13 @@ exports.handler = async function (event, context) {
 
               // 4. Pencere bitişinde veya gece yarısı hatırlatma (kullanıcı tamamlamadıysa)
               if ((isWindowEnd || isMidnight) && consumedToday < dailyUsage) {
+                console.log(
+                  `sendPushNotification - Kullanıcı ${userDoc.id} için ${suppName} takviyesi gece yarısı kontrolü:`,
+                  `consumedToday: ${consumedToday}, dailyUsage: ${dailyUsage}, isMidnight: ${isMidnight}, isWindowEnd: ${isWindowEnd}`
+                );
+                console.log(
+                  `sendPushNotification - TEST: 00:21 kontrolü tetiklendi - ${suppName} takviyesi için bildirim gönderiliyor`
+                );
                 const motivasyonlar = [
                   `Bugün ${suppName} takviyeni henüz almadın. Sağlığın için düzenli kullanımı unutma!`,
                   `Takviyeni bugün almadın, yarın daha dikkatli olabilirsin!`,
@@ -647,6 +689,10 @@ exports.handler = async function (event, context) {
                     supplementId: docSnap.id,
                   },
                 });
+              } else if (isMidnight) {
+                console.log(
+                  `sendPushNotification - TEST: 00:21 kontrolü - ${suppName} takviyesi için bildirim gönderilmedi çünkü consumedToday (${consumedToday}) >= dailyUsage (${dailyUsage})`
+                );
               }
             }
           });

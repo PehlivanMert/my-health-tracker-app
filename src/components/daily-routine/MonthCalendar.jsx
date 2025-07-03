@@ -203,9 +203,11 @@ const MonthCalendar = ({
           fontSize: isMobile ? "0.55rem" : isCompact ? "0.6rem" : "0.7rem",
           color: categoryColors[routine.category] || categoryColors.Default,
           marginBottom: "2px",
-          whiteSpace: isMobile ? "normal" : "nowrap",
+          whiteSpace: "nowrap",
           overflow: "hidden",
-          wordBreak: isMobile ? "break-word" : "normal",
+          textOverflow: "ellipsis",
+          maxWidth: isMobile ? '90px' : isTablet ? '110px' : '140px',
+          minWidth: 0,
           cursor: "pointer",
           borderLeft: `2px solid ${
             categoryColors[routine.category] || categoryColors.Default

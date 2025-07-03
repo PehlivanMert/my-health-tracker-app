@@ -18,6 +18,7 @@ import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import PaletteIcon from "@mui/icons-material/Palette";
 import GroupIcon from "@mui/icons-material/Group";
+import AccessTime from "@mui/icons-material/AccessTime";
 
 const StyledCard = styled(motion.div, {
   shouldForwardProp: (prop) => prop !== "iscompleted" && prop !== "bordercolor",
@@ -340,7 +341,7 @@ const RoutineCard = ({
             >
               {routine.title}
             </Typography>
-            <Box display="flex" alignItems="center" mt={0.75}>
+            <Box display="flex" alignItems="center" mt={0.75} flexWrap={isMobile ? 'wrap' : 'nowrap'}>
               <CategoryChip color={cardColor}>
                 <CategoryIcon color={cardColor}>
                   {getCategoryIcon(routine.category)}
@@ -366,6 +367,24 @@ const RoutineCard = ({
                 {routine.time} {routine.endTime && `- ${routine.endTime}`}
               </Typography>
             </Box>
+            {isMobile && getCountdownMessage(routine, currentTime) && (
+              <Box mt={1}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: '#fff',
+                    fontWeight: 600,
+                    fontSize: "0.85rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.5,
+                  }}
+                >
+                  <AccessTime sx={{ fontSize: "1rem", mr: 0.5 }} />
+                  {getCountdownMessage(routine, currentTime)}
+                </Typography>
+              </Box>
+            )}
           </Box>
         </Box>
 
@@ -378,7 +397,7 @@ const RoutineCard = ({
           isActive={currentMin >= startMin && currentMin <= endMin}
           cardColor={cardColor}
           notificationsEnabled={notificationsEnabled}
-          countdownMessage={getCountdownMessage(routine, currentTime)}
+          countdownMessage={!isMobile ? getCountdownMessage(routine, currentTime) : undefined}
           onEdit={onEdit}
           onDelete={onDelete}
           onToggleNotification={onToggleNotification}

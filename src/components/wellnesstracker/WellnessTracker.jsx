@@ -332,8 +332,6 @@ const WellnessTracker = ({ user }) => {
       const supplementRef = doc(ref, id);
       await updateDoc(supplementRef, { quantity: newQuantity });
       await fetchSupplements();
-      // Takviye tüketildiğinde bildirim zamanını güncelleyelim
-      await saveNextSupplementReminderTime(user, supplement);
       const suppName = supplement.name;
       const today = new Date().toLocaleDateString("en-CA", {
         timeZone: "Europe/Istanbul",
@@ -352,6 +350,8 @@ const WellnessTracker = ({ user }) => {
       updatedStats[today].total = (updatedStats[today].total || 0) + 1;
       await setDoc(statsDocRef, updatedStats);
       await fetchSupplementConsumptionToday();
+      // Takviye tüketildiğinde bildirim zamanını güncelleyelim (tüketim verisi güncellendikten sonra)
+      await saveNextSupplementReminderTime(user, supplement);
     } catch (error) {
       console.error("Error consuming supplement:", error);
     }

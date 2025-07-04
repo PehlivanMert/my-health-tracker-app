@@ -147,15 +147,15 @@ self.addEventListener("push", (event) => {
   // Bildirim türüne göre yönlendirme URL'si belirle
   let clickAction = "/";
   if (data.type === "water" || data.type === "water-reset") {
-    clickAction = "/"; // Yaşam Takibi ana sayfada
+    clickAction = "/wellness-tracker"; // Yaşam Takibi sayfası
   } else if (data.type === "pomodoro") {
-    clickAction = "/"; // Rutin ana sayfada
+    clickAction = "/daily-routine"; // Rutin sayfası
   } else if (data.routineId) {
-    clickAction = "/"; // Rutin ana sayfada
+    clickAction = "/daily-routine"; // Rutin sayfası
   } else if (data.eventId) {
-    clickAction = "/"; // Takvim ana sayfada
+    clickAction = "/calendar"; // Takvim sayfası
   } else if (data.supplementId) {
-    clickAction = "/"; // Yaşam Takibi ana sayfada
+    clickAction = "/wellness-tracker"; // Yaşam Takibi sayfası
   }
   
   self.registration.showNotification(title, { 
@@ -183,7 +183,13 @@ self.addEventListener("notificationclick", (event) => {
   const eventId = event.notification.data?.eventId;
   const supplementId = event.notification.data?.supplementId;
   
-  console.log(`Bildirim türü: ${notificationType}, Yönlendirilecek sayfa: ${clickAction}`);
+  // Bildirim türüne göre sayfa adını belirle
+  let pageName = "Ana Sayfa";
+  if (clickAction === "/wellness-tracker") pageName = "Yaşam Takibi";
+  else if (clickAction === "/daily-routine") pageName = "Günlük Rutin";
+  else if (clickAction === "/calendar") pageName = "Takvim";
+  
+  console.log(`🎯 [NOTIFICATION CLICK] Bildirim türü: ${notificationType}, Yönlendirilecek sayfa: ${pageName} (${clickAction})`);
   
   // Mevcut açık pencereleri kontrol et
   event.waitUntil(
@@ -191,6 +197,7 @@ self.addEventListener("notificationclick", (event) => {
       // Eğer uygulama zaten açıksa, o pencereyi odakla
       for (const client of clients) {
         if (client.url.includes(self.location.origin) && "focus" in client) {
+          console.log(`📱 [NOTIFICATION CLICK] Mevcut pencereye yönlendiriliyor: ${pageName}`);
           client.navigate(clickAction);
           return client.focus();
         }
@@ -198,6 +205,7 @@ self.addEventListener("notificationclick", (event) => {
       
       // Eğer uygulama açık değilse, yeni pencere aç
       if (self.clients.openWindow) {
+        console.log(`🆕 [NOTIFICATION CLICK] Yeni pencere açılıyor: ${pageName}`);
         return self.clients.openWindow(clickAction);
       }
     })

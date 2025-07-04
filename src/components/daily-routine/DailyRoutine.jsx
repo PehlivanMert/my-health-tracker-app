@@ -743,8 +743,9 @@ const DailyRoutine = ({ user }) => {
   // Tüm bildirimler aktif mi? Sadece bugünkü ve gelecekteki rutinler kontrol edilir
   const today = new Date();
   const todayStr = getTurkeyLocalDateString(today);
-  const todayAndFutureRoutines = routines.filter(r => r.date >= todayStr);
-  const allNotificationsEnabled = todayAndFutureRoutines.length > 0 && todayAndFutureRoutines.every(r => r.notificationEnabled);
+  // Sadece tamamlanmamış rutinler hesaba katılıyor
+  const todayAndFutureActiveRoutines = routines.filter(r => r.date >= todayStr && !r.completed);
+  const allNotificationsEnabled = todayAndFutureActiveRoutines.length > 0 && todayAndFutureActiveRoutines.every(r => r.notificationEnabled);
 
   const toggleAllNotifications = () => {
     const allEnabled =

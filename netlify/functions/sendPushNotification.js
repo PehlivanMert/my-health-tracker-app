@@ -737,14 +737,59 @@ exports.handler = async function (event, context) {
                 }
 
                 // 4. Pencere bitişinde veya gece yarısı hatırlatma (kullanıcı tamamlamadıysa)
-                if ((isWindowEnd || isMidnight) && consumedToday < dailyUsage) {
-                  console.log(
-                    `sendPushNotification - Kullanıcı ${userDoc.id} için ${suppName} takviyesi gece yarısı kontrolü:`,
-                    `consumedToday: ${consumedToday}, dailyUsage: ${dailyUsage}, isMidnight: ${isMidnight}, isWindowEnd: ${isWindowEnd}`
-                  );
-                  console.log(
-                    `sendPushNotification - Gece yarısı 00:00 kontrolü tetiklendi - ${suppName} takviyesi için bildirim gönderiliyor`
-                  );
+                if (isMidnight) {
+                  // Gece yarısı için özel bildirimler
+                  if (consumedToday === dailyUsage) {
+                    // Tamamını aldıysa
+                    const successMessages = [
+                      `🎉 Harikasın! Bugün ${suppName} takviyeni tam zamanında aldın, vücudun sana teşekkür ediyor! 🏆`,
+                      `👏 Süper! ${suppName} takviyeni eksiksiz aldın, sağlığın için harika bir adım attın! 💪`,
+                      `🌟 Mükemmel! ${suppName} takviyeni tam olarak aldın, zinciri bozmadın! 🔗`,
+                      `🥳 Tebrikler! Bugün ${suppName} takviyeni eksiksiz aldın, böyle devam! 🚀`,
+                    ];
+                    notificationsForThisUser.push({
+                      tokens: fcmTokens,
+                      data: {
+                        title: `${suppName} Takviyesi Tamamlandı!`,
+                        body: successMessages[Math.floor(Math.random() * successMessages.length)],
+                        supplementId: docSnap.id,
+                      },
+                    });
+                  } else if (consumedToday === 0) {
+                    // Hiç almadıysa
+                    const failMessages = [
+                      `😱 Olamaz! Bugün ${suppName} takviyeni hiç almadın. Yarın telafi etme zamanı! ⏰`,
+                      `🙈 Bugün ${suppName} takviyeni atladın, ama üzülme, yarın yeni bir gün! 🌅`,
+                      `🚨 Dikkat! ${suppName} takviyeni bugün hiç almadın. Sağlığın için düzenli kullanımı unutma!`,
+                      `😴 Bugün ${suppName} takviyeni unuttun. Yarın hatırlatıcıları kontrol etmeyi unutma! 🔔`,
+                    ];
+                    notificationsForThisUser.push({
+                      tokens: fcmTokens,
+                      data: {
+                        title: `${suppName} Takviyesi Alınmadı!`,
+                        body: failMessages[Math.floor(Math.random() * failMessages.length)],
+                        supplementId: docSnap.id,
+                      },
+                    });
+                  } else if (consumedToday > 0 && consumedToday < dailyUsage) {
+                    // Kısmen aldıysa
+                    const partialMessages = [
+                      `🤔 Bugün ${suppName} takviyenden ${consumedToday}/${dailyUsage} aldın. Biraz daha dikkat, zinciri tamamla! 🔗`,
+                      `🕗 ${suppName} takviyeni bugün tam alamadın (${consumedToday}/${dailyUsage}). Yarın tam doz için motive ol! 💡`,
+                      `💡 ${suppName} takviyeni neredeyse tamamladın (${consumedToday}/${dailyUsage}), az kaldı!`,
+                      `⏳ Bugün ${suppName} takviyeni tam tamamlayamadın (${consumedToday}/${dailyUsage}). Yarın daha iyisi için devam!`,
+                    ];
+                    notificationsForThisUser.push({
+                      tokens: fcmTokens,
+                      data: {
+                        title: `${suppName} Takviyesi Yeterli Değil!`,
+                        body: partialMessages[Math.floor(Math.random() * partialMessages.length)],
+                        supplementId: docSnap.id,
+                      },
+                    });
+                  }
+                } else if (isWindowEnd && consumedToday < dailyUsage) {
+                  // Eski pencere bitişi mantığı
                   const motivasyonlar = [
                     `Bugün ${suppName} takviyeni henüz almadın. Sağlığın için düzenli kullanımı unutma!`,
                     `Takviyeni bugün almadın, yarın daha dikkatli olabilirsin!`,
@@ -759,10 +804,6 @@ exports.handler = async function (event, context) {
                       supplementId: docSnap.id,
                     },
                   });
-                } else if (isMidnight) {
-                  console.log(
-                    `sendPushNotification - Gece yarısı 00:00 kontrolü - ${suppName} takviyesi için bildirim gönderilmedi çünkü consumedToday (${consumedToday}) >= dailyUsage (${dailyUsage})`
-                  );
                 }
               }
             }

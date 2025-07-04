@@ -460,6 +460,8 @@ const WellnessTracker = ({ user }) => {
           }
         }
       }
+      // supplements listesini güncelle
+      await fetchSupplements();
       setSupplementNotificationDialogOpen(false);
     } catch (error) {
       console.error("Error saving supplement notifications:", error);

@@ -95,7 +95,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          // İsteğin başarılı olması durumunda, cache’i de güncelleyebilirsiniz.
+          // İsteğin başarılı olması durumunda, cache'i de güncelleyebilirsiniz.
           return response;
         })
         .catch(() => caches.match("/offline.html"))
@@ -143,7 +143,65 @@ self.addEventListener("push", (event) => {
   const title = data.title || "Bilinmeyen Bildirim";
   const body = data.body || "İçerik bulunamadı";
   const icon = data.icon || "/logo4.jpeg";
-  self.registration.showNotification(title, { body, icon });
+  
+  // Bildirim türüne göre yönlendirme URL'si belirle
+  let clickAction = "/";
+  if (data.type === "water" || data.type === "water-reset") {
+    clickAction = "/"; // Yaşam Takibi ana sayfada
+  } else if (data.type === "pomodoro") {
+    clickAction = "/"; // Rutin ana sayfada
+  } else if (data.routineId) {
+    clickAction = "/"; // Rutin ana sayfada
+  } else if (data.eventId) {
+    clickAction = "/"; // Takvim ana sayfada
+  } else if (data.supplementId) {
+    clickAction = "/"; // Yaşam Takibi ana sayfada
+  }
+  
+  self.registration.showNotification(title, { 
+    body, 
+    icon,
+    data: {
+      clickAction: clickAction,
+      notificationType: data.type,
+      routineId: data.routineId,
+      eventId: data.eventId,
+      supplementId: data.supplementId
+    }
+  });
+});
+
+// Bildirime tıklama olayını dinle
+self.addEventListener("notificationclick", (event) => {
+  console.log("Bildirime tıklandı:", event.notification.data);
+  
+  event.notification.close();
+  
+  const clickAction = event.notification.data?.clickAction || "/";
+  const notificationType = event.notification.data?.notificationType;
+  const routineId = event.notification.data?.routineId;
+  const eventId = event.notification.data?.eventId;
+  const supplementId = event.notification.data?.supplementId;
+  
+  console.log(`Bildirim türü: ${notificationType}, Yönlendirilecek sayfa: ${clickAction}`);
+  
+  // Mevcut açık pencereleri kontrol et
+  event.waitUntil(
+    self.clients.matchAll({ type: "window" }).then((clients) => {
+      // Eğer uygulama zaten açıksa, o pencereyi odakla
+      for (const client of clients) {
+        if (client.url.includes(self.location.origin) && "focus" in client) {
+          client.navigate(clickAction);
+          return client.focus();
+        }
+      }
+      
+      // Eğer uygulama açık değilse, yeni pencere aç
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(clickAction);
+      }
+    })
+  );
 });
 
 //ctrl+ k + c

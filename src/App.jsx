@@ -76,6 +76,8 @@ import { tr } from "date-fns/locale";
 import NotificationSettingsDialog from "../src/utils/NotificationSettingsDialog";
 import { GlobalStateContext } from "./components/context/GlobalStateContext";
 import { handleSaveNotificationWindow } from "./utils/notificationWindowUtils";
+import { messaging } from "./components/auth/firebaseConfig";
+import { onMessage } from "firebase/messaging";
 
 // Animasyonlar
 const float = keyframes`
@@ -201,6 +203,65 @@ function App() {
     if (user) {
       requestNotificationPermissionAndSaveToken(user);
     }
+  }, [user]);
+
+  // Firebase Messaging: Foreground bildirimleri dinle
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubscribe = onMessage(messaging, (payload) => {
+      console.log("📱 [FOREGROUND] Bildirim alındı:", payload);
+      
+      const { title, body, icon } = payload.notification || {};
+      const data = payload.data || {};
+      
+      // Bildirim türüne göre yönlendirme URL'si belirle
+      let clickAction = "/";
+      if (data.type === "water" || data.type === "water-reset") {
+        clickAction = "/wellness-tracker";
+      } else if (data.type === "pomodoro") {
+        clickAction = "/daily-routine";
+      } else if (data.routineId) {
+        clickAction = "/daily-routine";
+      } else if (data.eventId) {
+        clickAction = "/calendar";
+      } else if (data.supplementId) {
+        clickAction = "/wellness-tracker";
+      }
+
+      // Toast bildirimi göster
+      toast.info(
+        <div>
+          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{title}</div>
+          <div>{body}</div>
+          <div style={{ fontSize: '12px', marginTop: '4px', opacity: 0.7 }}>
+            Tıklayın: {clickAction === "/wellness-tracker" ? "Yaşam Takibi" : 
+                       clickAction === "/daily-routine" ? "Günlük Rutin" :
+                       clickAction === "/calendar" ? "Takvim" : "Ana Sayfa"}
+          </div>
+        </div>,
+        {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          onClick: () => {
+            // Bildirime tıklandığında ilgili sayfaya yönlendir
+            // Tab 0: Rutin, Tab 1: Yaşam, Tab 4: Takvim
+            handleTabChange(
+              clickAction === "/wellness-tracker" ? 1 :  // Yaşam Takibi
+              clickAction === "/daily-routine" ? 0 :     // Günlük Rutin
+              clickAction === "/calendar" ? 4 :          // Takvim
+              0  // Varsayılan: Ana Sayfa
+            );
+          }
+        }
+      );
+    });
+
+    return () => unsubscribe();
   }, [user]);
 
   // Sekme Yönetimi (hem Tabs hem BottomNavigation için aynı state)

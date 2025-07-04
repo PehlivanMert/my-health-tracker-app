@@ -92,7 +92,7 @@ const getCachedWater = async (userId) => {
   return snapshot;
 };
 
-// Cache'lenmiş supplement verilerini alır.
+// Cache'lenmiş supplement verilerini alır
 const getCachedSupplements = async (userId) => {
   const nowMillis = Date.now();
   if (

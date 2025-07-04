@@ -278,22 +278,33 @@ exports.handler = async function (event, context) {
   try {
     const now = getTurkeyTime();
     const notificationsToSend = [];
+    
+    console.log(`🔔 [BİLDİRİM SİSTEMİ] Başlatılıyor - ${now.toLocaleString('tr-TR')}`);
 
     // Cache'lenmiş kullanıcıları alıyoruz (15 dakikalık TTL)
     const userDocs = await getCachedUsers();
+    console.log(`👥 [BİLDİRİM SİSTEMİ] ${userDocs.length} kullanıcı bulundu`);
 
     // Kullanıcılar arası işlemleri paralel yürütüyoruz
     await Promise.all(
       userDocs.map(async (userDoc) => {
         const userData = userDoc.data();
         const fcmTokens = userData.fcmTokens; // Token dizisi kullanılıyor
-        if (!fcmTokens || fcmTokens.length === 0) return;
+        
+        if (!fcmTokens || fcmTokens.length === 0) {
+          console.log(`❌ [${userDoc.id}] FCM token yok, atlanıyor`);
+          return;
+        }
+
+        console.log(`🔍 [${userDoc.id}] Bildirim kontrolü başlatılıyor (${fcmTokens.length} token)`);
 
         // Kullanıcıya ait bildirimleri toplamak için yerel dizi
         let notificationsForThisUser = [];
 
         // ---------- Rutin Bildirimleri ----------
         if (userData.routines && Array.isArray(userData.routines)) {
+          console.log(`📅 [${userDoc.id}] ${userData.routines.length} rutin kontrol ediliyor`);
+          
           // Bugünün tarihini YYYY-MM-DD formatında alıyoruz.
           const turkeyTime = getTurkeyTime();
           const currentDateStr = turkeyTime.toISOString().split("T")[0];
@@ -304,8 +315,10 @@ exports.handler = async function (event, context) {
               !routine.notificationEnabled ||
               routine.completed ||
               routine.date !== currentDateStr
-            )
+            ) {
+              console.log(`⏭️ [${userDoc.id}] Rutin "${routine.title}" atlanıyor (bildirim: ${routine.notificationEnabled}, tamamlandı: ${routine.completed}, tarih: ${routine.date})`);
               return;
+            }
 
             // Başlangıç zamanına bildirim
             const [startHour, startMinute] = routine.time
@@ -315,8 +328,7 @@ exports.handler = async function (event, context) {
             startTime.setHours(startHour, startMinute, 0, 0);
             if (Math.abs(now - startTime) / 60000 < 0.5) {
               console.log(
-                `sendPushNotification - Kullanıcı ${userDoc.id} için başlangıç zamanı bildirimi:`,
-                startTime
+                `✅ [${userDoc.id}] RUTİN BAŞLANGIÇ: "${routine.title}" - ${startTime.toLocaleTimeString('tr-TR')}`
               );
               notificationsForThisUser.push({
                 tokens: fcmTokens,
@@ -337,8 +349,7 @@ exports.handler = async function (event, context) {
               endTime.setHours(endHour, endMinute, 0, 0);
               if (Math.abs(now - endTime) / 60000 < 0.5) {
                 console.log(
-                  `sendPushNotification - Kullanıcı ${userDoc.id} için bitiş zamanı bildirimi:`,
-                  endTime
+                  `✅ [${userDoc.id}] RUTİN BİTİŞ: "${routine.title}" - ${endTime.toLocaleTimeString('tr-TR')}`
                 );
                 notificationsForThisUser.push({
                   tokens: fcmTokens,
@@ -351,6 +362,8 @@ exports.handler = async function (event, context) {
               }
             }
           });
+        } else {
+          console.log(`📅 [${userDoc.id}] Rutin yok`);
         }
 
         // ---------- Pomodoro Bildirimleri (Advanced Timer targetTime kullanarak) ----------
@@ -364,18 +377,14 @@ exports.handler = async function (event, context) {
         if (advancedTimerDoc.exists) {
           const timerState = advancedTimerDoc.data();
           console.log(
-            `Kullanıcı ${userDoc.id} advancedTimer state:`,
-            timerState
+            `⏰ [${userDoc.id}] Pomodoro durumu: ${timerState.isRunning ? 'Çalışıyor' : 'Durdu'}`
           );
 
           if (timerState.targetTime) {
             // Firestore'dan gelen targetTime (UTC milisaniye değeri)
             const targetTimeDate = new Date(timerState.targetTime);
             console.log(
-              "Firestore targetTime (raw):",
-              timerState.targetTime,
-              "Date:",
-              targetTimeDate
+              `⏰ [${userDoc.id}] Pomodoro hedef zamanı: ${targetTimeDate.toLocaleString('tr-TR')}`
             );
 
             // targetTime'ı Türkiye saatine çevirmek için:
@@ -384,26 +393,19 @@ exports.handler = async function (event, context) {
                 timeZone: "Europe/Istanbul",
               })
             );
-            console.log("targetTimeTurkey:", targetTimeTurkey);
 
             // getTurkeyTime fonksiyonu zaten Türkiye saatini veriyor, bu yüzden tekrar çevirmeye gerek yok:
             const nowTurkey = getTurkeyTime();
-            console.log("Şu anki Türkiye zamanı:", nowTurkey);
 
             // İki tarih arasındaki farkı dakika cinsinden hesaplayın
             const diffMinutes = Math.abs(
               (nowTurkey - targetTimeTurkey) / 60000
             );
-            console.log(
-              "targetTime ile şimdi arasındaki fark:",
-              diffMinutes,
-              "dakika"
-            );
 
             // Eğer fark 0.5 dakika (30 saniye) içindeyse bildirim gönder
             if (diffMinutes < 0.5) {
               console.log(
-                `sendPushNotification - Kullanıcı ${userDoc.id} için Pomodoro hedef zamanı bildirimi gönderiliyor.`
+                `✅ [${userDoc.id}] POMODORO TAMAMLANDI: ${targetTimeTurkey.toLocaleTimeString('tr-TR')}`
               );
               notificationsForThisUser.push({
                 tokens: fcmTokens,
@@ -413,8 +415,14 @@ exports.handler = async function (event, context) {
                   type: "pomodoro",
                 },
               });
+            } else {
+              console.log(`⏰ [${userDoc.id}] Pomodoro henüz tamamlanmadı (${diffMinutes.toFixed(1)} dakika kaldı)`);
             }
+          } else {
+            console.log(`⏰ [${userDoc.id}] Pomodoro hedef zamanı yok`);
           }
+        } else {
+          console.log(`⏰ [${userDoc.id}] Pomodoro durumu bulunamadı`);
         }
 
         // ---------- Cache'lenmiş Subcollection Sorgularını Paralel Çalıştırma ----------
@@ -441,14 +449,18 @@ exports.handler = async function (event, context) {
 
         // ---------- Takvim Bildirimleri (Global bildirim penceresinden bağımsız) ----------
         if (calendarSnapshot) {
+          console.log(`📅 [${userDoc.id}] ${calendarSnapshot.size} takvim etkinliği kontrol ediliyor`);
+          
           calendarSnapshot.forEach((docSnap) => {
             const eventData = docSnap.data();
-            if (!eventData.notification || eventData.notification === "none")
+            if (!eventData.notification || eventData.notification === "none") {
+              console.log(`⏭️ [${userDoc.id}] Etkinlik "${eventData.title}" atlanıyor (bildirim: ${eventData.notification})`);
               return;
+            }
             
             // eventData.start null check ekle
             if (!eventData.start) {
-              console.log(`Kullanıcı ${userDoc.id} için takvim etkinliği ${eventData.title || 'Bilinmeyen'} başlangıç zamanı eksik, atlanıyor.`);
+              console.log(`❌ [${userDoc.id}] Etkinlik "${eventData.title}" başlangıç zamanı eksik, atlanıyor`);
               return;
             }
             
@@ -460,17 +472,14 @@ exports.handler = async function (event, context) {
                 timeZone: "Europe/Istanbul",
               })
             );
-            console.log(
-              `sendPushNotification - Kullanıcı ${userDoc.id} için takvim bildirimi zamanı:`,
-              eventData.title
-            );
+            
             const triggerTime = new Date(
               eventStartTurkey.getTime() - offsetMinutes * 60000
             );
+            
             if (Math.abs(now - triggerTime) / 60000 < 0.5) {
               console.log(
-                `sendPushNotification - Kullanıcı ${userDoc.id} için takvim bildirimi zamanı:`,
-                triggerTime
+                `✅ [${userDoc.id}] TAKVİM ETKİNLİĞİ: "${eventData.title}" - ${eventStartTurkey.toLocaleString('tr-TR')} (${offsetMinutes > 0 ? `${offsetMinutes} dk önce` : 'şimdi'})`
               );
               notificationsForThisUser.push({
                 tokens: fcmTokens,
@@ -484,8 +493,12 @@ exports.handler = async function (event, context) {
                   eventId: docSnap.id,
                 },
               });
+            } else {
+              console.log(`📅 [${userDoc.id}] Etkinlik "${eventData.title}" henüz zamanı gelmedi (${Math.abs(now - triggerTime) / 60000} dakika fark)`);
             }
           });
+        } else {
+          console.log(`📅 [${userDoc.id}] Takvim etkinliği yok`);
         }
 
         // ---------- Global Bildirim Penceresi Kontrolü (Su ve Takviye bildirimleri için) ----------
@@ -517,25 +530,33 @@ exports.handler = async function (event, context) {
 
           if (!isWithinNotificationWindow) {
             console.log(
-              `Kullanıcı ${userDoc.id} için bildirim penceresi dışında: ${nowTotal} - ${startTotal}-${endTotal}`
+              `⏰ [${userDoc.id}] BİLDİRİM PENCERESİ DIŞINDA: ${now.toLocaleTimeString('tr-TR')} (${notificationWindow.start}-${notificationWindow.end})`
             );
             // Bildirim gönderimini atla - sadece su ve takviye bildirimleri için
             // return; // ❌ Bu satır tüm bildirimleri engelliyor!
+          } else {
+            console.log(
+              `⏰ [${userDoc.id}] BİLDİRİM PENCERESİ İÇİNDE: ${now.toLocaleTimeString('tr-TR')} (${notificationWindow.start}-${notificationWindow.end})`
+            );
           }
         } else {
           // Bildirim penceresi yoksa varsayılan değerleri kullan
           notificationWindow = { start: "08:00", end: "22:00" };
-          console.log(`Kullanıcı ${userDoc.id} için bildirim penceresi ayarları eksik, varsayılan değerler kullanılıyor:`, notificationWindow);
+          console.log(`⏰ [${userDoc.id}] Varsayılan bildirim penceresi kullanılıyor: ${notificationWindow.start}-${notificationWindow.end}`);
         }
 
         // ---------- Su Bildirimleri (Global bildirim penceresi kontrolü geçerse) ----------
         if (isWithinNotificationWindow && waterSnap && waterSnap.exists) {
+          console.log(`💧 [${userDoc.id}] Su bildirimleri kontrol ediliyor`);
+          
           const waterData = waterSnap.data();
 
           // Su verilerinin geçerli olduğunu kontrol et
           if (!waterData || typeof waterData.dailyWaterTarget !== 'number' || typeof waterData.waterIntake !== 'number') {
-            console.log(`Kullanıcı ${userDoc.id} için su verileri eksik veya geçersiz, su bildirimleri atlanıyor.`);
+            console.log(`❌ [${userDoc.id}] Su verileri eksik veya geçersiz, su bildirimleri atlanıyor`);
           } else {
+            console.log(`💧 [${userDoc.id}] Su durumu: ${waterData.waterIntake}ml / ${waterData.dailyWaterTarget}ml`);
+            
             // Mevcut su bildirim zamanı (nextWaterReminderTime) için bildirim:
             if (waterData.nextWaterReminderTime) {
               const nextReminder = new Date(waterData.nextWaterReminderTime);
@@ -544,11 +565,11 @@ exports.handler = async function (event, context) {
                   timeZone: "Europe/Istanbul",
                 })
               );
-              console.log(
-                `sendPushNotification - Kullanıcı ${userDoc.id} için su bildirimi zamanı:`,
-                nextReminderTurkey
-              );
+              
               if (Math.abs(now - nextReminderTurkey) / 60000 < 0.5) {
+                console.log(
+                  `✅ [${userDoc.id}] SU HATIRLATMASI: ${nextReminderTurkey.toLocaleTimeString('tr-TR')}`
+                );
                 notificationsForThisUser.push({
                   tokens: fcmTokens,
                   data: {
@@ -561,13 +582,21 @@ exports.handler = async function (event, context) {
                     type: "water",
                   },
                 });
+              } else {
+                console.log(`💧 [${userDoc.id}] Su hatırlatması henüz zamanı gelmedi (${Math.abs(now - nextReminderTurkey) / 60000} dakika fark)`);
               }
+            } else {
+              console.log(`💧 [${userDoc.id}] Su hatırlatma zamanı ayarlanmamış`);
             }
 
             // GECE YARISI RESET BİLDİRİMİ: Gece yarısı 00:00 kontrolü
             const midnight = new Date(now);
             midnight.setHours(0, 0, 0, 0);
             if (Math.abs(now.getTime() - midnight.getTime()) < 60000) {
+              console.log(
+                `✅ [${userDoc.id}] GECE YARISI SU RESET: ${waterData.waterIntake >= waterData.dailyWaterTarget ? 'HEDEF TAMAMLANDI' : 'HEDEF TAMAMLANAMADI'}`
+              );
+              
               let resetMessage = "";
               if (waterData.waterIntake >= waterData.dailyWaterTarget) {
                 // Başarı mesajları (10 adet)
@@ -604,10 +633,7 @@ exports.handler = async function (event, context) {
                 resetMessage =
                   failMessages[Math.floor(Math.random() * failMessages.length)];
               }
-              console.log(
-                `sendPushNotification - Kullanıcı ${userDoc.id} için gece yarısı su reset bildirimi zamanı:`,
-                now
-              );
+              
               notificationsForThisUser.push({
                 tokens: fcmTokens,
                 data: {
@@ -618,14 +644,22 @@ exports.handler = async function (event, context) {
               });
             }
           }
+        } else {
+          if (!isWithinNotificationWindow) {
+            console.log(`💧 [${userDoc.id}] Su bildirimleri atlanıyor (bildirim penceresi dışında)`);
+          } else if (!waterSnap || !waterSnap.exists) {
+            console.log(`💧 [${userDoc.id}] Su verisi bulunamadı`);
+          }
         }
 
         // ---------- Takviye Bildirimleri (Global bildirim penceresi kontrolü geçerse) ----------
         if (isWithinNotificationWindow && suppSnapshot) {
+          console.log(`💊 [${userDoc.id}] Takviye bildirimleri kontrol ediliyor`);
+          
           // Bildirim penceresi kontrolü için güvenli erişim - varsayılan değerlerle
           if (!notificationWindow || !notificationWindow.start || !notificationWindow.end) {
             notificationWindow = { start: "08:00", end: "22:00" };
-            console.log(`Kullanıcı ${userDoc.id} için varsayılan bildirim penceresi kullanılıyor:`, notificationWindow);
+            console.log(`⏰ [${userDoc.id}] Varsayılan bildirim penceresi kullanılıyor: ${notificationWindow.start}-${notificationWindow.end}`);
           }
           
           // Bugünkü takviye tüketimini çek (gece yarısı kontrolü için özel fonksiyon kullan)
@@ -646,6 +680,8 @@ exports.handler = async function (event, context) {
 
           if (suppSnapshot && suppSnapshot.forEach) {
             const docSnaps = suppSnapshot.docs ? suppSnapshot.docs : Array.from(suppSnapshot);
+            console.log(`💊 [${userDoc.id}] ${docSnaps.length} takviye kontrol ediliyor`);
+            
             for (const docSnap of docSnaps) {
               const suppData = docSnap.data();
               if (
@@ -657,13 +693,17 @@ exports.handler = async function (event, context) {
                 const consumedToday = supplementConsumptionToday[suppName] || 0;
                 const estimatedRemainingDays = Math.floor(suppData.quantity / dailyUsage);
 
+                console.log(`💊 [${userDoc.id}] ${suppName}: ${consumedToday}/${dailyUsage} alındı, ${estimatedRemainingDays} gün kaldı`);
+
                 // 1. Kullanıcı günlük miktarı tamamladıysa bu takviye için bildirim atma
                 if (consumedToday >= dailyUsage) {
+                  console.log(`✅ [${userDoc.id}] ${suppName} günlük miktarı tamamlandı, bildirim atlanıyor`);
                   continue; // Sadece bu takviye için döngüden çık, diğerlerini etkileme
                 }
 
                 // 2. 14/7/3/1 gün kaldı bildirimi pencere başında
                 if ([14, 7, 3, 1].includes(estimatedRemainingDays) && isWindowStart) {
+                  console.log(`✅ [${userDoc.id}] TAKVİYE STOK UYARISI: ${suppName} - ${estimatedRemainingDays} gün kaldı`);
                   const motivasyonlar = [
                     `Harika gidiyorsun! ${suppName} takviyenden sadece ${estimatedRemainingDays} gün kaldı, sağlığın için istikrarlı ol!`,
                     `Az kaldı! ${suppName} takviyenden ${estimatedRemainingDays} gün sonra yenilemen gerekebilir.`,
@@ -684,15 +724,9 @@ exports.handler = async function (event, context) {
                 if (suppData.notificationSchedule && suppData.notificationSchedule.length > 0) {
                   const currentTimeStr = `${nowHour.toString().padStart(2, '0')}:${nowMinute.toString().padStart(2, '0')}`;
                   
-                  console.log(
-                    `sendPushNotification - ${suppName} için bildirim saatleri: ${suppData.notificationSchedule.join(', ')}, şu anki saat: ${currentTimeStr}`
-                  );
-                  
                   // Şu anki saat, bildirim saatlerinden biri mi kontrol et
                   if (suppData.notificationSchedule.includes(currentTimeStr)) {
-                    console.log(
-                      `sendPushNotification - ${suppName} için bildirim saati tetiklendi: ${currentTimeStr}`
-                    );
+                    console.log(`✅ [${userDoc.id}] TAKVİYE ZAMANI: ${suppName} - ${currentTimeStr}`);
                     const motivasyonlar = [
                       `Takviyeni almayı unutma! Düzenli kullanım sağlığın için çok önemli.`,
                       `Bugün de ${suppName} takviyeni alırsan zinciri bozmayacaksın!`,
@@ -709,35 +743,46 @@ exports.handler = async function (event, context) {
                     });
                     // Bildirim gönderildikten sonra bir sonraki zamanı kaydet
                     await updateNextSupplementReminderTime(userDoc.id, docSnap);
+                  } else {
+                    console.log(`💊 [${userDoc.id}] ${suppName} henüz zamanı gelmedi (${currentTimeStr}, planlanan: ${suppData.notificationSchedule.join(', ')})`);
                   }
                 } else {
                   // Eski sistem: nextSupplementReminderTime kontrolü (geriye uyumluluk için)
-                  const nextReminder = new Date(suppData.nextSupplementReminderTime);
-                  const nextReminderTurkey = new Date(
-                    nextReminder.toLocaleString("en-US", {
-                      timeZone: "Europe/Istanbul",
-                    })
-                  );
-                  if (Math.abs(now - nextReminderTurkey) / 60000 < 0.5) {
-                    const motivasyonlar = [
-                      `Takviyeni almayı unutma! Düzenli kullanım sağlığın için çok önemli.`,
-                      `Bugün de ${suppName} takviyeni alırsan zinciri bozmayacaksın!`,
-                      `Vücudun sana teşekkür edecek! ${suppName} takviyeni almayı unutma.`,
-                      `Sağlıklı bir gün için ${suppName} takviyeni şimdi alabilirsin!`,
-                    ];
-                    notificationsForThisUser.push({
-                      tokens: fcmTokens,
-                      data: {
-                        title: `${suppName} Takviyesi Zamanı!`,
-                        body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
-                        supplementId: docSnap.id,
-                      },
-                    });
+                  if (suppData.nextSupplementReminderTime) {
+                    const nextReminder = new Date(suppData.nextSupplementReminderTime);
+                    const nextReminderTurkey = new Date(
+                      nextReminder.toLocaleString("en-US", {
+                        timeZone: "Europe/Istanbul",
+                      })
+                    );
+                    if (Math.abs(now - nextReminderTurkey) / 60000 < 0.5) {
+                      console.log(`✅ [${userDoc.id}] TAKVİYE ZAMANI (ESKİ SİSTEM): ${suppName} - ${nextReminderTurkey.toLocaleTimeString('tr-TR')}`);
+                      const motivasyonlar = [
+                        `Takviyeni almayı unutma! Düzenli kullanım sağlığın için çok önemli.`,
+                        `Bugün de ${suppName} takviyeni alırsan zinciri bozmayacaksın!`,
+                        `Vücudun sana teşekkür edecek! ${suppName} takviyeni almayı unutma.`,
+                        `Sağlıklı bir gün için ${suppName} takviyeni şimdi alabilirsin!`,
+                      ];
+                      notificationsForThisUser.push({
+                        tokens: fcmTokens,
+                        data: {
+                          title: `${suppName} Takviyesi Zamanı!`,
+                          body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
+                          supplementId: docSnap.id,
+                        },
+                      });
+                    } else {
+                      console.log(`💊 [${userDoc.id}] ${suppName} henüz zamanı gelmedi (${Math.abs(now - nextReminderTurkey) / 60000} dakika fark)`);
+                    }
+                  } else {
+                    console.log(`💊 [${userDoc.id}] ${suppName} için bildirim zamanı ayarlanmamış`);
                   }
                 }
 
                 // 4. Pencere bitişinde veya gece yarısı hatırlatma (kullanıcı tamamlamadıysa)
                 if (isMidnight) {
+                  console.log(`✅ [${userDoc.id}] GECE YARISI TAKVİYE ÖZET: ${suppName} - ${consumedToday}/${dailyUsage} alındı`);
+                  
                   // Gece yarısı için özel bildirimler
                   if (consumedToday === dailyUsage) {
                     // Tamamını aldıysa
@@ -790,6 +835,7 @@ exports.handler = async function (event, context) {
                   }
                 } else if (isWindowEnd && consumedToday < dailyUsage) {
                   // Eski pencere bitişi mantığı
+                  console.log(`✅ [${userDoc.id}] PENCERE BİTİŞİ TAKVİYE UYARISI: ${suppName} - ${consumedToday}/${dailyUsage} alındı`);
                   const motivasyonlar = [
                     `Bugün ${suppName} takviyeni henüz almadın. Sağlığın için düzenli kullanımı unutma!`,
                     `Takviyeni bugün almadın, yarın daha dikkatli olabilirsin!`,
@@ -805,52 +851,70 @@ exports.handler = async function (event, context) {
                     },
                   });
                 }
+              } else {
+                console.log(`💊 [${userDoc.id}] ${suppName} geçersiz (miktar: ${suppData.quantity}, günlük: ${suppData.dailyUsage})`);
               }
             }
+          } else {
+            console.log(`💊 [${userDoc.id}] Takviye verisi bulunamadı`);
+          }
+        } else {
+          if (!isWithinNotificationWindow) {
+            console.log(`💊 [${userDoc.id}] Takviye bildirimleri atlanıyor (bildirim penceresi dışında)`);
+          } else if (!suppSnapshot) {
+            console.log(`💊 [${userDoc.id}] Takviye verisi bulunamadı`);
           }
         }
 
         // Kullanıcıya ait bildirimler varsa, kullanıcı ID'si ile birlikte ekle
         if (notificationsForThisUser.length > 0) {
+          console.log(`📤 [${userDoc.id}] ${notificationsForThisUser.length} bildirim gönderilecek`);
           notificationsToSend.push({
             userId: userDoc.id,
             notifications: notificationsForThisUser,
           });
+        } else {
+          console.log(`📤 [${userDoc.id}] Gönderilecek bildirim yok`);
         }
       })
     );
+
+    console.log(`📊 [BİLDİRİM SİSTEMİ] Toplam ${notificationsToSend.length} kullanıcıya bildirim gönderilecek`);
 
     // Tüm bildirim mesajlarını, her token için ayrı ayrı gönder ve geçersiz tokenları temizle
     const sendResults = await Promise.all(
       notificationsToSend.map(async (userNotifications) => {
         try {
           const { userId, notifications } = userNotifications;
+          console.log(`📤 [${userId}] ${notifications.length} bildirim gönderiliyor...`);
+          
           const results = await Promise.all(
             notifications.map((notification) =>
               sendEachForMulticast(notification, userId)
             )
           );
+          
+          const successCount = results.flat().filter(r => r.valid).length;
+          const failCount = results.flat().filter(r => !r.valid).length;
+          console.log(`📤 [${userId}] Bildirim sonucu: ${successCount} başarılı, ${failCount} başarısız`);
+          
           return { userId, results };
         } catch (err) {
-          console.error("Bildirim gönderme hatası:", err);
+          console.error(`❌ [${userNotifications.userId}] Bildirim gönderme hatası:`, err);
           return err;
         }
       })
     );
 
-    console.log(
-      "sendPushNotification - Gönderilen bildirim sonuçları:",
-      sendResults
-    );
+    console.log(`✅ [BİLDİRİM SİSTEMİ] Tamamlandı - ${sendResults.length} kullanıcı işlendi`);
     return {
       statusCode: 200,
       body: JSON.stringify({ results: sendResults }),
     };
   } catch (error) {
-    console.error(
-      "sendPushNotification - Push bildirim gönderimi hatası:",
-      error
-    );
+    console.error("❌ [BİLDİRİM SİSTEMİ] Genel hata:", error);
     return { statusCode: 500, body: error.toString() };
   }
 };
+
+

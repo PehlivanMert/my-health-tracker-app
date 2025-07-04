@@ -519,8 +519,8 @@ exports.handler = async function (event, context) {
             console.log(
               `Kullanıcı ${userDoc.id} için bildirim penceresi dışında: ${nowTotal} - ${startTotal}-${endTotal}`
             );
-            // Bildirim gönderimini atla
-            return;
+            // Bildirim gönderimini atla - sadece su ve takviye bildirimleri için
+            // return; // ❌ Bu satır tüm bildirimleri engelliyor!
           }
         } else {
           // Bildirim penceresi yoksa varsayılan değerleri kullan
@@ -657,9 +657,9 @@ exports.handler = async function (event, context) {
                 const consumedToday = supplementConsumptionToday[suppName] || 0;
                 const estimatedRemainingDays = Math.floor(suppData.quantity / dailyUsage);
 
-                // 1. Kullanıcı günlük miktarı tamamladıysa hiçbir bildirim atma
+                // 1. Kullanıcı günlük miktarı tamamladıysa bu takviye için bildirim atma
                 if (consumedToday >= dailyUsage) {
-                  return;
+                  continue; // Sadece bu takviye için döngüden çık, diğerlerini etkileme
                 }
 
                 // 2. 14/7/3/1 gün kaldı bildirimi pencere başında

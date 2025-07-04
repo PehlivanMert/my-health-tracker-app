@@ -144,25 +144,29 @@ self.addEventListener("push", (event) => {
   const body = data.body || "İçerik bulunamadı";
   const icon = data.icon || "/logo4.jpeg";
   
-  // Bildirim türüne göre yönlendirme URL'si belirle
-  let clickAction = "/";
+  // Bildirim türüne göre tab indeksi belirle
+  let targetTab = 0; // Varsayılan: Ana sayfa
   if (data.type === "water" || data.type === "water-reset") {
-    clickAction = "/wellness-tracker"; // Yaşam Takibi sayfası
+    targetTab = 1; // Yaşam Takibi tab'ı
   } else if (data.type === "pomodoro") {
-    clickAction = "/daily-routine"; // Rutin sayfası
+    targetTab = 0; // Rutin tab'ı
   } else if (data.routineId) {
-    clickAction = "/daily-routine"; // Rutin sayfası
+    targetTab = 0; // Rutin tab'ı
   } else if (data.eventId) {
-    clickAction = "/calendar"; // Takvim sayfası
+    targetTab = 4; // Takvim tab'ı
   } else if (data.supplementId) {
-    clickAction = "/wellness-tracker"; // Yaşam Takibi sayfası
+    targetTab = 1; // Yaşam Takibi tab'ı
   }
+  
+  // Tab bilgisini data'ya ekle
+  const clickAction = "/"; // Ana sayfa URL'i
   
   self.registration.showNotification(title, { 
     body, 
     icon,
     data: {
       clickAction: clickAction,
+      targetTab: targetTab,
       notificationType: data.type,
       routineId: data.routineId,
       eventId: data.eventId,
@@ -178,35 +182,52 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   
   const clickAction = event.notification.data?.clickAction || "/";
+  const targetTab = event.notification.data?.targetTab || 0;
   const notificationType = event.notification.data?.notificationType;
   const routineId = event.notification.data?.routineId;
   const eventId = event.notification.data?.eventId;
   const supplementId = event.notification.data?.supplementId;
   
-  // Bildirim türüne göre sayfa adını belirle
+  // Tab indeksine göre sayfa adını belirle
   let pageName = "Ana Sayfa";
-  if (clickAction === "/wellness-tracker") pageName = "Yaşam Takibi";
-  else if (clickAction === "/daily-routine") pageName = "Günlük Rutin";
-  else if (clickAction === "/calendar") pageName = "Takvim";
+  if (targetTab === 1) pageName = "Yaşam Takibi";
+  else if (targetTab === 0) pageName = "Günlük Rutin";
+  else if (targetTab === 4) pageName = "Takvim";
   
-  console.log(`🎯 [NOTIFICATION CLICK] Bildirim türü: ${notificationType}, Yönlendirilecek sayfa: ${pageName} (${clickAction})`);
+  console.log(`🎯 [NOTIFICATION CLICK] Bildirim türü: ${notificationType}, Yönlendirilecek tab: ${pageName} (Tab ${targetTab})`);
   
   // Mevcut açık pencereleri kontrol et
   event.waitUntil(
     self.clients.matchAll({ type: "window" }).then((clients) => {
-      // Eğer uygulama zaten açıksa, o pencereyi odakla
+      // Eğer uygulama zaten açıksa, o pencereyi odakla ve tab değiştir
       for (const client of clients) {
         if (client.url.includes(self.location.origin) && "focus" in client) {
-          console.log(`📱 [NOTIFICATION CLICK] Mevcut pencereye yönlendiriliyor: ${pageName}`);
-          client.navigate(clickAction);
+          console.log(`📱 [NOTIFICATION CLICK] Mevcut pencereye yönlendiriliyor: ${pageName} (Tab ${targetTab})`);
+          
+          // Tab değişikliği mesajı gönder
+          client.postMessage({
+            type: 'SWITCH_TAB',
+            targetTab: targetTab
+          });
+          
           return client.focus();
         }
       }
       
       // Eğer uygulama açık değilse, yeni pencere aç
       if (self.clients.openWindow) {
-        console.log(`🆕 [NOTIFICATION CLICK] Yeni pencere açılıyor: ${pageName}`);
-        return self.clients.openWindow(clickAction);
+        console.log(`🆕 [NOTIFICATION CLICK] Yeni pencere açılıyor: ${pageName} (Tab ${targetTab})`);
+        return self.clients.openWindow(clickAction).then((newClient) => {
+          // Yeni pencere açıldıktan sonra tab değişikliği mesajı gönder
+          if (newClient) {
+            setTimeout(() => {
+              newClient.postMessage({
+                type: 'SWITCH_TAB',
+                targetTab: targetTab
+              });
+            }, 1000); // Pencere yüklenmesi için kısa bir bekleme
+          }
+        });
       }
     })
   );

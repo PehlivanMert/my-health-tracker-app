@@ -215,19 +215,25 @@ function App() {
       const { title, body, icon } = payload.notification || {};
       const data = payload.data || {};
       
-      // Bildirim türüne göre yönlendirme URL'si belirle
-      let clickAction = "/";
+      // Bildirim türüne göre tab indeksi belirle
+      let targetTab = 0; // Varsayılan: Ana sayfa
       if (data.type === "water" || data.type === "water-reset") {
-        clickAction = "/wellness-tracker";
+        targetTab = 1; // Yaşam Takibi tab'ı
       } else if (data.type === "pomodoro") {
-        clickAction = "/daily-routine";
+        targetTab = 0; // Rutin tab'ı
       } else if (data.routineId) {
-        clickAction = "/daily-routine";
+        targetTab = 0; // Rutin tab'ı
       } else if (data.eventId) {
-        clickAction = "/calendar";
+        targetTab = 4; // Takvim tab'ı
       } else if (data.supplementId) {
-        clickAction = "/wellness-tracker";
+        targetTab = 1; // Yaşam Takibi tab'ı
       }
+
+      // Tab indeksine göre sayfa adını belirle
+      let pageName = "Ana Sayfa";
+      if (targetTab === 1) pageName = "Yaşam Takibi";
+      else if (targetTab === 0) pageName = "Günlük Rutin";
+      else if (targetTab === 4) pageName = "Takvim";
 
       // Toast bildirimi göster
       toast.info(
@@ -235,9 +241,7 @@ function App() {
           <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{title}</div>
           <div>{body}</div>
           <div style={{ fontSize: '12px', marginTop: '4px', opacity: 0.7 }}>
-            Tıklayın: {clickAction === "/wellness-tracker" ? "Yaşam Takibi" : 
-                       clickAction === "/daily-routine" ? "Günlük Rutin" :
-                       clickAction === "/calendar" ? "Takvim" : "Ana Sayfa"}
+            Tıklayın: {pageName}
           </div>
         </div>,
         {
@@ -248,14 +252,9 @@ function App() {
           pauseOnHover: true,
           draggable: true,
           onClick: () => {
-            // Bildirime tıklandığında ilgili sayfaya yönlendir
-            // Tab 0: Rutin, Tab 1: Yaşam, Tab 4: Takvim
-            handleTabChange(
-              clickAction === "/wellness-tracker" ? 1 :  // Yaşam Takibi
-              clickAction === "/daily-routine" ? 0 :     // Günlük Rutin
-              clickAction === "/calendar" ? 4 :          // Takvim
-              0  // Varsayılan: Ana Sayfa
-            );
+            // Bildirime tıklandığında ilgili tab'a yönlendir
+            console.log(`🔄 [FOREGROUND] Toast bildirimine tıklandı, Tab ${targetTab} (${pageName})'e yönlendiriliyor`);
+            handleTabChange(targetTab);
           }
         }
       );
@@ -272,6 +271,22 @@ function App() {
     setActiveTab(newTab);
     localStorage.setItem("activeTab", newTab);
   };
+
+  // Service Worker'dan gelen tab değişiklik isteklerini dinle
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (event.data && event.data.type === 'SWITCH_TAB') {
+        console.log(`🔄 [TAB SWITCH] Service Worker'dan tab değişikliği isteği: Tab ${event.data.targetTab}`);
+        handleTabChange(event.data.targetTab);
+      }
+    };
+
+    navigator.serviceWorker?.addEventListener('message', handleMessage);
+    
+    return () => {
+      navigator.serviceWorker?.removeEventListener('message', handleMessage);
+    };
+  }, []);
 
   // Zaman & Hava Durumu
   const [currentTime, setCurrentTime] = useState(new Date());

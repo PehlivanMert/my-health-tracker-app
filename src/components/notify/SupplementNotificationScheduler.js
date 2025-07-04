@@ -306,14 +306,66 @@ export const getNextSupplementReminderTime = async (suppData, user) => {
 // saveNextSupplementReminderTime fonksiyonunu tekrar çağırmanız gerekir.
 // Bu örnekte, saveNextSupplementReminderTime fonksiyonu, yeni hesaplanan zamanı Firestore'a kaydediyor.
 export const saveNextSupplementReminderTime = async (user, suppData) => {
-  // Eğer notificationSchedule varsa, nextSupplementReminderTime'a gerek yok
+  // notificationSchedule varsa, en yakın zamanı bul ve kaydet
   if (suppData.notificationSchedule && suppData.notificationSchedule.length > 0) {
-    console.log(
-      "saveNextSupplementReminderTime - notificationSchedule kullanılıyor, nextSupplementReminderTime kaydedilmiyor"
-    );
-    return null;
+    // En yakın zamanı bul
+    const now = getTurkeyTime();
+    const todayStr = now.toLocaleDateString("en-CA");
+    // Tüm saatleri bugünün tarihiyle Date objesine çevir
+    const times = suppData.notificationSchedule.map((timeStr) => {
+      let scheduled = new Date(`${todayStr}T${timeStr}:00`);
+      // Eğer saat geçmişse, yarın için hesapla
+      if (scheduled.getTime() <= now.getTime()) {
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toLocaleDateString("en-CA");
+        const timeParts = timeStr.split(":");
+        scheduled = new Date(
+          `${tomorrowStr}T${timeParts[0]}:${timeParts[1]}:00`
+        );
+      }
+      return scheduled;
+    });
+    // Gelecekteki en yakın zamanı bul
+    const futureTimes = times.filter((t) => t.getTime() > now.getTime());
+    let nextReminder = null;
+    if (futureTimes.length > 0) {
+      nextReminder = futureTimes.sort((a, b) => a - b)[0];
+    } else if (times.length > 0) {
+      // Hepsi geçmişse, yarının ilk zamanı
+      nextReminder = times.sort((a, b) => a - b)[0];
+    }
+    const suppDocRef = doc(db, "users", user.uid, "supplements", suppData.id);
+    if (nextReminder) {
+      await setDoc(
+        suppDocRef,
+        {
+          nextSupplementReminderTime: nextReminder.toISOString(),
+          notificationsLastCalculated: new Date(),
+        },
+        { merge: true }
+      );
+      console.log(
+        "saveNextSupplementReminderTime - Kaydedilen sonraki takviye bildirimi zamanı:",
+        nextReminder.toISOString()
+      );
+      return nextReminder;
+    } else {
+      await setDoc(
+        suppDocRef,
+        {
+          nextSupplementReminderTime: null,
+          notificationsLastCalculated: new Date(),
+        },
+        { merge: true }
+      );
+      console.warn(
+        "saveNextSupplementReminderTime - Sonraki bildirim zamanı hesaplanamadı"
+      );
+      return null;
+    }
   }
-  
+  // ... eski otomatik hesaplama kodu ...
   const nextReminder = await getNextSupplementReminderTime(suppData, user);
   if (!nextReminder) {
     console.warn(
@@ -322,13 +374,11 @@ export const saveNextSupplementReminderTime = async (user, suppData) => {
     return null;
   }
   const suppDocRef = doc(db, "users", user.uid, "supplements", suppData.id);
-  
   // Sadece gerekli alanları kaydet
   const updateData = {
     nextSupplementReminderTime: nextReminder.toISOString(),
     notificationsLastCalculated: new Date(),
   };
-  
   await setDoc(suppDocRef, updateData, { merge: true });
   console.log(
     "saveNextSupplementReminderTime - Kaydedilen sonraki takviye bildirimi zamanı:",

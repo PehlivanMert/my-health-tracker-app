@@ -205,10 +205,15 @@ self.addEventListener("notificationclick", (event) => {
           console.log(`📱 [NOTIFICATION CLICK] Mevcut pencereye yönlendiriliyor: ${pageName} (Tab ${targetTab})`);
           
           // Tab değişikliği mesajı gönder
-          client.postMessage({
-            type: 'SWITCH_TAB',
-            targetTab: targetTab
-          });
+          try {
+            client.postMessage({
+              type: 'SWITCH_TAB',
+              targetTab: targetTab
+            });
+            console.log(`✅ [NOTIFICATION CLICK] Tab değişikliği mesajı gönderildi`);
+          } catch (error) {
+            console.error(`❌ [NOTIFICATION CLICK] Mesaj gönderme hatası:`, error);
+          }
           
           return client.focus();
         }
@@ -221,14 +226,23 @@ self.addEventListener("notificationclick", (event) => {
           // Yeni pencere açıldıktan sonra tab değişikliği mesajı gönder
           if (newClient) {
             setTimeout(() => {
-              newClient.postMessage({
-                type: 'SWITCH_TAB',
-                targetTab: targetTab
-              });
-            }, 1000); // Pencere yüklenmesi için kısa bir bekleme
+              try {
+                newClient.postMessage({
+                  type: 'SWITCH_TAB',
+                  targetTab: targetTab
+                });
+                console.log(`✅ [NOTIFICATION CLICK] Yeni pencereye tab değişikliği mesajı gönderildi`);
+              } catch (error) {
+                console.error(`❌ [NOTIFICATION CLICK] Yeni pencereye mesaj gönderme hatası:`, error);
+              }
+            }, 2000); // Pencere yüklenmesi için daha uzun bekleme
           }
+        }).catch((error) => {
+          console.error(`❌ [NOTIFICATION CLICK] Yeni pencere açma hatası:`, error);
         });
       }
+    }).catch((error) => {
+      console.error(`❌ [NOTIFICATION CLICK] Genel hata:`, error);
     })
   );
 });

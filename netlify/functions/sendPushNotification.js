@@ -648,7 +648,7 @@ exports.handler = async function (event, context) {
           if (!isWithinNotificationWindow) {
             console.log(`💧 [${userDoc.id}] Su bildirimleri atlanıyor (bildirim penceresi dışında)`);
           } else if (!waterSnap || !waterSnap.exists) {
-            console.log(`💧 [${userDoc.id}] Su verisi bulunamadı`);
+            console.log(`💧 [${userDoc.id}] Su verisi bulunamadı.`);
           }
         }
 

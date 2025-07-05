@@ -289,34 +289,97 @@ function App() {
 
   // Service Worker'dan gelen tab değişiklik isteklerini dinle
   useEffect(() => {
+    let messageHandled = false;
+    
     const handleMessage = (event) => {
       try {
+        console.log(`📨 [MESSAGE] Service Worker'dan mesaj alındı:`, event.data);
+        
         if (event.data && event.data.type === 'SWITCH_TAB') {
           const targetTab = event.data.targetTab;
-          console.log(`🔄 [TAB SWITCH] Service Worker'dan tab değişikliği isteği: Tab ${targetTab}`);
+          const timestamp = event.data.timestamp;
+          
+          // Aynı mesajın birden fazla kez işlenmesini önle (timestamp ile)
+          const messageKey = `${targetTab}-${timestamp}`;
+          if (messageHandled === messageKey) {
+            console.log(`🔄 [TAB SWITCH] Mesaj zaten işlendi, atlanıyor: ${messageKey}`);
+            return;
+          }
+          
+          console.log(`🔄 [TAB SWITCH] Service Worker'dan tab değişikliği isteği: Tab ${targetTab} (${timestamp})`);
           
           // Tab indeksinin geçerli olup olmadığını kontrol et
           if (targetTab >= 0 && targetTab <= 4) {
-            handleTabChange(targetTab);
-            console.log(`✅ [TAB SWITCH] Tab ${targetTab} başarıyla değiştirildi`);
+            messageHandled = messageKey;
+            
+            // Kısa bir gecikme ile tab değişikliği yap
+            setTimeout(() => {
+              try {
+                handleTabChange(targetTab);
+                console.log(`✅ [TAB SWITCH] Tab ${targetTab} başarıyla değiştirildi`);
+                
+                // Tab değişikliğinin başarılı olup olmadığını kontrol et
+                setTimeout(() => {
+                  const currentTab = parseInt(localStorage.getItem("activeTab")) || 0;
+                  if (currentTab === targetTab) {
+                    console.log(`✅ [TAB SWITCH] Tab değişikliği doğrulandı: ${targetTab}`);
+                  } else {
+                    console.warn(`⚠️ [TAB SWITCH] Tab değişikliği başarısız: beklenen ${targetTab}, mevcut ${currentTab}`);
+                    // Tekrar dene
+                    handleTabChange(targetTab);
+                  }
+                }, 500);
+                
+                // 2 saniye sonra mesaj işleme durumunu sıfırla
+                setTimeout(() => {
+                  messageHandled = null;
+                }, 2000);
+              } catch (error) {
+                console.error(`❌ [TAB SWITCH] Tab değişikliği hatası:`, error);
+                messageHandled = null;
+              }
+            }, 200);
           } else {
             console.warn(`⚠️ [TAB SWITCH] Geçersiz tab indeksi: ${targetTab}`);
           }
+        } else if (event.data && event.data.type === 'TEST_RESPONSE') {
+          console.log(`✅ [TEST] Service Worker bağlantısı başarılı:`, event.data);
         }
       } catch (error) {
         console.error(`❌ [TAB SWITCH] Tab değişikliği hatası:`, error);
       }
     };
 
-    if (navigator.serviceWorker) {
-      navigator.serviceWorker.addEventListener('message', handleMessage);
-      console.log(`✅ [TAB SWITCH] Service Worker mesaj dinleyicisi eklendi`);
-    } else {
-      console.warn(`⚠️ [TAB SWITCH] Service Worker bulunamadı`);
-    }
+    // Service Worker'ı kontrol et ve mesaj dinleyicisini ekle
+    const setupMessageListener = async () => {
+      try {
+        if ('serviceWorker' in navigator) {
+          const registration = await navigator.serviceWorker.ready;
+          console.log(`✅ [TAB SWITCH] Service Worker hazır:`, registration);
+          
+          navigator.serviceWorker.addEventListener('message', handleMessage);
+          console.log(`✅ [TAB SWITCH] Service Worker mesaj dinleyicisi eklendi`);
+          
+          // Service Worker'a test mesajı gönder
+          if (registration.active) {
+            registration.active.postMessage({
+              type: 'TEST_CONNECTION',
+              timestamp: Date.now()
+            });
+            console.log(`✅ [TAB SWITCH] Test mesajı gönderildi`);
+          }
+        } else {
+          console.warn(`⚠️ [TAB SWITCH] Service Worker desteklenmiyor`);
+        }
+      } catch (error) {
+        console.error(`❌ [TAB SWITCH] Service Worker kurulum hatası:`, error);
+      }
+    };
+
+    setupMessageListener();
     
     return () => {
-      if (navigator.serviceWorker) {
+      if ('serviceWorker' in navigator) {
         navigator.serviceWorker.removeEventListener('message', handleMessage);
         console.log(`🔄 [TAB SWITCH] Service Worker mesaj dinleyicisi kaldırıldı`);
       }

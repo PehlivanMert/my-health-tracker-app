@@ -204,18 +204,43 @@ self.addEventListener("notificationclick", (event) => {
         if (client.url.includes(self.location.origin) && "focus" in client) {
           console.log(`📱 [NOTIFICATION CLICK] Mevcut pencereye yönlendiriliyor: ${pageName} (Tab ${targetTab})`);
           
-          // Tab değişikliği mesajı gönder
-          try {
-            client.postMessage({
-              type: 'SWITCH_TAB',
-              targetTab: targetTab
-            });
-            console.log(`✅ [NOTIFICATION CLICK] Tab değişikliği mesajı gönderildi`);
-          } catch (error) {
-            console.error(`❌ [NOTIFICATION CLICK] Mesaj gönderme hatası:`, error);
-          }
+          // Önce pencereyi odakla
+          client.focus();
           
-          return client.focus();
+          // Tab değişikliği mesajı gönder (kısa bir gecikme ile)
+          setTimeout(() => {
+            try {
+              // Mesajı birden fazla kez göndermeyi dene
+              const sendMessage = () => {
+                client.postMessage({
+                  type: 'SWITCH_TAB',
+                  targetTab: targetTab,
+                  timestamp: Date.now()
+                });
+                console.log(`✅ [NOTIFICATION CLICK] Tab değişikliği mesajı gönderildi (Tab ${targetTab})`);
+              };
+              
+              // İlk mesajı hemen gönder
+              sendMessage();
+              
+              // 500ms sonra tekrar dene
+              setTimeout(sendMessage, 500);
+              
+              // 1 saniye sonra tekrar dene
+              setTimeout(sendMessage, 1000);
+              
+              // 2 saniye sonra tekrar dene
+              setTimeout(sendMessage, 2000);
+              
+              // 3 saniye sonra tekrar dene
+              setTimeout(sendMessage, 3000);
+              
+            } catch (error) {
+              console.error(`❌ [NOTIFICATION CLICK] Mesaj gönderme hatası:`, error);
+            }
+          }, 100);
+          
+          return;
         }
       }
       
@@ -227,15 +252,29 @@ self.addEventListener("notificationclick", (event) => {
           if (newClient) {
             setTimeout(() => {
               try {
-                newClient.postMessage({
-                  type: 'SWITCH_TAB',
-                  targetTab: targetTab
-                });
-                console.log(`✅ [NOTIFICATION CLICK] Yeni pencereye tab değişikliği mesajı gönderildi`);
+                // Mesajı birden fazla kez göndermeyi dene
+                const sendMessage = () => {
+                  newClient.postMessage({
+                    type: 'SWITCH_TAB',
+                    targetTab: targetTab,
+                    timestamp: Date.now()
+                  });
+                  console.log(`✅ [NOTIFICATION CLICK] Yeni pencereye tab değişikliği mesajı gönderildi (Tab ${targetTab})`);
+                };
+                
+                // İlk mesajı gönder
+                sendMessage();
+                
+                // 1 saniye sonra tekrar dene
+                setTimeout(sendMessage, 1000);
+                
+                // 2 saniye sonra tekrar dene
+                setTimeout(sendMessage, 2000);
+                
               } catch (error) {
                 console.error(`❌ [NOTIFICATION CLICK] Yeni pencereye mesaj gönderme hatası:`, error);
               }
-            }, 2000); // Pencere yüklenmesi için daha uzun bekleme
+            }, 3000); // Pencere yüklenmesi için daha uzun bekleme
           }
         }).catch((error) => {
           console.error(`❌ [NOTIFICATION CLICK] Yeni pencere açma hatası:`, error);
@@ -245,6 +284,34 @@ self.addEventListener("notificationclick", (event) => {
       console.error(`❌ [NOTIFICATION CLICK] Genel hata:`, error);
     })
   );
+});
+
+// Ana uygulamadan gelen mesajları dinle
+self.addEventListener('message', (event) => {
+  console.log('📨 [SW MESSAGE] Ana uygulamadan mesaj alındı:', event.data);
+  
+  if (event.data && event.data.type === 'TEST_CONNECTION') {
+    console.log('✅ [SW MESSAGE] Test bağlantısı başarılı');
+    // Test mesajına yanıt gönder
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({
+        type: 'TEST_RESPONSE',
+        timestamp: Date.now(),
+        status: 'connected'
+      });
+    } else {
+      // Port yoksa, tüm client'lara mesaj gönder
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'TEST_RESPONSE',
+            timestamp: Date.now(),
+            status: 'connected'
+          });
+        });
+      });
+    }
+  }
 });
 
 //ctrl+ k + c

@@ -188,100 +188,71 @@ self.addEventListener("notificationclick", (event) => {
   const eventId = event.notification.data?.eventId;
   const supplementId = event.notification.data?.supplementId;
   
+  // Platform algılama
+  const platform = detectPlatform();
+  
   // Tab indeksine göre sayfa adını belirle
   let pageName = "Ana Sayfa";
   if (targetTab === 1) pageName = "Yaşam Takibi";
   else if (targetTab === 0) pageName = "Günlük Rutin";
   else if (targetTab === 4) pageName = "Takvim";
   
-  console.log(`🎯 [NOTIFICATION CLICK] Bildirim türü: ${notificationType}, Yönlendirilecek tab: ${pageName} (Tab ${targetTab})`);
+  console.log(`🎯 [NOTIFICATION CLICK] Platform: ${platform}, Bildirim türü: ${notificationType}, Yönlendirilecek tab: ${pageName} (Tab ${targetTab})`);
   
-  // Mevcut açık pencereleri kontrol et
+  // Platform bazlı yönlendirme
   event.waitUntil(
-    self.clients.matchAll({ type: "window" }).then((clients) => {
-      // Eğer uygulama zaten açıksa, o pencereyi odakla ve tab değiştir
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      console.log(`📱 [NOTIFICATION CLICK] Bulunan client sayısı: ${clients.length}, Platform: ${platform}`);
+      
+      // Mevcut açık pencereleri kontrol et
       for (const client of clients) {
-        if (client.url.includes(self.location.origin) && "focus" in client) {
-          console.log(`📱 [NOTIFICATION CLICK] Mevcut pencereye yönlendiriliyor: ${pageName} (Tab ${targetTab})`);
+        console.log(`📱 [NOTIFICATION CLICK] Client URL: ${client.url}, Origin: ${self.location.origin}`);
+        
+        if (client.url.includes(self.location.origin)) {
+          console.log(`📱 [NOTIFICATION CLICK] Mevcut pencereye yönlendiriliyor: ${pageName} (Tab ${targetTab}) - Platform: ${platform}`);
           
-          // Önce pencereyi odakla
-          client.focus();
-          
-          // Tab değişikliği mesajı gönder (kısa bir gecikme ile)
-          setTimeout(() => {
-            try {
-              // Mesajı birden fazla kez göndermeyi dene
-              const sendMessage = () => {
-                client.postMessage({
-                  type: 'SWITCH_TAB',
-                  targetTab: targetTab,
-                  timestamp: Date.now()
-                });
-                console.log(`✅ [NOTIFICATION CLICK] Tab değişikliği mesajı gönderildi (Tab ${targetTab})`);
-              };
-              
-              // İlk mesajı hemen gönder
-              sendMessage();
-              
-              // 500ms sonra tekrar dene
-              setTimeout(sendMessage, 500);
-              
-              // 1 saniye sonra tekrar dene
-              setTimeout(sendMessage, 1000);
-              
-              // 2 saniye sonra tekrar dene
-              setTimeout(sendMessage, 2000);
-              
-              // 3 saniye sonra tekrar dene
-              setTimeout(sendMessage, 3000);
-              
-            } catch (error) {
-              console.error(`❌ [NOTIFICATION CLICK] Mesaj gönderme hatası:`, error);
-            }
-          }, 100);
-          
+          // Platform bazlı yönlendirme
+          handlePlatformNavigation(client, targetTab, platform);
           return;
         }
       }
       
       // Eğer uygulama açık değilse, yeni pencere aç
-      if (self.clients.openWindow) {
-        console.log(`🆕 [NOTIFICATION CLICK] Yeni pencere açılıyor: ${pageName} (Tab ${targetTab})`);
-        return self.clients.openWindow(clickAction).then((newClient) => {
-          // Yeni pencere açıldıktan sonra tab değişikliği mesajı gönder
-          if (newClient) {
-            setTimeout(() => {
-              try {
-                // Mesajı birden fazla kez göndermeyi dene
-                const sendMessage = () => {
-                  newClient.postMessage({
-                    type: 'SWITCH_TAB',
-                    targetTab: targetTab,
-                    timestamp: Date.now()
-                  });
-                  console.log(`✅ [NOTIFICATION CLICK] Yeni pencereye tab değişikliği mesajı gönderildi (Tab ${targetTab})`);
-                };
-                
-                // İlk mesajı gönder
-                sendMessage();
-                
-                // 1 saniye sonra tekrar dene
-                setTimeout(sendMessage, 1000);
-                
-                // 2 saniye sonra tekrar dene
-                setTimeout(sendMessage, 2000);
-                
-              } catch (error) {
-                console.error(`❌ [NOTIFICATION CLICK] Yeni pencereye mesaj gönderme hatası:`, error);
-              }
-            }, 3000); // Pencere yüklenmesi için daha uzun bekleme
-          }
-        }).catch((error) => {
-          console.error(`❌ [NOTIFICATION CLICK] Yeni pencere açma hatası:`, error);
-        });
-      }
+      console.log(`🆕 [NOTIFICATION CLICK] Yeni pencere açılıyor: ${pageName} (Tab ${targetTab}) - Platform: ${platform}`);
+      
+      const baseUrl = self.location.origin;
+      const urlWithTab = `${baseUrl}/?tab=${targetTab}&notification=true&timestamp=${Date.now()}`;
+      
+      return self.clients.openWindow(urlWithTab).then((newClient) => {
+        if (newClient) {
+          console.log(`✅ [NOTIFICATION CLICK] Yeni pencere açıldı - Platform: ${platform}`);
+          
+          // Yeni pencere açıldıktan sonra platform bazlı yönlendirme
+          setTimeout(() => {
+            handlePlatformNavigation(newClient, targetTab, platform);
+          }, 1000); // Pencere yüklenmesi için bekleme
+        }
+      }).catch((error) => {
+        console.error(`❌ [NOTIFICATION CLICK] Yeni pencere açma hatası:`, error);
+        
+        // Fallback: Basit URL açma
+        try {
+          window.open(urlWithTab, '_blank');
+        } catch (fallbackError) {
+          console.error(`❌ [NOTIFICATION CLICK] Fallback açma hatası:`, fallbackError);
+        }
+      });
     }).catch((error) => {
       console.error(`❌ [NOTIFICATION CLICK] Genel hata:`, error);
+      
+      // Son çare: Basit URL açma
+      try {
+        const baseUrl = self.location.origin;
+        const urlWithTab = `${baseUrl}/?tab=${targetTab}&notification=true&timestamp=${Date.now()}`;
+        window.open(urlWithTab, '_blank');
+      } catch (fallbackError) {
+        console.error(`❌ [NOTIFICATION CLICK] Son çare açma hatası:`, fallbackError);
+      }
     })
   );
 });
@@ -313,6 +284,169 @@ self.addEventListener('message', (event) => {
     }
   }
 });
+
+// Platform algılama fonksiyonu
+const detectPlatform = () => {
+  const userAgent = navigator.userAgent.toLowerCase();
+  const isIOS = /iphone|ipad|ipod/.test(userAgent);
+  const isAndroid = /android/.test(userAgent);
+  const isMobile = /mobile|android|iphone|ipad|ipod|blackberry|windows phone/.test(userAgent);
+  
+  // PWA kontrolü
+  const isInStandaloneMode = () =>
+    (window.matchMedia &&
+      window.matchMedia("(display-mode: standalone)").matches) ||
+    navigator.standalone === true;
+  
+  const pwaMode = isInStandaloneMode();
+  
+  if (isIOS && pwaMode) {
+    return 'ios-pwa';
+  } else if (isAndroid && pwaMode) {
+    return 'android-pwa';
+  } else if (isMobile) {
+    return 'mobile-web';
+  } else {
+    return 'desktop-web';
+  }
+};
+
+// Platform bazlı yönlendirme fonksiyonu
+const handlePlatformNavigation = (client, targetTab, platform) => {
+  console.log(`🎯 [PLATFORM NAV] Platform: ${platform}, Tab: ${targetTab}`);
+  
+  const baseUrl = self.location.origin;
+  const urlWithTab = `${baseUrl}/?tab=${targetTab}&notification=true&timestamp=${Date.now()}`;
+  
+  // Platform bazlı yönlendirme stratejileri
+  switch (platform) {
+    case 'ios-pwa':
+      // iOS PWA için özel strateji
+      console.log(`📱 [IOS PWA] iOS PWA yönlendirme başlatılıyor`);
+      
+      // 1. Önce pencereyi odakla
+      if ("focus" in client) {
+        client.focus();
+      }
+      
+      // 2. URL ile yönlendir
+      client.navigate(urlWithTab).catch(error => {
+        console.log(`📱 [IOS PWA] Navigate hatası (normal):`, error);
+      });
+      
+      // 3. Mesajlaşma ile tab değiştir (birden fazla deneme)
+      const sendIOSMessage = () => {
+        try {
+          client.postMessage({
+            type: 'SWITCH_TAB',
+            targetTab: targetTab,
+            timestamp: Date.now(),
+            source: 'ios_pwa_notification',
+            platform: platform
+          });
+          console.log(`✅ [IOS PWA] Tab değişikliği mesajı gönderildi (Tab ${targetTab})`);
+        } catch (error) {
+          console.error(`❌ [IOS PWA] Mesaj gönderme hatası:`, error);
+        }
+      };
+      
+      // Agresif mesajlaşma stratejisi
+      sendIOSMessage();
+      setTimeout(sendIOSMessage, 100);
+      setTimeout(sendIOSMessage, 500);
+      setTimeout(sendIOSMessage, 1000);
+      setTimeout(sendIOSMessage, 2000);
+      setTimeout(sendIOSMessage, 3000);
+      break;
+      
+    case 'android-pwa':
+      // Android PWA için strateji
+      console.log(`🤖 [ANDROID PWA] Android PWA yönlendirme başlatılıyor`);
+      
+      if ("focus" in client) {
+        client.focus();
+      }
+      
+      client.navigate(urlWithTab).catch(error => {
+        console.log(`🤖 [ANDROID PWA] Navigate hatası:`, error);
+      });
+      
+      const sendAndroidMessage = () => {
+        try {
+          client.postMessage({
+            type: 'SWITCH_TAB',
+            targetTab: targetTab,
+            timestamp: Date.now(),
+            source: 'android_pwa_notification',
+            platform: platform
+          });
+          console.log(`✅ [ANDROID PWA] Tab değişikliği mesajı gönderildi (Tab ${targetTab})`);
+        } catch (error) {
+          console.error(`❌ [ANDROID PWA] Mesaj gönderme hatası:`, error);
+        }
+      };
+      
+      sendAndroidMessage();
+      setTimeout(sendAndroidMessage, 200);
+      setTimeout(sendAndroidMessage, 1000);
+      setTimeout(sendAndroidMessage, 2000);
+      break;
+      
+    case 'mobile-web':
+      // Mobil web için strateji
+      console.log(`📱 [MOBILE WEB] Mobil web yönlendirme başlatılıyor`);
+      
+      if ("focus" in client) {
+        client.focus();
+      }
+      
+      const sendMobileMessage = () => {
+        try {
+          client.postMessage({
+            type: 'SWITCH_TAB',
+            targetTab: targetTab,
+            timestamp: Date.now(),
+            source: 'mobile_web_notification',
+            platform: platform
+          });
+          console.log(`✅ [MOBILE WEB] Tab değişikliği mesajı gönderildi (Tab ${targetTab})`);
+        } catch (error) {
+          console.error(`❌ [MOBILE WEB] Mesaj gönderme hatası:`, error);
+        }
+      };
+      
+      sendMobileMessage();
+      setTimeout(sendMobileMessage, 100);
+      setTimeout(sendMobileMessage, 500);
+      break;
+      
+    default:
+      // Desktop web için strateji
+      console.log(`💻 [DESKTOP WEB] Desktop web yönlendirme başlatılıyor`);
+      
+      if ("focus" in client) {
+        client.focus();
+      }
+      
+      const sendDesktopMessage = () => {
+        try {
+          client.postMessage({
+            type: 'SWITCH_TAB',
+            targetTab: targetTab,
+            timestamp: Date.now(),
+            source: 'desktop_web_notification',
+            platform: platform
+          });
+          console.log(`✅ [DESKTOP WEB] Tab değişikliği mesajı gönderildi (Tab ${targetTab})`);
+        } catch (error) {
+          console.error(`❌ [DESKTOP WEB] Mesaj gönderme hatası:`, error);
+        }
+      };
+      
+      sendDesktopMessage();
+      break;
+  }
+};
 
 //ctrl+ k + c
 //ctrl+ k + u

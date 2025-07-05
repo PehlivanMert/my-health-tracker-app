@@ -189,14 +189,52 @@ function App() {
   const [errors, setErrors] = useState({ username: false, password: false });
   const [remainingTime, setRemainingTime] = useState(0);
 
-  // PWA kontrolü
+  // Platform ve PWA kontrolü
   const [isPWA, setIsPWA] = useState(false);
+  const [platform, setPlatform] = useState('web');
+  const [isIOS, setIsIOS] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  
   useEffect(() => {
-    const isInStandaloneMode = () =>
-      (window.matchMedia &&
-        window.matchMedia("(display-mode: standalone)").matches) ||
-      navigator.standalone === true;
-    setIsPWA(isInStandaloneMode());
+    // Platform algılama
+    const detectPlatform = () => {
+      const userAgent = navigator.userAgent.toLowerCase();
+      const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
+      const isAndroidDevice = /android/.test(userAgent);
+      const isMobileDevice = /mobile|android|iphone|ipad|ipod|blackberry|windows phone/.test(userAgent);
+      
+      // PWA kontrolü
+      const isInStandaloneMode = () =>
+        (window.matchMedia &&
+          window.matchMedia("(display-mode: standalone)").matches) ||
+        navigator.standalone === true;
+      
+      const pwaMode = isInStandaloneMode();
+      
+      setIsIOS(isIOSDevice);
+      setIsMobile(isMobileDevice);
+      setIsPWA(pwaMode);
+      
+      // Platform belirleme
+      if (isIOSDevice && pwaMode) {
+        setPlatform('ios-pwa');
+      } else if (isAndroidDevice && pwaMode) {
+        setPlatform('android-pwa');
+      } else if (isMobileDevice) {
+        setPlatform('mobile-web');
+      } else {
+        setPlatform('desktop-web');
+      }
+      
+      console.log(`🌐 [PLATFORM] Tespit edilen platform: ${platform}`, {
+        isIOS: isIOSDevice,
+        isMobile: isMobileDevice,
+        isPWA: pwaMode,
+        userAgent: userAgent
+      });
+    };
+    
+    detectPlatform();
   }, []);
 
   useEffect(() => {
@@ -252,9 +290,9 @@ function App() {
           pauseOnHover: true,
           draggable: true,
           onClick: () => {
-            // Bildirime tıklandığında ilgili tab'a yönlendir
-            console.log(`🔄 [FOREGROUND] Toast bildirimine tıklandı, Tab ${targetTab} (${pageName})'e yönlendiriliyor`);
-            handleTabChange(targetTab);
+            // Bildirime tıklandığında platform bazlı yönlendirme yap
+            console.log(`🔄 [FOREGROUND] Toast bildirimine tıklandı, Platform: ${platform}, Tab ${targetTab} (${pageName})'e yönlendiriliyor`);
+            handlePlatformTabChange(targetTab, 'foreground_toast');
           }
         }
       );
@@ -287,6 +325,79 @@ function App() {
     }
   };
 
+  // Platform bazlı tab değişikliği fonksiyonu
+  const handlePlatformTabChange = (targetTab, source = 'unknown') => {
+    console.log(`🔄 [PLATFORM TAB] Platform: ${platform}, Tab: ${targetTab}, Kaynak: ${source}`);
+    
+    try {
+      if (targetTab >= 0 && targetTab <= 4) {
+        // Platform bazlı gecikme süreleri
+        let delay = 200; // Varsayılan
+        
+        switch (platform) {
+          case 'ios-pwa':
+            delay = 500; // iOS PWA için daha uzun bekleme
+            break;
+          case 'android-pwa':
+            delay = 300;
+            break;
+          case 'mobile-web':
+            delay = 250;
+            break;
+          case 'desktop-web':
+            delay = 100;
+            break;
+        }
+        
+        setTimeout(() => {
+          handleTabChange(targetTab);
+          console.log(`✅ [PLATFORM TAB] ${platform} için tab ${targetTab} değiştirildi`);
+        }, delay);
+      } else {
+        console.warn(`⚠️ [PLATFORM TAB] Geçersiz tab indeksi: ${targetTab}`);
+      }
+    } catch (error) {
+      console.error(`❌ [PLATFORM TAB] Tab değişikliği hatası:`, error);
+    }
+  };
+
+  // URL parametrelerini dinle ve platform bazlı yönlendirme yap
+  useEffect(() => {
+    const handleURLParams = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tabParam = urlParams.get('tab');
+      const notificationParam = urlParams.get('notification');
+      
+      if (tabParam && notificationParam === 'true') {
+        const targetTab = parseInt(tabParam);
+        console.log(`🔗 [URL PARAMS] URL'den tab parametresi alındı: ${targetTab}`);
+        
+        if (!isNaN(targetTab) && targetTab >= 0 && targetTab <= 4) {
+          // URL parametresini temizle
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, newUrl);
+          
+          // Platform bazlı tab değişikliği
+          handlePlatformTabChange(targetTab, 'url_params');
+        }
+      }
+    };
+    
+    // Sayfa yüklendiğinde URL parametrelerini kontrol et
+    handleURLParams();
+    
+    // Popstate event'ini dinle (geri/ileri butonları için)
+    const handlePopState = () => {
+      handleURLParams();
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [platform]);
+
   // Service Worker'dan gelen tab değişiklik isteklerini dinle
   useEffect(() => {
     let messageHandled = false;
@@ -298,6 +409,7 @@ function App() {
         if (event.data && event.data.type === 'SWITCH_TAB') {
           const targetTab = event.data.targetTab;
           const timestamp = event.data.timestamp;
+          const source = event.data.source || 'service_worker';
           
           // Aynı mesajın birden fazla kez işlenmesini önle (timestamp ile)
           const messageKey = `${targetTab}-${timestamp}`;
@@ -306,39 +418,19 @@ function App() {
             return;
           }
           
-          console.log(`🔄 [TAB SWITCH] Service Worker'dan tab değişikliği isteği: Tab ${targetTab} (${timestamp})`);
+          console.log(`🔄 [TAB SWITCH] Service Worker'dan tab değişikliği isteği: Tab ${targetTab} (${timestamp}) - Platform: ${platform}`);
           
           // Tab indeksinin geçerli olup olmadığını kontrol et
           if (targetTab >= 0 && targetTab <= 4) {
             messageHandled = messageKey;
             
-            // Kısa bir gecikme ile tab değişikliği yap
+            // Platform bazlı tab değişikliği
+            handlePlatformTabChange(targetTab, source);
+            
+            // 2 saniye sonra mesaj işleme durumunu sıfırla
             setTimeout(() => {
-              try {
-                handleTabChange(targetTab);
-                console.log(`✅ [TAB SWITCH] Tab ${targetTab} başarıyla değiştirildi`);
-                
-                // Tab değişikliğinin başarılı olup olmadığını kontrol et
-                setTimeout(() => {
-                  const currentTab = parseInt(localStorage.getItem("activeTab")) || 0;
-                  if (currentTab === targetTab) {
-                    console.log(`✅ [TAB SWITCH] Tab değişikliği doğrulandı: ${targetTab}`);
-                  } else {
-                    console.warn(`⚠️ [TAB SWITCH] Tab değişikliği başarısız: beklenen ${targetTab}, mevcut ${currentTab}`);
-                    // Tekrar dene
-                    handleTabChange(targetTab);
-                  }
-                }, 500);
-                
-                // 2 saniye sonra mesaj işleme durumunu sıfırla
-                setTimeout(() => {
-                  messageHandled = null;
-                }, 2000);
-              } catch (error) {
-                console.error(`❌ [TAB SWITCH] Tab değişikliği hatası:`, error);
-                messageHandled = null;
-              }
-            }, 200);
+              messageHandled = null;
+            }, 2000);
           } else {
             console.warn(`⚠️ [TAB SWITCH] Geçersiz tab indeksi: ${targetTab}`);
           }
@@ -364,9 +456,10 @@ function App() {
           if (registration.active) {
             registration.active.postMessage({
               type: 'TEST_CONNECTION',
-              timestamp: Date.now()
+              timestamp: Date.now(),
+              platform: platform
             });
-            console.log(`✅ [TAB SWITCH] Test mesajı gönderildi`);
+            console.log(`✅ [TAB SWITCH] Test mesajı gönderildi (Platform: ${platform})`);
           }
         } else {
           console.warn(`⚠️ [TAB SWITCH] Service Worker desteklenmiyor`);
@@ -384,7 +477,7 @@ function App() {
         console.log(`🔄 [TAB SWITCH] Service Worker mesaj dinleyicisi kaldırıldı`);
       }
     };
-  }, []);
+  }, [platform]);
 
   // Zaman & Hava Durumu
   const [currentTime, setCurrentTime] = useState(new Date());

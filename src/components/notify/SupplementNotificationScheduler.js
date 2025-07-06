@@ -153,6 +153,15 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
     console.log("computeSupplementReminderTimes - Varsayılan bildirim penceresi kullanılıyor:", globalNotifWindow);
   }
   const { windowStart, windowEnd } = computeWindowTimes(globalNotifWindow);
+  
+  // Dinamik gün sonu özeti zamanı hesaplama
+  const windowEndHour = windowEnd.getHours();
+  const windowEndMinute = windowEnd.getMinutes();
+  const windowEndTotal = windowEndHour * 60 + windowEndMinute;
+  const midnightTotal = 23 * 60 + 59; // 23:59
+  const summaryTimeTotal = windowEndTotal > midnightTotal ? midnightTotal : windowEndTotal - 1; // 1 dakika önce
+  const summaryTime = new Date(todayStr + 'T' + 
+    `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}:00`);
 
   // Manuel bildirim zamanı varsa
   if (
@@ -227,23 +236,13 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
         "computeSupplementReminderTimes - Normal durumda, estimatedRemainingDays:",
         estimatedRemainingDays
       );
-      if (globalNotifWindow && globalNotifWindow.end) {
-        const windowEndTime = new Date(
-          `${todayStr}T${globalNotifWindow.end}:00`
-        );
-        times.push(windowEndTime);
-        console.log(
-          "computeSupplementReminderTimes - Bildirim penceresi kullanılarak hesaplanan zaman:",
-          windowEndTime
-        );
-      } else {
-        const autoTime = new Date(now.getTime() + 60 * 60000);
-        times.push(autoTime);
-        console.log(
-          "computeSupplementReminderTimes - Varsayılan 1 saat sonrası hesaplanan zaman:",
-          autoTime
-        );
-      }
+      // Normal durumda artık pencere bitişi bildirimi göndermiyoruz, sadece dinamik gün sonu özeti
+      // Dinamik gün sonu özeti zamanını ekle
+      times.push(summaryTime);
+      console.log(
+        "computeSupplementReminderTimes - Dinamik gün sonu özeti için hesaplanan zaman:",
+        summaryTime
+      );
     }
   } else {
     console.warn(

@@ -128,20 +128,18 @@ const getSupplementConsumptionStats = async (userId) => {
   return {};
 };
 
-// Gece yarısı kontrolü için özel tüketim verisi alma fonksiyonu
+// Dinamik gün sonu özeti kontrolü için özel tüketim verisi alma fonksiyonu
 const getSupplementConsumptionStatsForMidnight = async (userId) => {
   const turkeyTime = getTurkeyTime();
   const nowHour = turkeyTime.getHours();
   const nowMinute = turkeyTime.getMinutes();
   
-  // Gece yarısı 00:00 kontrolü
+  // Dinamik gün sonu özeti kontrolü (23:59 veya pencere bitişinden 1 dakika önce)
   let checkDateStr;
-  if (nowHour === 0 && nowMinute === 0) {
-    // Önceki günün tarihini hesapla
-    const yesterday = new Date(turkeyTime);
-    yesterday.setDate(yesterday.getDate() - 1);
-    checkDateStr = yesterday.toLocaleDateString("en-CA");
-    console.log(`getSupplementConsumptionStatsForMidnight - Gece yarısı 00:00 kontrolü, önceki günün tarihi: ${checkDateStr}`);
+  if (nowHour === 23 && nowMinute === 59) {
+    // 23:59 kontrolü - bugünün verisini kontrol et
+    checkDateStr = turkeyTime.toLocaleDateString("en-CA");
+    console.log(`getSupplementConsumptionStatsForMidnight - 23:59 kontrolü, bugünün tarihi: ${checkDateStr}`);
   } else {
     // Normal durumda bugünün tarihini kullan
     checkDateStr = turkeyTime.toLocaleDateString("en-CA");
@@ -675,8 +673,13 @@ exports.handler = async function (event, context) {
           const endTotal = endH * 60 + endM;
           const isWindowStart = nowTotal === startTotal;
           const isWindowEnd = nowTotal === endTotal;
-          // Gece yarısı 00:00 kontrolü
-          const isMidnight = nowHour === 0 && nowMinute === 0;
+          
+          // Dinamik gün sonu özeti kontrolü
+          // Pencere bitişi 23:59'dan sonraysa 23:59'da, önceyse pencere bitişinden 1 dakika önce
+          const windowEndTotal = endTotal;
+          const midnightTotal = 23 * 60 + 59; // 23:59
+          const summaryTimeTotal = windowEndTotal > midnightTotal ? midnightTotal : windowEndTotal - 1; // 1 dakika önce
+          const isSummaryTime = nowTotal === summaryTimeTotal;
 
           if (suppSnapshot && suppSnapshot.forEach) {
             const docSnaps = suppSnapshot.docs ? suppSnapshot.docs : Array.from(suppSnapshot);
@@ -779,11 +782,12 @@ exports.handler = async function (event, context) {
                   }
                 }
 
-                // 4. Pencere bitişinde veya gece yarısı hatırlatma (kullanıcı tamamlamadıysa)
-                if (isMidnight) {
-                  console.log(`✅ [${userDoc.id}] GECE YARISI TAKVİYE ÖZET: ${suppName} - ${consumedToday}/${dailyUsage} alındı`);
+                // 4. Dinamik gün sonu özeti bildirimi
+                if (isSummaryTime) {
+                  const summaryTimeStr = `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}`;
+                  console.log(`✅ [${userDoc.id}] GÜN SONU TAKVİYE ÖZET (${summaryTimeStr}): ${suppName} - ${consumedToday}/${dailyUsage} alındı`);
                   
-                  // Gece yarısı için özel bildirimler
+                  // Gün sonu özet bildirimleri
                   if (consumedToday === dailyUsage) {
                     // Tamamını aldıysa
                     const successMessages = [
@@ -833,23 +837,6 @@ exports.handler = async function (event, context) {
                       },
                     });
                   }
-                } else if (isWindowEnd && consumedToday < dailyUsage) {
-                  // Eski pencere bitişi mantığı
-                  console.log(`✅ [${userDoc.id}] PENCERE BİTİŞİ TAKVİYE UYARISI: ${suppName} - ${consumedToday}/${dailyUsage} alındı`);
-                  const motivasyonlar = [
-                    `Bugün ${suppName} takviyeni henüz almadın. Sağlığın için düzenli kullanımı unutma!`,
-                    `Takviyeni bugün almadın, yarın daha dikkatli olabilirsin!`,
-                    `Düzenli kullanım önemli! ${suppName} takviyeni bugün almadın.`,
-                    `Unutma, istikrar sağlığın anahtarı! Bugün ${suppName} takviyeni atladın.`,
-                  ];
-                  notificationsForThisUser.push({
-                    tokens: fcmTokens,
-                    data: {
-                      title: `${suppName} Takviyesi Unutuldu!`,
-                      body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
-                      supplementId: docSnap.id,
-                    },
-                  });
                 }
               } else {
                 console.log(`💊 [${userDoc.id}] ${suppName} geçersiz (miktar: ${suppData.quantity}, günlük: ${suppData.dailyUsage})`);

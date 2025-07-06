@@ -163,6 +163,18 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
   const summaryTime = new Date(todayStr + 'T' + 
     `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}:00`);
 
+  console.log(
+    "computeSupplementReminderTimes - Dinamik gün sonu özeti hesaplaması:",
+    {
+      windowEnd: `${windowEndHour}:${windowEndMinute}`,
+      windowEndTotal,
+      midnightTotal,
+      summaryTimeTotal,
+      summaryTimeStr: `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}`,
+      summaryTime
+    }
+  );
+
   // Manuel bildirim zamanı varsa
   if (
     suppData.notificationSchedule &&

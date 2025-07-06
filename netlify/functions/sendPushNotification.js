@@ -272,7 +272,21 @@ const updateNextSupplementReminderTime = async (userId, suppDocSnap) => {
   }
 };
 
-exports.handler = async function (event, context) {
+exports.handler = async (event, context) => {
+  console.log("🚀 [BİLDİRİM SİSTEMİ] Fonksiyon başlatıldı");
+  
+  const turkeyTime = getTurkeyTime();
+  const currentTimeStr = turkeyTime.toLocaleTimeString('tr-TR', { 
+    timeZone: 'Europe/Istanbul',
+    hour12: false 
+  });
+  const currentDateStr = turkeyTime.toLocaleDateString('tr-TR', { 
+    timeZone: 'Europe/Istanbul' 
+  });
+  
+  console.log(`⏰ [BİLDİRİM SİSTEMİ] Şu anki Türkiye zamanı: ${currentDateStr} ${currentTimeStr}`);
+  console.log(`⏰ [BİLDİRİM SİSTEMİ] Şu anki dakika toplamı: ${turkeyTime.getHours() * 60 + turkeyTime.getMinutes()}`);
+  
   try {
     const now = getTurkeyTime();
     const notificationsToSend = [];
@@ -672,7 +686,6 @@ exports.handler = async function (event, context) {
           const startTotal = startH * 60 + startM;
           const endTotal = endH * 60 + endM;
           const isWindowStart = nowTotal === startTotal;
-          const isWindowEnd = nowTotal === endTotal;
           
           // Dinamik gün sonu özeti kontrolü
           // Pencere bitişi 23:59'dan sonraysa 23:59'da, önceyse pencere bitişinden 1 dakika önce
@@ -680,6 +693,73 @@ exports.handler = async function (event, context) {
           const midnightTotal = 23 * 60 + 59; // 23:59
           const summaryTimeTotal = windowEndTotal > midnightTotal ? midnightTotal : windowEndTotal - 1; // 1 dakika önce
           const isSummaryTime = nowTotal === summaryTimeTotal;
+
+          console.log(`⏰ [${userDoc.id}] Dinamik gün sonu özeti hesaplaması:`, {
+            windowStart: `${startH}:${startM}`,
+            windowEnd: `${endH}:${endM}`,
+            windowEndTotal,
+            midnightTotal,
+            summaryTimeTotal,
+            summaryTimeStr: `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}`,
+            nowTotal,
+            isWindowStart,
+            isSummaryTime
+          });
+
+          // Dinamik gün sonu özeti kontrolü - takviye döngüsünün dışında
+          if (isSummaryTime) {
+            console.log(`✅ [${userDoc.id}] GÜN SONU TAKVİYE ÖZET ZAMANI (${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')})`);
+            
+            // Gün sonu özeti bildirimleri - tüm takviyeler için
+            if (suppSnapshot && suppSnapshot.forEach) {
+              const docSnaps = suppSnapshot.docs ? suppSnapshot.docs : Array.from(suppSnapshot);
+              let hasIncompleteSupplements = false;
+              let incompleteSupplements = [];
+              
+              for (const docSnap of docSnaps) {
+                const suppData = docSnap.data();
+                if (suppData.quantity > 0 && suppData.dailyUsage > 0) {
+                  const suppName = suppData.name || 'Bilinmeyen Takviye';
+                  const dailyUsage = suppData.dailyUsage || 1;
+                  const consumedToday = supplementConsumptionToday[suppName] || 0;
+                  
+                  if (consumedToday < dailyUsage) {
+                    hasIncompleteSupplements = true;
+                    incompleteSupplements.push({
+                      name: suppName,
+                      consumed: consumedToday,
+                      daily: dailyUsage
+                    });
+                  }
+                }
+              }
+              
+              // Gün sonu özeti bildirimi gönder
+              if (hasIncompleteSupplements) {
+                const summaryTimeStr = `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}`;
+                console.log(`✅ [${userDoc.id}] GÜN SONU TAKVİYE ÖZET (${summaryTimeStr}): ${incompleteSupplements.length} takviye tamamlanmadı`);
+                
+                const incompleteList = incompleteSupplements.map(s => `${s.name} (${s.consumed}/${s.daily})`).join(', ');
+                const summaryMessages = [
+                  `📋 Gün sonu özeti: ${incompleteList} - Yarın daha iyi yapabilirsin! 🌅`,
+                  `📊 Bugünkü durum: ${incompleteList} - Sağlığın için düzenli kullanımı unutma! 💪`,
+                  `📈 Günlük hedef: ${incompleteList} - Yarın tamamlamak için motive ol! 🎯`,
+                  `📝 Özet: ${incompleteList} - Sağlıklı yaşam için istikrarlı ol! 🌟`,
+                ];
+                
+                notificationsForThisUser.push({
+                  tokens: fcmTokens,
+                  data: {
+                    title: "Günlük Takviye Özeti",
+                    body: summaryMessages[Math.floor(Math.random() * summaryMessages.length)],
+                    type: "supplement-summary",
+                  },
+                });
+              } else {
+                console.log(`✅ [${userDoc.id}] GÜN SONU TAKVİYE ÖZET: Tüm takviyeler tamamlandı!`);
+              }
+            }
+          }
 
           if (suppSnapshot && suppSnapshot.forEach) {
             const docSnaps = suppSnapshot.docs ? suppSnapshot.docs : Array.from(suppSnapshot);
@@ -779,63 +859,6 @@ exports.handler = async function (event, context) {
                     }
                   } else {
                     console.log(`💊 [${userDoc.id}] ${suppName} için bildirim zamanı ayarlanmamış`);
-                  }
-                }
-
-                // 4. Dinamik gün sonu özeti bildirimi
-                if (isSummaryTime) {
-                  const summaryTimeStr = `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}`;
-                  console.log(`✅ [${userDoc.id}] GÜN SONU TAKVİYE ÖZET (${summaryTimeStr}): ${suppName} - ${consumedToday}/${dailyUsage} alındı`);
-                  
-                  // Gün sonu özet bildirimleri
-                  if (consumedToday === dailyUsage) {
-                    // Tamamını aldıysa
-                    const successMessages = [
-                      `🎉 Harikasın! Bugün ${suppName} takviyeni tam zamanında aldın, vücudun sana teşekkür ediyor! 🏆`,
-                      `👏 Süper! ${suppName} takviyeni eksiksiz aldın, sağlığın için harika bir adım attın! 💪`,
-                      `🌟 Mükemmel! ${suppName} takviyeni tam olarak aldın, zinciri bozmadın! 🔗`,
-                      `🥳 Tebrikler! Bugün ${suppName} takviyeni eksiksiz aldın, böyle devam! 🚀`,
-                    ];
-                    notificationsForThisUser.push({
-                      tokens: fcmTokens,
-                      data: {
-                        title: `${suppName} Takviyesi Tamamlandı!`,
-                        body: successMessages[Math.floor(Math.random() * successMessages.length)],
-                        supplementId: docSnap.id,
-                      },
-                    });
-                  } else if (consumedToday === 0) {
-                    // Hiç almadıysa
-                    const failMessages = [
-                      `😱 Olamaz! Bugün ${suppName} takviyeni hiç almadın. Yarın telafi etme zamanı! ⏰`,
-                      `🙈 Bugün ${suppName} takviyeni atladın, ama üzülme, yarın yeni bir gün! 🌅`,
-                      `🚨 Dikkat! ${suppName} takviyeni bugün hiç almadın. Sağlığın için düzenli kullanımı unutma!`,
-                      `😴 Bugün ${suppName} takviyeni unuttun. Yarın hatırlatıcıları kontrol etmeyi unutma! 🔔`,
-                    ];
-                    notificationsForThisUser.push({
-                      tokens: fcmTokens,
-                      data: {
-                        title: `${suppName} Takviyesi Alınmadı!`,
-                        body: failMessages[Math.floor(Math.random() * failMessages.length)],
-                        supplementId: docSnap.id,
-                      },
-                    });
-                  } else if (consumedToday > 0 && consumedToday < dailyUsage) {
-                    // Kısmen aldıysa
-                    const partialMessages = [
-                      `🤔 Bugün ${suppName} takviyenden ${consumedToday}/${dailyUsage} aldın. Biraz daha dikkat, zinciri tamamla! 🔗`,
-                      `🕗 ${suppName} takviyeni bugün tam alamadın (${consumedToday}/${dailyUsage}). Yarın tam doz için motive ol! 💡`,
-                      `💡 ${suppName} takviyeni neredeyse tamamladın (${consumedToday}/${dailyUsage}), az kaldı!`,
-                      `⏳ Bugün ${suppName} takviyeni tam tamamlayamadın (${consumedToday}/${dailyUsage}). Yarın daha iyisi için devam!`,
-                    ];
-                    notificationsForThisUser.push({
-                      tokens: fcmTokens,
-                      data: {
-                        title: `${suppName} Takviyesi Yeterli Değil!`,
-                        body: partialMessages[Math.floor(Math.random() * partialMessages.length)],
-                        supplementId: docSnap.id,
-                      },
-                    });
                   }
                 }
               } else {

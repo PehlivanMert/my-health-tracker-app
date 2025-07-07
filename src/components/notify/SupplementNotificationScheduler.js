@@ -158,19 +158,26 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
   const windowEndHour = windowEnd.getHours();
   const windowEndMinute = windowEnd.getMinutes();
   const windowEndTotal = windowEndHour * 60 + windowEndMinute;
-  const midnightTotal = 23 * 60 + 59; // 23:59
-  const summaryTimeTotal = windowEndTotal > midnightTotal ? midnightTotal : windowEndTotal - 1; // 1 dakika önce
-  const summaryTime = new Date(todayStr + 'T' + 
-    `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}:00`);
-
+  
+  let summaryTime;
+  
+  // Eğer pencere bitişi gece yarısından önceyse (00:00'dan önce)
+  if (windowEndTotal > 0 && windowEndTotal < 24 * 60) {
+    // Pencere bitişinden 1 dakika önce
+    const summaryTimeTotal = windowEndTotal - 1;
+    summaryTime = new Date(todayStr + 'T' + 
+      `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}:00`);
+  } else {
+    // Pencere bitişi gece yarısı (00:00) veya sonrasıysa, günün sonu (23:59)
+    summaryTime = new Date(todayStr + 'T23:59:00');
+  }
+  
   console.log(
     "computeSupplementReminderTimes - Dinamik gün sonu özeti hesaplaması:",
     {
       windowEnd: `${windowEndHour}:${windowEndMinute}`,
       windowEndTotal,
-      midnightTotal,
-      summaryTimeTotal,
-      summaryTimeStr: `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}`,
+      summaryTime: summaryTime.toLocaleTimeString('tr-TR', { hour12: false }),
       summaryTime
     }
   );
@@ -279,6 +286,28 @@ export const getNextSupplementReminderTime = async (suppData, user) => {
     reminderTimes
   );
   const now = getTurkeyTime();
+  
+  // Gece yarısı özeti için özel kontrol (23:59)
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  
+  // Eğer şu an 23:58-23:59 arasındaysa ve gece yarısı özeti varsa
+  if (currentHour === 23 && currentMinute >= 58) {
+    const midnightSummary = reminderTimes.find(time => {
+      const timeHour = time.getHours();
+      const timeMinute = time.getMinutes();
+      return timeHour === 23 && timeMinute === 59;
+    });
+    
+    if (midnightSummary) {
+      console.log(
+        "getNextSupplementReminderTime - Gece yarısı özeti bulundu:",
+        midnightSummary
+      );
+      return midnightSummary;
+    }
+  }
+  
   // Tolerans eklenerek, gelecekteki bildirim zamanı aranıyor.
   for (const time of reminderTimes) {
     if (time.getTime() > now.getTime() + TOLERANCE_MS) {

@@ -688,17 +688,25 @@ exports.handler = async (event, context) => {
           const isWindowStart = nowTotal === startTotal;
           
           // Dinamik gün sonu özeti kontrolü
-          // Pencere bitişi 23:59'dan sonraysa 23:59'da, önceyse pencere bitişinden 1 dakika önce
+          // Pencere bitişi 00:00'dan önceyse 1 dakika önce, 00:00 veya sonrasıysa 23:59
           const windowEndTotal = endTotal;
-          const midnightTotal = 23 * 60 + 59; // 23:59
-          const summaryTimeTotal = windowEndTotal > midnightTotal ? midnightTotal : windowEndTotal - 1; // 1 dakika önce
+          let summaryTimeTotal;
+          
+          // Eğer pencere bitişi gece yarısından önceyse (00:00'dan önce)
+          if (windowEndTotal > 0 && windowEndTotal < 24 * 60) {
+            // Pencere bitişinden 1 dakika önce
+            summaryTimeTotal = windowEndTotal - 1;
+          } else {
+            // Pencere bitişi gece yarısı (00:00) veya sonrasıysa, günün sonu (23:59)
+            summaryTimeTotal = 23 * 60 + 59; // 23:59
+          }
+          
           const isSummaryTime = nowTotal === summaryTimeTotal;
 
           console.log(`⏰ [${userDoc.id}] Dinamik gün sonu özeti hesaplaması:`, {
             windowStart: `${startH}:${startM}`,
             windowEnd: `${endH}:${endM}`,
             windowEndTotal,
-            midnightTotal,
             summaryTimeTotal,
             summaryTimeStr: `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}`,
             nowTotal,
@@ -735,8 +743,9 @@ exports.handler = async (event, context) => {
               }
               
               // Gün sonu özeti bildirimi gönder
+              const summaryTimeStr = `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}`;
+              
               if (hasIncompleteSupplements) {
-                const summaryTimeStr = `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}`;
                 console.log(`✅ [${userDoc.id}] GÜN SONU TAKVİYE ÖZET (${summaryTimeStr}): ${incompleteSupplements.length} takviye tamamlanmadı`);
                 
                 const incompleteList = incompleteSupplements.map(s => `${s.name} (${s.consumed}/${s.daily})`).join(', ');
@@ -756,7 +765,28 @@ exports.handler = async (event, context) => {
                   },
                 });
               } else {
-                console.log(`✅ [${userDoc.id}] GÜN SONU TAKVİYE ÖZET: Tüm takviyeler tamamlandı!`);
+                console.log(`✅ [${userDoc.id}] GÜN SONU TAKVİYE ÖZET (${summaryTimeStr}): Tüm takviyeler tamamlandı!`);
+                
+                // Tüm takviyeler tamamlandığında da bildirim gönder
+                const successMessages = [
+                  `🎉 Mükemmel! Bugün tüm takviyelerini tamamladın! Sağlığın için harika bir gün! 🌟`,
+                  `🏆 Harika performans! Günlük takviye hedeflerinin hepsine ulaştın! 💪`,
+                  `⭐ Süper! Bugün tüm takviyelerini aldın, vücudun sana teşekkür ediyor! 🎯`,
+                  `🌟 İnanılmaz! Günlük takviye rutinini mükemmel şekilde tamamladın! 🏅`,
+                  `🎊 Tebrikler! Bugün tüm takviyelerini başarıyla aldın! Sağlıklı yaşam için büyük adım! 🌈`,
+                  `💎 Mükemmel disiplin! Günlük takviye hedeflerinin hepsini gerçekleştirdin! ✨`,
+                  `🏅 Harika! Bugün tüm takviyelerini tamamladın, sağlığın için en iyisini yapıyorsun! 🌟`,
+                  `🎯 Süper başarı! Günlük takviye rutinini kusursuz şekilde tamamladın! 💎`,
+                ];
+                
+                notificationsForThisUser.push({
+                  tokens: fcmTokens,
+                  data: {
+                    title: "🎉 Günlük Takviye Başarısı!",
+                    body: successMessages[Math.floor(Math.random() * successMessages.length)],
+                    type: "supplement-summary-success",
+                  },
+                });
               }
             }
           }

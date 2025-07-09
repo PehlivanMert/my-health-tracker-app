@@ -64,20 +64,3 @@
   for = "/firebase-messaging-sw.js"
   [headers.values]
     Cache-Control = "public, max-age=86400"
-
-# Redirects for SEO
-[[redirects]]
-  from = "/home"
-  to = "/"
-  status = 301
-
-[[redirects]]
-  from = "/index.html"
-  to = "/"
-  status = 301
-
-# SPA fallback
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200

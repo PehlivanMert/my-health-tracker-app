@@ -1,0 +1,6 @@
+# Redirects for SEO
+/home / 301
+/index.html / 301
+
+# SPA fallback - handle client-side routing
+/* /index.html 200 

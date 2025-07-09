@@ -21,8 +21,19 @@
     <meta name="description" content="StayHealthyWith.me ile sağlığınızı takip edin. Su tüketimi, vitamin takibi, egzersiz rutinleri ve günlük aktivitelerinizi kolayca yönetin. Ücretsiz sağlık takip uygulaması." />
     <meta name="keywords" content="sağlık takip, su tüketimi, vitamin takibi, egzersiz rutini, sağlık uygulaması, wellness tracker, health tracking, stayhealthywith.me" />
     <meta name="author" content="StayHealthyWith.me" />
-    <meta name="robots" content="index, follow" />
-    <meta name="googlebot" content="index, follow" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    
+    <!-- Language and Region -->
+    <meta name="language" content="Turkish" />
+    <meta name="geo.region" content="TR" />
+    <meta name="geo.placename" content="Turkey" />
+    
+    <!-- Mobile and Performance -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="StayHealthyWith.me" />
     
     <!-- Open Graph Meta Tags -->
     <meta property="og:title" content="StayHealthyWith.me - Kişisel Sağlık Takip Sistemi" />
@@ -39,18 +50,16 @@
     <meta name="twitter:description" content="Sağlığınızı takip etmek hiç bu kadar kolay olmamıştı. Su tüketimi, vitamin takibi ve egzersiz rutinlerinizi yönetin." />
     <meta name="twitter:image" content="/logo4.jpeg" />
     
-    <!-- Canonical URL -->
-    <link rel="canonical" href="https://stayhealthywith.me" />
+    <!-- Canonical URL - Dynamic -->
+    <script>
+      // Dynamic canonical URL
+      const canonical = document.createElement('link');
+      canonical.rel = 'canonical';
+      canonical.href = window.location.origin + window.location.pathname;
+      document.head.appendChild(canonical);
+    </script>
     
     <!-- PWA Meta Tags -->
-    <link rel="apple-touch-icon" href="/logo4.jpeg" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta
-      name="apple-mobile-web-app-status-bar-style"
-      content="black-translucent"
-    />
-    <meta name="apple-mobile-web-app-title" content="StayHealthyWith.me" />
     <link rel="apple-touch-icon" href="/logo4.jpeg" />
     <link rel="apple-touch-startup-image" href="/logo4.jpeg" />
     
@@ -110,7 +119,21 @@
      crossorigin="anonymous"></script>
     
     <!-- Google Search Console Verification -->
-    <meta name="google-site-verification" content="your-verification-code-here" />
+    <meta name="google-site-verification" content="G-89Q2T4GLX7" />
+    
+    <!-- Additional SEO Meta Tags -->
+    <meta name="application-name" content="StayHealthyWith.me" />
+    <meta name="msapplication-TileColor" content="#1976d2" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
+    
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://www.googletagmanager.com" />
+    <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
+    
+    <!-- Google AdSense Account Meta Tag -->
+    <meta name="google-adsense-account" content="ca-pub-1036370673903219">
     
     <!--
       manifest.json provides metadata used when your web app is installed on a

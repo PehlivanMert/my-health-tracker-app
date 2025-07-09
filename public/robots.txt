@@ -9,9 +9,20 @@ Disallow: /admin/
 Disallow: /private/
 Disallow: /api/
 Disallow: /auth/
+Disallow: /netlify/
 
-# Crawl-delay
-Crawl-delay: 5
+# Allow Googlebot specifically
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+# Allow Bingbot
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+# General crawl-delay
+Crawl-delay: 2
 
 # Sitemap
 Sitemap: https://stayhealthywith.me/sitemap.xml

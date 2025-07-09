@@ -46,7 +46,7 @@ self.addEventListener("install", (event) => {
             return cache.put(url, response);
           })
           .catch((error) => {
-            console.error(`Caching failed for ${url}:`, error);
+            // console.error(`Caching failed for ${url}:`, error);
           })
       );
       return Promise.allSettled(cachePromises);
@@ -124,7 +124,7 @@ self.addEventListener("push", (event) => {
   try {
     data = event.data.json();
   } catch (e) {
-    console.error("Push event verisi JSON formatında değil:", e);
+    // console.error("Push event verisi JSON formatında değil:", e);
     return;
   }
   // Eğer veri, iç içe bir data objesi içeriyorsa, bunu kullanın.
@@ -215,17 +215,17 @@ self.addEventListener("notificationclick", (event) => {
           }, 1000); // Pencere yüklenmesi için bekleme
         }
       }).catch((error) => {
-        console.error(`❌ [NOTIFICATION CLICK] Yeni pencere açma hatası:`, error);
+        // console.error(`❌ [NOTIFICATION CLICK] Yeni pencere açma hatası:`, error);
         
         // Fallback: Basit URL açma
         try {
           window.open(urlWithTab, '_blank');
         } catch (fallbackError) {
-          console.error(`❌ [NOTIFICATION CLICK] Fallback açma hatası:`, fallbackError);
+          // console.error(`❌ [NOTIFICATION CLICK] Fallback açma hatası:`, fallbackError);
         }
       });
     }).catch((error) => {
-      console.error(`❌ [NOTIFICATION CLICK] Genel hata:`, error);
+      // console.error(`❌ [NOTIFICATION CLICK] Genel hata:`, error);
       
       // Son çare: Basit URL açma
       try {
@@ -233,7 +233,7 @@ self.addEventListener("notificationclick", (event) => {
         const urlWithTab = `${baseUrl}/?tab=${targetTab}&notification=true&timestamp=${Date.now()}`;
         window.open(urlWithTab, '_blank');
       } catch (fallbackError) {
-        console.error(`❌ [NOTIFICATION CLICK] Son çare açma hatası:`, fallbackError);
+        // console.error(`❌ [NOTIFICATION CLICK] Son çare açma hatası:`, fallbackError);
       }
     })
   );
@@ -243,7 +243,7 @@ self.addEventListener("notificationclick", (event) => {
 self.addEventListener('message', (event) => {
   
   if (event.data && event.data.type === 'TEST_CONNECTION') {
-    console.log('✅ [SW MESSAGE] Test bağlantısı başarılı');
+    // console.log('✅ [SW MESSAGE] Test bağlantısı başarılı');
     // Test mesajına yanıt gönder
     if (event.ports && event.ports[0]) {
       event.ports[0].postMessage({
@@ -310,7 +310,7 @@ const handlePlatformNavigation = (client, targetTab, platform) => {
       
       // 2. URL ile yönlendir
       client.navigate(urlWithTab).catch(error => {
-        console.log(`📱 [IOS PWA] Navigate hatası (normal):`, error);
+        // console.log(`📱 [IOS PWA] Navigate hatası (normal):`, error);
       });
       
       // 3. Mesajlaşma ile tab değiştir (birden fazla deneme)
@@ -323,9 +323,9 @@ const handlePlatformNavigation = (client, targetTab, platform) => {
             source: 'ios_pwa_notification',
             platform: platform
           });
-          console.log(`✅ [IOS PWA] Tab değişikliği mesajı gönderildi (Tab ${targetTab})`);
+          // console.log(`✅ [IOS PWA] Tab değişikliği mesajı gönderildi (Tab ${targetTab})`);
         } catch (error) {
-          console.error(`❌ [IOS PWA] Mesaj gönderme hatası:`, error);
+          // console.error(`❌ [IOS PWA] Mesaj gönderme hatası:`, error);
         }
       };
       
@@ -346,7 +346,7 @@ const handlePlatformNavigation = (client, targetTab, platform) => {
       }
       
       client.navigate(urlWithTab).catch(error => {
-        console.log(`🤖 [ANDROID PWA] Navigate hatası:`, error);
+        // console.log(`🤖 [ANDROID PWA] Navigate hatası:`, error);
       });
       
       const sendAndroidMessage = () => {
@@ -358,9 +358,9 @@ const handlePlatformNavigation = (client, targetTab, platform) => {
             source: 'android_pwa_notification',
             platform: platform
           });
-          console.log(`✅ [ANDROID PWA] Tab değişikliği mesajı gönderildi (Tab ${targetTab})`);
+          // console.log(`✅ [ANDROID PWA] Tab değişikliği mesajı gönderildi (Tab ${targetTab})`);
         } catch (error) {
-          console.error(`❌ [ANDROID PWA] Mesaj gönderme hatası:`, error);
+          // console.error(`❌ [ANDROID PWA] Mesaj gönderme hatası:`, error);
         }
       };
       
@@ -386,9 +386,9 @@ const handlePlatformNavigation = (client, targetTab, platform) => {
             source: 'mobile_web_notification',
             platform: platform
           });
-          console.log(`✅ [MOBILE WEB] Tab değişikliği mesajı gönderildi (Tab ${targetTab})`);
+          // console.log(`✅ [MOBILE WEB] Tab değişikliği mesajı gönderildi (Tab ${targetTab})`);
         } catch (error) {
-          console.error(`❌ [MOBILE WEB] Mesaj gönderme hatası:`, error);
+          // console.error(`❌ [MOBILE WEB] Mesaj gönderme hatası:`, error);
         }
       };
       
@@ -413,9 +413,9 @@ const handlePlatformNavigation = (client, targetTab, platform) => {
             source: 'desktop_web_notification',
             platform: platform
           });
-          console.log(`✅ [DESKTOP WEB] Tab değişikliği mesajı gönderildi (Tab ${targetTab})`);
+          // console.log(`✅ [DESKTOP WEB] Tab değişikliği mesajı gönderildi (Tab ${targetTab})`);
         } catch (error) {
-          console.error(`❌ [DESKTOP WEB] Mesaj gönderme hatası:`, error);
+          // console.error(`❌ [DESKTOP WEB] Mesaj gönderme hatası:`, error);
         }
       };
       

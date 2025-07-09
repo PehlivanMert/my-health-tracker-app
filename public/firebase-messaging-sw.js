@@ -35,10 +35,8 @@ const messaging = firebase.messaging();
 
 // 1. Install event: ASSETS dizisindeki dosyaları önbelleğe ekle
 self.addEventListener("install", (event) => {
-  console.log("[Service Worker] Install event");
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log("[Service Worker] Precaching assets");
       const cachePromises = ASSETS.map((url) =>
         fetch(url)
           .then((response) => {
@@ -59,7 +57,6 @@ self.addEventListener("install", (event) => {
 
 // 2. Activate event: Eski önbellekleri temizle
 self.addEventListener("activate", (event) => {
-  console.log("[Service Worker] Activate event");
   event.waitUntil(
     caches
       .keys()
@@ -67,7 +64,6 @@ self.addEventListener("activate", (event) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
             if (cacheName !== CACHE_NAME) {
-              console.log("[Service Worker] Deleting old cache:", cacheName);
               return caches.delete(cacheName);
             }
           })
@@ -115,10 +111,6 @@ self.addEventListener("fetch", (event) => {
 
 // Background mesajları dinle
 messaging.onBackgroundMessage((payload) => {
-  console.log(
-    "[firebase-messaging-sw.js] Received background message ",
-    payload
-  );
   const { title, body, icon } = payload.notification;
   self.registration.showNotification(title, {
     body,
@@ -131,7 +123,6 @@ self.addEventListener("push", (event) => {
   let data;
   try {
     data = event.data.json();
-    console.log("Push event verisi:", data);
   } catch (e) {
     console.error("Push event verisi JSON formatında değil:", e);
     return;
@@ -177,7 +168,6 @@ self.addEventListener("push", (event) => {
 
 // Bildirime tıklama olayını dinle
 self.addEventListener("notificationclick", (event) => {
-  console.log("Bildirime tıklandı:", event.notification.data);
   
   event.notification.close();
   
@@ -197,19 +187,13 @@ self.addEventListener("notificationclick", (event) => {
   else if (targetTab === 0) pageName = "Günlük Rutin";
   else if (targetTab === 4) pageName = "Takvim";
   
-  console.log(`🎯 [NOTIFICATION CLICK] Platform: ${platform}, Bildirim türü: ${notificationType}, Yönlendirilecek tab: ${pageName} (Tab ${targetTab})`);
-  
-  // Platform bazlı yönlendirme
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
-      console.log(`📱 [NOTIFICATION CLICK] Bulunan client sayısı: ${clients.length}, Platform: ${platform}`);
       
       // Mevcut açık pencereleri kontrol et
       for (const client of clients) {
-        console.log(`📱 [NOTIFICATION CLICK] Client URL: ${client.url}, Origin: ${self.location.origin}`);
         
         if (client.url.includes(self.location.origin)) {
-          console.log(`📱 [NOTIFICATION CLICK] Mevcut pencereye yönlendiriliyor: ${pageName} (Tab ${targetTab}) - Platform: ${platform}`);
           
           // Platform bazlı yönlendirme
           handlePlatformNavigation(client, targetTab, platform);
@@ -218,14 +202,12 @@ self.addEventListener("notificationclick", (event) => {
       }
       
       // Eğer uygulama açık değilse, yeni pencere aç
-      console.log(`🆕 [NOTIFICATION CLICK] Yeni pencere açılıyor: ${pageName} (Tab ${targetTab}) - Platform: ${platform}`);
       
       const baseUrl = self.location.origin;
       const urlWithTab = `${baseUrl}/?tab=${targetTab}&notification=true&timestamp=${Date.now()}`;
       
       return self.clients.openWindow(urlWithTab).then((newClient) => {
         if (newClient) {
-          console.log(`✅ [NOTIFICATION CLICK] Yeni pencere açıldı - Platform: ${platform}`);
           
           // Yeni pencere açıldıktan sonra platform bazlı yönlendirme
           setTimeout(() => {
@@ -259,7 +241,6 @@ self.addEventListener("notificationclick", (event) => {
 
 // Ana uygulamadan gelen mesajları dinle
 self.addEventListener('message', (event) => {
-  console.log('📨 [SW MESSAGE] Ana uygulamadan mesaj alındı:', event.data);
   
   if (event.data && event.data.type === 'TEST_CONNECTION') {
     console.log('✅ [SW MESSAGE] Test bağlantısı başarılı');
@@ -313,7 +294,6 @@ const detectPlatform = () => {
 
 // Platform bazlı yönlendirme fonksiyonu
 const handlePlatformNavigation = (client, targetTab, platform) => {
-  console.log(`🎯 [PLATFORM NAV] Platform: ${platform}, Tab: ${targetTab}`);
   
   const baseUrl = self.location.origin;
   const urlWithTab = `${baseUrl}/?tab=${targetTab}&notification=true&timestamp=${Date.now()}`;
@@ -322,7 +302,6 @@ const handlePlatformNavigation = (client, targetTab, platform) => {
   switch (platform) {
     case 'ios-pwa':
       // iOS PWA için özel strateji
-      console.log(`📱 [IOS PWA] iOS PWA yönlendirme başlatılıyor`);
       
       // 1. Önce pencereyi odakla
       if ("focus" in client) {
@@ -361,7 +340,6 @@ const handlePlatformNavigation = (client, targetTab, platform) => {
       
     case 'android-pwa':
       // Android PWA için strateji
-      console.log(`🤖 [ANDROID PWA] Android PWA yönlendirme başlatılıyor`);
       
       if ("focus" in client) {
         client.focus();
@@ -394,7 +372,6 @@ const handlePlatformNavigation = (client, targetTab, platform) => {
       
     case 'mobile-web':
       // Mobil web için strateji
-      console.log(`📱 [MOBILE WEB] Mobil web yönlendirme başlatılıyor`);
       
       if ("focus" in client) {
         client.focus();
@@ -422,7 +399,6 @@ const handlePlatformNavigation = (client, targetTab, platform) => {
       
     default:
       // Desktop web için strateji
-      console.log(`💻 [DESKTOP WEB] Desktop web yönlendirme başlatılıyor`);
       
       if ("focus" in client) {
         client.focus();

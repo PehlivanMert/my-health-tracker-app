@@ -468,7 +468,9 @@ const resetDailyWaterIntake = async (
     const waterIntake = currentFirestoreData.waterIntake || 0;
     const dailyTarget = currentFirestoreData.dailyWaterTarget || 2000;
     await sendDailyWaterSummary(user, waterIntake, dailyTarget);
-    console.log(`Gün sonu özeti: ${waterIntake}ml`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Gün sonu özeti: ${waterIntake}ml`);
+    }
   } catch (error) {
     console.error("Reset işlemi sırasında hata oluştu:", error);
   }
@@ -642,7 +644,9 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
       );
       await fetchWaterData();
       const result = await scheduleWaterNotifications(user);
-      console.log("handleAddWater - Bildirimler yeniden hesaplandı:", result);
+      if (process.env.NODE_ENV === 'development') {
+        console.log("handleAddWater - Bildirimler yeniden hesaplandı:", result);
+      }
       setNextReminder(result.nextReminder);
     } catch (error) {
       console.error("Error updating water intake:", error);
@@ -665,10 +669,12 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
       await setDoc(ref, { waterIntake: newIntake }, { merge: true });
       await fetchWaterData();
       const result = await scheduleWaterNotifications(user);
-      console.log(
-        "handleRemoveWater - Bildirimler yeniden hesaplandı:",
-        result
-      );
+      if (process.env.NODE_ENV === 'development') {
+        console.log(
+          "handleRemoveWater - Bildirimler yeniden hesaplandı:",
+          result
+        );
+      }
       setNextReminder(result.nextReminder);
     } catch (error) {
       console.error("Error updating water intake:", error);
@@ -738,7 +744,9 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     } else if (waterData.waterNotificationOption !== "none") {
       saveNextWaterReminderTime(user)
         .then((next) => {
-          console.log("WaterTracker - nextReminder hesaplandı:", next);
+          if (process.env.NODE_ENV === 'development') {
+            console.log("WaterTracker - nextReminder hesaplandı:", next);
+          }
           setNextReminder(next);
         })
         .catch((err) =>

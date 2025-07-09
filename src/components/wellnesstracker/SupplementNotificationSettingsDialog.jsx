@@ -295,7 +295,9 @@ const SupplementNotificationSettingsDialog = ({
         onClose();
       }, 800);
     } catch (error) {
-      console.error("Kaydetme hatası:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Kaydetme hatası:", error);
+      }
       setSaving(false);
     }
   };

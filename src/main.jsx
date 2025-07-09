@@ -21,18 +21,12 @@ if ("serviceWorker" in navigator) {
         return navigator.serviceWorker
           .register("/firebase-messaging-sw.js")
           .then((registration) => {
-            console.log(
-              "✅ Firebase Messaging SW başarıyla kaydedildi:",
-              registration
-            );
             return registration;
           })
           .catch((error) => {
-            console.error("❌ SW kaydı başarısız:", error);
             throw error;
           });
       } else {
-        console.log("🟢 Firebase Messaging SW zaten kayıtlı:", registration);
         return registration;
       }
     })
@@ -58,9 +52,11 @@ if ("serviceWorker" in navigator) {
       };
     })
     .catch((error) => {
-      console.error(
-        "Service Worker kaydı veya güncelleme kontrolü sırasında hata oluştu:",
-        error
-      );
+      if (process.env.NODE_ENV === "development") {
+        console.error(
+          "Service Worker kaydı veya güncelleme kontrolü sırasında hata oluştu:",
+          error
+        );
+      }
     });
 }

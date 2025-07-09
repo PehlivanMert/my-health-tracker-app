@@ -110,7 +110,9 @@ const WaterNotificationSettingsDialog = ({
       setSaving(false);
       onClose();
     } catch (error) {
-      console.error("Kaydetme hatası:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Kaydetme hatası:", error);
+      }
       setSaving(false);
     }
   };

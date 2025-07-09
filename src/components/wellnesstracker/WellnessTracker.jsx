@@ -298,7 +298,9 @@ const WellnessTracker = ({ user }) => {
   const cleanupSupplementNotifications = async () => {
     if (!supplements.length || !user) return;
 
-    console.log("Takviye bildirim sistemi temizleniyor...");
+    if (process.env.NODE_ENV === 'development') {
+      console.log("Takviye bildirim sistemi temizleniyor...");
+    }
     
     for (const supp of supplements) {
       const suppDocRef = doc(db, "users", user.uid, "supplements", supp.id);
@@ -311,7 +313,9 @@ const WellnessTracker = ({ user }) => {
           // Sadece gerekli alanları tut
           nextSupplementReminderTime: null, // Yeniden hesaplanacak
         });
-        console.log(`${supp.name} için bildirim sistemi temizlendi`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`${supp.name} için bildirim sistemi temizlendi`);
+        }
       } catch (error) {
         console.error(`${supp.name} temizleme hatası:`, error);
       }
@@ -322,12 +326,16 @@ const WellnessTracker = ({ user }) => {
   const recalculateAllSupplementNotifications = async () => {
     if (!supplements.length || !user) return;
 
-    console.log("Tüm takviye bildirimleri yeniden hesaplanıyor...");
+    if (process.env.NODE_ENV === 'development') {
+      console.log("Tüm takviye bildirimleri yeniden hesaplanıyor...");
+    }
     
     for (const supp of supplements) {
       try {
         await saveNextSupplementReminderTime(user, supp);
-        console.log(`${supp.name} için bildirim zamanı yeniden hesaplandı`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`${supp.name} için bildirim zamanı yeniden hesaplandı`);
+        }
       } catch (error) {
         console.error(`${supp.name} hesaplama hatası:`, error);
       }
@@ -456,7 +464,9 @@ const WellnessTracker = ({ user }) => {
               notificationSchedule: notification.notificationSchedule,
             });
             
-            console.log(`${supplementData.name} için bildirim zamanı yeniden hesaplandı`);
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`${supplementData.name} için bildirim zamanı yeniden hesaplandı`);
+            }
           }
         }
       }

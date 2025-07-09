@@ -6,7 +6,6 @@ export const getTurkeyTime = () => {
   const now = new Date(
     new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
   );
-  console.log("getTurkeyTime - Şu anki Türkiye zamanı:", now);
   return now;
 };
 
@@ -23,10 +22,6 @@ export const getGlobalNotificationWindow = async (user) => {
           typeof data.notificationWindow === "string"
             ? JSON.parse(data.notificationWindow)
             : data.notificationWindow;
-        console.log(
-          "getGlobalNotificationWindow - Global bildirim penceresi alındı:",
-          windowObj
-        );
         return windowObj;
       } else {
         console.warn(
@@ -85,12 +80,6 @@ const computeWindowTimes = (windowObj) => {
     end = new Date(`${todayStr}T${windowObj.end}:00`);
   }
 
-  console.log(
-    "computeWindowTimes - Pencere başlangıcı:",
-    start,
-    "Bitişi:",
-    end
-  );
   return { windowStart: start, windowEnd: end };
 };
 
@@ -98,10 +87,6 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
   const times = [];
   const now = getTurkeyTime();
   const todayStr = now.toLocaleDateString("en-CA");
-  console.log(
-    "computeSupplementReminderTimes - Bugünün tarihi (en-CA):",
-    todayStr
-  );
 
   // Tüketim kontrolü: Eğer günlük kullanım hedefine ulaşılmışsa bildirim zamanı hesaplanmaz.
   let consumptionReached = false;
@@ -121,19 +106,8 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
         const todayConsumption = consumptionData[todayStr] || {};
         consumed = todayConsumption[suppData.name] || 0;
       }
-      console.log(
-        "computeSupplementReminderTimes - Günlük tüketim verisi:",
-        suppData.name,
-        "consumed:",
-        consumed,
-        "dailyUsage:",
-        suppData.dailyUsage
-      );
       if (consumed >= suppData.dailyUsage) {
         consumptionReached = true;
-        console.log(
-          "computeSupplementReminderTimes - Günlük kullanım hedefe ulaştı, bildirim oluşturulmayacak."
-        );
       }
     } catch (error) {
       console.error(
@@ -150,7 +124,6 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
   let globalNotifWindow = await getGlobalNotificationWindow(user);
   if (!globalNotifWindow) {
     globalNotifWindow = { start: "08:00", end: "22:00" };
-    console.log("computeSupplementReminderTimes - Varsayılan bildirim penceresi kullanılıyor:", globalNotifWindow);
   }
   const { windowStart, windowEnd } = computeWindowTimes(globalNotifWindow);
   
@@ -172,16 +145,6 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
     summaryTime = new Date(todayStr + 'T23:59:00');
   }
   
-  console.log(
-    "computeSupplementReminderTimes - Dinamik gün sonu özeti hesaplaması:",
-    {
-      windowEnd: `${windowEndHour}:${windowEndMinute}`,
-      windowEndTotal,
-      summaryTime: summaryTime.toLocaleTimeString('tr-TR', { hour12: false }),
-      summaryTime
-    }
-  );
-
   // Manuel bildirim zamanı varsa
   if (
     suppData.notificationSchedule &&
@@ -198,15 +161,6 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
         scheduled = new Date(
           `${tomorrowStr}T${timeParts[0]}:${timeParts[1]}:00`
         );
-        console.log(
-          "computeSupplementReminderTimes - Manuel olarak hesaplanan zaman (yarın):",
-          scheduled
-        );
-      } else {
-        console.log(
-          "computeSupplementReminderTimes - Manuel olarak hesaplanan zaman:",
-          scheduled
-        );
       }
       times.push(scheduled);
     });
@@ -214,54 +168,26 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
   // Otomatik hesaplama: Günlük kullanım tanımlıysa
   else if (suppData.dailyUsage > 0) {
     const estimatedRemainingDays = suppData.quantity / suppData.dailyUsage;
-    console.log(
-      "computeSupplementReminderTimes - estimatedRemainingDays:",
-      estimatedRemainingDays
-    );
     const flooredRemaining = Math.floor(estimatedRemainingDays);
 
     if (flooredRemaining === 0) {
       // Takviyenin bittiğine dair bildirim (örneğin 1 dakika sonrası)
       const finishedTime = new Date(now.getTime() + 1 * 60000);
       times.push(finishedTime);
-      console.log(
-        "computeSupplementReminderTimes - estimatedRemainingDays 0: Takviyen bitmiştir bildirimi için hesaplanan zaman:",
-        finishedTime
-      );
     } else if ([14, 7, 3, 1].includes(flooredRemaining)) {
-      console.log(
-        "computeSupplementReminderTimes - estimatedRemainingDays eşik değeri tetiklendi:",
-        flooredRemaining
-      );
       if (globalNotifWindow && globalNotifWindow.end) {
         const windowEndTime = new Date(
           `${todayStr}T${globalNotifWindow.end}:00`
         );
         times.push(windowEndTime);
-        console.log(
-          `computeSupplementReminderTimes - ${flooredRemaining} günlük takviyen kaldı bildirimi için hesaplanan zaman (bildirim penceresi):`,
-          windowEndTime
-        );
       } else {
         const defaultTime = new Date(now.getTime() + 60 * 60000);
         times.push(defaultTime);
-        console.log(
-          `computeSupplementReminderTimes - ${flooredRemaining} günlük takviyen kaldı bildirimi için hesaplanan zaman (varsayılan 1 saat sonrası):`,
-          defaultTime
-        );
       }
     } else {
-      console.log(
-        "computeSupplementReminderTimes - Normal durumda, estimatedRemainingDays:",
-        estimatedRemainingDays
-      );
       // Normal durumda artık pencere bitişi bildirimi göndermiyoruz, sadece dinamik gün sonu özeti
       // Dinamik gün sonu özeti zamanını ekle
       times.push(summaryTime);
-      console.log(
-        "computeSupplementReminderTimes - Dinamik gün sonu özeti için hesaplanan zaman:",
-        summaryTime
-      );
     }
   } else {
     console.warn(
@@ -270,10 +196,6 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
   }
 
   times.sort((a, b) => a - b);
-  console.log(
-    "computeSupplementReminderTimes - Sıralanmış bildirim zamanları:",
-    times
-  );
   return times;
 };
 
@@ -281,10 +203,6 @@ const TOLERANCE_MS = 60000; // 1 dakika tolerans
 
 export const getNextSupplementReminderTime = async (suppData, user) => {
   const reminderTimes = await computeSupplementReminderTimes(suppData, user);
-  console.log(
-    "getNextSupplementReminderTime - Hesaplanan reminderTimes listesi:",
-    reminderTimes
-  );
   const now = getTurkeyTime();
   
   // Gece yarısı özeti için özel kontrol (23:59)
@@ -300,10 +218,6 @@ export const getNextSupplementReminderTime = async (suppData, user) => {
     });
     
     if (midnightSummary) {
-      console.log(
-        "getNextSupplementReminderTime - Gece yarısı özeti bulundu:",
-        midnightSummary
-      );
       return midnightSummary;
     }
   }
@@ -311,10 +225,6 @@ export const getNextSupplementReminderTime = async (suppData, user) => {
   // Tolerans eklenerek, gelecekteki bildirim zamanı aranıyor.
   for (const time of reminderTimes) {
     if (time.getTime() > now.getTime() + TOLERANCE_MS) {
-      console.log(
-        "getNextSupplementReminderTime - Bulunan sonraki zaman:",
-        time
-      );
       return time;
     }
   }
@@ -329,10 +239,6 @@ export const getNextSupplementReminderTime = async (suppData, user) => {
       .split(":");
     const tomorrowReminder = new Date(
       `${tomorrowDateStr}T${timeParts[0]}:${timeParts[1]}:00`
-    );
-    console.log(
-      "getNextSupplementReminderTime - Bugünün tüm bildirim saatleri geçmiş, yarın için ayarlandı:",
-      tomorrowReminder
     );
     return tomorrowReminder;
   }
@@ -385,10 +291,6 @@ export const saveNextSupplementReminderTime = async (user, suppData) => {
         },
         { merge: true }
       );
-      console.log(
-        "saveNextSupplementReminderTime - Kaydedilen sonraki takviye bildirimi zamanı:",
-        nextReminder.toISOString()
-      );
       return nextReminder;
     } else {
       await setDoc(
@@ -398,9 +300,6 @@ export const saveNextSupplementReminderTime = async (user, suppData) => {
           notificationsLastCalculated: new Date(),
         },
         { merge: true }
-      );
-      console.warn(
-        "saveNextSupplementReminderTime - Sonraki bildirim zamanı hesaplanamadı"
       );
       return null;
     }
@@ -420,9 +319,5 @@ export const saveNextSupplementReminderTime = async (user, suppData) => {
     notificationsLastCalculated: new Date(),
   };
   await setDoc(suppDocRef, updateData, { merge: true });
-  console.log(
-    "saveNextSupplementReminderTime - Kaydedilen sonraki takviye bildirimi zamanı:",
-    nextReminder.toISOString()
-  );
   return nextReminder;
 };

@@ -108,7 +108,9 @@ const SupplementDialog = ({
       await handleSaveSupplement();
       setErrors({});
     } catch (error) {
-      console.error("Takviye kaydetme hatası:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Takviye kaydetme hatası:", error);
+      }
       setErrors({ submit: "Takviye kaydedilirken bir hata oluştu" });
     } finally {
       setIsSubmitting(false);

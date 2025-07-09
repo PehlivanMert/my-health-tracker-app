@@ -35,7 +35,9 @@ export const GlobalStateProvider = ({ children }) => {
           }));
           setSupplements(supplementsData);
         } catch (error) {
-          console.error("Supplements verisi çekilirken hata:", error);
+          if (process.env.NODE_ENV === "development") {
+            console.error("Supplements verisi çekilirken hata:", error);
+          }
         }
       }
     };

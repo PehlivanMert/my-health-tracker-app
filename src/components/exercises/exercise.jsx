@@ -702,7 +702,7 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
             </AnimatedButton>
           </Box>
 
-          {!canUseGemini() && (
+          {geminiUsage && !canUseGemini() && (
             <Alert severity="info" sx={{ mb: 3, background: "rgba(255,255,255,0.9)", fontSize: { xs: "0.8rem", md: "inherit" } }}>
               Günde sadece 3 kez program oluşturabilirsiniz. Yarın tekrar deneyin.
             </Alert>

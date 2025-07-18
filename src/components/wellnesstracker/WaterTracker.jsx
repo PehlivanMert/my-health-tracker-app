@@ -367,6 +367,233 @@ const ModernAchievementAnimation = ({ message, onComplete }) => {
   );
 };
 
+// --- NEW MINIMAL ACHIEVEMENT ANIMATION ---
+
+const fadeInOut = keyframes`
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { opacity: 0; }
+`;
+
+const MinimalAchievementOverlay = styled(Box)(({ theme }) => ({
+  position: "fixed",
+  top: 0,
+  left: 0,
+  width: "100vw",
+  height: "100vh",
+  background: "rgba(255,255,255,0.96)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  zIndex: 9999,
+  animation: `${fadeInOut} 2.5s cubic-bezier(0.4,0,0.2,1)`,
+  transition: "opacity 0.5s",
+}));
+
+const AnimatedCheckmark = () => (
+  <svg width="120" height="120" viewBox="0 0 120 120">
+    <circle
+      cx="60"
+      cy="60"
+      r="54"
+      fill="none"
+      stroke="#4CAF50"
+      strokeWidth="8"
+      opacity="0.15"
+    />
+    <circle
+      cx="60"
+      cy="60"
+      r="54"
+      fill="none"
+      stroke="#4CAF50"
+      strokeWidth="8"
+      strokeDasharray="339.292"
+      strokeDashoffset="339.292"
+      style={{
+        animation: "dash 0.7s cubic-bezier(0.4,0,0.2,1) forwards"
+      }}
+    />
+    <polyline
+      points="40,65 55,80 85,45"
+      fill="none"
+      stroke="#4CAF50"
+      strokeWidth="8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeDasharray="60"
+      strokeDashoffset="60"
+      style={{
+        animation: "dash 0.5s 0.5s cubic-bezier(0.4,0,0.2,1) forwards"
+      }}
+    />
+    <style>{`
+      @keyframes dash {
+        to { stroke-dashoffset: 0; }
+      }
+    `}</style>
+  </svg>
+);
+
+const MinimalAchievementAnimation = ({ message, onComplete }) => {
+  useEffect(() => {
+    const timeout = setTimeout(onComplete, 2500);
+    return () => clearTimeout(timeout);
+  }, [onComplete]);
+  return (
+    <MinimalAchievementOverlay onClick={onComplete}>
+      <Box sx={{ textAlign: "center" }}>
+        <AnimatedCheckmark />
+        <Typography
+          variant="h4"
+          sx={{
+            mt: 3,
+            color: "#222",
+            fontWeight: 700,
+            letterSpacing: 0.5,
+            fontSize: { xs: "1.3rem", sm: "1.7rem" },
+          }}
+        >
+          {message || "Su Hedefi Tamamlandı!"}
+        </Typography>
+        <Typography
+          variant="body2"
+          sx={{ color: "#555", mt: 1 }}
+        >
+          Tebrikler! Günlük su hedefinizi başarıyla tamamladınız.
+        </Typography>
+      </Box>
+    </MinimalAchievementOverlay>
+  );
+};
+
+// --- NEW IMPACTFUL WATER GOAL ANIMATION ---
+const ImpactfulAchievementOverlay = styled(Box)(({ theme }) => ({
+  position: "fixed",
+  top: 0,
+  left: 0,
+  width: "100vw",
+  height: "100vh",
+  background: "rgba(240,248,255,0.98)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  zIndex: 9999,
+  animation: `${fadeInOut} 2.7s cubic-bezier(0.4,0,0.2,1)`,
+  transition: "opacity 0.5s",
+  boxShadow: "0 0 0 9999px rgba(33,150,243,0.08)",
+}));
+
+const WaterDropSVG = () => (
+  <svg width="160" height="180" viewBox="0 0 160 180" style={{ display: 'block', margin: '0 auto' }}>
+    <defs>
+      <linearGradient id="waterGradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#4FC3F7" />
+        <stop offset="100%" stopColor="#1976D2" />
+      </linearGradient>
+      <radialGradient id="rippleGradient" cx="50%" cy="80%" r="60%">
+        <stop offset="0%" stopColor="#B3E5FC" stopOpacity="0.7" />
+        <stop offset="100%" stopColor="#1976D2" stopOpacity="0.1" />
+      </radialGradient>
+      <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+        <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+        <feMerge>
+          <feMergeNode in="coloredBlur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+    {/* Water drop shape */}
+    <path
+      d="M80 20 C110 70, 150 110, 80 170 C10 110, 50 70, 80 20 Z"
+      fill="url(#waterGradient)"
+      filter="url(#glow)"
+      style={{
+        stroke: '#2196F3',
+        strokeWidth: 3,
+        animation: 'dropFill 1.2s cubic-bezier(0.4,0,0.2,1) forwards',
+        opacity: 0.98
+      }}
+    />
+    {/* Ripple effect */}
+    <ellipse
+      cx="80"
+      cy="155"
+      rx="48"
+      ry="10"
+      fill="url(#rippleGradient)"
+      style={{
+        opacity: 0.7,
+        animation: 'rippleFade 1.2s 0.7s cubic-bezier(0.4,0,0.2,1) forwards'
+      }}
+    />
+    {/* Checkmark overlay */}
+    <polyline
+      points="60,110 78,135 110,85"
+      fill="none"
+      stroke="#43EA7F"
+      strokeWidth="10"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeDasharray="70"
+      strokeDashoffset="70"
+      style={{
+        filter: 'drop-shadow(0 0 12px #43EA7F88)',
+        animation: 'dash 0.6s 1.1s cubic-bezier(0.4,0,0.2,1) forwards'
+      }}
+    />
+    <style>{`
+      @keyframes dash {
+        to { stroke-dashoffset: 0; }
+      }
+      @keyframes dropFill {
+        0% { opacity: 0; transform: scale(0.7) translateY(40px); }
+        60% { opacity: 1; transform: scale(1.05) translateY(-8px); }
+        100% { opacity: 1; transform: scale(1) translateY(0); }
+      }
+      @keyframes rippleFade {
+        0% { opacity: 0; transform: scaleX(0.7); }
+        60% { opacity: 0.7; transform: scaleX(1.1); }
+        100% { opacity: 0.7; transform: scaleX(1); }
+      }
+    `}</style>
+  </svg>
+);
+
+const ImpactfulAchievementAnimation = ({ message, onComplete }) => {
+  useEffect(() => {
+    const timeout = setTimeout(onComplete, 2700);
+    return () => clearTimeout(timeout);
+  }, [onComplete]);
+  return (
+    <ImpactfulAchievementOverlay onClick={onComplete}>
+      <Box sx={{ textAlign: "center" }}>
+        <WaterDropSVG />
+        <Typography
+          variant="h4"
+          sx={{
+            mt: 3,
+            color: "#1976D2",
+            fontWeight: 800,
+            letterSpacing: 0.5,
+            fontSize: { xs: "1.4rem", sm: "2rem" },
+            textShadow: "0 2px 12px #B3E5FC"
+          }}
+        >
+          {message || "Su Hedefi Tamamlandı!"}
+        </Typography>
+        <Typography
+          variant="body2"
+          sx={{ color: "#1976D2", mt: 1, fontWeight: 500 }}
+        >
+          Tebrikler! Günlük su hedefinizi başarıyla tamamladınız.
+        </Typography>
+      </Box>
+    </ImpactfulAchievementOverlay>
+  );
+};
+
 const GlowingCard = styled(Card, {
   shouldForwardProp: (prop) => prop !== "glowColor",
 })(({ glowColor }) => ({
@@ -651,14 +878,13 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     } catch (error) {
       console.error("Error updating water intake:", error);
     }
-    if (isGoalAchieved) {
+    if (isGoalAchieved && !achievement) {
       setShowConfetti(true);
       setAchievement("💧🚀 Su Hedefini Aştın! 🎉🌊");
-      // Otomatik kapatma süresini 7 saniyeye çıkar
       setTimeout(() => {
         setShowConfetti(false);
         setAchievement(null);
-      }, 7000);
+      }, 2700);
     }
   };
 
@@ -789,8 +1015,42 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     }
   }, [waterData, user]);
 
+  // --- TEST BUTTON FOR ANIMATION (DEV ONLY) ---
+  const handleTestAchievement = () => {
+    if (achievement) return; // Prevent double trigger
+    setShowConfetti(true);
+    setAchievement("💧🚀 Su Hedefini Aştın! 🎉🌊");
+    setTimeout(() => {
+      setShowConfetti(false);
+      setAchievement(null);
+    }, 2700);
+  };
+
   return (
     <Box sx={{ textAlign: "center", mb: 6 }}>
+      {/* TEST BUTTON - Only show in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <Box sx={{ mb: 2 }}>
+          <button
+            style={{
+              background: 'linear-gradient(90deg, #2196F3 0%, #21CBF3 100%)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 12,
+              padding: '10px 24px',
+              fontWeight: 700,
+              fontSize: '1rem',
+              boxShadow: '0 2px 8px rgba(33,150,243,0.15)',
+              cursor: 'pointer',
+              transition: 'background 0.3s',
+              marginBottom: 8
+            }}
+            onClick={handleTestAchievement}
+          >
+            🎉 Su Hedefi Animasyonunu Test Et
+          </button>
+        </Box>
+      )}
       {showConfetti && (
         <Confetti
           recycle={false}
@@ -848,9 +1108,12 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         />
       )}
       {achievement && (
-        <ModernAchievementAnimation
+        <ImpactfulAchievementAnimation
           message={achievement}
-          onComplete={() => setAchievement(null)}
+          onComplete={() => {
+            setAchievement(null);
+            setShowConfetti(false);
+          }}
         />
       )}
 

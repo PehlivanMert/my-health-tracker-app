@@ -469,7 +469,7 @@ const resetDailyWaterIntake = async (
     const dailyTarget = currentFirestoreData.dailyWaterTarget || 2000;
     await sendDailyWaterSummary(user, waterIntake, dailyTarget);
     if (process.env.NODE_ENV === 'development') {
-      console.log(`Gün sonu özeti: ${waterIntake}ml`);
+    console.log(`Gün sonu özeti: ${waterIntake}ml`);
     }
   } catch (error) {
     console.error("Reset işlemi sırasında hata oluştu:", error);
@@ -645,7 +645,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
       await fetchWaterData();
       const result = await scheduleWaterNotifications(user);
       if (process.env.NODE_ENV === 'development') {
-        console.log("handleAddWater - Bildirimler yeniden hesaplandı:", result);
+      console.log("handleAddWater - Bildirimler yeniden hesaplandı:", result);
       }
       setNextReminder(result.nextReminder);
     } catch (error) {
@@ -670,10 +670,10 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
       await fetchWaterData();
       const result = await scheduleWaterNotifications(user);
       if (process.env.NODE_ENV === 'development') {
-        console.log(
-          "handleRemoveWater - Bildirimler yeniden hesaplandı:",
-          result
-        );
+      console.log(
+        "handleRemoveWater - Bildirimler yeniden hesaplandı:",
+        result
+      );
       }
       setNextReminder(result.nextReminder);
     } catch (error) {
@@ -745,7 +745,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
       saveNextWaterReminderTime(user)
         .then((next) => {
           if (process.env.NODE_ENV === 'development') {
-            console.log("WaterTracker - nextReminder hesaplandı:", next);
+          console.log("WaterTracker - nextReminder hesaplandı:", next);
           }
           setNextReminder(next);
         })

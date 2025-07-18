@@ -10,7 +10,7 @@ app.use(cors());
 app.post("/api/qwen-proxy", async (req, res) => {
   try {
     if (process.env.NODE_ENV === "development") {
-      console.log("Gönderilen İstek Verisi:", req.body);
+    console.log("Gönderilen İstek Verisi:", req.body);
     }
 
     const response = await axios.post(
@@ -25,13 +25,13 @@ app.post("/api/qwen-proxy", async (req, res) => {
     );
 
     if (process.env.NODE_ENV === "development") {
-      console.log("API Yanıtı:", response.data);
+    console.log("API Yanıtı:", response.data);
     }
     res.json(response.data);
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
-      console.error("API Hatası:", error.message);
-      console.error("Hata Detayları:", error.response?.data);
+    console.error("API Hatası:", error.message);
+    console.error("Hata Detayları:", error.response?.data);
     }
     res.status(error.response?.status || 500).json({ error: error.message });
   }
@@ -40,6 +40,6 @@ app.post("/api/qwen-proxy", async (req, res) => {
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   if (process.env.NODE_ENV === "development") {
-    console.log(`Proxy server çalışıyor: http://localhost:${PORT}`);
+  console.log(`Proxy server çalışıyor: http://localhost:${PORT}`);
   }
 });

@@ -195,7 +195,7 @@ const DailyRoutine = ({ user }) => {
     const nowTurkey = getTurkeyTime();
     const todayStr = getTurkeyLocalDateString(new Date());
     if (process.env.NODE_ENV === 'development') {
-      console.log("todayStr", todayStr);
+    console.log("todayStr", todayStr);
     }
 
     const currentWeek = getWeekNumber(nowTurkey);

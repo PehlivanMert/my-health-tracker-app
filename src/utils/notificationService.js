@@ -7,7 +7,7 @@ export const requestNotificationPermissionAndSaveToken = async (user) => {
     const permission = await Notification.requestPermission();
     if (permission === "granted") {
       if (process.env.NODE_ENV === 'development') {
-        console.log("Bildirim izni verildi.");
+      console.log("Bildirim izni verildi.");
       }
       const fcmToken = await getToken(messaging, {
         vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
@@ -18,24 +18,24 @@ export const requestNotificationPermissionAndSaveToken = async (user) => {
         // Yeni token'ı "fcmTokens" dizisine ekliyoruz.
         await updateDoc(userDocRef, { fcmTokens: arrayUnion(fcmToken) });
         if (process.env.NODE_ENV === 'development') {
-          console.log("✅ FCM Token başarıyla kaydedildi:", fcmToken);
+        console.log("✅ FCM Token başarıyla kaydedildi:", fcmToken);
         }
       } else {
         if (process.env.NODE_ENV === 'development') {
-          console.warn("FCM token alınamadı, token boş.");
+        console.warn("FCM token alınamadı, token boş.");
         }
         // İsteğe bağlı: Hatalı tokenı diziden temizlemek için arrayRemove kullanılabilir.
       }
     } else {
       if (process.env.NODE_ENV === 'development') {
-        console.warn("Bildirim izni reddedildi.");
+      console.warn("Bildirim izni reddedildi.");
       }
       // İzin reddedilirse, token temizleme işlemini gerçekleştirmek isteyebilirsiniz.
       // Örneğin: await updateDoc(userDocRef, { fcmTokens: [] });
     }
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      console.error("❌ FCM token alınamadı:", error);
+    console.error("❌ FCM token alınamadı:", error);
     }
     try {
       const userDocRef = doc(db, "users", user.uid);
@@ -43,7 +43,7 @@ export const requestNotificationPermissionAndSaveToken = async (user) => {
       // await updateDoc(userDocRef, { fcmTokens: [] });
     } catch (updateError) {
       if (process.env.NODE_ENV === 'development') {
-        console.error("Firestore token güncelleme hatası:", updateError);
+      console.error("Firestore token güncelleme hatası:", updateError);
       }
     }
   }

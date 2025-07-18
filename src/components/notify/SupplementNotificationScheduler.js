@@ -139,12 +139,12 @@ export const computeSupplementReminderTimes = async (suppData, user) => {
     // Pencere bitişinden 1 dakika önce
     const summaryTimeTotal = windowEndTotal - 1;
     summaryTime = new Date(todayStr + 'T' + 
-      `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}:00`);
+    `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}:00`);
   } else {
     // Pencere bitişi gece yarısı (00:00) veya sonrasıysa, günün sonu (23:59)
     summaryTime = new Date(todayStr + 'T23:59:00');
   }
-  
+
   // Manuel bildirim zamanı varsa
   if (
     suppData.notificationSchedule &&

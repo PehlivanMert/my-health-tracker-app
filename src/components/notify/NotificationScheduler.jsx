@@ -9,7 +9,7 @@ export const getTurkeyTime = () => {
     new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
   );
   if (process.env.NODE_ENV === 'development') {
-    console.log("getTurkeyTime - Şu anki Türkiye zamanı:", turkeyTime);
+  console.log("getTurkeyTime - Şu anki Türkiye zamanı:", turkeyTime);
   }
   return turkeyTime;
 };
@@ -26,7 +26,7 @@ export const calculateAge = (birthDate) => {
     age--;
   }
   if (process.env.NODE_ENV === 'development') {
-    console.log("calculateAge - Hesaplanan yaş:", age);
+  console.log("calculateAge - Hesaplanan yaş:", age);
   }
   return age;
 };
@@ -42,7 +42,7 @@ export const calculateBMR = (gender, weight, height, age) => {
     bmr = 10 * weight + 6.25 * height - 5 * age + 5;
   }
   if (process.env.NODE_ENV === 'development') {
-    console.log("calculateBMR - Hesaplanan BMR:", bmr);
+  console.log("calculateBMR - Hesaplanan BMR:", bmr);
   }
   return bmr;
 };
@@ -53,10 +53,10 @@ export const calculateBMR = (gender, weight, height, age) => {
 export const calculateDailyWaterTarget = (bmr, multiplier = 1.4) => {
   const dailyWaterTarget = Math.round(bmr * multiplier);
   if (process.env.NODE_ENV === 'development') {
-    console.log(
-      "calculateDailyWaterTarget - Günlük su hedefi:",
-      dailyWaterTarget
-    );
+  console.log(
+    "calculateDailyWaterTarget - Günlük su hedefi:",
+    dailyWaterTarget
+  );
   }
   return dailyWaterTarget;
 };
@@ -71,14 +71,14 @@ const fetchUserData = async (user) => {
     const userSnap = await getDoc(userRef);
     const userData = userSnap.exists() ? userSnap.data() : {};
     if (process.env.NODE_ENV === 'development') {
-      console.log("fetchUserData - Kullanıcı ana verisi:", userData);
+    console.log("fetchUserData - Kullanıcı ana verisi:", userData);
     }
 
     const waterRef = doc(db, "users", user.uid, "water", "current");
     const waterSnap = await getDoc(waterRef);
     const waterData = waterSnap.exists() ? waterSnap.data() : {};
     if (process.env.NODE_ENV === 'development') {
-      console.log("fetchUserData - Su verileri:", waterData);
+    console.log("fetchUserData - Su verileri:", waterData);
     }
 
     return { ...userData, ...waterData };
@@ -99,10 +99,10 @@ export const getGlobalNotificationWindow = async (user) => {
       const data = userDoc.data();
       if (data.notificationWindow) {
         if (process.env.NODE_ENV === 'development') {
-          console.log(
-            "getGlobalNotificationWindow - Global bildirim penceresi alındı:",
-            data.notificationWindow
-          );
+        console.log(
+          "getGlobalNotificationWindow - Global bildirim penceresi alındı:",
+          data.notificationWindow
+        );
         }
         return data.notificationWindow;
       } else {
@@ -167,12 +167,12 @@ const computeWindowTimes = (windowObj) => {
   }
 
   if (process.env.NODE_ENV === 'development') {
-    console.log(
-      "computeWindowTimes - Pencere başlangıcı:",
-      start,
-      "Bitişi:",
-      end
-    );
+  console.log(
+    "computeWindowTimes - Pencere başlangıcı:",
+    start,
+    "Bitişi:",
+    end
+  );
   }
   return { windowStart: start, windowEnd: end };
 };
@@ -229,7 +229,7 @@ export const getMotivationalMessageForTime = (date, weather = null) => {
 
   if (weather && weather.temperature) {
     if (process.env.NODE_ENV === 'development') {
-      console.log("getWeatherData  - Sıcaklık:", weather.temperature);
+    console.log("getWeatherData  - Sıcaklık:", weather.temperature);
     }
     if (weather.temperature > 30) {
       messages.push("Bugün hava sıcak, suyunuz hayat kurtarıcı!");
@@ -270,10 +270,10 @@ export const getMotivationalMessageForTime = (date, weather = null) => {
 
   const selectedMessage = messages[Math.floor(Math.random() * messages.length)];
   if (process.env.NODE_ENV === 'development') {
-    console.log(
-      `getMotivationalMessageForTime - Saat ${hour} için mesaj:`,
-      selectedMessage
-    );
+  console.log(
+    `getMotivationalMessageForTime - Saat ${hour} için mesaj:`,
+    selectedMessage
+  );
   }
   return selectedMessage;
 };
@@ -293,7 +293,7 @@ const getUserLocation = () => {
     // Konum izni durumunu kontrol et
     navigator.permissions.query({ name: 'geolocation' }).then((permissionStatus) => {
       if (process.env.NODE_ENV === 'development') {
-        console.log('NotificationScheduler - Konum izni durumu:', permissionStatus.state);
+      console.log('NotificationScheduler - Konum izni durumu:', permissionStatus.state);
       }
       
       if (permissionStatus.state === 'denied') {
@@ -304,7 +304,7 @@ const getUserLocation = () => {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           if (process.env.NODE_ENV === 'development') {
-            console.log('NotificationScheduler - Konum alındı:', position.coords);
+          console.log('NotificationScheduler - Konum alındı:', position.coords);
           }
           resolve(position.coords);
         },
@@ -351,7 +351,7 @@ export const getWeatherData = async () => {
     // A. Konum izni iste ve koordinatları al
     const { latitude, longitude } = await getUserLocation();
     if (process.env.NODE_ENV === 'development') {
-      console.log("Konum alındı:", { latitude, longitude });
+    console.log("Konum alındı:", { latitude, longitude });
     }
 
     // B. API isteği - tüm parametreleri al
@@ -402,7 +402,7 @@ export const getDailyAverageWeatherData = async () => {
     // A. Konum izni iste ve koordinatları al
     const { latitude, longitude } = await getUserLocation();
     if (process.env.NODE_ENV === 'development') {
-      console.log("Konum alındı:", { latitude, longitude });
+    console.log("Konum alındı:", { latitude, longitude });
     }
 
     // B. Bugünün tarihi (Türkiye saatiyle)
@@ -458,12 +458,12 @@ export const computeWaterReminderTimes = async (user) => {
   if (!user || !user.uid) return [];
   const data = await fetchUserData(user);
   if (process.env.NODE_ENV === 'development') {
-    console.log("computeWaterReminderTimes - Birleşik veri:", data);
+  console.log("computeWaterReminderTimes - Birleşik veri:", data);
   }
 
   const mode = data.waterNotificationOption || "smart";
   if (process.env.NODE_ENV === 'development') {
-    console.log("computeWaterReminderTimes - Bildirim modu:", mode);
+  console.log("computeWaterReminderTimes - Bildirim modu:", mode);
   }
 
   // Global bildirim penceresi kontrolü - varsayılan değerlerle güvenli erişim
@@ -471,7 +471,7 @@ export const computeWaterReminderTimes = async (user) => {
   if (!globalWindow) {
     globalWindow = data.notificationWindow || { start: "08:00", end: "22:00" };
     if (process.env.NODE_ENV === 'development') {
-      console.log("computeWaterReminderTimes - Varsayılan bildirim penceresi kullanılıyor:", globalWindow);
+    console.log("computeWaterReminderTimes - Varsayılan bildirim penceresi kullanılıyor:", globalWindow);
     }
   }
   
@@ -481,7 +481,7 @@ export const computeWaterReminderTimes = async (user) => {
 
   if (mode === "none") {
     if (process.env.NODE_ENV === 'development') {
-      console.log("computeWaterReminderTimes - Bildirimler kapalı (none mod).");
+    console.log("computeWaterReminderTimes - Bildirimler kapalı (none mod).");
     }
     const waterRef = doc(db, "users", user.uid, "water", "current");
     await setDoc(
@@ -565,23 +565,23 @@ export const computeWaterReminderTimes = async (user) => {
     const waterIntake = data.waterIntake || 0;
     const remainingTarget = Math.max(dailyWaterTarget - waterIntake, 0);
     if (process.env.NODE_ENV === 'development') {
-      console.log(
-        "computeWaterReminderTimes - Günlük hedef:",
-        dailyWaterTarget,
-        "İçilen su:",
-        waterIntake,
-        "Kalan su hedefi:",
-        remainingTarget
-      );
+    console.log(
+      "computeWaterReminderTimes - Günlük hedef:",
+      dailyWaterTarget,
+      "İçilen su:",
+      waterIntake,
+      "Kalan su hedefi:",
+      remainingTarget
+    );
     }
 
     const glassSize = data.glassSize || 250;
     const numGlasses = Math.ceil(remainingTarget / glassSize);
     if (process.env.NODE_ENV === 'development') {
-      console.log(
-        "computeWaterReminderTimes - Kalan hedefe göre numGlasses:",
-        numGlasses
-      );
+    console.log(
+      "computeWaterReminderTimes - Kalan hedefe göre numGlasses:",
+      numGlasses
+    );
     }
 
     const waterRef = doc(db, "users", user.uid, "water", "current");
@@ -621,42 +621,42 @@ export const computeWaterReminderTimes = async (user) => {
     const glassSize = data.glassSize || 250;
     const customIntervalHours = data.customNotificationInterval || 1;
     if (process.env.NODE_ENV === 'development') {
-      console.log(
-        "computeWaterReminderTimes - Custom mod: dailyWaterTarget:",
-        dailyWaterTarget,
-        "glassSize:",
-        glassSize,
-        "customIntervalHours:",
-        customIntervalHours
-      );
+    console.log(
+      "computeWaterReminderTimes - Custom mod: dailyWaterTarget:",
+      dailyWaterTarget,
+      "glassSize:",
+      glassSize,
+      "customIntervalHours:",
+      customIntervalHours
+    );
     }
 
     let startTime;
     if (now >= windowStart && now < windowEnd) {
       startTime = now.getTime() + customIntervalHours * 3600000;
       if (process.env.NODE_ENV === 'development') {
-        console.log(
-          "computeWaterReminderTimes - Custom mod: Başlangıç zamanı gün içinde, şimdi + interval:",
-          new Date(startTime)
-        );
+      console.log(
+        "computeWaterReminderTimes - Custom mod: Başlangıç zamanı gün içinde, şimdi + interval:",
+        new Date(startTime)
+      );
       }
     } else if (now >= windowEnd) {
       const nextWindowStart = new Date(windowStart);
       nextWindowStart.setDate(nextWindowStart.getDate() + 1);
       startTime = nextWindowStart.getTime();
       if (process.env.NODE_ENV === 'development') {
-        console.log(
-          "computeWaterReminderTimes - Custom mod: Gün sonu geçmiş, sonraki pencere başlangıcı:",
-          nextWindowStart
-        );
+      console.log(
+        "computeWaterReminderTimes - Custom mod: Gün sonu geçmiş, sonraki pencere başlangıcı:",
+        nextWindowStart
+      );
       }
     } else {
       startTime = windowStart.getTime();
       if (process.env.NODE_ENV === 'development') {
-        console.log(
-          "computeWaterReminderTimes - Custom mod: Pencere henüz başlamadı, pencere başlangıcı:",
-          windowStart
-        );
+      console.log(
+        "computeWaterReminderTimes - Custom mod: Pencere henüz başlamadı, pencere başlangıcı:",
+        windowStart
+      );
       }
     }
 
@@ -666,12 +666,12 @@ export const computeWaterReminderTimes = async (user) => {
       const message = getMotivationalMessageForTime(reminderTime);
       reminderSchedule.push({ time: reminderTime, message });
       if (process.env.NODE_ENV === 'development') {
-        console.log(
-          "computeWaterReminderTimes - Eklenen custom bildirim zamanı:",
-          reminderTime,
-          "Mesaj:",
-          message
-        );
+      console.log(
+        "computeWaterReminderTimes - Eklenen custom bildirim zamanı:",
+        reminderTime,
+        "Mesaj:",
+        message
+      );
       }
       startTime += customIntervalHours * 3600000;
     }
@@ -682,10 +682,10 @@ export const computeWaterReminderTimes = async (user) => {
     (reminder) => reminder.time.getTime() > now.getTime() + 60000
   );
   if (process.env.NODE_ENV === 'development') {
-    console.log(
-      "computeWaterReminderTimes - Gelecek bildirimler (1 dakikadan sonra):",
-      futureReminders
-    );
+  console.log(
+    "computeWaterReminderTimes - Gelecek bildirimler (1 dakikadan sonra):",
+    futureReminders
+  );
   }
 
   const waterRef = doc(db, "users", user.uid, "water", "current");
@@ -700,10 +700,10 @@ export const computeWaterReminderTimes = async (user) => {
     { merge: true }
   );
   if (process.env.NODE_ENV === 'development') {
-    console.log(
-      "computeWaterReminderTimes - Hesaplanan bildirim zamanları:",
-      futureReminders
-    );
+  console.log(
+    "computeWaterReminderTimes - Hesaplanan bildirim zamanları:",
+    futureReminders
+  );
   }
   return futureReminders;
 };
@@ -728,7 +728,7 @@ export const popNextReminder = async (user) => {
   const now = getTurkeyTime();
   if (reminderTimes.length > 0) {
     if (process.env.NODE_ENV === 'development') {
-      console.log("popNextReminder - Silinen bildirim:", reminderTimes[0]);
+    console.log("popNextReminder - Silinen bildirim:", reminderTimes[0]);
     }
     reminderTimes.shift();
   }
@@ -737,7 +737,7 @@ export const popNextReminder = async (user) => {
   );
   if (reminderTimes.length === 0) {
     if (process.env.NODE_ENV === 'development') {
-      console.log("popNextReminder - Reminders boş, yeniden hesaplanıyor.");
+    console.log("popNextReminder - Reminders boş, yeniden hesaplanıyor.");
     }
     reminderTimes = await computeWaterReminderTimes(user);
   }
@@ -753,7 +753,7 @@ export const popNextReminder = async (user) => {
       { merge: true }
     );
     if (process.env.NODE_ENV === 'development') {
-      console.log("popNextReminder - Yeni sonraki bildirim:", nextReminder);
+    console.log("popNextReminder - Yeni sonraki bildirim:", nextReminder);
     }
     return nextReminder;
   } else {
@@ -792,9 +792,9 @@ export const saveNextWaterReminderTime = async (user) => {
   );
   if (reminderTimes.length === 0) {
     if (process.env.NODE_ENV === 'development') {
-      console.log(
-        "saveNextWaterReminderTime - Reminders boş, yeniden hesaplanıyor."
-      );
+    console.log(
+      "saveNextWaterReminderTime - Reminders boş, yeniden hesaplanıyor."
+    );
     }
     reminderTimes = await computeWaterReminderTimes(user);
   }
@@ -810,10 +810,10 @@ export const saveNextWaterReminderTime = async (user) => {
       { merge: true }
     );
     if (process.env.NODE_ENV === 'development') {
-      console.log(
-        "saveNextWaterReminderTime - Kaydedilen sonraki bildirim zamanı:",
-        nextReminder
-      );
+    console.log(
+      "saveNextWaterReminderTime - Kaydedilen sonraki bildirim zamanı:",
+      nextReminder
+    );
     }
     return nextReminder;
   } else {
@@ -893,9 +893,9 @@ export const scheduleWaterNotifications = async (user) => {
           }
         : null;
       if (process.env.NODE_ENV === 'development') {
-        console.log(
-          "scheduleWaterNotifications - Mevcut bildirimler kullanılıyor."
-        );
+      console.log(
+        "scheduleWaterNotifications - Mevcut bildirimler kullanılıyor."
+      );
       }
       return { reminderSchedule: existingReminderTimes, nextReminder };
     }
@@ -906,7 +906,7 @@ export const scheduleWaterNotifications = async (user) => {
   const mode = data.waterNotificationOption || "smart";
   if (mode === "none") {
     if (process.env.NODE_ENV === 'development') {
-      console.log("scheduleWaterNotifications - Bildirimler kapalı (none mod).");
+    console.log("scheduleWaterNotifications - Bildirimler kapalı (none mod).");
     }
     return { reminderSchedule: [], nextReminder: null };
   }
@@ -934,16 +934,16 @@ export const scheduleWaterNotifications = async (user) => {
   );
 
   if (process.env.NODE_ENV === 'development') {
-    console.log(
-      "scheduleWaterNotifications - Yeni su bildirim zamanları hesaplandı:",
-      reminderSchedule.map((r) => new Date(r.time).toLocaleTimeString())
-    );
-    console.log(
-      "scheduleWaterNotifications - Sonraki bildirim zamanı:",
-      nextReminder
-        ? new Date(nextReminder.time).toLocaleTimeString()
-        : "Belirlenmedi"
-    );
+  console.log(
+    "scheduleWaterNotifications - Yeni su bildirim zamanları hesaplandı:",
+    reminderSchedule.map((r) => new Date(r.time).toLocaleTimeString())
+  );
+  console.log(
+    "scheduleWaterNotifications - Sonraki bildirim zamanı:",
+    nextReminder
+      ? new Date(nextReminder.time).toLocaleTimeString()
+      : "Belirlenmedi"
+  );
   }
   return { reminderSchedule, nextReminder };
 };

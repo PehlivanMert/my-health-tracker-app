@@ -72,7 +72,7 @@ const SupplementConsumptionChart = ({
       }
     } catch (error) {
       if (process.env.NODE_ENV === "development") {
-        console.error("Error fetching supplement consumption data:", error);
+      console.error("Error fetching supplement consumption data:", error);
       }
     }
   };

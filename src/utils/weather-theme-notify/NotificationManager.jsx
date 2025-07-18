@@ -9,7 +9,7 @@ export const requestNotificationPermission = async () => {
     const permission = await Notification.requestPermission();
     if (permission === "granted") {
       if (process.env.NODE_ENV === 'development') {
-        console.log("Bildirim izni verildi.");
+      console.log("Bildirim izni verildi.");
       }
     } else {
       console.warn("Bildirim izni reddedildi.");

@@ -53,10 +53,10 @@ if ("serviceWorker" in navigator) {
     })
     .catch((error) => {
       if (process.env.NODE_ENV === "development") {
-        console.error(
-          "Service Worker kaydı veya güncelleme kontrolü sırasında hata oluştu:",
-          error
-        );
+      console.error(
+        "Service Worker kaydı veya güncelleme kontrolü sırasında hata oluştu:",
+        error
+      );
       }
     });
 }

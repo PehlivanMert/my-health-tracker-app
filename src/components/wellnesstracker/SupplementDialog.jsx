@@ -109,7 +109,7 @@ const SupplementDialog = ({
       setErrors({});
     } catch (error) {
       if (process.env.NODE_ENV === "development") {
-        console.error("Takviye kaydetme hatası:", error);
+      console.error("Takviye kaydetme hatası:", error);
       }
       setErrors({ submit: "Takviye kaydedilirken bir hata oluştu" });
     } finally {

@@ -299,7 +299,7 @@ const WellnessTracker = ({ user }) => {
     if (!supplements.length || !user) return;
 
     if (process.env.NODE_ENV === 'development') {
-      console.log("Takviye bildirim sistemi temizleniyor...");
+    console.log("Takviye bildirim sistemi temizleniyor...");
     }
     
     for (const supp of supplements) {
@@ -314,7 +314,7 @@ const WellnessTracker = ({ user }) => {
           nextSupplementReminderTime: null, // Yeniden hesaplanacak
         });
         if (process.env.NODE_ENV === 'development') {
-          console.log(`${supp.name} için bildirim sistemi temizlendi`);
+        console.log(`${supp.name} için bildirim sistemi temizlendi`);
         }
       } catch (error) {
         console.error(`${supp.name} temizleme hatası:`, error);
@@ -327,14 +327,14 @@ const WellnessTracker = ({ user }) => {
     if (!supplements.length || !user) return;
 
     if (process.env.NODE_ENV === 'development') {
-      console.log("Tüm takviye bildirimleri yeniden hesaplanıyor...");
+    console.log("Tüm takviye bildirimleri yeniden hesaplanıyor...");
     }
     
     for (const supp of supplements) {
       try {
         await saveNextSupplementReminderTime(user, supp);
         if (process.env.NODE_ENV === 'development') {
-          console.log(`${supp.name} için bildirim zamanı yeniden hesaplandı`);
+        console.log(`${supp.name} için bildirim zamanı yeniden hesaplandı`);
         }
       } catch (error) {
         console.error(`${supp.name} hesaplama hatası:`, error);
@@ -465,7 +465,7 @@ const WellnessTracker = ({ user }) => {
             });
             
             if (process.env.NODE_ENV === 'development') {
-              console.log(`${supplementData.name} için bildirim zamanı yeniden hesaplandı`);
+            console.log(`${supplementData.name} için bildirim zamanı yeniden hesaplandı`);
             }
           }
         }

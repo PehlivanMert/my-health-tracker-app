@@ -149,18 +149,18 @@ export const handleLogout = async (setUser) => {
 export const handlePasswordReset = async (email) => {
   try {
     if (process.env.NODE_ENV === 'development') {
-      console.log("Şifre sıfırlama isteği gönderiliyor:", email);
+    console.log("Şifre sıfırlama isteği gönderiliyor:", email);
     }
     await sendPasswordResetEmail(auth, email);
     if (process.env.NODE_ENV === 'development') {
-      console.log("Şifre sıfırlama e-postası başarıyla gönderildi");
+    console.log("Şifre sıfırlama e-postası başarıyla gönderildi");
     }
     toast.success("Şifre sıfırlama e-postası gönderildi!");
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      console.error("Şifre sıfırlama hatası:", error);
-      console.error("Hata kodu:", error.code);
-      console.error("Hata mesajı:", error.message);
+    console.error("Şifre sıfırlama hatası:", error);
+    console.error("Hata kodu:", error.code);
+    console.error("Hata mesajı:", error.message);
     }
     
     switch (error.code) {

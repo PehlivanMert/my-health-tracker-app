@@ -339,13 +339,13 @@ const UserAuth = ({ setUser }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (process.env.NODE_ENV === 'development') {
-      console.log("Form gönderildi, isResetting:", isResetting);
-      console.log("Form verileri:", loginData);
+    console.log("Form gönderildi, isResetting:", isResetting);
+    console.log("Form verileri:", loginData);
     }
 
     if (!validate()) {
       if (process.env.NODE_ENV === 'development') {
-        console.log("Form validasyonu başarısız");
+      console.log("Form validasyonu başarısız");
       }
       return;
     }
@@ -355,7 +355,7 @@ const UserAuth = ({ setUser }) => {
     try {
       if (isResetting) {
         if (process.env.NODE_ENV === 'development') {
-          console.log("Şifre sıfırlama işlemi başlatılıyor...");
+        console.log("Şifre sıfırlama işlemi başlatılıyor...");
         }
         await handlePasswordReset(loginData.username);
         setIsResetting(false);

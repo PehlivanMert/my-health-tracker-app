@@ -227,12 +227,12 @@ function App() {
       }
       
       if (process.env.NODE_ENV === 'development') {
-        console.log(`🌐 [PLATFORM] Tespit edilen platform: ${platform}`, {
-          isIOS: isIOSDevice,
-          isMobile: isMobileDevice,
-          isPWA: pwaMode,
-          userAgent: userAgent
-        });
+      console.log(`🌐 [PLATFORM] Tespit edilen platform: ${platform}`, {
+        isIOS: isIOSDevice,
+        isMobile: isMobileDevice,
+        isPWA: pwaMode,
+        userAgent: userAgent
+      });
       }
     };
     
@@ -251,7 +251,7 @@ function App() {
 
     const unsubscribe = onMessage(messaging, (payload) => {
       if (process.env.NODE_ENV === 'development') {
-        console.log("📱 [FOREGROUND] Bildirim alındı:", payload);
+      console.log("📱 [FOREGROUND] Bildirim alındı:", payload);
       }
       
       const { title, body, icon } = payload.notification || {};
@@ -296,7 +296,7 @@ function App() {
           onClick: () => {
             // Bildirime tıklandığında platform bazlı yönlendirme yap
             if (process.env.NODE_ENV === 'development') {
-              console.log(`🔄 [FOREGROUND] Toast bildirimine tıklandı, Platform: ${platform}, Tab ${targetTab} (${pageName})'e yönlendiriliyor`);
+            console.log(`🔄 [FOREGROUND] Toast bildirimine tıklandı, Platform: ${platform}, Tab ${targetTab} (${pageName})'e yönlendiriliyor`);
             }
             handlePlatformTabChange(targetTab, 'foreground_toast');
           }
@@ -318,18 +318,18 @@ function App() {
         setActiveTab(newTab);
         localStorage.setItem("activeTab", newTab.toString());
         if (process.env.NODE_ENV === 'development') {
-          console.log(`✅ [TAB CHANGE] Tab ${newTab} başarıyla değiştirildi`);
+        console.log(`✅ [TAB CHANGE] Tab ${newTab} başarıyla değiştirildi`);
         }
       } else {
         if (process.env.NODE_ENV === 'development') {
-          console.warn(`⚠️ [TAB CHANGE] Geçersiz tab indeksi: ${newTab}, varsayılan tab 0'a yönlendiriliyor`);
+        console.warn(`⚠️ [TAB CHANGE] Geçersiz tab indeksi: ${newTab}, varsayılan tab 0'a yönlendiriliyor`);
         }
         setActiveTab(0);
         localStorage.setItem("activeTab", "0");
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error(`❌ [TAB CHANGE] Tab değişikliği hatası:`, error);
+      console.error(`❌ [TAB CHANGE] Tab değişikliği hatası:`, error);
       }
       // Hata durumunda varsayılan tab'a yönlendir
       setActiveTab(0);
@@ -340,7 +340,7 @@ function App() {
   // Platform bazlı tab değişikliği fonksiyonu
   const handlePlatformTabChange = (targetTab, source = 'unknown') => {
     if (process.env.NODE_ENV === 'development') {
-      console.log(`🔄 [PLATFORM TAB] Platform: ${platform}, Tab: ${targetTab}, Kaynak: ${source}`);
+    console.log(`🔄 [PLATFORM TAB] Platform: ${platform}, Tab: ${targetTab}, Kaynak: ${source}`);
     }
     
     try {
@@ -366,17 +366,17 @@ function App() {
         setTimeout(() => {
           handleTabChange(targetTab);
           if (process.env.NODE_ENV === 'development') {
-            console.log(`✅ [PLATFORM TAB] ${platform} için tab ${targetTab} değiştirildi`);
+          console.log(`✅ [PLATFORM TAB] ${platform} için tab ${targetTab} değiştirildi`);
           }
         }, delay);
       } else {
         if (process.env.NODE_ENV === 'development') {
-          console.warn(`⚠️ [PLATFORM TAB] Geçersiz tab indeksi: ${targetTab}`);
+        console.warn(`⚠️ [PLATFORM TAB] Geçersiz tab indeksi: ${targetTab}`);
         }
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error(`❌ [PLATFORM TAB] Tab değişikliği hatası:`, error);
+      console.error(`❌ [PLATFORM TAB] Tab değişikliği hatası:`, error);
       }
     }
   };
@@ -391,7 +391,7 @@ function App() {
       if (tabParam && notificationParam === 'true') {
         const targetTab = parseInt(tabParam);
         if (process.env.NODE_ENV === 'development') {
-          console.log(`🔗 [URL PARAMS] URL'den tab parametresi alındı: ${targetTab}`);
+        console.log(`🔗 [URL PARAMS] URL'den tab parametresi alındı: ${targetTab}`);
         }
         
         if (!isNaN(targetTab) && targetTab >= 0 && targetTab <= 4) {
@@ -427,7 +427,7 @@ function App() {
     const handleMessage = (event) => {
       try {
         if (process.env.NODE_ENV === 'development') {
-          console.log(`📨 [MESSAGE] Service Worker'dan mesaj alındı:`, event.data);
+        console.log(`📨 [MESSAGE] Service Worker'dan mesaj alındı:`, event.data);
         }
         
         if (event.data && event.data.type === 'SWITCH_TAB') {
@@ -445,7 +445,7 @@ function App() {
           }
           
           if (process.env.NODE_ENV === 'development') {
-            console.log(`🔄 [TAB SWITCH] Service Worker'dan tab değişikliği isteği: Tab ${targetTab} (${timestamp}) - Platform: ${platform}`);
+          console.log(`🔄 [TAB SWITCH] Service Worker'dan tab değişikliği isteği: Tab ${targetTab} (${timestamp}) - Platform: ${platform}`);
           }
           
           // Tab indeksinin geçerli olup olmadığını kontrol et
@@ -461,17 +461,17 @@ function App() {
             }, 2000);
           } else {
             if (process.env.NODE_ENV === 'development') {
-              console.warn(`⚠️ [TAB SWITCH] Geçersiz tab indeksi: ${targetTab}`);
+            console.warn(`⚠️ [TAB SWITCH] Geçersiz tab indeksi: ${targetTab}`);
             }
           }
         } else if (event.data && event.data.type === 'TEST_RESPONSE') {
           if (process.env.NODE_ENV === 'development') {
-            console.log(`✅ [TEST] Service Worker bağlantısı başarılı:`, event.data);
+          console.log(`✅ [TEST] Service Worker bağlantısı başarılı:`, event.data);
           }
         }
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
-          console.error(`❌ [TAB SWITCH] Tab değişikliği hatası:`, error);
+        console.error(`❌ [TAB SWITCH] Tab değişikliği hatası:`, error);
         }
       }
     };
@@ -482,12 +482,12 @@ function App() {
         if ('serviceWorker' in navigator) {
           const registration = await navigator.serviceWorker.ready;
           if (process.env.NODE_ENV === 'development') {
-            console.log(`✅ [TAB SWITCH] Service Worker hazır:`, registration);
+          console.log(`✅ [TAB SWITCH] Service Worker hazır:`, registration);
           }
           
           navigator.serviceWorker.addEventListener('message', handleMessage);
           if (process.env.NODE_ENV === 'development') {
-            console.log(`✅ [TAB SWITCH] Service Worker mesaj dinleyicisi eklendi`);
+          console.log(`✅ [TAB SWITCH] Service Worker mesaj dinleyicisi eklendi`);
           }
           
           // Service Worker'a test mesajı gönder
@@ -498,17 +498,17 @@ function App() {
               platform: platform
             });
             if (process.env.NODE_ENV === 'development') {
-              console.log(`✅ [TAB SWITCH] Test mesajı gönderildi (Platform: ${platform})`);
+            console.log(`✅ [TAB SWITCH] Test mesajı gönderildi (Platform: ${platform})`);
             }
           }
         } else {
           if (process.env.NODE_ENV === 'development') {
-            console.warn(`⚠️ [TAB SWITCH] Service Worker desteklenmiyor`);
+          console.warn(`⚠️ [TAB SWITCH] Service Worker desteklenmiyor`);
           }
         }
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
-          console.error(`❌ [TAB SWITCH] Service Worker kurulum hatası:`, error);
+        console.error(`❌ [TAB SWITCH] Service Worker kurulum hatası:`, error);
         }
       }
     };
@@ -519,7 +519,7 @@ function App() {
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.removeEventListener('message', handleMessage);
         if (process.env.NODE_ENV === 'development') {
-          console.log(`🔄 [TAB SWITCH] Service Worker mesaj dinleyicisi kaldırıldı`);
+        console.log(`🔄 [TAB SWITCH] Service Worker mesaj dinleyicisi kaldırıldı`);
         }
       }
     };
@@ -591,7 +591,7 @@ function App() {
         }
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
-          console.error("Veri yükleme hatası:", error);
+        console.error("Veri yükleme hatası:", error);
         }
         isDataLoading.current = false;
       }
@@ -617,7 +617,7 @@ function App() {
           lastExercisesState.current = [...exercises];
         } catch (error) {
           if (process.env.NODE_ENV === 'development') {
-            console.error("Veri kaydetme hatası:", error);
+          console.error("Veri kaydetme hatası:", error);
           }
         }
       };
@@ -656,7 +656,7 @@ function App() {
           }
         } catch (error) {
           if (process.env.NODE_ENV === 'development') {
-            console.error("Yenileme hatası:", error);
+          console.error("Yenileme hatası:", error);
           }
         }
       }, 2000);
@@ -735,7 +735,7 @@ function App() {
         }
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
-          console.error("Profil tamamlama durumu kontrol hatası:", error);
+        console.error("Profil tamamlama durumu kontrol hatası:", error);
         }
         // Hata durumunda pop-up'ı göster
         setOpenProfileCompletionModal(true);
@@ -1373,10 +1373,10 @@ function App() {
               user={user}
               onSave={(window) => {
                 if (process.env.NODE_ENV === 'development') {
-                  console.log(
-                    "NotificationSettingsDialog onSave callback çağrıldı, window:",
-                    window
-                  );
+                console.log(
+                  "NotificationSettingsDialog onSave callback çağrıldı, window:",
+                  window
+                );
                 }
                 return handleSaveNotificationWindow(user, supplements, window)
                   .then(() => {

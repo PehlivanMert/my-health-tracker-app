@@ -618,7 +618,7 @@ exports.handler = async (event, context) => {
                   "Tebrikler! Vücudun için gereken suyu aldın!",
                   "Su hedefine ulaştın, sağlığın için büyük bir adım!",
                   "Bugün suyu tamamlama başarın takdire şayan!",
-                  "Su hedefini aştın, süper bir performans!",
+                  "Su hedefine ulaştın, süper bir performans!",
                   "Bugün su içmeyi ihmal etmedin, tebrikler!",
                   "Sağlığın için harika bir gün, su hedefine ulaştın!",
                   "Günlük su hedefin tamamlandı, mükemmel!",
@@ -743,7 +743,7 @@ exports.handler = async (event, context) => {
               }
               
               // Gün sonu özeti bildirimi gönder
-              const summaryTimeStr = `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}`;
+                const summaryTimeStr = `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}`;
               
               if (hasIncompleteSupplements) {
                 console.log(`✅ [${userDoc.id}] GÜN SONU TAKVİYE ÖZET (${summaryTimeStr}): ${incompleteSupplements.length} takviye tamamlanmadı`);
@@ -797,11 +797,11 @@ exports.handler = async (event, context) => {
             
             for (const docSnap of docSnaps) {
               const suppData = docSnap.data();
+              const suppName = suppData.name || 'Bilinmeyen Takviye'; // <-- BURAYA TAŞINDI
               if (
                 suppData.quantity > 0 &&
                 suppData.dailyUsage > 0
               ) {
-                const suppName = suppData.name || 'Bilinmeyen Takviye';
                 const dailyUsage = suppData.dailyUsage || 1;
                 const consumedToday = supplementConsumptionToday[suppName] || 0;
                 const estimatedRemainingDays = Math.floor(suppData.quantity / dailyUsage);

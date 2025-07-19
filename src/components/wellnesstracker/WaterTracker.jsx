@@ -735,6 +735,11 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     nextWaterReminderMessage: null,
     activityLevel: "orta",
   });
+  
+  // Local state for input fields to prevent immediate updates
+  const [localGlassSize, setLocalGlassSize] = useState("250");
+  const [localDailyTarget, setLocalDailyTarget] = useState("2000");
+  
   const [dataFetched, setDataFetched] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [achievement, setAchievement] = useState(null);
@@ -756,6 +761,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
   const handleMenuClose = () => setAnchorEl(null);
   const handleStandardGlassSelect = (size) => {
+    setLocalGlassSize(String(size));
     handleWaterSettingChange("glassSize", size);
     handleMenuClose();
   };
@@ -798,6 +804,9 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         activityLevel: data.activityLevel || "orta",
       };
       setWaterData(newWaterData);
+      // Update local state for input fields
+      setLocalGlassSize(String(newWaterData.glassSize));
+      setLocalDailyTarget(String(newWaterData.dailyWaterTarget));
       lastWaterDataState.current = { ...newWaterData };
       setDataFetched(true);
       isDataLoading.current = false;
@@ -820,6 +829,9 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         activityLevel: "orta",
       };
       setWaterData(defaultWaterData);
+      // Update local state for input fields
+      setLocalGlassSize(String(defaultWaterData.glassSize));
+      setLocalDailyTarget(String(defaultWaterData.dailyWaterTarget));
       lastWaterDataState.current = { ...defaultWaterData };
       setDataFetched(true);
       isDataLoading.current = false;
@@ -923,6 +935,35 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
       setNextReminder(result.nextReminder);
     } catch (error) {
       console.error("handleWaterSettingChange error:", error);
+    }
+  };
+
+  // Debounced handlers for input fields
+  const handleGlassSizeChange = (value) => {
+    setLocalGlassSize(value);
+  };
+
+  const handleGlassSizeBlur = async () => {
+    const numValue = Number(localGlassSize);
+    if (!isNaN(numValue) && numValue > 0) {
+      await handleWaterSettingChange("glassSize", numValue);
+    } else {
+      // Reset to current value if invalid
+      setLocalGlassSize(String(waterData.glassSize));
+    }
+  };
+
+  const handleDailyTargetChange = (value) => {
+    setLocalDailyTarget(value);
+  };
+
+  const handleDailyTargetBlur = async () => {
+    const numValue = Number(localDailyTarget);
+    if (!isNaN(numValue) && numValue > 0) {
+      await handleWaterSettingChange("dailyWaterTarget", numValue);
+    } else {
+      // Reset to current value if invalid
+      setLocalDailyTarget(String(waterData.dailyWaterTarget));
     }
   };
 
@@ -1262,8 +1303,14 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
                 fullWidth
                 label="Bardak Boyutu"
                 type="number"
-                value={waterData.glassSize}
-                onChange={(e) => handleWaterSettingChange("glassSize", Number(e.target.value))}
+                value={localGlassSize}
+                onChange={(e) => handleGlassSizeChange(e.target.value)}
+                onBlur={handleGlassSizeBlur}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleGlassSizeBlur();
+                  }
+                }}
                 variant="filled"
                 InputProps={{
                   startAdornment: (
@@ -1334,13 +1381,20 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
                   fullWidth
                   label="Günlük Hedef"
                   type="number"
-                  value={waterData.dailyWaterTarget}
+                  value={localDailyTarget}
                   onChange={(e) => {
                     if (waterData.waterNotificationOption === "custom") {
-                      handleWaterSettingChange(
-                        "dailyWaterTarget",
-                        Number(e.target.value)
-                      );
+                      handleDailyTargetChange(e.target.value);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (waterData.waterNotificationOption === "custom") {
+                      handleDailyTargetBlur();
+                    }
+                  }}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && waterData.waterNotificationOption === "custom") {
+                      handleDailyTargetBlur();
                     }
                   }}
                   variant="filled"

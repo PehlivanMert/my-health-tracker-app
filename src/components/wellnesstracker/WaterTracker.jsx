@@ -860,7 +860,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
       }
     };
     fetchWeatherSuggestion();
-  }, []);
+  }, [user]);
 
   const handleAddWater = async () => {
     const newIntake = waterData.waterIntake + waterData.glassSize;

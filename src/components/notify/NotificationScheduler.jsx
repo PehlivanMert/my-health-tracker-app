@@ -178,6 +178,43 @@ const computeWindowTimes = (windowObj) => {
 };
 
 /**
+ * Belirtilen saat için hava durumu verisini alır.
+ * Eğer saatlik veriler varsa o saatin verisini, yoksa günlük ortalamayı döndürür.
+ */
+export const getCurrentHourWeatherData = async (date, user) => {
+  try {
+    const waterRef = doc(db, "users", user.uid, "water", "current");
+    const waterSnap = await getDoc(waterRef);
+    if (waterSnap.exists()) {
+      const waterData = waterSnap.data();
+      const todayStr = date.toLocaleDateString("en-CA", { timeZone: "Europe/Istanbul" });
+      const currentHour = date.getHours();
+      
+      if (waterData.hourlyWeatherData && waterData.hourlyWeatherData.date === todayStr && waterData.hourlyWeatherData.hourlyData) {
+        // Saatlik veriler varsa, o saatin verisini kullan
+        const hourlyWeather = waterData.hourlyWeatherData.hourlyData[currentHour];
+        if (hourlyWeather) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`getCurrentHourWeatherData - Saat ${currentHour} için hava durumu verisi:`, hourlyWeather);
+          }
+          return hourlyWeather;
+        }
+      }
+      
+      // Saatlik veriler yoksa veya o saat için veri yoksa, günlük ortalamayı kullan
+      const dailyWeather = waterData.dailyWeatherAverages;
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`getCurrentHourWeatherData - Günlük ortalama hava durumu kullanılıyor:`, dailyWeather);
+      }
+      return dailyWeather;
+    }
+  } catch (error) {
+    console.error("getCurrentHourWeatherData - Hava durumu verisi alınırken hata:", error);
+  }
+  return null;
+};
+
+/**
  * Belirtilen bildirim zamanı için günün saatine göre motivasyon mesajı oluşturur.
  * Opsiyonel: weather parametresi varsa ek mesajlar eklenir.
  */
@@ -252,9 +289,11 @@ export const getMotivationalMessageForTime = (date, weather = null) => {
     ];
   }
 
+
+
   if (weather && weather.temperature) {
     if (process.env.NODE_ENV === 'development') {
-    console.log("getWeatherData  - Sıcaklık:", weather.temperature);
+    console.log("getMotivationalMessageForTime - Sıcaklık:", weather.temperature);
     }
     if (weather.temperature > 30) {
       messages.push("🔥 Bugün hava sıcak, suyunuz hayat kurtarıcı!");
@@ -456,6 +495,7 @@ export const getWeatherData = async () => {
 /**
  * 24 saatlik ortalama hava durumu verisini çeker ve döndürür.
  * Sadece günün başında (00:00'da) çağrılmalı, gün boyunca sabit kalmalı.
+ * Ayrıca saatlik verileri de döndürür.
  */
 export const getDailyAverageWeatherData = async () => {
   try {
@@ -482,7 +522,9 @@ export const getDailyAverageWeatherData = async () => {
     // D. 24 saatlik ortalamaları hesapla
     const avg = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
     const getArr = (key) => data.hourly[key] || [];
-    const result = {
+    
+    // Ortalama veriler
+    const averageResult = {
       temperature: avg(getArr("temperature_2m")),
       humidity: avg(getArr("relative_humidity_2m")),
       windSpeed: avg(getArr("wind_speed_10m")),
@@ -499,7 +541,34 @@ export const getDailyAverageWeatherData = async () => {
       isDay: Math.round(avg(getArr("is_day"))),
       weathercode: getArr("weather_code")[12] || 0, // Öğlenin kodunu al (temsilci)
     };
-    return result;
+    
+    // Saatlik veriler (her saat için ayrı veri)
+    const hourlyData = {};
+    for (let hour = 0; hour < 24; hour++) {
+      hourlyData[hour] = {
+        temperature: getArr("temperature_2m")[hour] || averageResult.temperature,
+        humidity: getArr("relative_humidity_2m")[hour] || averageResult.humidity,
+        windSpeed: getArr("wind_speed_10m")[hour] || averageResult.windSpeed,
+        windDirection: getArr("wind_direction_10m")[hour] || averageResult.windDirection,
+        apparentTemperature: getArr("apparent_temperature")[hour] || averageResult.apparentTemperature,
+        pressure: getArr("pressure_msl")[hour] || averageResult.pressure,
+        cloudCover: getArr("cloud_cover")[hour] || averageResult.cloudCover,
+        precipitation: getArr("precipitation")[hour] || averageResult.precipitation,
+        rain: getArr("rain")[hour] || averageResult.rain,
+        showers: getArr("showers")[hour] || averageResult.showers,
+        snowfall: getArr("snowfall")[hour] || averageResult.snowfall,
+        visibility: getArr("visibility")[hour] || averageResult.visibility,
+        uvIndex: getArr("uv_index")[hour] || averageResult.uvIndex,
+        isDay: getArr("is_day")[hour] || averageResult.isDay,
+        weathercode: getArr("weather_code")[hour] || averageResult.weathercode,
+      };
+    }
+    
+    // Hem ortalama hem saatlik verileri döndür
+    return {
+      ...averageResult,
+      hourlyData: hourlyData
+    };
   } catch (error) {
     console.error("Günlük ortalama hava durumu hatası:", error.message);
     return null;
@@ -578,7 +647,25 @@ export const computeWaterReminderTimes = async (user) => {
         await setDoc(waterRef, { dailyWeatherAverages }, { merge: true });
       }
     }
-    // Ortalamaları kullan
+    
+    // --- SAATLİK HAVA DURUMU VERİLERİ ---
+    // Günlük ortalama hesaplaması için kullanılacak, ayrıca saatlik veriler de kaydedilecek
+    let hourlyWeatherData = data.hourlyWeatherData;
+    if (!hourlyWeatherData || hourlyWeatherData.date !== todayStr) {
+      // Sadece saatlik verileri al (günlük ortalama zaten dailyWeatherAverages'da var)
+      const weatherData = await getDailyAverageWeatherData();
+      if (weatherData) {
+        // Sadece saatlik verileri kaydet
+        hourlyWeatherData = { 
+          date: todayStr,
+          hourlyData: weatherData.hourlyData 
+        };
+        const waterRef = doc(db, "users", user.uid, "water", "current");
+        await setDoc(waterRef, { hourlyWeatherData }, { merge: true });
+      }
+    }
+    
+    // Ortalamaları kullan (günlük su hedefi hesaplaması için)
     const weather = dailyWeatherAverages || {};
     const temperature = weather.temperature || 20;
     const humidity = weather.humidity || 50;
@@ -657,24 +744,69 @@ export const computeWaterReminderTimes = async (user) => {
       { merge: true }
     );
 
-    // Bildirim aralığı ve zamanlaması aynı kalacak
+    // Saatlik hava durumu verilerini analiz et ve kritik saatleri belirle
+    const criticalHours = [];
+    if (hourlyWeatherData && hourlyWeatherData.hourlyData) {
+      for (let hour = 0; hour < 24; hour++) {
+        const hourData = hourlyWeatherData.hourlyData[hour];
+        if (hourData) {
+          const isCritical = 
+            hourData.temperature > 28 || // Sıcak
+            hourData.humidity > 75 || // Nemli
+            hourData.uvIndex > 6 || // Yüksek UV
+            hourData.windSpeed > 15; // Rüzgarlı
+          
+          if (isCritical) {
+            criticalHours.push(hour);
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`Kritik saat ${hour}:00 - Sıcaklık: ${hourData.temperature}°C, Nem: ${hourData.humidity}%, UV: ${hourData.uvIndex}, Rüzgar: ${hourData.windSpeed} km/h`);
+            }
+          }
+        }
+      }
+    }
+    
+    // Kritik saatlerde daha sık bildirim için interval hesaplama
     const remainingMinutes = (windowEnd.getTime() - now.getTime()) / 60000;
-    const interval = Math.max(15, Math.floor(remainingMinutes / numGlasses));
+    let baseInterval = Math.max(15, Math.floor(remainingMinutes / numGlasses));
+    
+    // Kritik saatlerde interval'i yarıya düşür
+    const criticalInterval = Math.max(10, Math.floor(baseInterval / 2));
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Bildirim aralıkları - Normal: ${baseInterval} dk, Kritik saatlerde: ${criticalInterval} dk`);
+      console.log(`Kritik saatler: ${criticalHours.map(h => h + ':00').join(', ')}`);
+    }
+    
     let startTime;
     if (
       now.getTime() >= windowStart.getTime() &&
       now.getTime() < windowEnd.getTime()
     ) {
-      startTime = now.getTime() + interval * 60000;
+      startTime = now.getTime() + baseInterval * 60000;
     } else {
       startTime = windowStart.getTime();
     }
+    
     while (startTime <= windowEnd.getTime()) {
       const reminderTime = new Date(startTime);
       reminderTime.setSeconds(0, 0);
-      const message = getMotivationalMessageForTime(reminderTime);
+      
+      // O anki saatin hava durumu verisini al
+      const currentHourWeather = await getCurrentHourWeatherData(reminderTime, user);
+      const message = getMotivationalMessageForTime(reminderTime, currentHourWeather || weather);
       reminderSchedule.push({ time: reminderTime, message });
-      startTime += interval * 60000;
+      
+      // O anki saatin kritik olup olmadığını kontrol et
+      const currentHour = reminderTime.getHours();
+      const isCurrentHourCritical = criticalHours.includes(currentHour);
+      const nextInterval = isCurrentHourCritical ? criticalInterval : baseInterval;
+      
+      startTime += nextInterval * 60000;
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Bildirim ${reminderTime.toLocaleTimeString()} - ${isCurrentHourCritical ? 'KRİTİK' : 'Normal'} - Sonraki: ${nextInterval} dk sonra`);
+      }
     }
   } else if (mode === "custom") {
     const dailyWaterTarget = data.dailyWaterTarget || 2000;
@@ -720,20 +852,55 @@ export const computeWaterReminderTimes = async (user) => {
       }
     }
 
+    // Custom mod için de kritik saatleri analiz et
+    const criticalHours = [];
+    if (hourlyWeatherData && hourlyWeatherData.hourlyData) {
+      for (let hour = 0; hour < 24; hour++) {
+        const hourData = hourlyWeatherData.hourlyData[hour];
+        if (hourData) {
+          const isCritical = 
+            hourData.temperature > 28 || // Sıcak
+            hourData.humidity > 75 || // Nemli
+            hourData.uvIndex > 6 || // Yüksek UV
+            hourData.windSpeed > 15; // Rüzgarlı
+          
+          if (isCritical) {
+            criticalHours.push(hour);
+          }
+        }
+      }
+    }
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Custom mod kritik saatler: ${criticalHours.map(h => h + ':00').join(', ')}`);
+    }
+    
     while (startTime <= windowEnd.getTime()) {
       const reminderTime = new Date(startTime);
       reminderTime.setSeconds(0, 0); // Saniyeleri ve milisaniyeleri 0 yap
-      const message = getMotivationalMessageForTime(reminderTime);
+      
+      // O anki saatin hava durumu verisini al
+      const currentHourWeather = await getCurrentHourWeatherData(reminderTime, user);
+      const message = getMotivationalMessageForTime(reminderTime, currentHourWeather || weather);
       reminderSchedule.push({ time: reminderTime, message });
-      if (process.env.NODE_ENV === 'development') {
-      console.log(
-        "computeWaterReminderTimes - Eklenen custom bildirim zamanı:",
-        reminderTime,
-        "Mesaj:",
-        message
-      );
+      
+      // O anki saatin kritik olup olmadığını kontrol et
+      const currentHour = reminderTime.getHours();
+      const isCurrentHourCritical = criticalHours.includes(currentHour);
+      
+      // Kritik saatlerde daha sık bildirim (yarı aralık)
+      let nextInterval = customIntervalHours;
+      if (isCurrentHourCritical) {
+        nextInterval = Math.max(0.5, customIntervalHours / 2); // Minimum 30 dakika
       }
-      startTime += customIntervalHours * 3600000;
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log(
+          `computeWaterReminderTimes - Eklenen custom bildirim zamanı: ${reminderTime.toLocaleTimeString()} - ${isCurrentHourCritical ? 'KRİTİK' : 'Normal'} - Aralık: ${nextInterval} saat - Mesaj: ${message}`
+        );
+      }
+      
+      startTime += nextInterval * 3600000;
     }
   }
 
@@ -743,7 +910,11 @@ export const computeWaterReminderTimes = async (user) => {
   );
   if (process.env.NODE_ENV === 'development') {
   console.log(
-    "computeWaterReminderTimes - Gelecek bildirimler (1 dakikadan sonra):",
+    "computeWaterReminderTimes - Toplam oluşturulan bildirim sayısı:",
+    reminderSchedule.length,
+    "Gelecek bildirim sayısı:",
+    futureReminders.length,
+    "Gelecek bildirimler:",
     futureReminders
   );
   }

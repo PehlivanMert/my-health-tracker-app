@@ -347,7 +347,7 @@ const getNextSupplementReminderTime = async (suppData, userId) => {
     const tomorrowReminder = new Date(`${tomorrowDateStr}T${timeParts[0]}:${timeParts[1]}:00`);
     return tomorrowReminder;
   }
-  console.warn('getNextSupplementReminderTime - Gelecek bildirim zamanı bulunamadı');
+  console.warn(`getNextSupplementReminderTime - [${userId}] ${suppData.name} için gelecek bildirim zamanı bulunamadı`);
   return null;
 };
 
@@ -682,6 +682,7 @@ const computeSupplementReminderTimes = async (suppData, userId) => {
     }
   }
   if (consumptionReached) {
+    console.log(`🔄 [${userId}] ${suppData.name} günlük hedefe ulaşılmış (${consumed}/${suppData.dailyUsage}), bildirim hesaplanmayacak`);
     return [];
   }
 
@@ -748,7 +749,7 @@ const computeSupplementReminderTimes = async (suppData, userId) => {
       times.push(summaryTime);
     }
   } else {
-    console.warn('computeSupplementReminderTimes - Hiçbir bildirim zamanı hesaplanamadı: dailyUsage yok veya 0');
+    console.warn(`computeSupplementReminderTimes - [${userId}] ${suppData.name} için hiçbir bildirim zamanı hesaplanamadı: dailyUsage yok veya 0`);
   }
 
   times.sort((a, b) => a - b);
@@ -802,7 +803,7 @@ const saveNextSupplementReminderTime = async (userId, suppData) => {
   // ... eski otomatik hesaplama kodu ...
   const nextReminder = await getNextSupplementReminderTime(suppData, userId);
   if (!nextReminder) {
-    console.warn('saveNextSupplementReminderTime - Sonraki bildirim zamanı hesaplanamadı');
+    console.warn(`saveNextSupplementReminderTime - [${userId}] ${suppData.name} için sonraki bildirim zamanı hesaplanamadı`);
     return null;
   }
   const suppDocRef = db.collection('users').doc(userId).collection('supplements').doc(suppData.id);
@@ -812,6 +813,7 @@ const saveNextSupplementReminderTime = async (userId, suppData) => {
     notificationsLastCalculated: new Date(),
   };
   await suppDocRef.update(updateData);
+  console.log(`💊 [${userId}] ${suppData.name} bildirimi kaydedildi: ${nextReminder.toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })}`);
   return nextReminder;
 };
 
@@ -905,7 +907,12 @@ exports.handler = async (event, context) => {
         for (const suppDoc of supplementsSnapshot.docs) {
           const suppData = { ...suppDoc.data(), id: suppDoc.id };
           const supplementNotification = await saveNextSupplementReminderTime(userId, suppData);
-          if (supplementNotification) supplementNotificationCount++;
+          if (supplementNotification) {
+            supplementNotificationCount++;
+            console.log(`💊 [${userId}] Takviye bildirimi hesaplandı: ${suppData.name} - ${supplementNotification.toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })}`);
+          } else {
+            console.log(`🔄 [${userId}] Takviye bildirimi hesaplanmadı: ${suppData.name} (günlük hedefe ulaşılmış veya bildirim yok)`);
+          }
         }
 
       } catch (error) {
@@ -917,7 +924,7 @@ exports.handler = async (event, context) => {
     console.log(`   📊 Toplam kullanıcı: ${totalUsers}`);
     console.log(`   💧 Su sıfırlama: ${waterResetCount}`);
     console.log(`   💧 Su bildirim hesaplama: ${waterNotificationCount}`);
-    console.log(`   💊 Takviye bildirim hesaplama: ${supplementNotificationCount}`);
+    console.log(`   💊 Takviye bildirim hesaplama: ${supplementNotificationCount} takviye`);
 
     return {
       statusCode: 200,

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -69,6 +69,10 @@ const SupplementDialog = ({
 }) => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Local state for input fields to prevent immediate updates
+  const [localQuantity, setLocalQuantity] = useState("");
+  const [localDailyUsage, setLocalDailyUsage] = useState("");
 
   const validateForm = () => {
     const newErrors = {};
@@ -122,6 +126,44 @@ const SupplementDialog = ({
     // Hata mesajını temizle
     if (errors[field]) {
       setErrors({ ...errors, [field]: "" });
+    }
+  };
+
+  // Initialize local state when dialog opens or supplementForm changes
+  useEffect(() => {
+    if (openSupplementDialog) {
+      setLocalQuantity(String(supplementForm.quantity || ""));
+      setLocalDailyUsage(String(supplementForm.dailyUsage || ""));
+    }
+  }, [openSupplementDialog, supplementForm.quantity, supplementForm.dailyUsage]);
+
+  // Handle quantity input changes
+  const handleQuantityChange = (value) => {
+    setLocalQuantity(value);
+  };
+
+  const handleQuantityBlur = () => {
+    const numValue = Number(localQuantity);
+    if (!isNaN(numValue) && numValue > 0) {
+      handleInputChange("quantity", numValue);
+    } else {
+      // Reset to current value if invalid
+      setLocalQuantity(String(supplementForm.quantity || ""));
+    }
+  };
+
+  // Handle daily usage input changes
+  const handleDailyUsageChange = (value) => {
+    setLocalDailyUsage(value);
+  };
+
+  const handleDailyUsageBlur = () => {
+    const numValue = Number(localDailyUsage);
+    if (!isNaN(numValue) && numValue > 0) {
+      handleInputChange("dailyUsage", numValue);
+    } else {
+      // Reset to current value if invalid
+      setLocalDailyUsage(String(supplementForm.dailyUsage || ""));
     }
   };
 
@@ -196,8 +238,14 @@ const SupplementDialog = ({
           label="Toplam Miktar"
           type="number"
           fullWidth
-          value={supplementForm.quantity}
-          onChange={(e) => handleInputChange("quantity", Number(e.target.value))}
+          value={localQuantity}
+          onChange={(e) => handleQuantityChange(e.target.value)}
+          onBlur={handleQuantityBlur}
+          onKeyPress={(e) => {
+            if (e.key === 'Enter') {
+              handleQuantityBlur();
+            }
+          }}
           error={!!errors.quantity}
           helperText={errors.quantity || "Toplam adet sayısı"}
           InputProps={{
@@ -212,8 +260,14 @@ const SupplementDialog = ({
           label="Günlük Kullanım Miktarı"
           type="number"
           fullWidth
-          value={supplementForm.dailyUsage}
-          onChange={(e) => handleInputChange("dailyUsage", Number(e.target.value))}
+          value={localDailyUsage}
+          onChange={(e) => handleDailyUsageChange(e.target.value)}
+          onBlur={handleDailyUsageBlur}
+          onKeyPress={(e) => {
+            if (e.key === 'Enter') {
+              handleDailyUsageBlur();
+            }
+          }}
           error={!!errors.dailyUsage}
           helperText={errors.dailyUsage || "Günde kaç adet alacağınız"}
           InputProps={{

@@ -694,7 +694,6 @@ const resetDailyWaterIntake = async (
     // Gün sonu özeti bildirimi gönder
     const waterIntake = currentFirestoreData.waterIntake || 0;
     const dailyTarget = currentFirestoreData.dailyWaterTarget || 2000;
-    await sendDailyWaterSummary(user, waterIntake, dailyTarget);
     if (process.env.NODE_ENV === 'development') {
     console.log(`Gün sonu özeti: ${waterIntake}ml`);
     }

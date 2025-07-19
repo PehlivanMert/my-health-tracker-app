@@ -489,6 +489,7 @@ const computeWaterReminderTimes = async (userId) => {
       glassSize,
       waterNotificationOption: "smart",
       dailyWeatherAverages,
+      serverSideCalculated: true, // Server-side hesaplandığını işaretle
     });
 
     // Saatlik hava durumu verilerini analiz et ve kritik saatleri belirle
@@ -840,6 +841,7 @@ const resetWaterData = async (userId, waterData) => {
       yesterdayWaterIntake: waterData.waterIntake || 0,
       lastResetDate: todayStr,
       history: admin.firestore.FieldValue.arrayUnion(newHistoryEntry),
+      serverSideCalculated: true, // Reset sonrası server-side hesaplandığını işaretle
     });
 
     console.log(`✅ [${userId}] Su verisi sıfırlandı: ${waterData.waterIntake}ml → 0ml`);

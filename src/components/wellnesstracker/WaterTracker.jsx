@@ -26,6 +26,7 @@ import {
   scheduleWaterNotifications,
   getDailyAverageWeatherData,
   getMotivationalMessageForTime,
+  updateServerSideCalculations,
 } from "../notify/NotificationScheduler";
 import CheckCircle from "@mui/icons-material/CheckCircle";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -810,6 +811,19 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
       setDataFetched(true);
       isDataLoading.current = false;
       await checkIfResetNeeded(data);
+      
+      // Server-side hesaplanmış verileri kontrol et ve güncelle
+      if (data.serverSideCalculated === true) {
+        console.log("WaterTracker - Server-side hesaplanmış veriler tespit edildi, güncelleniyor...");
+        try {
+          await updateServerSideCalculations(user);
+          // Güncelleme sonrası verileri tekrar çek
+          await fetchWaterData();
+        } catch (error) {
+          console.error("WaterTracker - Server-side güncelleme hatası:", error);
+        }
+      }
+      
       if (onWaterDataChange) onWaterDataChange(data);
     } else {
       // Doküman yoksa default değerlerle state'i güncelle

@@ -1178,3 +1178,58 @@ export const scheduleWaterNotifications = async (user) => {
   }
   return { reminderSchedule, nextReminder };
 };
+
+/**
+ * Server-side hesaplanmış bildirimleri client-side ile günceller.
+ * Water Tracker açıldığında çağrılmalı.
+ */
+export const updateServerSideCalculations = async (user) => {
+  if (!user || !user.uid) return;
+
+  try {
+    const waterRef = doc(db, "users", user.uid, "water", "current");
+    const waterSnap = await getDoc(waterRef);
+    
+    if (!waterSnap.exists()) {
+      console.log("updateServerSideCalculations - Su verisi bulunamadı");
+      return;
+    }
+
+    const waterData = waterSnap.data();
+    
+    // Eğer server-side hesaplanmışsa, client-side ile güncelle
+    if (waterData.serverSideCalculated === true) {
+      console.log("updateServerSideCalculations - Server-side hesaplanmış veriler güncelleniyor...");
+      
+      // Gerçek hava durumu verilerini al
+      const weatherData = await getDailyAverageWeatherData();
+      if (weatherData) {
+        const todayStr = getTurkeyTime().toLocaleDateString("en-CA", { timeZone: "Europe/Istanbul" });
+        
+        // Hava durumu verilerini güncelle
+        await setDoc(waterRef, {
+          dailyWeatherAverages: { ...weatherData, date: todayStr },
+          hourlyWeatherData: { 
+            date: todayStr,
+            hourlyData: weatherData.hourlyData 
+          },
+          serverSideCalculated: false, // Client-side hesaplandığını işaretle
+        }, { merge: true });
+        
+        console.log("updateServerSideCalculations - Hava durumu verileri güncellendi");
+        
+        // Bildirimleri yeniden hesapla
+        const result = await scheduleWaterNotifications(user);
+        console.log("updateServerSideCalculations - Bildirimler yeniden hesaplandı:", result);
+        
+        return result;
+      } else {
+        console.warn("updateServerSideCalculations - Hava durumu verisi alınamadı");
+      }
+    } else {
+      console.log("updateServerSideCalculations - Zaten client-side hesaplanmış, güncelleme gerekmiyor");
+    }
+  } catch (error) {
+    console.error("updateServerSideCalculations - Hata:", error);
+  }
+};

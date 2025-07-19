@@ -11,9 +11,14 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// Türkiye saati için yardımcı fonksiyon
+// Türkiye saati için yardımcı fonksiyon (Server-side için güvenli)
 const getTurkeyTime = () => {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+  const now = new Date();
+  // UTC offset'i Türkiye için ayarla (UTC+3)
+  const turkeyOffset = 3 * 60; // 3 saat = 180 dakika
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const turkeyTime = new Date(utc + (turkeyOffset * 60000));
+  return turkeyTime;
 };
 
 // Yaş hesaplama (NotificationScheduler.jsx ile birebir aynı)
@@ -74,36 +79,32 @@ const getGlobalNotificationWindow = async (userId) => {
 // Pencere zamanlarını hesaplama (NotificationScheduler.jsx ile birebir aynı)
 const computeWindowTimes = (windowObj) => {
   const now = getTurkeyTime();
-  // Yerel tarihi 'en-CA' formatıyla alarak Türkiye yerel tarihini elde ediyoruz.
-  const todayStr = now.toLocaleDateString("en-CA", {
-    timeZone: "Europe/Istanbul",
-  });
+  // Türkiye saati ile tarih string'i oluştur
+  const todayStr = now.toISOString().split('T')[0]; // YYYY-MM-DD formatı
 
   let start, end;
   // Eğer pencere overnight ise (başlangıç saati bitiş saatinden sonra)
   if (windowObj.start > windowObj.end) {
     // Bugünkü pencere bitişini hesaplayalım
-    const todayEnd = new Date(`${todayStr}T${windowObj.end}:00`);
+    const todayEnd = new Date(`${todayStr}T${windowObj.end}:00+03:00`); // Türkiye timezone
     // Eğer şu an pencere bitişinden önceyse, bu demektir ki pencere dün başlamış.
     if (now < todayEnd) {
       // Dünün tarihi
       const yesterday = new Date(now);
       yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toLocaleDateString("en-CA", {
-        timeZone: "Europe/Istanbul",
-      });
-      start = new Date(`${yesterdayStr}T${windowObj.start}:00`);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      start = new Date(`${yesterdayStr}T${windowObj.start}:00+03:00`); // Türkiye timezone
       end = todayEnd;
     } else {
       // Aksi halde, pencere bugünden başlayıp yarına kadar sürer.
-      start = new Date(`${todayStr}T${windowObj.start}:00`);
-      end = new Date(`${todayStr}T${windowObj.end}:00`);
+      start = new Date(`${todayStr}T${windowObj.start}:00+03:00`); // Türkiye timezone
+      end = new Date(`${todayStr}T${windowObj.end}:00+03:00`); // Türkiye timezone
       end.setDate(end.getDate() + 1);
     }
   } else {
     // Overnight değilse, normal şekilde bugünkü start ve end
-    start = new Date(`${todayStr}T${windowObj.start}:00`);
-    end = new Date(`${todayStr}T${windowObj.end}:00`);
+    start = new Date(`${todayStr}T${windowObj.start}:00+03:00`); // Türkiye timezone
+    end = new Date(`${todayStr}T${windowObj.end}:00+03:00`); // Türkiye timezone
   }
 
   return { windowStart: start, windowEnd: end };
@@ -141,7 +142,7 @@ const getCurrentHourWeatherData = async (date, userId) => {
     const waterSnap = await waterRef.get();
     if (waterSnap.exists) {
       const waterData = waterSnap.data();
-      const todayStr = date.toLocaleDateString("en-CA", { timeZone: "Europe/Istanbul" });
+      const todayStr = date.toISOString().split('T')[0]; // YYYY-MM-DD formatı
       const currentHour = date.getHours();
       
       if (waterData.hourlyWeatherData && waterData.hourlyWeatherData.date === todayStr && waterData.hourlyWeatherData.hourlyData) {
@@ -659,7 +660,7 @@ const saveNextWaterReminderTime = async (userId) => {
 const computeSupplementReminderTimes = async (suppData, userId) => {
   const times = [];
   const now = getTurkeyTime();
-  const todayStr = now.toLocaleDateString("en-CA");
+  const todayStr = now.toISOString().split('T')[0]; // YYYY-MM-DD formatı
 
   // Tüketim kontrolü: Eğer günlük kullanım hedefine ulaşılmışsa bildirim zamanı hesaplanmaz.
   let consumptionReached = false;
@@ -703,23 +704,23 @@ const computeSupplementReminderTimes = async (suppData, userId) => {
     // Pencere bitişinden 1 dakika önce
     const summaryTimeTotal = windowEndTotal - 1;
     summaryTime = new Date(todayStr + 'T' + 
-    `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}:00`);
+    `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}:00+03:00`);
   } else {
     // Pencere bitişi gece yarısı (00:00) veya sonrasıysa, günün sonu (23:59)
-    summaryTime = new Date(todayStr + 'T23:59:00');
+    summaryTime = new Date(todayStr + 'T23:59:00+03:00');
   }
 
   // Manuel bildirim zamanı varsa
   if (suppData.notificationSchedule && suppData.notificationSchedule.length > 0) {
     suppData.notificationSchedule.forEach((timeStr) => {
-      let scheduled = new Date(`${todayStr}T${timeStr}:00`);
+      let scheduled = new Date(`${todayStr}T${timeStr}:00+03:00`);
       // Manuel zaman bugünden geçmişse, yarın için hesapla
       if (scheduled.getTime() <= now.getTime()) {
         const tomorrow = new Date(now);
         tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = tomorrow.toLocaleDateString("en-CA");
+        const tomorrowStr = tomorrow.toISOString().split('T')[0];
         const timeParts = timeStr.split(":");
-        scheduled = new Date(`${tomorrowStr}T${timeParts[0]}:${timeParts[1]}:00`);
+        scheduled = new Date(`${tomorrowStr}T${timeParts[0]}:${timeParts[1]}:00+03:00`);
       }
       times.push(scheduled);
     });
@@ -735,7 +736,7 @@ const computeSupplementReminderTimes = async (suppData, userId) => {
       times.push(finishedTime);
     } else if ([14, 7, 3, 1].includes(flooredRemaining)) {
       if (globalNotifWindow && globalNotifWindow.end) {
-        const windowEndTime = new Date(`${todayStr}T${globalNotifWindow.end}:00`);
+        const windowEndTime = new Date(`${todayStr}T${globalNotifWindow.end}:00+03:00`);
         times.push(windowEndTime);
       } else {
         const defaultTime = new Date(now.getTime() + 60 * 60000);
@@ -760,17 +761,17 @@ const saveNextSupplementReminderTime = async (userId, suppData) => {
   if (suppData.notificationSchedule && suppData.notificationSchedule.length > 0) {
     // En yakın zamanı bul
     const now = getTurkeyTime();
-    const todayStr = now.toLocaleDateString("en-CA");
+    const todayStr = now.toISOString().split('T')[0]; // YYYY-MM-DD formatı
     // Tüm saatleri bugünün tarihiyle Date objesine çevir
     const times = suppData.notificationSchedule.map((timeStr) => {
-      let scheduled = new Date(`${todayStr}T${timeStr}:00`);
+      let scheduled = new Date(`${todayStr}T${timeStr}:00+03:00`);
       // Eğer saat geçmişse, yarın için hesapla
       if (scheduled.getTime() <= now.getTime()) {
         const tomorrow = new Date(now);
         tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = tomorrow.toLocaleDateString("en-CA");
+        const tomorrowStr = tomorrow.toISOString().split('T')[0];
         const timeParts = timeStr.split(":");
-        scheduled = new Date(`${tomorrowStr}T${timeParts[0]}:${timeParts[1]}:00`);
+        scheduled = new Date(`${tomorrowStr}T${timeParts[0]}:${timeParts[1]}:00+03:00`);
       }
       return scheduled;
     });
@@ -816,7 +817,7 @@ const saveNextSupplementReminderTime = async (userId, suppData) => {
 
 // Su verilerini sıfırla
 const resetWaterData = async (userId, waterData) => {
-  const todayStr = getTurkeyTime().toLocaleDateString("en-CA");
+  const todayStr = getTurkeyTime().toISOString().split('T')[0]; // YYYY-MM-DD formatı
   
   // Eğer bugün zaten reset yapılmışsa, tekrar yapma
   if (waterData.lastResetDate === todayStr) {
@@ -826,7 +827,7 @@ const resetWaterData = async (userId, waterData) => {
 
   const yesterday = new Date(getTurkeyTime());
   yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toLocaleDateString("en-CA");
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
 
   const newHistoryEntry = {
     date: yesterdayStr,

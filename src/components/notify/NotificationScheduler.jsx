@@ -187,43 +187,68 @@ export const getMotivationalMessageForTime = (date, weather = null) => {
 
   if (hour >= 6 && hour < 10) {
     messages = [
-      "Günaydın! Güne taptaze su damlalarıyla başlayın!",
-      "Yeni bir gün, enerjinizi artırmak için suyunuz hazır olsun!",
-      "Gün ışığıyla beraber suyun tadını çıkarın, harika bir gün sizi bekliyor!",
-      "Sabahın ilk ışıklarıyla su için, zinde bir başlangıç yapın!",
-      "Günaydın! Bol su, bol enerji demektir!",
+      "🌅 Günaydın! Güne taptaze su damlalarıyla başlayın!",
+      "☀️ Yeni bir gün, enerjinizi artırmak için suyunuz hazır olsun!",
+      "🌞 Gün ışığıyla beraber suyun tadını çıkarın, harika bir gün sizi bekliyor!",
+      "🌅 Sabahın ilk ışıklarıyla su için, zinde bir başlangıç yapın!",
+      "💧 Günaydın! Bol su, bol enerji demektir!",
+      "🌅 Sabahın ilk ışıklarıyla su için, güne enerjik başlayın!",
+      "☀️ Güneş doğarken su içmek, günün en iyi başlangıcı!",
+      "🌞 Sabah suyu, vücudunuzu canlandırır ve metabolizmanızı hızlandırır!",
+      "💧 Sabahın ilk suyu, gün boyu sizi zinde tutar!",
+      "🚀 Güne su ile başlayın, enerjiniz hiç bitmesin!",
     ];
   } else if (hour >= 10 && hour < 14) {
     messages = [
-      "Öğle vakti: Hava sıcaksa, serinlemenin en iyi yolu su içmek!",
-      "Öğle zamanı! Suyu için, enerji depolayın!",
-      "Gün ortasında, bir bardak su ile kendinizi tazeleyin!",
-      "Öğlenin sıcaklığına meydan okuyun; suyun ferahlığı sizi canlandırsın!",
-      "Bir mola verin, suyunuzu için ve yenilenin!",
+      "🌞 Öğle vakti: Hava sıcaksa, serinlemenin en iyi yolu su içmek!",
+      "☀️ Öğle zamanı! Suyu için, enerji depolayın!",
+      "💧 Gün ortasında, bir bardak su ile kendinizi tazeleyin!",
+      "🌊 Öğlenin sıcaklığına meydan okuyun; suyun ferahlığı sizi canlandırsın!",
+      "⚡ Bir mola verin, suyunuzu için ve yenilenin!",
+      "🌞 Öğle vakti su içmek, günün geri kalanına güç verir!",
+      "☀️ Öğlenin sıcaklığında su, en iyi arkadaşınız!",
+      "💪 Öğle molası: Su içerek enerjinizi yenileyin!",
+      "🌊 Öğle vakti su, vücudunuzu ferahlatır!",
+      "⚡ Öğlen suyu, performansınızı artırır!",
     ];
   } else if (hour >= 14 && hour < 18) {
     messages = [
-      "Öğleden sonra: Rüzgar hafif, suyun ferahlığı sizi canlandırsın!",
-      "Hadi, biraz su içip kendinizi yenileyin!",
-      "Gün ortasının yorgunluğunu suyun tazeliğiyle atın!",
-      "Öğleden sonra suyunuzu için, enerjinizi tazeleyin!",
-      "Bir bardak su, günün geri kalanına güç katacaktır!",
+      "🌅 Öğleden sonra: Rüzgar hafif, suyun ferahlığı sizi canlandırsın!",
+      "💧 Hadi, biraz su içip kendinizi yenileyin!",
+      "🌟 Gün ortasının yorgunluğunu suyun tazeliğiyle atın!",
+      "🌊 Öğleden sonra suyunuzu için, enerjinizi tazeleyin!",
+      "⚡ Bir bardak su, günün geri kalanına güç katacaktır!",
+      "🌅 Öğleden sonra su, yorgunluğu atar!",
+      "💧 İkindi vakti su içmek, akşama hazırlar!",
+      "🌟 Öğleden sonra su, enerjinizi yeniler!",
+      "🌊 İkindi suyu, vücudunuzu canlandırır!",
+      "⚡ Öğleden sonra su, performansınızı korur!",
     ];
   } else if (hour >= 18 && hour < 22) {
     messages = [
-      "Akşam oldu! Güne güzel bir kapanış için serin bir yudum su harika!",
-      "Gün bitmeden, su içerek kendinizi ödüllendirin!",
-      "Akşamın huzurunu suyun ferahlığıyla yaşayın!",
-      "Gün sonu geldi, son bir bardak su ile günü tamamlayın!",
-      "Akşamın tadını çıkarın, suyunuz yanınızda olsun!",
+      "🌙 Akşam oldu! Güne güzel bir kapanış için serin bir yudum su harika!",
+      "💧 Gün bitmeden, su içerek kendinizi ödüllendirin!",
+      "🌟 Akşamın huzurunu suyun ferahlığıyla yaşayın!",
+      "🌊 Gün sonu geldi, son bir bardak su ile günü tamamlayın!",
+      "🌅 Akşamın tadını çıkarın, suyunuz yanınızda olsun!",
+      "🌙 Akşam suyu, günü güzel kapatır!",
+      "🌅 Gün batımında su içmek, huzur verir!",
+      "💧 Akşam suyu, vücudunuzu dinlendirir!",
+      "🌟 Akşam vakti su, günü özetler!",
+      "🌊 Akşam suyu, rahat bir gece sağlar!",
     ];
   } else {
     messages = [
-      "Gece vakti bile su içmeyi ihmal etmeyin, rüyalarınıza tazelik katın!",
-      "Uyumadan önce bir yudum su, tatlı rüyalara kapı aralar!",
-      "Gece sessizliğinde, suyun ferahlığı ruhunuzu dinlendirsin!",
-      "Yatmadan önce su içmeyi unutmayın; rahat bir uykuya dalın!",
-      "Gece boyunca suyunuzun keyfini çıkarın, rüyalarınıza ilham olsun!",
+      "🌙 Gece vakti bile su içmeyi ihmal etmeyin, rüyalarınıza tazelik katın!",
+      "⭐ Uyumadan önce bir yudum su, tatlı rüyalara kapı aralar!",
+      "💫 Gece sessizliğinde, suyun ferahlığı ruhunuzu dinlendirsin!",
+      "🌊 Yatmadan önce su içmeyi unutmayın; rahat bir uykuya dalın!",
+      "🌟 Gece boyunca suyunuzun keyfini çıkarın, rüyalarınıza ilham olsun!",
+      "🌙 Gece suyu, tatlı rüyalar getirir!",
+      "⭐ Gece vakti su, vücudunuzu onarır!",
+      "💫 Gece suyu, hücrelerinizi yeniler!",
+      "🌊 Gece suyu, metabolizmanızı destekler!",
+      "🌟 Gece vakti su, sağlığınızı korur!",
     ];
   }
 
@@ -232,39 +257,74 @@ export const getMotivationalMessageForTime = (date, weather = null) => {
     console.log("getWeatherData  - Sıcaklık:", weather.temperature);
     }
     if (weather.temperature > 30) {
-      messages.push("Bugün hava sıcak, suyunuz hayat kurtarıcı!");
-      messages.push("Sıcak günlerde su, vücudunuzun serin kalmasını sağlar!");
+      messages.push("🔥 Bugün hava sıcak, suyunuz hayat kurtarıcı!");
+      messages.push("☀️ Sıcak günlerde su, vücudunuzun serin kalmasını sağlar!");
+      messages.push("🔥 Sıcak hava su ihtiyacınızı artırıyor, bol su için!");
+      messages.push("☀️ Sıcak günlerde su, vücudunuzu soğutur!");
+      messages.push("🌡️ Yüksek sıcaklıkta su, hayat kurtarıcıdır!");
+      messages.push("💧 Sıcak hava terlemeyi artırır, su kaybını önleyin!");
+      messages.push("🌞 Sıcak günlerde su, enerjinizi korur!");
+      messages.push("⚡ Sıcak hava metabolizmanızı hızlandırır, su ihtiyacınız artar!");
     } else if (weather.temperature < 10) {
       messages.push(
-        "Soğuk havada içinizi ısıtacak bir yudum suya ne dersiniz?"
+        "❄️ Soğuk havada içinizi ısıtacak bir yudum suya ne dersiniz?"
       );
-      messages.push("Soğuk günlerde sıcak su, sizi ısıtır ve canlandırır!");
+      messages.push("🌨️ Soğuk günlerde sıcak su, sizi ısıtır ve canlandırır!");
+      messages.push("❄️ Soğuk hava su ihtiyacınızı azaltsa da, su içmeyi unutmayın!");
+      messages.push("🌨️ Soğuk günlerde sıcak su, içinizi ısıtır!");
+      messages.push("🧊 Soğuk havada su, vücudunuzu dengeler!");
+      messages.push("🌡️ Düşük sıcaklıkta su, metabolizmanızı destekler!");
+      messages.push("💧 Soğuk günlerde su, bağışıklığınızı güçlendirir!");
+      messages.push("🌟 Soğuk hava su ihtiyacınızı azaltsa da, düzenli su için!");
     }
 
     // Yeni hava durumu parametreleri için mesajlar
     if (weather.windSpeed > 20) {
-      messages.push("Rüzgarlı havada su kaybınız artıyor, daha fazla su için!");
-      messages.push("Rüzgar vücudunuzdan nem alıyor, suyunuzu ihmal etmeyin!");
+      messages.push("💨 Rüzgarlı havada su kaybınız artıyor, daha fazla su için!");
+      messages.push("🌪️ Rüzgar vücudunuzdan nem alıyor, suyunuzu ihmal etmeyin!");
+      messages.push("💨 Rüzgarlı hava su kaybınızı artırır, bol su için!");
+      messages.push("🌪️ Rüzgar vücudunuzdan nem alır, su ihtiyacınız artar!");
+      messages.push("💧 Rüzgarlı günlerde su, cildinizi nemlendirir!");
+      messages.push("🌊 Rüzgar su kaybınızı artırır, daha fazla su için!");
     }
 
     if (weather.uvIndex > 7) {
-      messages.push("UV indeksi yüksek! Güneş ışınları su ihtiyacınızı artırıyor.");
-      messages.push("Yüksek UV'de su, cildinizi korur ve nemlendirir!");
+      messages.push("☀️ UV indeksi yüksek! Güneş ışınları su ihtiyacınızı artırıyor.");
+      messages.push("🌞 Yüksek UV'de su, cildinizi korur ve nemlendirir!");
+      messages.push("☀️ Yüksek UV su ihtiyacınızı artırır, bol su için!");
+      messages.push("🌞 UV ışınları cildinizi kurutur, su ile nemlendirin!");
+      messages.push("💧 Yüksek UV'de su, cildinizi korur!");
+      messages.push("⚡ UV indeksi yüksek, su ihtiyacınız artıyor!");
     }
 
     if (weather.cloudCover > 80) {
-      messages.push("Bulutlu hava su ihtiyacınızı azaltsa da, su içmeyi unutmayın!");
+      messages.push("☁️ Bulutlu hava su ihtiyacınızı azaltsa da, su içmeyi unutmayın!");
+      messages.push("☁️ Bulutlu hava su ihtiyacınızı azaltsa da, düzenli su için!");
+      messages.push("🌥️ Bulutlu günlerde su, vücudunuzu dengeler!");
+      messages.push("💧 Bulutlu hava su ihtiyacınızı azaltsa da, su içmeyi unutmayın!");
     }
 
     if (weather.precipitation > 0 || weather.rain > 0 || weather.showers > 0) {
-      messages.push("Yağmurlu havada bile su içmeyi ihmal etmeyin!");
-      messages.push("Yağmur dışarıda, su içmek içeride - her ikisi de önemli!");
+      messages.push("🌧️ Yağmurlu havada bile su içmeyi ihmal etmeyin!");
+      messages.push("☔ Yağmur dışarıda, su içmek içeride - her ikisi de önemli!");
+      messages.push("🌧️ Yağmurlu havada su, vücudunuzu dengeler!");
+      messages.push("☔ Yağmur dışarıda, su içmek içeride!");
+      messages.push("💧 Yağmurlu günlerde su, metabolizmanızı destekler!");
+      messages.push("🌊 Yağmur su ihtiyacınızı azaltsa da, düzenli su için!");
     }
 
     if (weather.humidity > 80) {
-      messages.push("Nemli havada terleme artıyor, su ihtiyacınız yüksek!");
+      messages.push("💧 Nemli havada terleme artıyor, su ihtiyacınız yüksek!");
+      messages.push("💧 Nemli hava terlemeyi artırır, bol su için!");
+      messages.push("🌫️ Yüksek nem su kaybınızı artırır!");
+      messages.push("💦 Nemli havada su, vücudunuzu dengeler!");
+      messages.push("🌊 Yüksek nem terlemeyi artırır, su ihtiyacınız yüksek!");
     } else if (weather.humidity < 30) {
-      messages.push("Kuru havada su kaybı fazla, bol su için!");
+      messages.push("🏜️ Kuru havada su kaybı fazla, bol su için!");
+      messages.push("🏜️ Kuru hava su kaybınızı artırır, bol su için!");
+      messages.push("💧 Düşük nem su kaybınızı artırır!");
+      messages.push("🌵 Kuru havada su, cildinizi nemlendirir!");
+      messages.push("🌊 Düşük nem su ihtiyacınızı artırır!");
     }
   }
 

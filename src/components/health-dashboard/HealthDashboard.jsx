@@ -60,6 +60,15 @@ import {
 import { keyframes } from "@emotion/react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { styled, alpha } from "@mui/material/styles";
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import TextField from '@mui/material/TextField';
 
 const float = keyframes`
   0% { transform: translateY(0px); }
@@ -310,6 +319,51 @@ const getLocationBasedActivities = (city, weather, temperature) => {
   return activities;
 };
 
+const CUSTOMIZABLE_FIELDS = {
+  mood: {
+    label: 'Ruh Hali',
+    icon: '😊',
+    options: [
+      'Mutlu', 'Stresli', 'Yorgun', 'Motivasyona ihtiyacım var', 'Rahatlamak istiyorum', 'Enerjik',
+      'Odaklanmak istiyorum', 'Keyifsiz', 'Heyecanlı', 'Sakin', 'İlham arıyorum', 'Düşünceli',
+      'Sosyal', 'Yalnız', 'Macera arıyorum', 'Kendimi geliştirmek istiyorum', 'Duygusal', 'Kendime vakit ayırmak istiyorum'
+    ]
+  },
+  interest: {
+    label: 'İlgi Alanı',
+    icon: '⭐',
+    options: [
+      'Sağlık', 'Teknoloji', 'Sanat', 'Bilim', 'Kültür', 'Spor', 'Psikoloji', 'Felsefe', 'Tarih', 'Macera', 'Fantezi',
+      'Müzik', 'Sinema', 'Doğa', 'Yemek', 'Seyahat', 'Kariyer', 'Kişisel Gelişim', 'Edebiyat', 'Fotoğrafçılık', 'Dijital Oyunlar',
+      'Hayvanlar', 'Moda', 'Girişimcilik', 'Ekonomi', 'Sürdürülebilirlik', 'Astronomi', 'Robotik', 'Yazılım', 'Dünya Kültürleri', 'Yoga', 'Meditasyon'
+    ]
+  },
+  nutrition: {
+    label: 'Beslenme Tercihi',
+    icon: '🥗',
+    options: [
+      'Vegan', 'Vejetaryen', 'Glutensiz', 'Düşük Karbonhidrat', 'Yüksek Protein', 'Fark etmez',
+      'Akdeniz Diyeti', 'Ketojenik', 'Paleo', 'Düşük Yağlı', 'Dengeli', 'Aralıklı Oruç', 'Yüksek Lifli', 'Şekersiz', 'Organik', 'Yerel Ürünler', 'Sporcu Diyeti', 'Düşük Sodyum', 'Yüksek Demir', 'Yüksek Kalsiyum'
+    ]
+  },
+  readingType: {
+    label: 'Okuma Türü',
+    icon: '📚',
+    options: [
+      'Roman', 'Kişisel Gelişim', 'Bilimsel', 'Makale', 'Biyografi', 'Felsefe', 'Kısa Hikaye', 'Fark etmez',
+      'Şiir', 'Çizgi Roman', 'Deneme', 'Tarih', 'Psikoloji', 'Teknoloji', 'Sanat', 'Klasikler', 'Fantastik', 'Polisiye', 'Gerilim', 'Çocuk Kitabı', 'Gençlik', 'Motivasyon', 'Popüler Bilim', 'Seyahat', 'Sağlık', 'Ekonomi', 'Dünya Edebiyatı'
+    ]
+  },
+  watchingType: {
+    label: 'İzleme Türü',
+    icon: '🎬',
+    options: [
+      'Belgesel', 'Film', 'Dizi', 'YouTube', 'Podcast', 'Fark etmez',
+      'Kısa Film', 'Animasyon', 'Bilim Kurgu', 'Komedi', 'Dram', 'Aksiyon', 'Macera', 'Gerilim', 'Fantastik', 'Biyografi', 'Müzikal', 'Spor', 'Doğa', 'Sağlık', 'Teknoloji', 'Sanat', 'Kültür', 'Sosyal Medya', 'Motivasyon', 'Kariyer', 'Seyahat', 'Yemek', 'Müzik', 'Tarih', 'Çocuk', 'Aile', 'Reality Show', 'Talk Show', 'Eğitim', 'Kısa Video'
+    ]
+  },
+};
+
 const HealthDashboard = ({ user }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -331,6 +385,8 @@ const HealthDashboard = ({ user }) => {
   const [apiCooldown, setApiCooldown] = useState(false);
   const [geminiUsage, setGeminiUsage] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [customizationOpen, setCustomizationOpen] = useState(false);
+  const [customization, setCustomization] = useState({});
 
   // Geçmişte kaydedilen öneriden seçim yapıldığında ana içerikte göster
   const handleSelectRecommendation = (rec) => {
@@ -472,15 +528,12 @@ const HealthDashboard = ({ user }) => {
   };
 
   // Öneri oluştururken, profil bilgileriyle birlikte yeni istatistikleri de API'ye gönderiyoruz.
-  const generateRecommendations = async () => {
+  const generateRecommendations = async (customizationInput = customization) => {
     if (apiCooldown) return;
-
-    // Gemini kullanım sınırını kontrol et (günde 2 kez)
     if (!canUseGemini()) {
       toast.error("Gemini günde sadece iki kez kullanılabilir.");
       return;
     }
-
     setLoading(true);
     try {
       const age = profileData.age;
@@ -510,6 +563,74 @@ const HealthDashboard = ({ user }) => {
         timeStyle: "short",
       });
 
+      // Son 10 öneri geçmişini al (tekrarları önlemek için)
+      const last10Recommendations = (healthData.recommendationsHistory || [])
+        .slice(0, 10)
+        .map((rec, idx) => `#${idx + 1}: ${rec.content.substring(0, 300)}...`)
+        .join("\n");
+
+      // Son 10 önerinin meals kısmını da al
+      const last10Meals = (healthData.recommendationsHistory || [])
+        .slice(0, 10)
+        .map((rec, idx) => {
+          try {
+            const jsonStart = rec.content.indexOf('{');
+            const jsonEnd = rec.content.lastIndexOf('}');
+            if (jsonStart !== -1 && jsonEnd !== -1) {
+              const parsed = JSON.parse(rec.content.substring(jsonStart, jsonEnd + 1));
+              return `#${idx + 1}: Kahvaltı: ${parsed.sections?.nutrition?.meals?.breakfast || ''}, Öğle: ${parsed.sections?.nutrition?.meals?.lunch || ''}, Akşam: ${parsed.sections?.nutrition?.meals?.dinner || ''}, Ara: ${parsed.sections?.nutrition?.meals?.snacks || ''}`;
+            }
+          } catch {}
+          return '';
+        })
+        .join('\n');
+
+      // Son 10 okuma önerisi (books/articles)
+      const last10Readings = (healthData.recommendationsHistory || [])
+        .slice(0, 10)
+        .map((rec, idx) => {
+          try {
+            const jsonStart = rec.content.indexOf('{');
+            const jsonEnd = rec.content.lastIndexOf('}');
+            if (jsonStart !== -1 && jsonEnd !== -1) {
+              const parsed = JSON.parse(rec.content.substring(jsonStart, jsonEnd + 1));
+              const books = (parsed.sections?.reading?.books || []).map(b => b.title).join(', ');
+              const articles = (parsed.sections?.reading?.articles || []).map(a => a.title).join(', ');
+              return `#${idx + 1}: Kitaplar: ${books} | Makaleler: ${articles}`;
+            }
+          } catch {}
+          return '';
+        })
+        .join('\n');
+
+      // Son 10 izleme önerisi (videos/documentaries/series/podcasts)
+      const last10Watchings = (healthData.recommendationsHistory || [])
+        .slice(0, 10)
+        .map((rec, idx) => {
+          try {
+            const jsonStart = rec.content.indexOf('{');
+            const jsonEnd = rec.content.lastIndexOf('}');
+            if (jsonStart !== -1 && jsonEnd !== -1) {
+              const parsed = JSON.parse(rec.content.substring(jsonStart, jsonEnd + 1));
+              const videos = (parsed.sections?.watching?.videos || []).map(v => v.title).join(', ');
+              const documentaries = (parsed.sections?.watching?.documentaries || []).map(d => d.title).join(', ');
+              const series = (parsed.sections?.watching?.series || []).map(s => s.title).join(', ');
+              const podcasts = (parsed.sections?.watching?.podcasts || []).map(p => p.title).join(', ');
+              return `#${idx + 1}: Videolar: ${videos} | Belgeseller: ${documentaries} | Diziler: ${series} | Podcastler: ${podcasts}`;
+            }
+          } catch {}
+          return '';
+        })
+        .join('\n');
+
+      // Özelleştirme alanlarını prompta ekle (sadece mevcut başlıklarla eşleşenler)
+      let customizationPrompt = '';
+      Object.entries(customizationInput || {}).forEach(([key, value]) => {
+        if (CUSTOMIZABLE_FIELDS[key] && value && value !== 'Fark etmez') {
+          customizationPrompt += `\n${CUSTOMIZABLE_FIELDS[key].label}: ${value}`;
+        }
+      });
+
       const prompt = `Kullanıcı bilgileri:
 İsim: ${profileData.firstName || "Belirtilmemiş"},
 Yaş: ${age || "Belirtilmemiş"},
@@ -517,9 +638,11 @@ Cinsiyet: ${profileData.gender || "Belirtilmemiş"},
 Boy: ${profileData.height || "Belirtilmemiş"} cm,
 Kilo: ${profileData.weight || "Belirtilmemiş"} kg,
 ${bmi ? `VKİ: ${bmi.value} (${bmi.status})` : ""}
+${customizationPrompt}
 
 Konum ve Hava Durumu:
 ${cityInfo ? `Şehir: ${cityInfo.city}, ${cityInfo.country}` : "Konum: Belirtilmemiş"}
+${cityInfo && cityInfo.fullAddress ? `, Yakın Çevre: ${cityInfo.fullAddress}` : ''}
  ${weatherData ? `Sıcaklık: ${weatherData.temperature}°C, Hissedilen: ${weatherData.apparentTemperature}°C, Nem: ${weatherData.humidity}%, Rüzgar: ${weatherData.windSpeed} km/s (${getWindDirection(weatherData.windDirection)}), Basınç: ${weatherData.pressure} hPa, UV İndeksi: ${weatherData.uvIndex}, Bulut Oranı: ${weatherData.cloudCover}%, Yağış: ${weatherData.precipitation}mm, Görüş: ${weatherData.visibility}km, ${weatherData.isDay ? 'Gündüz' : 'Gece'}` : "Hava durumu: Belirtilmemiş"}
 
 Su Tüketimi:
@@ -622,13 +745,13 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
     },
     "nutrition": {
       "title": "🥗 Beslenme Önerileri",
-      "content": "Eğlenceli besin kombinasyonları (300-400 karakter)",
+      "content": "Her seferinde farklı, mevsimsel, yöresel ve yaratıcı besin kombinasyonları (300-400 karakter). Son 10 öneride verilen öğünleri tekrar etme. Farklı mutfaklardan, farklı protein kaynakları ve sebzeler kullan. Klasiklerin dışına çık.",
       "icon": "🍎",
       "meals": {
-        "breakfast": "Kahvaltı önerisi",
-        "lunch": "Öğle yemeği önerisi",
-        "dinner": "Akşam yemeği önerisi",
-        "snacks": "Ara öğün önerileri"
+        "breakfast": "Farklı ve yaratıcı bir kahvaltı önerisi",
+        "lunch": "Farklı ve yaratıcı bir öğle yemeği önerisi",
+        "dinner": "Farklı ve yaratıcı bir akşam yemeği önerisi",
+        "snacks": "Farklı ve yaratıcı bir ara öğün önerisi"
       }
     },
     "recipe": {
@@ -637,7 +760,16 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
       "icon": "🍽️",
       "recipeName": "Tarif adı",
       "ingredients": ["Malzeme 1", "Malzeme 2", "Malzeme 3"],
-      "instructions": "Hazırlanış adımları"
+      "instructions": "Hazırlanış adımları",
+      "localRecipes": [
+        {
+          "name": "Lokasyona özel yemek adı",
+          "description": "Yemeğin kısa açıklaması",
+          "ingredients": ["Malzeme 1", "Malzeme 2"],
+          "instructions": "Hazırlanış adımları",
+          "region": "${cityInfo?.city || 'Bilinmeyen Konum'}"
+        }
+      ]
     },
     "motivation": {
       "title": "🌟 Günün Motivasyonu",
@@ -648,7 +780,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
     },
     "reading": {
       "title": "📚 Okuma Önerileri",
-      "content": "Çeşitli alanlarda kitap ve makale önerileri (300-400 karakter)",
+      "content": "Her seferinde farklı, çeşitli, mevsimsel, kültürel ve yaratıcı kitap ve makale önerileri (300-400 karakter). Son 10 öneride verilen kitap ve makaleleri tekrar etme. Farklı tür, kategori, dil ve zorluk seviyelerinde öneriler sun.",
       "icon": "📖",
       "books": [
         {
@@ -677,7 +809,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
     },
     "watching": {
       "title": "📺 İzleme Önerileri",
-      "content": "Çeşitli platformlarda video, dizi ve belgesel önerileri (300-400 karakter)",
+      "content": "Her seferinde farklı, çeşitli, kültürel, eğitici ve yaratıcı video, dizi, belgesel ve podcast önerileri (300-400 karakter). Son 10 öneride verilen içerikleri tekrar etme. Farklı platform, tür, dil ve kategori kullan.",
       "icon": "🎬",
       "videos": [
         {
@@ -741,7 +873,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 5. Kullanıcının yaş, cinsiyet, VKİ ve su/takviye verilerini dikkate al
 6. Gerçekçi ve uygulanabilir öneriler ver
 7. JSON formatını bozma, geçerli JSON olsun
-8. Konuma özel aktivite önerilerinde şehir ismini ve hava durumunu dikkate al
+8. Konuma özel aktivite önerilerinde şehir ismini, hava durumunu ve yakın çevreyi (ilçe, semt, mahalle, park, AVM, kütüphane, spor salonu, kültür merkezi vb.) dikkate al.
 9. Kültürel, sanatsal, spor ve wellness aktivitelerini dengeli dağıt
 10. Okuma önerilerinde çeşitli kategoriler kullan: Sağlık, Bilim, Bilim Kurgu, Sanat, Kültür, Felsefe, Tarih, Teknoloji, Psikoloji, Fantezi, Macera, Biyografi
 11. Video önerilerinde farklı platformları dahil et: YouTube, Netflix, Disney+, Prime Video, TRT Belgesel, National Geographic
@@ -749,22 +881,16 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 13. Türkçe ve yabancı içerikleri dengeli dağıt
 14. Hem eğitici hem eğlenceli içerikler öner
 15. Takviye bölümünde currentSupplements alanını sadece kullanıcıda olanlar, extraSuggestions alanını ise kullanıcıda olmayan ama önerilen takviyeler için doldur. Her iki alanı da doldurmayı unutma. Her takviye için detaylı bilgi ver (name, benefit, dosage, timing, caution, naturalSources, scientificExplanation). Eğer öneri yoksa ilgili alanı boş dizi yap.
-16. Beslenme önerilerinde bir öneri içinde balık, tavuk ve kırmızı etten sadece birini öner. Bir günde ikisi veya üçü asla birlikte olmasın.
-
-🎯 *AKTİVİTE ÖNERİLERİ İÇİN ÖZEL KURALLAR:*
-16. Her aktivite kategorisi için 5-8 öneri oluştur
-17. Şehir özel aktiviteleri ekle (müzeler, parklar, tarihi yerler, spor kulüpleri)
-18. Hava durumuna göre uygun aktiviteler seç (sıcak/soğuk/yağmurlu)
-19. Aktivite isimlerini emoji ile başlat (🏃‍♂️, 🏛️, 🎨, ⚽, 🧘‍♀️)
-20. Gerçek mekan isimleri kullan (varsa)
-21. Kullanıcının yaşına uygun aktiviteler öner
-22. Mevsimsel aktiviteleri dikkate al
-23. Hem ücretsiz hem ücretli aktiviteleri dahil et
-24. Erişilebilirlik ve güvenlik faktörlerini göz önünde bulundur
-25. Yerel kültür ve gelenekleri yansıt`;
+16. Beslenme önerilerinde bir öneri içinde balık, tavuk ve kırmızı etten sadece birini öner. Bir günde ikisi veya üçü asla birlikte olmasın. Eğer öğünde balık varsa, o gün başka bir öğünde tavuk veya kırmızı et olmasın. Aynı gün içinde sadece bir protein türü (balık, tavuk veya kırmızı et) olsun, diğerleri olmasın.
+17. Recipe bölümünde mutlaka lokasyona özel (şehir veya ülke mutfağına ait) en az 1 yemek tarifi öner. Eğer şehir bilgisi yoksa Türkiye mutfağından öner.
+18. Son 10 öneriyi tekrar etme, her seferinde farklı ve çeşitli öneriler üret. Daha önce önerilen kitap, film, dizi, tarif ve aktiviteleri tekrar etme.
+19. Her öneri üretiminde farklı ve yaratıcı içerikler sunmak için çeşitliliğe öncelik ver.
+20. Bugünün tarihi: ${currentDateTime}.
+21. Eğer kullanıcıdan ilgi alanı veya ruh hali bilgisi gelirse, bunu da dikkate al.
+22. Eğer öneri geçmişi varsa, işte son 10 öneri (tekrar etme!):\n${last10Recommendations}\n23. Son 10 öneride verilen öğünleri tekrar etme. İşte son 10 öğün önerisi: ${last10Meals}\n24. Son 10 okuma önerisindeki kitap ve makaleleri tekrar etme. İşte son 10 okuma önerisi: ${last10Readings}\n25. Son 10 izleme önerisindeki video, belgesel, dizi ve podcastleri tekrar etme. İşte son 10 izleme önerisi: ${last10Watchings}\n`
 
       // Gemini AI kullanarak öneri oluştur
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp", generationConfig: { temperature: 0.85, topP: 0.95 } });
       const result = await model.generateContent(prompt);
       const response = await result.response;
       const recommendationText = response.text();
@@ -800,6 +926,8 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
         setApiCooldown(true);
         setTimeout(() => setApiCooldown(false), 60000);
       }
+      setCustomizationOpen(false); // Öneri üretildiğinde pop-up'ı kapat
+      setCustomization({}); // State'i sıfırla
     } catch (error) {
       console.error("Gemini API Hatası:", error);
       console.error("Hata Detayları:", error.response || error.message);
@@ -962,6 +1090,20 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
     </Card>
   );
 
+  // Pop-up açma fonksiyonu
+  const handleOpenCustomization = () => {
+    setCustomizationOpen(true);
+  };
+  const handleCloseCustomization = () => {
+    setCustomizationOpen(false);
+  };
+  const handleCustomizationChange = (field, value) => {
+    setCustomization((prev) => ({ ...prev, [field]: value }));
+  };
+  const handleCustomizationClear = () => {
+    setCustomization({});
+  };
+
   return (
     <Box
       sx={{
@@ -1033,7 +1175,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
             <Button
               variant="contained"
               startIcon={<Refresh />}
-              onClick={generateRecommendations}
+              onClick={handleOpenCustomization}
               disabled={loading || apiCooldown || !canUseGemini()}
               sx={{
                 borderRadius: "12px",
@@ -1888,6 +2030,93 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
           </Box>
         )}
       </Box>
+      <Dialog open={customizationOpen} onClose={handleCloseCustomization} PaperProps={{
+        sx: {
+          borderRadius: { xs: 0, sm: 4 },
+          background: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)',
+          color: '#fff',
+          boxShadow: 8,
+          minWidth: { xs: '100vw', sm: 320, md: 400 },
+          width: { xs: '100vw', sm: '90vw', md: 480 },
+          maxWidth: { xs: '100vw', sm: '90vw', md: 480 },
+          height: { xs: '100vh', sm: 'auto' },
+          maxHeight: { xs: '100vh', sm: 700 },
+          p: 0,
+          m: 0
+        }
+      }} fullScreen={typeof window !== 'undefined' && window.innerWidth < 600}>
+        <DialogTitle sx={{
+          fontWeight: 700,
+          fontSize: { xs: '1.1rem', sm: '1.5rem' },
+          textAlign: 'center',
+          letterSpacing: 1,
+          background: 'linear-gradient(135deg, #1976d2 0%, #21CBF3 100%)',
+          color: '#fff',
+          borderTopLeftRadius: { xs: 0, sm: 16 },
+          borderTopRightRadius: { xs: 0, sm: 16 },
+          py: { xs: 1.5, sm: 2 },
+          px: { xs: 1, sm: 2 }
+        }}>
+          <span style={{fontSize: '2rem', marginRight: 8}}>✨</span>Kişisel Öneri Özelleştir
+          <Typography variant="body2" sx={{ mt: 1, color: 'rgba(255,255,255,0.85)', fontWeight: 400, fontSize: { xs: '0.85rem', sm: '0.95rem' } }}>
+            Daha motive edici, sana özel ve çeşitli öneriler için aşağıdaki alanları doldurabilirsin.
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ py: { xs: 2, sm: 3 }, px: { xs: 1, sm: 4 } }}>
+          {Object.entries(CUSTOMIZABLE_FIELDS).map(([key, field]) => (
+            <FormControl key={key} fullWidth margin="normal" sx={{ mb: { xs: 1.5, sm: 2 } }}>
+              <InputLabel sx={{ color: '#fff', fontWeight: 600, fontSize: { xs: '0.95rem', sm: '1rem' } }}>{field.icon} {field.label}</InputLabel>
+              <Select
+                value={customization[key] || ''}
+                label={field.label}
+                onChange={e => handleCustomizationChange(key, e.target.value)}
+                sx={{
+                  background: 'rgba(255,255,255,0.08)',
+                  color: '#fff',
+                  borderRadius: 2,
+                  fontWeight: 500,
+                  fontSize: { xs: '0.95rem', sm: '1rem' },
+                  '& .MuiSelect-icon': { color: '#fff' },
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: '#fff' },
+                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#FFD700' },
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      bgcolor: '#fff',
+                      color: '#222',
+                      borderRadius: 2,
+                      boxShadow: 6,
+                      maxHeight: 320,
+                      fontSize: { xs: '0.95rem', sm: '1rem' }
+                    }
+                  }
+                }}
+              >
+                <MenuItem value="">Seçiniz</MenuItem>
+                {field.options.map(opt => (
+                  <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          ))}
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'space-between', px: { xs: 1, sm: 3 }, pb: { xs: 1.5, sm: 2 } }}>
+          <Button onClick={handleCustomizationClear} sx={{ color: '#fff', fontWeight: 600, textTransform: 'none', fontSize: { xs: '0.95rem', sm: '1rem' } }}>Temizle</Button>
+          <Button onClick={handleCloseCustomization} sx={{ color: '#fff', fontWeight: 600, textTransform: 'none', fontSize: { xs: '0.95rem', sm: '1rem' } }}>Vazgeç</Button>
+          <Button variant="contained" onClick={() => generateRecommendations(customization)} sx={{
+            background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+            color: '#222',
+            fontWeight: 700,
+            borderRadius: 2,
+            px: { xs: 2, sm: 3 },
+            boxShadow: 4,
+            textTransform: 'none',
+            fontSize: { xs: '0.95rem', sm: '1rem' },
+            '&:hover': { background: 'linear-gradient(135deg, #38f9d7 0%, #43e97b 100%)' }
+          }}>Öneri Oluştur</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

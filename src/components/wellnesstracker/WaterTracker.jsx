@@ -691,7 +691,17 @@ const resetDailyWaterIntake = async (
       history: arrayUnion(newHistoryEntry),
     });
     await fetchWaterData();
-
+    // Sıfırlama sonrası yeni hedef hesaplanıp kaydedildiyse, tekrar fetch et
+    try {
+      // 1. Server-side hesaplama
+      await updateServerSideCalculations(user);
+      await fetchWaterData();
+    } catch (e) { /* ignore */ }
+    try {
+      // 2. Client-side hesaplama (Water sayfası açıkken)
+      await scheduleWaterNotifications(user);
+      await fetchWaterData();
+    } catch (e) { /* ignore */ }
     // Gün sonu özeti bildirimi gönder
     const waterIntake = currentFirestoreData.waterIntake || 0;
     const dailyTarget = currentFirestoreData.dailyWaterTarget || 2000;
@@ -936,16 +946,10 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     const ref = getWaterDocRef();
     try {
       await setDoc(ref, { [field]: value }, { merge: true });
-      // Eğer aktivite seviyesi değiştiyse, önce bildirimleri ve hedefi güncelle, sonra fetchWaterData ile UI'yı güncelle
-      if (field === "activityLevel") {
-        const result = await scheduleWaterNotifications(user);
-        setNextReminder(result.nextReminder);
-        await fetchWaterData(); // En son çağır, UI güncellensin
-        return;
-      }
-      await fetchWaterData();
+      // Her durumda hedef hesaplama ve fetch sıralı yapılmalı
       const result = await scheduleWaterNotifications(user);
       setNextReminder(result.nextReminder);
+      await fetchWaterData(); // Hedef kaydedildikten hemen sonra fetch
     } catch (error) {
       console.error("handleWaterSettingChange error:", error);
     }

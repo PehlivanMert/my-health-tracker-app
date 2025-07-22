@@ -813,7 +813,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         nextWaterReminderMessage: data.nextWaterReminderMessage || null,
         activityLevel: data.activityLevel || "orta",
       };
-      setWaterData(newWaterData);
+      setWaterData({ ...newWaterData }); // Yeni referans ile state güncelle
       // Update local state for input fields
       setLocalGlassSize(String(newWaterData.glassSize));
       setLocalDailyTarget(String(newWaterData.dailyWaterTarget));

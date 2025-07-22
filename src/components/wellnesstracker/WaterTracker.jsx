@@ -749,6 +749,7 @@ const DRINK_WATER_CONTRIBUTION = {
   turkishCoffee: 0.55,
   espresso: 0.55,
   milkCoffee: 0.35, // Latte, cappuccino, vb.
+  americano: 0.55, // Americano %55 suya sayılır
 };
 const DRINK_OPTIONS = [
   { value: 'water', label: 'Su', icon: <LocalDrinkIcon sx={{ color: '#21CBF3' }} /> },
@@ -764,6 +765,7 @@ const DRINK_OPTIONS = [
   { value: 'filterCoffee', label: 'Filtre Kahve', icon: <LocalCafeIcon sx={{ color: '#6D4C41' }} /> },
   { value: 'turkishCoffee', label: 'Türk Kahvesi', icon: <LocalCafeIcon sx={{ color: '#8D6E63' }} /> },
   { value: 'espresso', label: 'Espresso', icon: <LocalCafeIcon sx={{ color: '#3E2723' }} /> },
+  { value: 'americano', label: 'Americano', icon: <LocalCafeIcon sx={{ color: '#4E342E' }} /> },
   { value: 'milkCoffee', label: 'Sütlü Kahve (Latte, Cappuccino)', icon: <LocalCafeIcon sx={{ color: '#BCAAA4' }} /> },
 ];
 
@@ -1685,7 +1687,21 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
       fullWidth
       sx={{ mb: 2, background: 'rgba(255,255,255,0.12)', borderRadius: 2, input: { color: '#fff' }, label: { color: '#fff' } }}
       InputLabelProps={{ sx: { color: '#fff', fontWeight: 600 } }}
-      SelectProps={{ MenuProps: { PaperProps: { sx: { bgcolor: '#e3f2fd' } } } }}
+      SelectProps={{
+        MenuProps: {
+          PaperProps: {
+            sx: {
+              bgcolor: 'transparent',
+              background: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)',
+              borderRadius: 3,
+              boxShadow: '0 8px 32px rgba(33,150,243,0.18)',
+              backdropFilter: 'blur(10px)',
+              p: 1,
+              minWidth: 180,
+            }
+          }
+        }
+      }}
     >
       {DRINK_OPTIONS.filter(opt => opt.value !== 'water').map(opt => (
         <MenuItem key={opt.value} value={opt.value} sx={{ color: '#fff', fontWeight: 600 }}>

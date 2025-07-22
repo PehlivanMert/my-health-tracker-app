@@ -46,12 +46,14 @@ import {
   HealthAndSafety,
   Vaccines,
 } from "@mui/icons-material";
+import NotificationsOffIcon from "@mui/icons-material/NotificationsOff";
 import SupplementDialog from "./SupplementDialog";
 import WaterTracker from "./WaterTracker";
 import WaterConsumptionChart from "./WaterConsumptionChart";
 import SupplementConsumptionChart from "./SupplementConsumptionChart";
 import SupplementNotificationSettingsDialog from "./SupplementNotificationSettingsDialog";
 import { saveNextSupplementReminderTime } from "../notify/SupplementNotificationScheduler";
+import WaterNotificationSettingsDialog from "./WaterNotificationSettingsDialog";
 
 const float = keyframes`
   0% { transform: translateY(0px); }
@@ -217,6 +219,7 @@ const WellnessTracker = ({ user }) => {
     supplementNotificationDialogOpen,
     setSupplementNotificationDialogOpen,
   ] = useState(false);
+  const [waterNotifDialogOpen, setWaterNotifDialogOpen] = useState(false);
 
   // Korumalı veri yönetimi için ref'ler
   const lastSupplementsState = useRef([]);
@@ -499,56 +502,27 @@ const WellnessTracker = ({ user }) => {
           }}
         >
           <Typography
-            variant="h2"
+            fontSize={{ xs: "1.5rem", sm: "2rem", md: "3rem" }}
             sx={{
-              textAlign: "center",
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+              fontWeight: 700,
               color: "#fff",
-              fontWeight: 800,
-              mt: { xs: 2, sm: 3, md: 6 },
-              textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
-              animation: `${float} 3s ease-in-out infinite`,
-              fontSize: { xs: "1.5rem", sm: "2rem", md: "3rem" },
+              mb: { xs: 2, sm: 3 },
             }}
           >
             <WaterDropIcon
-              sx={{ 
-                fontSize: { xs: 24, sm: 30, md: 50 }, 
-                color: "lightblue", 
+              sx={{
+                fontSize: { xs: 24, sm: 30, md: 50 },
+                color: "lightblue",
                 mr: { xs: 1, sm: 2 },
                 verticalAlign: "middle",
               }}
             />
             Takviye & Su Tüketimi
           </Typography>
-          
-          <Box sx={{ 
-            display: "flex", 
-            gap: { xs: 1, sm: 2 },
-            flexDirection: { xs: "row", sm: "row" },
-            width: { xs: "100%", sm: "auto" },
-            justifyContent: { xs: "center", sm: "flex-end" },
-          }}>
-            <AnimatedButton
-              onClick={() => setOpenSupplementDialog(true)}
-              startIcon={<AddIcon sx={{ fontSize: { xs: "1rem", sm: "1.2rem", md: "1.5rem" } }} />}
-              sx={{ 
-                fontSize: { xs: "0.7rem", sm: "0.8rem", md: "1rem" },
-                padding: { xs: "6px 12px", sm: "8px 16px", md: "12px 24px" },
-              }}
-            >
-              Takviye Ekle
-            </AnimatedButton>
-            <AnimatedButton
-              onClick={() => setSupplementNotificationDialogOpen(true)}
-              startIcon={<NotificationsIcon sx={{ fontSize: { xs: "1rem", sm: "1.2rem", md: "1.5rem" } }} />}
-              sx={{ 
-                fontSize: { xs: "0.7rem", sm: "0.8rem", md: "1rem" },
-                padding: { xs: "6px 12px", sm: "8px 16px", md: "12px 24px" },
-              }}
-            >
-              Bildirimler
-            </AnimatedButton>
-          </Box>
+          {/* Üstteki Takviye Ekle ve Bildirimler butonları kaldırıldı */}
         </Box>
 
         {/* Su Takibi */}
@@ -560,13 +534,17 @@ const WellnessTracker = ({ user }) => {
               color: "#fff",
               fontSize: { xs: "1.1rem", sm: "1.3rem", md: "1.5rem" },
             }}>
-              Su Takibi
+              Su Tüketimi
             </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }}>
+              {/* Su Bildirim Ayarları butonu kaldırıldı */}
+            </Box>
           </StyledAccordionSummary>
           <CustomAccordionDetails>
             <WaterTracker 
               user={user} 
               onWaterDataChange={(data) => setWaterData(data)}
+              onOpenWaterNotifDialog={() => setWaterNotifDialogOpen(true)}
             />
           </CustomAccordionDetails>
         </CustomAccordion>
@@ -575,13 +553,38 @@ const WellnessTracker = ({ user }) => {
         <CustomAccordion defaultExpanded={false}>
           <StyledAccordionSummary>
             <Medication sx={{ fontSize: { xs: 28, sm: 32, md: 36 }, color: '#fff', mr: 1 }} />
-            <Typography variant="h5" sx={{ 
-              fontWeight: 700, 
+            <Typography variant="h5" sx={{
+              fontWeight: 700,
               color: "#fff",
               fontSize: { xs: "1.1rem", sm: "1.3rem", md: "1.5rem" },
+              flexGrow: 1,
             }}>
               Takviyelerim
             </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }}>
+              <Tooltip title="Takviye Ekle">
+                <IconButton
+                  onClick={e => { e.stopPropagation(); setOpenSupplementDialog(true); }}
+                  onMouseDown={e => e.stopPropagation()}
+                  onFocus={e => e.stopPropagation()}
+                  size="small"
+                  sx={{ color: '#fff', background: 'rgba(33,150,243,0.18)', ml: 0.5, '&:hover': { background: 'rgba(33,150,243,0.32)' } }}
+                >
+                  <AddIcon sx={{ fontSize: { xs: 22, sm: 24, md: 26 } }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Bildirimler">
+                <IconButton
+                  onClick={e => { e.stopPropagation(); setSupplementNotificationDialogOpen(true); }}
+                  onMouseDown={e => e.stopPropagation()}
+                  onFocus={e => e.stopPropagation()}
+                  size="small"
+                  sx={{ color: '#fff', background: 'rgba(33,150,243,0.18)', ml: 0.5, '&:hover': { background: 'rgba(33,150,243,0.32)' } }}
+                >
+                  <NotificationsIcon sx={{ fontSize: { xs: 22, sm: 24, md: 26 } }} />
+                </IconButton>
+              </Tooltip>
+            </Box>
           </StyledAccordionSummary>
           <CustomAccordionDetails>
             {supplements.length === 0 ? (
@@ -914,6 +917,25 @@ const WellnessTracker = ({ user }) => {
           onClose={() => setSupplementNotificationDialogOpen(false)}
           supplements={supplements}
           onSave={handleSaveSupplementNotifications}
+        />
+        <WaterNotificationSettingsDialog
+          open={waterNotifDialogOpen}
+          onClose={() => setWaterNotifDialogOpen(false)}
+          waterSettings={waterData}
+          onSave={async (newSettings) => {
+            setWaterData(prev => ({
+              ...prev,
+              waterNotificationOption: newSettings.waterNotificationOption,
+              customNotificationInterval: newSettings.customNotificationInterval,
+              activityLevel: newSettings.activityLevel || prev.activityLevel,
+            }));
+            const ref = doc(db, "users", user.uid, "water", "current");
+            await setDoc(ref, {
+              waterNotificationOption: newSettings.waterNotificationOption,
+              customNotificationInterval: newSettings.customNotificationInterval,
+              activityLevel: newSettings.activityLevel || waterData.activityLevel,
+            }, { merge: true });
+          }}
         />
       </Container>
     </Box>

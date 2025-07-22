@@ -8,6 +8,8 @@ import {
   IconButton,
   Tooltip,
   useTheme,
+  Dialog,
+  Button,
 } from "@mui/material";
 import { styled, keyframes, alpha } from "@mui/material/styles";
 import Confetti from "react-confetti";
@@ -42,6 +44,7 @@ import WineBarIcon from '@mui/icons-material/WineBar';
 import SportsBarIcon from '@mui/icons-material/SportsBar';
 import LocalBarIcon from '@mui/icons-material/LocalBar';
 import SvgIcon from '@mui/material/SvgIcon';
+import LocalCafeIcon from '@mui/icons-material/LocalCafe';
 
 // --- Animasyon ve stil tanımlamaları ---
 const pulse = keyframes`
@@ -730,6 +733,40 @@ const STANDARD_GLASS_SIZES = [
   { value: 500, label: "500ml", icon: <BottleIcon fontSize="small" sx={{ color: '#1976d2' }} />, desc: 'Şişe' },
 ];
 
+// --- İçecek katkı oranları tablosu ---
+const DRINK_WATER_CONTRIBUTION = {
+  water: 1,
+  herbalTea: 1,
+  mineralWater: 1,
+  ayran: 0.85, // %80-90 arası, ortalama 0.85
+  milk: 0.85,  // %80-90 arası, ortalama 0.85
+  juice: 0.6,  // %50-70 arası, ortalama 0.6
+  vegetableJuice: 0.7, // %60-80 arası, ortalama 0.7
+  compote: 0.7, // %60-80 arası, ortalama 0.7
+  blackTea: 0.6, // Siyah çay (kafeinli)
+  greenTea: 0.6, // Yeşil çay (kafeinli)
+  filterCoffee: 0.55, // Filtre kahve, Türk kahvesi, espresso
+  turkishCoffee: 0.55,
+  espresso: 0.55,
+  milkCoffee: 0.35, // Latte, cappuccino, vb.
+};
+const DRINK_OPTIONS = [
+  { value: 'water', label: 'Su', icon: <LocalDrinkIcon sx={{ color: '#21CBF3' }} /> },
+  { value: 'herbalTea', label: 'Bitki Çayı (kafeinsiz)', icon: <EmojiFoodBeverageIcon sx={{ color: '#8BC34A' }} /> },
+  { value: 'blackTea', label: 'Siyah Çay', icon: <EmojiFoodBeverageIcon sx={{ color: '#795548' }} /> },
+  { value: 'greenTea', label: 'Yeşil Çay', icon: <EmojiFoodBeverageIcon sx={{ color: '#388E3C' }} /> },
+  { value: 'mineralWater', label: 'Sade Maden Suyu', icon: <SportsBarIcon sx={{ color: '#00BCD4' }} /> },
+  { value: 'ayran', label: 'Sade Ayran (az tuzlu)', icon: <SportsBarIcon sx={{ color: '#FFEB3B' }} /> },
+  { value: 'milk', label: 'Süt (yarım yağlı)', icon: <LocalBarIcon sx={{ color: '#FFFDE7' }} /> },
+  { value: 'juice', label: 'Taze Meyve Suyu', icon: <WineBarIcon sx={{ color: '#FF9800' }} /> },
+  { value: 'vegetableJuice', label: 'Sebze Suyu', icon: <WineBarIcon sx={{ color: '#4CAF50' }} /> },
+  { value: 'compote', label: 'Şekersiz Komposto Suyu', icon: <WineBarIcon sx={{ color: '#BCAAA4' }} /> },
+  { value: 'filterCoffee', label: 'Filtre Kahve', icon: <LocalCafeIcon sx={{ color: '#6D4C41' }} /> },
+  { value: 'turkishCoffee', label: 'Türk Kahvesi', icon: <LocalCafeIcon sx={{ color: '#8D6E63' }} /> },
+  { value: 'espresso', label: 'Espresso', icon: <LocalCafeIcon sx={{ color: '#3E2723' }} /> },
+  { value: 'milkCoffee', label: 'Sütlü Kahve (Latte, Cappuccino)', icon: <LocalCafeIcon sx={{ color: '#BCAAA4' }} /> },
+];
+
 const WaterTracker = ({ user, onWaterDataChange }) => {
   const [waterData, setWaterData] = useState({
     waterIntake: 0,
@@ -757,6 +794,11 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   const [weatherSuggestion, setWeatherSuggestion] = useState("");
   const [waterNotifDialogOpen, setWaterNotifDialogOpen] = useState(false);
   
+  // Su ekleme modalı için state
+  const [addDrinkOpen, setAddDrinkOpen] = useState(false);
+  const [selectedDrink, setSelectedDrink] = useState('herbalTea'); // su dışı varsayılan
+  const [drinkAmount, setDrinkAmount] = useState(200);
+
   // Korumalı veri yönetimi için ref'ler
   const lastWaterDataState = useRef(null);
   const isDataLoading = useRef(true);
@@ -906,14 +948,18 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           waterNotificationOption: waterData.waterNotificationOption,
           customNotificationInterval: waterData.customNotificationInterval,
           activityLevel: waterData.activityLevel,
+          drinkHistory: arrayUnion({
+            type: 'water',
+            amount: waterData.glassSize,
+            contribution: 1,
+            addedWater: waterData.glassSize,
+            date: new Date().toISOString(),
+          }),
         },
         { merge: true }
       );
       await fetchWaterData();
       const result = await scheduleWaterNotifications(user);
-      if (process.env.NODE_ENV === 'development') {
-      console.log("handleAddWater - Bildirimler yeniden hesaplandı:", result);
-      }
       setNextReminder(result.nextReminder);
     } catch (error) {
       console.error("Error updating water intake:", error);
@@ -945,6 +991,60 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     } catch (error) {
       console.error("Error updating water intake:", error);
     }
+  };
+
+  const handleAddDrink = () => {
+    setAddDrinkOpen(true);
+    setDrinkAmount(200); // modal açıldığında varsayılan 200 ml
+  };
+
+  const handleConfirmAddDrink = async () => {
+    const amount = Number(drinkAmount);
+    if (!amount || amount <= 0) return;
+    if (selectedDrink === 'water') return; // su eklenemez
+    const contribution = DRINK_WATER_CONTRIBUTION[selectedDrink] || 1;
+    const addedWater = Math.round(amount * contribution);
+    const newIntake = waterData.waterIntake + addedWater;
+    const isGoalAchieved =
+      newIntake >= waterData.dailyWaterTarget &&
+      waterData.waterIntake < waterData.dailyWaterTarget;
+    const ref = getWaterDocRef();
+    try {
+      await setDoc(
+        ref,
+        {
+          waterIntake: newIntake,
+          dailyWaterTarget: waterData.dailyWaterTarget,
+          glassSize: waterData.glassSize,
+          waterNotificationOption: waterData.waterNotificationOption,
+          customNotificationInterval: waterData.customNotificationInterval,
+          activityLevel: waterData.activityLevel,
+          drinkHistory: arrayUnion({
+            type: selectedDrink,
+            amount,
+            contribution,
+            addedWater,
+            date: new Date().toISOString(),
+          }),
+        },
+        { merge: true }
+      );
+      await fetchWaterData();
+      const result = await scheduleWaterNotifications(user);
+      setNextReminder(result.nextReminder);
+    } catch (error) {
+      console.error("Error updating water intake:", error);
+    }
+    if (isGoalAchieved && !achievement) {
+      setShowConfetti(true);
+      setAchievement("💧🚀 Su Hedefini Aştın! 🎉🌊");
+      setTimeout(() => {
+        setShowConfetti(false);
+        setAchievement(null);
+      }, 2700);
+    }
+    setDrinkAmount(200); // modal açıkken tekrar 200 ml
+    setSelectedDrink('herbalTea');
   };
 
   const handleWaterSettingChange = async (field, value) => {
@@ -1262,9 +1362,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
               </IconButton>
             </Tooltip>
           </Box>
-          <Box
-            sx={{ display: "flex", justifyContent: "center", gap: 3, mt: 2 }}
-          >
+          <Box sx={{ display: "flex", justifyContent: "center", gap: 3, mt: 2 }}>
             <Tooltip title="Su Eksilt" placement="left">
               <IconButton
                 onClick={handleRemoveWater}
@@ -1280,6 +1378,24 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
                 }}
               >
                 <RemoveIcon sx={{ fontSize: 35, color: "#fff" }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="İçecek Ekle" placement="top">
+              <IconButton
+                onClick={handleAddDrink}
+                sx={{
+                  backgroundColor: "rgba(255,255,255,0.2)",
+                  backdropFilter: "blur(10px)",
+                  mx: 1,
+                  "&:hover": {
+                    backgroundColor: "rgba(255,255,255,0.3)",
+                    transform: "scale(1.1)",
+                  },
+                  transition: "all 0.3s ease",
+                  padding: "15px",
+                }}
+              >
+                <EmojiFoodBeverageIcon sx={{ fontSize: 30, color: "#21CBF3" }} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Su Ekle" placement="right">
@@ -1372,19 +1488,51 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
               <IconButton onClick={handleMenuOpen} sx={{ ml: 1, color: "#21CBF3", width: 36, height: 36 }}>
                 <MoreVertIcon />
               </IconButton>
-              <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
-                {STANDARD_GLASS_SIZES.map((glass) => (
-                  <MenuItem key={glass.value} onClick={() => handleStandardGlassSelect(glass.value)} selected={waterData.glassSize === glass.value}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {glass.icon}
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{glass.label}</Typography>
-                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>{glass.desc}</Typography>
-                      </Box>
-                    </Box>
-                  </MenuItem>
-                ))}
-              </Menu>
+              <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}
+  PaperProps={{
+    sx: {
+      background: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)',
+      borderRadius: 3,
+      boxShadow: '0 8px 32px rgba(33,150,243,0.18)',
+      backdropFilter: 'blur(10px)',
+      p: 1,
+      minWidth: 180,
+    }
+  }}
+>
+  {STANDARD_GLASS_SIZES.map((glass) => (
+    <MenuItem
+      key={glass.value}
+      onClick={() => handleStandardGlassSelect(glass.value)}
+      selected={waterData.glassSize === glass.value}
+      sx={{
+        color: '#fff',
+        fontWeight: 700,
+        fontSize: { xs: '1rem', sm: '1.1rem' },
+        borderRadius: 2,
+        my: 0.5,
+        px: 2,
+        py: 1.2,
+        background: waterData.glassSize === glass.value ? 'rgba(33,203,243,0.25)' : 'transparent',
+        boxShadow: waterData.glassSize === glass.value ? '0 2px 8px #21CBF3' : 'none',
+        '&:hover': {
+          background: 'linear-gradient(90deg, #21CBF3 0%, #2196F3 100%)',
+          color: '#fff',
+          boxShadow: '0 4px 16px #21CBF3',
+        },
+        transition: 'all 0.2s',
+      }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        {glass.icon}
+        <Box>
+          <Typography variant="body2" sx={{ fontWeight: 700, color: '#fff' }}>{glass.label}</Typography>
+          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>{glass.desc}</Typography>
+        </Box>
+      </Box>
+    </MenuItem>
+  ))}
+</Menu>
             </Box>
           </Grid>
 
@@ -1507,6 +1655,65 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           }
         }}
       />
+
+      <Dialog open={addDrinkOpen} onClose={() => { setAddDrinkOpen(false); setDrinkAmount(200); }} maxWidth="xs" fullWidth
+  PaperProps={{
+    sx: {
+      background: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)',
+      borderRadius: 4,
+      boxShadow: '0 12px 48px rgba(33,150,243,0.18)',
+      backdropFilter: 'blur(12px)',
+      p: { xs: 1, sm: 3 },
+      m: 0,
+      maxWidth: { xs: '95vw', sm: 400 },
+      width: { xs: '95vw', sm: 'auto' },
+    }
+  }}
+>
+  <Box sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+      <EmojiFoodBeverageIcon sx={{ fontSize: 32, color: '#fff', mr: 1, filter: 'drop-shadow(0 2px 8px #21CBF3)' }} />
+      <Typography variant="h6" sx={{ fontWeight: 800, color: '#fff', letterSpacing: 0.5, textShadow: '0 2px 8px #21CBF3' }}>
+        İçecek Ekle
+      </Typography>
+    </Box>
+    <TextField
+      select
+      label="İçecek Tipi"
+      value={selectedDrink}
+      onChange={e => setSelectedDrink(e.target.value)}
+      fullWidth
+      sx={{ mb: 2, background: 'rgba(255,255,255,0.12)', borderRadius: 2, input: { color: '#fff' }, label: { color: '#fff' } }}
+      InputLabelProps={{ sx: { color: '#fff', fontWeight: 600 } }}
+      SelectProps={{ MenuProps: { PaperProps: { sx: { bgcolor: '#e3f2fd' } } } }}
+    >
+      {DRINK_OPTIONS.filter(opt => opt.value !== 'water').map(opt => (
+        <MenuItem key={opt.value} value={opt.value} sx={{ color: '#fff', fontWeight: 600 }}>
+          {opt.icon} <span style={{ color: '#fff', fontWeight: 600, marginLeft: 6 }}>{opt.label}</span>
+        </MenuItem>
+      ))}
+    </TextField>
+    <TextField
+      label="Miktar (ml)"
+      type="number"
+      value={drinkAmount}
+      onChange={e => setDrinkAmount(e.target.value)}
+      fullWidth
+      InputProps={{ endAdornment: <InputAdornment position="end">ml</InputAdornment> }}
+      sx={{ mb: 2, background: 'rgba(255,255,255,0.12)', borderRadius: 2, input: { color: '#fff' }, label: { color: '#fff' } }}
+      InputLabelProps={{ sx: { color: '#fff', fontWeight: 600 } }}
+    />
+    <Box sx={{ mb: 2, p: 2, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Typography variant="body2" sx={{ color: '#fff', fontWeight: 500 }}>
+        {selectedDrink && `Bu içecek suya %${Math.round((DRINK_WATER_CONTRIBUTION[selectedDrink] || 1)*100)} oranında katkı sağlar.`}
+      </Typography>
+    </Box>
+    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 1 }}>
+      <Button onClick={() => { setAddDrinkOpen(false); setDrinkAmount(200); }} color="inherit" sx={{ fontWeight: 700, borderRadius: 2, px: 3, py: 1, bgcolor: 'rgba(255,255,255,0.12)', color: '#fff', '&:hover': { bgcolor: 'rgba(255,255,255,0.22)' } }}>İptal</Button>
+      <Button onClick={handleConfirmAddDrink} variant="contained" color="primary" sx={{ fontWeight: 700, borderRadius: 2, px: 3, py: 1, boxShadow: '0 4px 16px #21CBF3', background: 'linear-gradient(90deg, #21CBF3 0%, #2196F3 100%)' }}>Ekle</Button>
+    </Box>
+  </Box>
+</Dialog>
     </Box>
   );
 };

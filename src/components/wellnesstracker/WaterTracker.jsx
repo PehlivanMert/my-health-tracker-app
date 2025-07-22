@@ -865,6 +865,11 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   useEffect(() => {
     if (!user) return;
     fetchWaterData();
+    // 5 saniye sonra bir kez daha fetch (kısa polling)
+    const timeoutId = setTimeout(() => {
+      fetchWaterData();
+    }, 5000);
+    return () => clearTimeout(timeoutId);
   }, [user]);
 
   useEffect(() => {

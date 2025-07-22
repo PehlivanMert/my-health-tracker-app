@@ -665,15 +665,42 @@ export const computeWaterReminderTimes = async (user) => {
       }
     }
     
-    // Ortalamaları kullan (günlük su hedefi hesaplaması için)
-    const weather = dailyWeatherAverages || {};
-    const temperature = weather.temperature || 20;
-    const humidity = weather.humidity || 50;
-    const windSpeed = weather.windSpeed || 10;
-    const uvIndex = weather.uvIndex || 3;
-    const cloudCover = weather.cloudCover || 50;
-    const precipitation = weather.precipitation || 0;
-    const isDay = weather.isDay || 1;
+    // Bildirim penceresi saatleri arasındaki ortalamaları kullan
+    let temperature, humidity, windSpeed, uvIndex, cloudCover, precipitation, isDay;
+    if (hourlyWeatherData && hourlyWeatherData.hourlyData) {
+      const { windowStart, windowEnd } = computeWindowTimes(globalWindow);
+      let startHour = windowStart.getHours();
+      let endHour = windowEnd.getHours();
+      // Geceye taşan pencereyi destekle
+      let hours = [];
+      if (endHour > startHour) {
+        for (let h = startHour; h < endHour; h++) hours.push(h);
+      } else {
+        for (let h = startHour; h < 24; h++) hours.push(h);
+        for (let h = 0; h < endHour; h++) hours.push(h);
+      }
+      const arr = (key) => hours.map(h => hourlyWeatherData.hourlyData[h]?.[key]).filter(v => typeof v === 'number');
+      const avg = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : undefined;
+      temperature = avg(arr('temperature')) ?? 20;
+      humidity = avg(arr('humidity')) ?? 50;
+      windSpeed = avg(arr('windSpeed')) ?? 10;
+      uvIndex = avg(arr('uvIndex')) ?? 3;
+      cloudCover = avg(arr('cloudCover')) ?? 50;
+      precipitation = avg(arr('precipitation')) ?? 0;
+      // isDay: pencere saatlerinin çoğu gündüzse 1, değilse 0
+      const isDayArr = arr('isDay');
+      isDay = isDayArr.length ? (isDayArr.filter(x => x === 1).length > isDayArr.length / 2 ? 1 : 0) : 1;
+    } else {
+      // Fallback: eski davranış (günlük ortalama)
+      const weather = dailyWeatherAverages || {};
+      temperature = weather.temperature || 20;
+      humidity = weather.humidity || 50;
+      windSpeed = weather.windSpeed || 10;
+      uvIndex = weather.uvIndex || 3;
+      cloudCover = weather.cloudCover || 50;
+      precipitation = weather.precipitation || 0;
+      isDay = weather.isDay || 1;
+    }
 
     // Temel çarpanlar
     const humidityMultiplier = 1 + Math.abs(50 - humidity) / 200;

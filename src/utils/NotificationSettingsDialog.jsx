@@ -17,6 +17,7 @@ import { db } from "../components/auth/firebaseConfig";
 import CloseIcon from "@mui/icons-material/Close";
 import SaveIcon from "@mui/icons-material/Save";
 import { styled, alpha } from "@mui/material/styles";
+import NotificationsOffIcon from "@mui/icons-material/NotificationsOff";
 
 const StyledDialogTitle = styled(DialogTitle)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -129,6 +130,12 @@ const NotificationSettingsDialog = ({ open, onClose, user, onSave }) => {
     }
   };
 
+  // Bildirimleri kapatmak için zil ikonuna tıklama fonksiyonu
+  const handleDisableNotifications = () => {
+    setStart(null);
+    setEnd(null);
+  };
+
   return (
     <Dialog
       open={open}
@@ -140,6 +147,23 @@ const NotificationSettingsDialog = ({ open, onClose, user, onSave }) => {
         <Typography variant="h6" component="span">
           Bildirim Aralığı
         </Typography>
+        {/* Bildirimleri kapatmak için kapalı zil ikonu */}
+        {!saving && (
+          <IconButton
+            onClick={handleDisableNotifications}
+            sx={{
+              position: "absolute",
+              left: 8,
+              top: 8,
+              color: "#fff",
+              background: alpha("#000", 0.2),
+              "&:hover": { background: alpha("#000", 0.3) },
+            }}
+            aria-label="Bildirimleri Kapat"
+          >
+            <NotificationsOffIcon />
+          </IconButton>
+        )}
         {!saving && (
           <IconButton
             onClick={onClose}
@@ -164,20 +188,22 @@ const NotificationSettingsDialog = ({ open, onClose, user, onSave }) => {
         <TextField
           label="Başlangıç Saati"
           type="time"
-          value={start}
+          value={start === null ? "" : start}
           onChange={(e) => setStart(e.target.value)}
           fullWidth
           InputLabelProps={{ shrink: true }}
           sx={{ mt: 2 }}
+          disabled={start === null && end === null}
         />
         <TextField
           label="Bitiş Saati"
           type="time"
-          value={end}
+          value={end === null ? "" : end}
           onChange={(e) => setEnd(e.target.value)}
           fullWidth
           InputLabelProps={{ shrink: true }}
           sx={{ mt: 2 }}
+          disabled={start === null && end === null}
         />
       </StyledDialogContent>
 

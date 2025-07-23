@@ -983,6 +983,11 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   };
 
   const handleRemoveWater = async () => {
+    // Su miktarı 0 veya daha az ise eksiltme işlemi yapma
+    if (waterData.waterIntake <= 0) {
+      return;
+    }
+    
     const newIntake = Math.max(0, waterData.waterIntake - waterData.glassSize);
     const ref = getWaterDocRef();
     try {

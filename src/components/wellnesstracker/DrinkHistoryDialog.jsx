@@ -255,7 +255,7 @@ const DrinkHistoryDialog = ({ open, onClose, drinkHistory = [] }) => {
 
       <DialogContent sx={{ p: 3 }}>
         {/* Statistics Cards */}
-        <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid container spacing={2} sx={{ mb: 3, mt: 4 }}>
           <Grid item xs={6} sm={3}>
             <StyledCard>
               <CardContent sx={{ textAlign: 'center', py: 2 }}>

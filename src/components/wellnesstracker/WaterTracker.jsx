@@ -986,7 +986,21 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     const newIntake = Math.max(0, waterData.waterIntake - waterData.glassSize);
     const ref = getWaterDocRef();
     try {
-      await setDoc(ref, { waterIntake: newIntake }, { merge: true });
+      await setDoc(
+        ref, 
+        { 
+          waterIntake: newIntake,
+          drinkHistory: arrayUnion({
+            type: 'water',
+            amount: -waterData.glassSize, // Negatif değer eksiltme için
+            contribution: 1,
+            addedWater: -waterData.glassSize, // Negatif değer eksiltme için
+            date: new Date().toISOString(),
+            action: 'removed', // Eksiltme işlemi olduğunu belirtmek için
+          }),
+        }, 
+        { merge: true }
+      );
       await fetchWaterData();
       const result = await scheduleWaterNotifications(user);
       if (process.env.NODE_ENV === 'development') {

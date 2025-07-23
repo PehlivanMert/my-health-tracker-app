@@ -166,7 +166,7 @@ const DrinkHistoryDialog = ({ open, onClose, drinkHistory = [] }) => {
   // Calculate statistics
   const stats = useMemo(() => {
     const totalDrinks = filteredHistory.length;
-    const totalAmount = filteredHistory.reduce((sum, item) => sum + item.amount, 0);
+    const totalAmount = filteredHistory.reduce((sum, item) => sum + Math.abs(item.amount), 0);
     const totalWaterContribution = filteredHistory.reduce((sum, item) => sum + (item.addedWater || 0), 0);
     const averageAmount = totalDrinks > 0 ? Math.round(totalAmount / totalDrinks) : 0;
     
@@ -268,30 +268,30 @@ const DrinkHistoryDialog = ({ open, onClose, drinkHistory = [] }) => {
               </CardContent>
             </StyledCard>
           </Grid>
-          <Grid item xs={6} sm={3}>
-            <StyledCard>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <Typography variant="h4" sx={{ color: '#4CAF50', fontWeight: 700 }}>
-                  {stats.totalAmount}ml
-                </Typography>
-                <Typography variant="body2" sx={{ color: '#666' }}>
-                  Toplam Miktar
-                </Typography>
-              </CardContent>
-            </StyledCard>
-          </Grid>
-          <Grid item xs={6} sm={3}>
-            <StyledCard>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <Typography variant="h4" sx={{ color: '#21CBF3', fontWeight: 700 }}>
-                  {stats.totalWaterContribution}ml
-                </Typography>
-                <Typography variant="body2" sx={{ color: '#666' }}>
-                  Su Katkısı
-                </Typography>
-              </CardContent>
-            </StyledCard>
-          </Grid>
+                     <Grid item xs={6} sm={3}>
+             <StyledCard>
+               <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                 <Typography variant="h4" sx={{ color: '#4CAF50', fontWeight: 700 }}>
+                   {stats.totalAmount}ml
+                 </Typography>
+                 <Typography variant="body2" sx={{ color: '#666' }}>
+                   Toplam İşlem Miktarı
+                 </Typography>
+               </CardContent>
+             </StyledCard>
+           </Grid>
+                     <Grid item xs={6} sm={3}>
+             <StyledCard>
+               <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                 <Typography variant="h4" sx={{ color: '#21CBF3', fontWeight: 700 }}>
+                   {stats.totalWaterContribution}ml
+                 </Typography>
+                 <Typography variant="body2" sx={{ color: '#666' }}>
+                   Net Su Katkısı
+                 </Typography>
+               </CardContent>
+             </StyledCard>
+           </Grid>
           <Grid item xs={6} sm={3}>
             <StyledCard>
               <CardContent sx={{ textAlign: 'center', py: 2 }}>
@@ -409,32 +409,52 @@ const DrinkHistoryDialog = ({ open, onClose, drinkHistory = [] }) => {
               {filteredHistory.map((item, index) => (
                 <StyledCard key={index} sx={{ mb: 2 }}>
                   <CardContent sx={{ py: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        {DRINK_ICONS[item.type] || <LocalDrinkIcon />}
-                        <Box>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333' }}>
-                            {DRINK_LABELS[item.type] || item.type}
-                          </Typography>
-                          <Typography variant="body2" sx={{ color: '#666' }}>
-                            {formatDate(item.date)} - {formatTime(item.date)}
-                          </Typography>
-                        </Box>
-                      </Box>
-                      <Box sx={{ textAlign: 'right' }}>
-                        <Typography variant="h6" sx={{ fontWeight: 700, color: '#2196F3' }}>
-                          {item.amount}ml
-                        </Typography>
-                        <Chip
-                          label={`Su katkısı: ${item.addedWater || 0}ml`}
-                          size="small"
-                          sx={{
-                            background: 'linear-gradient(135deg, #4CAF50 0%, #81C784 100%)',
-                            color: '#fff',
-                            fontWeight: 600,
-                          }}
-                        />
-                      </Box>
+                                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                         <Box sx={{ 
+                           color: item.action === 'removed' ? '#f44336' : 'inherit',
+                           opacity: item.action === 'removed' ? 0.7 : 1
+                         }}>
+                           {DRINK_ICONS[item.type] || <LocalDrinkIcon />}
+                         </Box>
+                         <Box>
+                           <Typography 
+                             variant="subtitle1" 
+                             sx={{ 
+                               fontWeight: 600, 
+                               color: item.action === 'removed' ? '#f44336' : '#333',
+                               textDecoration: item.action === 'removed' ? 'line-through' : 'none'
+                             }}
+                           >
+                             {item.action === 'removed' ? 'Su Eksiltildi' : (DRINK_LABELS[item.type] || item.type)}
+                           </Typography>
+                           <Typography variant="body2" sx={{ color: '#666' }}>
+                             {formatDate(item.date)} - {formatTime(item.date)}
+                           </Typography>
+                         </Box>
+                       </Box>
+                                             <Box sx={{ textAlign: 'right' }}>
+                         <Typography 
+                           variant="h6" 
+                           sx={{ 
+                             fontWeight: 700, 
+                             color: item.action === 'removed' ? '#f44336' : '#2196F3' 
+                           }}
+                         >
+                           {item.action === 'removed' ? '-' : '+'}{Math.abs(item.amount)}ml
+                         </Typography>
+                         <Chip
+                           label={`Su katkısı: ${item.addedWater || 0}ml`}
+                           size="small"
+                           sx={{
+                             background: item.action === 'removed' 
+                               ? 'linear-gradient(135deg, #f44336 0%, #ef5350 100%)'
+                               : 'linear-gradient(135deg, #4CAF50 0%, #81C784 100%)',
+                             color: '#fff',
+                             fontWeight: 600,
+                           }}
+                         />
+                       </Box>
                     </Box>
                   </CardContent>
                 </StyledCard>

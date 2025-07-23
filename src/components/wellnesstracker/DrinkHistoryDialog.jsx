@@ -32,6 +32,8 @@ import {
   SportsBar as SportsBarIcon,
   LocalBar as LocalBarIcon,
   LocalCafe as LocalCafeIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 
@@ -94,6 +96,7 @@ const DrinkHistoryDialog = ({ open, onClose, drinkHistory = [] }) => {
   const [drinkTypeFilter, setDrinkTypeFilter] = useState('all');
   const [amountFilter, setAmountFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [historyOpen, setHistoryOpen] = useState(false); // Varsayılan kapalı
 
   // Get unique drink types from history
   const uniqueDrinkTypes = useMemo(() => {
@@ -388,78 +391,97 @@ const DrinkHistoryDialog = ({ open, onClose, drinkHistory = [] }) => {
 
         <Divider sx={{ my: 2 }} />
 
-        {/* History List */}
+        {/* Collapsible History List */}
         <Box>
-          <Typography variant="h6" sx={{ fontWeight: 600, color: '#333', mb: 2 }}>
-            İçecek Geçmişi ({filteredHistory.length} kayıt)
-          </Typography>
-          
-          {filteredHistory.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <LocalDrinkIcon sx={{ fontSize: 64, color: '#ccc', mb: 2 }} />
-              <Typography variant="h6" sx={{ color: '#999', mb: 1 }}>
-                İçecek geçmişi bulunamadı
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#999' }}>
-                Seçilen filtrelere uygun içecek kaydı yok.
-              </Typography>
-            </Box>
-          ) : (
-            <Box sx={{ maxHeight: '400px', overflowY: 'auto' }}>
-              {filteredHistory.map((item, index) => (
-                <StyledCard key={index} sx={{ mb: 2 }}>
-                  <CardContent sx={{ py: 2 }}>
-                                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                         <Box sx={{ 
-                           color: item.action === 'removed' ? '#f44336' : 'inherit',
-                           opacity: item.action === 'removed' ? 0.7 : 1
-                         }}>
-                           {DRINK_ICONS[item.type] || <LocalDrinkIcon />}
-                         </Box>
-                         <Box>
-                           <Typography 
-                             variant="subtitle1" 
-                             sx={{ 
-                               fontWeight: 600, 
-                               color: item.action === 'removed' ? '#f44336' : '#333',
-                               textDecoration: item.action === 'removed' ? 'line-through' : 'none'
-                             }}
-                           >
-                             {item.action === 'removed' ? 'Su Eksiltildi' : (DRINK_LABELS[item.type] || item.type)}
-                           </Typography>
-                           <Typography variant="body2" sx={{ color: '#666' }}>
-                             {formatDate(item.date)} - {formatTime(item.date)}
-                           </Typography>
-                         </Box>
-                       </Box>
-                                             <Box sx={{ textAlign: 'right' }}>
-                         <Typography 
-                           variant="h6" 
-                           sx={{ 
-                             fontWeight: 700, 
-                             color: item.action === 'removed' ? '#f44336' : '#2196F3' 
-                           }}
-                         >
-                           {item.action === 'removed' ? '-' : '+'}{Math.abs(item.amount)}ml
-                         </Typography>
-                         <Chip
-                           label={`Su katkısı: ${item.addedWater || 0}ml`}
-                           size="small"
-                           sx={{
-                             background: item.action === 'removed' 
-                               ? 'linear-gradient(135deg, #f44336 0%, #ef5350 100%)'
-                               : 'linear-gradient(135deg, #4CAF50 0%, #81C784 100%)',
-                             color: '#fff',
-                             fontWeight: 600,
-                           }}
-                         />
-                       </Box>
-                    </Box>
-                  </CardContent>
-                </StyledCard>
-              ))}
-            </Box>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              cursor: 'pointer',
+              userSelect: 'none',
+              mb: 2,
+              gap: 1,
+              justifyContent: 'space-between', // Ok en sağda
+            }}
+            onClick={() => setHistoryOpen((prev) => !prev)}
+          >
+            <Typography variant="h6" sx={{ fontWeight: 600, color: '#333' }}>
+              İçecek Geçmişi ({filteredHistory.length} kayıt)
+            </Typography>
+            {historyOpen ? (
+              <ExpandLessIcon sx={{ color: '#2196F3' }} />
+            ) : (
+              <ExpandMoreIcon sx={{ color: '#2196F3' }} />
+            )}
+          </Box>
+          {historyOpen && (
+            filteredHistory.length === 0 ? (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <LocalDrinkIcon sx={{ fontSize: 64, color: '#ccc', mb: 2 }} />
+                <Typography variant="h6" sx={{ color: '#999', mb: 1 }}>
+                  İçecek geçmişi bulunamadı
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#999' }}>
+                  Seçilen filtrelere uygun içecek kaydı yok.
+                </Typography>
+              </Box>
+            ) : (
+              <Box sx={{ maxHeight: '400px', overflowY: 'auto' }}>
+                {filteredHistory.map((item, index) => (
+                  <StyledCard key={index} sx={{ mb: 2 }}>
+                    <CardContent sx={{ py: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Box sx={{ 
+                            color: item.action === 'removed' ? '#f44336' : 'inherit',
+                            opacity: item.action === 'removed' ? 0.7 : 1
+                          }}>
+                            {DRINK_ICONS[item.type] || <LocalDrinkIcon />}
+                          </Box>
+                          <Box>
+                            <Typography 
+                              variant="subtitle1" 
+                              sx={{ 
+                                fontWeight: 600, 
+                                color: item.action === 'removed' ? '#f44336' : '#333',
+                                textDecoration: item.action === 'removed' ? 'line-through' : 'none'
+                              }}
+                            >
+                              {item.action === 'removed' ? 'Su Eksiltildi' : (DRINK_LABELS[item.type] || item.type)}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: '#666' }}>
+                              {formatDate(item.date)} - {formatTime(item.date)}
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <Box sx={{ textAlign: 'right' }}>
+                          <Typography 
+                            variant="h6" 
+                            sx={{ 
+                              fontWeight: 700, 
+                              color: item.action === 'removed' ? '#f44336' : '#2196F3' 
+                            }}
+                          >
+                            {item.action === 'removed' ? '-' : '+'}{Math.abs(item.amount)}ml
+                          </Typography>
+                          <Chip
+                            label={`Su katkısı: ${item.addedWater || 0}ml`}
+                            size="small"
+                            sx={{
+                              background: item.action === 'removed' 
+                                ? 'linear-gradient(135deg, #f44336 0%, #ef5350 100%)'
+                                : 'linear-gradient(135deg, #4CAF50 0%, #81C784 100%)',
+                              color: '#fff',
+                              fontWeight: 600,
+                            }}
+                          />
+                        </Box>
+                      </Box>
+                    </CardContent>
+                  </StyledCard>
+                ))}
+              </Box>
+            )
           )}
         </Box>
       </DialogContent>

@@ -1084,7 +1084,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         },
         { merge: true }
       );
-      await fetchWaterData();
+      setTimeout(fetchWaterData, 300);
       const result = await scheduleWaterNotifications(user);
       setNextReminder(result.nextReminder);
     } catch (error) {
@@ -1098,8 +1098,9 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         setAchievement(null);
       }, 2700);
     }
-    setDrinkAmount(200); // modal açıkken tekrar 200 ml
-    setSelectedDrink('herbalTea');
+    // setDrinkAmount(200); // KALDIRILDI
+    // setSelectedDrink('herbalTea'); // KALDIRILDI
+    // setAddDrinkOpen(false); // KALDIRILDI
   };
 
   const handleWaterSettingChange = async (field, value) => {

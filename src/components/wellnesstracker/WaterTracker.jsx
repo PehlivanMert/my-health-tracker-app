@@ -941,32 +941,49 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   }, [user]);
 
   const handleAddWater = async () => {
-    const newIntake = waterData.waterIntake + waterData.glassSize;
+    const glassSize = Number(localGlassSize); // HER ZAMAN GÜNCEL LOCAL STATE
+    const newIntake = waterData.waterIntake + glassSize;
     const isGoalAchieved =
       newIntake >= waterData.dailyWaterTarget &&
       waterData.waterIntake < waterData.dailyWaterTarget;
     const ref = getWaterDocRef();
+
+    setWaterData(prev => ({
+      ...prev,
+      waterIntake: newIntake,
+      drinkHistory: [
+        ...(prev.drinkHistory || []),
+        {
+          type: 'water',
+          amount: glassSize,
+          contribution: 1,
+          addedWater: glassSize,
+          date: new Date().toISOString(),
+        },
+      ],
+    }));
+
     try {
       await setDoc(
         ref,
         {
           waterIntake: newIntake,
           dailyWaterTarget: waterData.dailyWaterTarget,
-          glassSize: waterData.glassSize,
+          glassSize: glassSize,
           waterNotificationOption: waterData.waterNotificationOption,
           customNotificationInterval: waterData.customNotificationInterval,
           activityLevel: waterData.activityLevel,
           drinkHistory: arrayUnion({
             type: 'water',
-            amount: waterData.glassSize,
+            amount: glassSize,
             contribution: 1,
-            addedWater: waterData.glassSize,
+            addedWater: glassSize,
             date: new Date().toISOString(),
           }),
         },
         { merge: true }
       );
-      await fetchWaterData();
+      setTimeout(fetchWaterData, 300);
       const result = await scheduleWaterNotifications(user);
       setNextReminder(result.nextReminder);
     } catch (error) {
@@ -983,37 +1000,48 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   };
 
   const handleRemoveWater = async () => {
-    // Su miktarı 0 veya daha az ise eksiltme işlemi yapma
     if (waterData.waterIntake <= 0) {
       return;
     }
-    
-    const newIntake = Math.max(0, waterData.waterIntake - waterData.glassSize);
+    const glassSize = Number(localGlassSize); // HER ZAMAN GÜNCEL LOCAL STATE
+    const newIntake = Math.max(0, waterData.waterIntake - glassSize);
     const ref = getWaterDocRef();
+
+    setWaterData(prev => ({
+      ...prev,
+      waterIntake: newIntake,
+      drinkHistory: [
+        ...(prev.drinkHistory || []),
+        {
+          type: 'water',
+          amount: -glassSize,
+          contribution: 1,
+          addedWater: -glassSize,
+          date: new Date().toISOString(),
+          action: 'removed',
+        },
+      ],
+    }));
+
     try {
       await setDoc(
-        ref, 
-        { 
+        ref,
+        {
           waterIntake: newIntake,
+          glassSize: glassSize,
           drinkHistory: arrayUnion({
             type: 'water',
-            amount: -waterData.glassSize, // Negatif değer eksiltme için
+            amount: -glassSize,
             contribution: 1,
-            addedWater: -waterData.glassSize, // Negatif değer eksiltme için
+            addedWater: -glassSize,
             date: new Date().toISOString(),
-            action: 'removed', // Eksiltme işlemi olduğunu belirtmek için
+            action: 'removed',
           }),
-        }, 
+        },
         { merge: true }
       );
-      await fetchWaterData();
+      setTimeout(fetchWaterData, 300);
       const result = await scheduleWaterNotifications(user);
-      if (process.env.NODE_ENV === 'development') {
-      console.log(
-        "handleRemoveWater - Bildirimler yeniden hesaplandı:",
-        result
-      );
-      }
       setNextReminder(result.nextReminder);
     } catch (error) {
       console.error("Error updating water intake:", error);

@@ -92,7 +92,7 @@ const DrinkHistoryDialog = ({ open, onClose, drinkHistory = [] }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   // Filter states
-  const [dateFilter, setDateFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('today'); // Varsayılan bugün
   const [drinkTypeFilter, setDrinkTypeFilter] = useState('all');
   const [amountFilter, setAmountFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -334,11 +334,11 @@ const DrinkHistoryDialog = ({ open, onClose, drinkHistory = [] }) => {
                 variant="outlined"
                 size="small"
               >
-                <MenuItem value="all">Tüm Tarihler</MenuItem>
                 <MenuItem value="today">Bugün</MenuItem>
                 <MenuItem value="yesterday">Dün</MenuItem>
                 <MenuItem value="week">Son 7 Gün</MenuItem>
                 <MenuItem value="month">Son 30 Gün</MenuItem>
+                <MenuItem value="all">Tüm Tarihler</MenuItem>
               </TextField>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>

@@ -22,6 +22,7 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import NotificationsOffIcon from "@mui/icons-material/NotificationsOff";
 import WaterNotificationSettingsDialog from "./WaterNotificationSettingsDialog";
+import DrinkHistoryDialog from "./DrinkHistoryDialog";
 import styles from "./waterAnimation.module.css";
 import {
   saveNextWaterReminderTime,
@@ -45,6 +46,7 @@ import SportsBarIcon from '@mui/icons-material/SportsBar';
 import LocalBarIcon from '@mui/icons-material/LocalBar';
 import SvgIcon from '@mui/material/SvgIcon';
 import LocalCafeIcon from '@mui/icons-material/LocalCafe';
+import HistoryIcon from '@mui/icons-material/History';
 
 // --- Animasyon ve stil tanımlamaları ---
 const pulse = keyframes`
@@ -775,6 +777,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     dailyWaterTarget: 2000,
     glassSize: 250,
     history: [],
+    drinkHistory: [],
     yesterdayWaterIntake: 0,
     lastResetDate: null,
     waterNotificationOption: "smart",
@@ -795,6 +798,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   const [nextReminder, setNextReminder] = useState(null);
   const [weatherSuggestion, setWeatherSuggestion] = useState("");
   const [waterNotifDialogOpen, setWaterNotifDialogOpen] = useState(false);
+  const [drinkHistoryDialogOpen, setDrinkHistoryDialogOpen] = useState(false);
   
   // Su ekleme modalı için state
   const [addDrinkOpen, setAddDrinkOpen] = useState(false);
@@ -845,6 +849,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         history: data.history
           ? data.history.sort((a, b) => new Date(a.date) - new Date(b.date))
           : [],
+        drinkHistory: data.drinkHistory || [],
         yesterdayWaterIntake: data.yesterdayWaterIntake || 0,
         lastResetDate: data.lastResetDate || null,
         waterNotificationOption: data.waterNotificationOption || "smart",
@@ -886,6 +891,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         dailyWaterTarget: 2000,
         glassSize: 250,
         history: [],
+        drinkHistory: [],
         yesterdayWaterIntake: 0,
         lastResetDate: null,
         waterNotificationOption: "smart",
@@ -1341,10 +1347,26 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
             sx={{
               mt: 2,
               display: "flex",
-              flexDirection: "column",
+              flexDirection: "row",
               alignItems: "center",
+              justifyContent: "center",
+              gap: 1,
             }}
           >
+            <Tooltip title="İçecek Geçmişi">
+              <IconButton
+                onClick={() => setDrinkHistoryDialogOpen(true)}
+                sx={{
+                  color: "#fff",
+                  "&:hover": {
+                    color: "#21CBF3",
+                    transform: "scale(1.1)",
+                  },
+                }}
+              >
+                <HistoryIcon />
+              </IconButton>
+            </Tooltip>
             <Tooltip title="Su Bildirim Ayarları">
               <IconButton
                 onClick={() => setWaterNotifDialogOpen(true)}
@@ -1656,6 +1678,12 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
             );
           }
         }}
+      />
+
+      <DrinkHistoryDialog
+        open={drinkHistoryDialogOpen}
+        onClose={() => setDrinkHistoryDialogOpen(false)}
+        drinkHistory={waterData.drinkHistory || []}
       />
 
       <Dialog open={addDrinkOpen} onClose={() => { setAddDrinkOpen(false); setDrinkAmount(200); }} maxWidth="xs" fullWidth

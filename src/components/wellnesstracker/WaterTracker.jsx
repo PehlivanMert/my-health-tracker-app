@@ -1283,29 +1283,6 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
 
   return (
     <Box sx={{ textAlign: "center", mb: 6 }}>
-      {/* TEST BUTTON - Only show in development */}
-      {process.env.NODE_ENV === 'development' && (
-        <Box sx={{ mb: 2 }}>
-          <button
-            style={{
-              background: 'linear-gradient(90deg, #2196F3 0%, #21CBF3 100%)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 12,
-              padding: '10px 24px',
-              fontWeight: 700,
-              fontSize: '1rem',
-              boxShadow: '0 2px 8px rgba(33,150,243,0.15)',
-              cursor: 'pointer',
-              transition: 'background 0.3s',
-              marginBottom: 8
-            }}
-            onClick={handleTestAchievement}
-          >
-            🎉 Su Hedefi Animasyonunu Test Et
-          </button>
-        </Box>
-      )}
       {showConfetti && (
         <Confetti
           recycle={false}

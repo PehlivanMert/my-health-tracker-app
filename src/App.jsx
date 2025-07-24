@@ -78,6 +78,7 @@ import { GlobalStateContext } from "./components/context/GlobalStateContext";
 import { handleSaveNotificationWindow } from "./utils/notificationWindowUtils";
 import { messaging } from "./components/auth/firebaseConfig";
 import { onMessage } from "firebase/messaging";
+import OnboardingTour from "./components/onboarding/OnboardingTour";
 
 // Animasyonlar
 const float = keyframes`
@@ -702,6 +703,7 @@ function App() {
     gender: "",
   });
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showOnboardingTour, setShowOnboardingTour] = useState(false);
 
   // Profil bilgilerinin tamamlanıp tamamlanmadığını kontrol eden fonksiyon
   const isProfileComplete = (profile) => {
@@ -843,6 +845,14 @@ function App() {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const handler = () => setShowOnboardingTour(true);
+      window.addEventListener('openOnboardingTour', handler);
+      return () => window.removeEventListener('openOnboardingTour', handler);
+    }
+  }, []);
+
   const handleAvatarClick = (event) => {
     setAnchorEl(event.currentTarget);
   };
@@ -859,6 +869,7 @@ function App() {
   
   const handleProfileCompletionClose = async () => {
     setOpenProfileCompletionModal(false);
+    setShowOnboardingTour(true); // Profil tamamlanınca onboarding turunu aç
   };
   
   const handleProfileChange = (e) => {
@@ -891,6 +902,7 @@ function App() {
           profileCompletionShown: true
         });
         setOpenProfileCompletionModal(false);
+        setShowOnboardingTour(true); // Profil tamamlanınca onboarding turunu aç
       } else {
         await updateDoc(userDocRef, {
           profile: profileToSave
@@ -2044,6 +2056,12 @@ function App() {
               pauseOnFocusLoss
               draggable
               pauseOnHover
+            />
+            <OnboardingTour
+              open={showOnboardingTour}
+              onClose={() => setShowOnboardingTour(false)}
+              user={user}
+              isDevMode={process.env.NODE_ENV === 'development'}
             />
           </div>
         </Box>

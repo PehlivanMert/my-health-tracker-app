@@ -858,7 +858,7 @@ const WellnessTracker = ({ user }) => {
                               }}
                             >
                               {supplement.quantity === 0 ? "Tükendi" : 
-                               remainingToday === 0 ? "Günlük Takviye Alındı" : "Takviye Al"}
+                               remainingToday === 0 ? "Günlük Takviye Alındı" : "Takviyeni Al"}
                             </Button>
                           </Box>
                         </Box>

@@ -804,6 +804,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
   const [addDrinkOpen, setAddDrinkOpen] = useState(false);
   const [selectedDrink, setSelectedDrink] = useState('herbalTea'); // su dışı varsayılan
   const [drinkAmount, setDrinkAmount] = useState(200);
+  const [drinkAdded, setDrinkAdded] = useState(false); // EKLENDİ STATE'İNİ TANIMLA
 
   // Korumalı veri yönetimi için ref'ler
   const lastWaterDataState = useRef(null);
@@ -1057,6 +1058,11 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     const amount = Number(drinkAmount);
     if (!amount || amount <= 0) return;
     if (selectedDrink === 'water') return; // su eklenemez
+    
+    // HEMEN EKLENDİ DURUMUNU GÖSTER
+    setDrinkAdded(true);
+    setTimeout(() => setDrinkAdded(false), 3000); // 3 sn sonra eski haline dön
+    
     const contribution = DRINK_WATER_CONTRIBUTION[selectedDrink] || 1;
     const addedWater = Math.round(amount * contribution);
     const newIntake = waterData.waterIntake + addedWater;
@@ -1098,9 +1104,6 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         setAchievement(null);
       }, 2700);
     }
-    // setDrinkAmount(200); // KALDIRILDI
-    // setSelectedDrink('herbalTea'); // KALDIRILDI
-    // setAddDrinkOpen(false); // KALDIRILDI
   };
 
   const handleWaterSettingChange = async (field, value) => {
@@ -1734,7 +1737,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         drinkHistory={waterData.drinkHistory || []}
       />
 
-      <Dialog open={addDrinkOpen} onClose={() => { setAddDrinkOpen(false); setDrinkAmount(200); }} maxWidth="xs" fullWidth
+      <Dialog open={addDrinkOpen} onClose={() => { setAddDrinkOpen(false); setDrinkAmount(200); setDrinkAdded(false); }} maxWidth="xs" fullWidth
   PaperProps={{
     sx: {
       background: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)',
@@ -1801,8 +1804,10 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
       </Typography>
     </Box>
     <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 1 }}>
-      <Button onClick={() => { setAddDrinkOpen(false); setDrinkAmount(200); }} color="inherit" sx={{ fontWeight: 700, borderRadius: 2, px: 3, py: 1, bgcolor: 'rgba(255,255,255,0.12)', color: '#fff', '&:hover': { bgcolor: 'rgba(255,255,255,0.22)' } }}>İptal</Button>
-      <Button onClick={handleConfirmAddDrink} variant="contained" color="primary" sx={{ fontWeight: 700, borderRadius: 2, px: 3, py: 1, boxShadow: '0 4px 16px #21CBF3', background: 'linear-gradient(90deg, #21CBF3 0%, #2196F3 100%)' }}>Ekle</Button>
+      <Button onClick={() => { setAddDrinkOpen(false); setDrinkAmount(200); setDrinkAdded(false); }} color="inherit" sx={{ fontWeight: 700, borderRadius: 2, px: 3, py: 1, bgcolor: 'rgba(255,255,255,0.12)', color: '#fff', '&:hover': { bgcolor: 'rgba(255,255,255,0.22)' } }}>İptal</Button>
+      <Button onClick={handleConfirmAddDrink} variant="contained" color="primary" sx={{ fontWeight: 700, borderRadius: 2, px: 3, py: 1, boxShadow: '0 4px 16px #21CBF3', background: 'linear-gradient(90deg, #21CBF3 0%, #2196F3 100%)' }} disabled={drinkAdded}>
+        {drinkAdded ? 'Eklendi' : 'Ekle'}
+      </Button>
     </Box>
   </Box>
 </Dialog>

@@ -16,7 +16,7 @@ import Confetti from "react-confetti";
 import Lottie from "lottie-react";
 import waterAnimation from "../../assets/waterAnimation.json";
 import { db } from "../auth/firebaseConfig";
-import { doc, updateDoc, getDoc, setDoc, arrayUnion } from "firebase/firestore";
+import { doc, updateDoc, getDoc, setDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import NotificationsIcon from "@mui/icons-material/Notifications";
@@ -1248,6 +1248,39 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     }, 2700);
   };
 
+  const handleRemoveDrinkHistory = async (drinkRecord) => {
+    const ref = getWaterDocRef();
+    const newIntake = Math.max(0, waterData.waterIntake - drinkRecord.addedWater);
+    
+    try {
+      await setDoc(
+        ref,
+        {
+          waterIntake: newIntake,
+          drinkHistory: arrayRemove(drinkRecord), // Geçmiş kaydını sil
+        },
+        { merge: true }
+      );
+      
+      // Local state'i güncelle
+      setWaterData(prev => ({
+        ...prev,
+        waterIntake: newIntake,
+        drinkHistory: prev.drinkHistory.filter(item => 
+          item.date !== drinkRecord.date || 
+          item.type !== drinkRecord.type ||
+          item.amount !== drinkRecord.amount
+        ),
+      }));
+      
+      setTimeout(fetchWaterData, 300);
+      const result = await scheduleWaterNotifications(user);
+      setNextReminder(result.nextReminder);
+    } catch (error) {
+      console.error("Error removing drink history:", error);
+    }
+  };
+
   return (
     <Box sx={{ textAlign: "center", mb: 6 }}>
       {/* TEST BUTTON - Only show in development */}
@@ -1735,6 +1768,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         open={drinkHistoryDialogOpen}
         onClose={() => setDrinkHistoryDialogOpen(false)}
         drinkHistory={waterData.drinkHistory || []}
+        onRemoveDrinkHistory={handleRemoveDrinkHistory}
       />
 
       <Dialog open={addDrinkOpen} onClose={() => { setAddDrinkOpen(false); setDrinkAmount(200); setDrinkAdded(false); }} maxWidth="xs" fullWidth

@@ -34,6 +34,7 @@ import {
   LocalCafe as LocalCafeIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 
@@ -87,7 +88,7 @@ const StyledCard = styled(Card)(({ theme }) => ({
   },
 }));
 
-const DrinkHistoryDialog = ({ open, onClose, drinkHistory = [] }) => {
+const DrinkHistoryDialog = ({ open, onClose, drinkHistory = [], onRemoveDrinkHistory }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
@@ -454,27 +455,45 @@ const DrinkHistoryDialog = ({ open, onClose, drinkHistory = [] }) => {
                             </Typography>
                           </Box>
                         </Box>
-                        <Box sx={{ textAlign: 'right' }}>
-                          <Typography 
-                            variant="h6" 
-                            sx={{ 
-                              fontWeight: 700, 
-                              color: item.action === 'removed' ? '#f44336' : '#2196F3' 
-                            }}
-                          >
-                            {item.action === 'removed' ? '-' : '+'}{Math.abs(item.amount)}ml
-                          </Typography>
-                          <Chip
-                            label={`Su katkısı: ${item.addedWater || 0}ml`}
-                            size="small"
-                            sx={{
-                              background: item.action === 'removed' 
-                                ? 'linear-gradient(135deg, #f44336 0%, #ef5350 100%)'
-                                : 'linear-gradient(135deg, #4CAF50 0%, #81C784 100%)',
-                              color: '#fff',
-                              fontWeight: 600,
-                            }}
-                          />
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ textAlign: 'right' }}>
+                            <Typography 
+                              variant="h6" 
+                              sx={{ 
+                                fontWeight: 700, 
+                                color: item.action === 'removed' ? '#f44336' : '#2196F3' 
+                              }}
+                            >
+                              {item.action === 'removed' ? '-' : '+'}{Math.abs(item.amount)}ml
+                            </Typography>
+                            <Chip
+                              label={`Su katkısı: ${item.addedWater || 0}ml`}
+                              size="small"
+                              sx={{
+                                background: item.action === 'removed' 
+                                  ? 'linear-gradient(135deg, #f44336 0%, #ef5350 100%)'
+                                  : 'linear-gradient(135deg, #4CAF50 0%, #81C784 100%)',
+                                color: '#fff',
+                                fontWeight: 600,
+                              }}
+                            />
+                          </Box>
+                          {onRemoveDrinkHistory && (
+                            <Tooltip title="Bu kaydı sil">
+                              <IconButton
+                                onClick={() => onRemoveDrinkHistory(item)}
+                                size="small"
+                                sx={{
+                                  color: '#f44336',
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                                  },
+                                }}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
                         </Box>
                       </Box>
                     </CardContent>

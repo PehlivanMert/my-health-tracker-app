@@ -837,7 +837,7 @@ const WellnessTracker = ({ user }) => {
                             <Button
                               variant="contained"
                               onClick={() => handleConsume(supplement.id)}
-                              disabled={supplement.quantity === 0}
+                              disabled={supplement.quantity === 0 || remainingToday === 0}
                               sx={{
                                 background: getSupplementColor(name),
                                 color: "#fff",
@@ -857,7 +857,8 @@ const WellnessTracker = ({ user }) => {
                                 },
                               }}
                             >
-                              {supplement.quantity === 0 ? "Tükendi" : "Tüket"}
+                              {supplement.quantity === 0 ? "Tükendi" : 
+                               remainingToday === 0 ? "Günlük Takviye Alındı" : "Takviye Al"}
                             </Button>
                           </Box>
                         </Box>

@@ -54,6 +54,7 @@ import SupplementConsumptionChart from "./SupplementConsumptionChart";
 import SupplementNotificationSettingsDialog from "./SupplementNotificationSettingsDialog";
 import { saveNextSupplementReminderTime } from "../notify/SupplementNotificationScheduler";
 import WaterNotificationSettingsDialog from "./WaterNotificationSettingsDialog";
+import UndoIcon from "@mui/icons-material/Undo";
 
 const float = keyframes`
   0% { transform: translateY(0px); }
@@ -481,6 +482,38 @@ const WellnessTracker = ({ user }) => {
     }
   };
 
+  const handleUndoConsume = async (supplement) => {
+    const ref = getSupplementsRef();
+    try {
+      // 1. Takviye miktarını Firestore'da 1 artır
+      const supplementRef = doc(ref, supplement.id);
+      await updateDoc(supplementRef, { quantity: supplement.quantity + 1 });
+      await fetchSupplements();
+      // 2. supplementConsumptionToday ve Firestore'daki tüketim kaydını güncelle
+      const suppName = supplement.name;
+      const today = new Date().toLocaleDateString("en-CA", {
+        timeZone: "Europe/Istanbul",
+      });
+      const statsDocRef = doc(db, "users", user.uid, "stats", "supplementConsumption");
+      const statsDocSnap = await getDoc(statsDocRef);
+      let updatedStats = statsDocSnap.exists() ? statsDocSnap.data() : {};
+      if (!updatedStats[today]) updatedStats[today] = {};
+      if (updatedStats[today][suppName] && updatedStats[today][suppName] > 0) {
+        updatedStats[today][suppName] -= 1;
+        if (updatedStats[today][suppName] === 0) {
+          delete updatedStats[today][suppName];
+        }
+        updatedStats[today].total = Math.max(0, (updatedStats[today].total || 1) - 1);
+        await setDoc(statsDocRef, updatedStats);
+        await fetchSupplementConsumptionToday();
+        // Bildirim zamanını da güncelle
+        await saveNextSupplementReminderTime(user, supplement);
+      }
+    } catch (error) {
+      console.error("Takviye geri alma hatası:", error);
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -686,6 +719,20 @@ const WellnessTracker = ({ user }) => {
                               </Typography>
                             </Box>
                             <Box sx={{ display: "flex", gap: { xs: 0.5, sm: 1 } }}>
+                              <Tooltip title="Geri Al">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleUndoConsume(supplement)}
+                                  sx={{
+                                    color: "rgba(255,255,255,0.7)",
+                                    "&:hover": { color: "#2196f3" },
+                                    padding: { xs: "4px", sm: "6px" },
+                                  }}
+                                  disabled={!(supplementConsumptionToday[supplement.name] > 0)}
+                                >
+                                  <UndoIcon sx={{ fontSize: { xs: "1rem", sm: "1.2rem" } }} />
+                                </IconButton>
+                              </Tooltip>
                               <Tooltip title="Düzenle">
                                 <IconButton
                                   size="small"

@@ -85,7 +85,7 @@ const ActionButton = styled(Button)(({ theme, variant }) => ({
   },
 }));
 
-const DeleteFilteredDialog = ({ open, onClose, onDeleteFiltered }) => (
+const DeleteFilteredDialog = ({ open, onClose, onDeleteFiltered, timeFilter }) => (
   <Dialog
     open={open}
     onClose={onClose}
@@ -111,7 +111,10 @@ const DeleteFilteredDialog = ({ open, onClose, onDeleteFiltered }) => (
     </StyledDialogTitle>
     <StyledDialogContent>
       <Typography variant="body1">
-        Seçili tarih ve kategorideki tüm rutinler silinecek! Emin misiniz?
+        {timeFilter === "Monthly" 
+          ? "Bu ayın tüm rutinleri silinecek! Bu işlem geri alınamaz. Emin misiniz?"
+          : "Seçili tarih ve kategorideki tüm rutinler silinecek! Emin misiniz?"
+        }
       </Typography>
     </StyledDialogContent>
     <DialogActions sx={{ 

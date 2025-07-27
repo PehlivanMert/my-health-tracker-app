@@ -654,8 +654,17 @@ const DailyRoutine = ({ user }) => {
   const handleConfirmDeleteAll = () => {
     console.log("handleConfirmDeleteAll çağrıldı:", { timeFilter, routinesCount: routines.length, filteredCount: filteredRoutines.length });
     
-    // Aylık görünümde ise tüm rutinleri sil, değilse sadece filtrelenmiş rutinleri sil
-    const routinesToDelete = timeFilter === "Monthly" ? routines : filteredRoutines;
+    // Her durumda sadece filtrelenmiş rutinleri sil
+    const routinesToDelete = filteredRoutines;
+    
+    console.log("Silinecek rutinler:", routinesToDelete);
+    console.log("Silinecek rutin sayısı:", routinesToDelete.length);
+    
+    if (routinesToDelete.length === 0) {
+      console.log("Silinecek rutin bulunamadı!");
+      setOpenDeleteFilteredDialog(false);
+      return;
+    }
     
     // Tüm tamamlanan rutinleri say
     let completedCount = 0;
@@ -673,6 +682,8 @@ const DailyRoutine = ({ user }) => {
       }
     });
 
+    console.log("Tamamlanan rutin sayısı:", completedCount);
+
     if (completedCount > 0) {
       setWeeklyStats((prev) => ({
         ...prev,
@@ -684,18 +695,14 @@ const DailyRoutine = ({ user }) => {
       }));
     }
 
-    // Aylık görünümde tüm rutinleri sil, değilse sadece filtrelenmiş rutinleri sil
-    if (timeFilter === "Monthly") {
-      console.log("Aylık görünümde tüm rutinler siliniyor...");
-      setRoutines([]);
-    } else {
-      console.log("Filtrelenmiş rutinler siliniyor...");
-      setRoutines((prev) => {
-        const newRoutines = prev.filter((r) => !filteredRoutines.includes(r));
-        console.log("Silme sonrası kalan rutin sayısı:", newRoutines.length);
-        return newRoutines;
-      });
-    }
+    // Her durumda sadece filtrelenmiş rutinleri sil
+    console.log("Filtrelenmiş rutinler siliniyor...");
+    setRoutines((prev) => {
+      const newRoutines = prev.filter((r) => !filteredRoutines.includes(r));
+      console.log("Silme sonrası kalan rutin sayısı:", newRoutines.length);
+      return newRoutines;
+    });
+    
     setOpenDeleteFilteredDialog(false);
   };
 

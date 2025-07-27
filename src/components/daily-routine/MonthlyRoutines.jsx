@@ -152,8 +152,7 @@ const MonthlyRoutines = ({
           const routineDate = normalizeDate(new Date(routine.date));
           return (
             routineDate >= firstDay &&
-            routineDate <= lastDay &&
-            !routine.completed
+            routineDate <= lastDay
           );
         }
       });

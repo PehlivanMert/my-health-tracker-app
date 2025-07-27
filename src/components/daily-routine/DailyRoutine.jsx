@@ -197,7 +197,7 @@ const DailyRoutine = ({ user }) => {
     if (process.env.NODE_ENV === 'development') {
     console.log("todayStr", todayStr);
     }
-
+                                                                                                                                                                                                                                  
     const currentWeek = getWeekNumber(nowTurkey);
     const currentMonthStr = `${nowTurkey.getFullYear()}-${nowTurkey.getMonth()}`;
     

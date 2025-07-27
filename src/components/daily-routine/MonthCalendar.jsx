@@ -7,6 +7,7 @@ import {
   alpha,
   IconButton,
   Tooltip,
+  useMediaQuery,
 } from "@mui/material";
 import { motion } from "framer-motion";
 import { CheckCircle, Circle } from "@mui/icons-material";
@@ -29,10 +30,15 @@ const getRoutineCompletedStatus = (routine, date) => {
   if (!routine.date) return false;
   
   const dateStr = getTurkeyLocalDateString(date);
+  const routineDateStr = getTurkeyLocalDateString(new Date(routine.date));
+  
+  // Eğer bu rutin bu tarihte değilse, tamamlanmamış sayılır
+  if (dateStr !== routineDateStr) return false;
   
   if (routine.repeat && routine.repeat !== "none") {
     return routine.completedDates && routine.completedDates.includes(dateStr);
   } else {
+    // Tekrarsız rutinler için completed durumunu kontrol et
     return routine.completed;
   }
 };
@@ -47,6 +53,7 @@ const MonthCalendar = ({
   onCheck,
 }) => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const colors = {
     primary: "#3a7bd5",
     secondary: "#00d2ff",
@@ -100,10 +107,12 @@ const MonthCalendar = ({
       sx={{
         backgroundColor: colors.background,
         borderRadius: "16px",
-        padding: "20px",
+        padding: { xs: "10px", sm: "20px" },
         boxShadow: `0 8px 32px 0 ${alpha("#000", 0.2)}`,
         backdropFilter: "blur(10px)",
         border: `1px solid ${alpha("#fff", 0.1)}`,
+        overflow: "hidden",
+        width: "100%",
       }}
     >
       {/* Haftanın günleri başlığı */}
@@ -111,7 +120,7 @@ const MonthCalendar = ({
         sx={{
           display: "grid",
           gridTemplateColumns: "repeat(7, 1fr)",
-          gap: 1,
+          gap: { xs: 0.5, sm: 1 },
           mb: 2,
         }}
       >
@@ -120,10 +129,10 @@ const MonthCalendar = ({
             key={day}
             sx={{
               textAlign: "center",
-              padding: "8px",
+              padding: { xs: "4px", sm: "8px" },
               fontWeight: "bold",
               color: colors.text.secondary,
-              fontSize: "0.9rem",
+              fontSize: { xs: "0.7rem", sm: "0.9rem" },
             }}
           >
             {day}
@@ -136,7 +145,7 @@ const MonthCalendar = ({
         sx={{
           display: "grid",
           gridTemplateColumns: "repeat(7, 1fr)",
-          gap: 1,
+          gap: { xs: 0.5, sm: 1 },
         }}
       >
         {calendarCells.map((cell, index) => (
@@ -148,17 +157,19 @@ const MonthCalendar = ({
             onClick={() => onDayClick && onDayClick(cell.date)}
             sx={{
               aspectRatio: "1",
-              padding: "8px",
+              padding: { xs: "2px", sm: "8px" },
               backgroundColor: cell.isCurrentMonth 
                 ? alpha(colors.surface, 0.3) 
                 : alpha(colors.surface, 0.1),
               border: `1px solid ${alpha("#fff", 0.1)}`,
-              borderRadius: "8px",
+              borderRadius: { xs: "4px", sm: "8px" },
               cursor: "pointer",
               position: "relative",
-              minHeight: "80px",
+              minHeight: { xs: "50px", sm: "80px" },
               display: "flex",
               flexDirection: "column",
+              overflow: "hidden",
+              width: "100%",
             }}
           >
             {/* Gün numarası */}
@@ -169,9 +180,9 @@ const MonthCalendar = ({
                   ? colors.text.primary 
                   : colors.text.secondary,
                 fontWeight: "bold",
-                fontSize: "0.9rem",
+                fontSize: { xs: "0.7rem", sm: "0.9rem" },
                 textAlign: "center",
-                mb: 1,
+                mb: { xs: 0.5, sm: 1 },
               }}
             >
               {cell.date.getDate()}
@@ -187,7 +198,7 @@ const MonthCalendar = ({
                 overflow: "hidden",
               }}
             >
-              {cell.routines.slice(0, 3).map((routine, routineIndex) => {
+              {cell.routines.slice(0, isMobile ? 2 : 3).map((routine, routineIndex) => {
                 const isCompleted = getRoutineCompletedStatus(routine, cell.date);
                 
                 return (
@@ -201,28 +212,28 @@ const MonthCalendar = ({
                         e.stopPropagation();
                         onRoutineClick && onRoutineClick(routine);
                       }}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 0.5,
-                        padding: "2px 4px",
-                        borderRadius: "4px",
-                        backgroundColor: alpha(
-                          categoryColors[routine.category] || colors.primary,
-                          0.2
-                        ),
-                        border: `1px solid ${alpha(
-                          categoryColors[routine.category] || colors.primary,
-                          0.3
-                        )}`,
-                        cursor: "pointer",
-                        "&:hover": {
+                                              sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: { xs: 0.25, sm: 0.5 },
+                          padding: { xs: "1px 2px", sm: "2px 4px" },
+                          borderRadius: { xs: "2px", sm: "4px" },
                           backgroundColor: alpha(
                             categoryColors[routine.category] || colors.primary,
-                            0.3
+                            0.2
                           ),
-                        },
-                      }}
+                          border: `1px solid ${alpha(
+                            categoryColors[routine.category] || colors.primary,
+                            0.3
+                          )}`,
+                          cursor: "pointer",
+                          "&:hover": {
+                            backgroundColor: alpha(
+                              categoryColors[routine.category] || colors.primary,
+                              0.3
+                            ),
+                          },
+                        }}
                     >
                       <IconButton
                         size="small"
@@ -248,7 +259,7 @@ const MonthCalendar = ({
                         variant="caption"
                         sx={{
                           color: colors.text.primary,
-                          fontSize: "0.7rem",
+                          fontSize: { xs: "0.6rem", sm: "0.7rem" },
                           fontWeight: isCompleted ? "bold" : "normal",
                           textDecoration: isCompleted ? "line-through" : "none",
                           overflow: "hidden",
@@ -265,17 +276,17 @@ const MonthCalendar = ({
               })}
               
               {/* Daha fazla rutin varsa göster */}
-              {cell.routines.length > 3 && (
+              {cell.routines.length > (isMobile ? 2 : 3) && (
                 <Typography
                   variant="caption"
                   sx={{
                     color: colors.text.secondary,
-                    fontSize: "0.7rem",
+                    fontSize: { xs: "0.6rem", sm: "0.7rem" },
                     textAlign: "center",
                     fontStyle: "italic",
                   }}
                 >
-                  +{cell.routines.length - 3} daha
+                  +{cell.routines.length - (isMobile ? 2 : 3)} daha
                 </Typography>
               )}
             </Box>

@@ -70,9 +70,9 @@ const MonthCalendar = ({
   const [showRoutinesDialog, setShowRoutinesDialog] = useState(false);
   
   const colors = {
-    primary: "#3a7bd5",
-    secondary: "#00d2ff",
-    background: alpha("#121858", 0.7),
+    primary: "#2196F3",
+    secondary: "#3F51B5",
+    background: alpha("#1a2a6c", 0.8),
     surface: alpha("#ffffff", 0.1),
     text: { primary: "#ffffff", secondary: alpha("#ffffff", 0.7) },
   };
@@ -134,14 +134,26 @@ const MonthCalendar = ({
   return (
     <Box
       sx={{
-        backgroundColor: colors.background,
+        background: "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
         borderRadius: "16px",
         padding: { xs: "10px", sm: "20px" },
-        boxShadow: `0 8px 32px 0 ${alpha("#000", 0.2)}`,
+        boxShadow: `0 8px 32px 0 ${alpha("#000", 0.3)}`,
         backdropFilter: "blur(10px)",
-        border: `1px solid ${alpha("#fff", 0.1)}`,
+        border: `1px solid ${alpha("#fff", 0.15)}`,
         overflow: "hidden",
         width: "100%",
+        position: "relative",
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(255, 255, 255, 0.05)",
+          borderRadius: "16px",
+          zIndex: 0,
+        },
       }}
     >
       {/* Haftanın günleri başlığı */}
@@ -151,6 +163,8 @@ const MonthCalendar = ({
           gridTemplateColumns: "repeat(7, 1fr)",
           gap: { xs: 0.5, sm: 1 },
           mb: 2,
+          position: "relative",
+          zIndex: 1,
         }}
       >
         {weekDays.map((day) => (
@@ -160,8 +174,9 @@ const MonthCalendar = ({
               textAlign: "center",
               padding: { xs: "4px", sm: "8px" },
               fontWeight: "bold",
-              color: colors.text.secondary,
+              color: "#ffffff",
               fontSize: { xs: "0.7rem", sm: "0.9rem" },
+              textShadow: "0 1px 2px rgba(0,0,0,0.3)",
             }}
           >
             {day}
@@ -175,6 +190,8 @@ const MonthCalendar = ({
           display: "grid",
           gridTemplateColumns: "repeat(7, 1fr)",
           gap: { xs: 0.5, sm: 1 },
+          position: "relative",
+          zIndex: 1,
         }}
       >
         {calendarCells.map((cell, index) => (
@@ -188,9 +205,9 @@ const MonthCalendar = ({
               aspectRatio: "1",
               padding: { xs: "2px", sm: "8px" },
               backgroundColor: cell.isCurrentMonth 
-                ? alpha(colors.surface, 0.3) 
-                : alpha(colors.surface, 0.1),
-              border: `1px solid ${alpha("#fff", 0.1)}`,
+                ? "rgba(255, 255, 255, 0.15)" 
+                : "rgba(255, 255, 255, 0.05)",
+              border: `1px solid ${alpha("#fff", 0.2)}`,
               borderRadius: { xs: "4px", sm: "8px" },
               cursor: "pointer",
               position: "relative",
@@ -199,6 +216,15 @@ const MonthCalendar = ({
               flexDirection: "column",
               overflow: "hidden",
               width: "100%",
+              backdropFilter: "blur(5px)",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                backgroundColor: cell.isCurrentMonth 
+                  ? "rgba(255, 255, 255, 0.25)" 
+                  : "rgba(255, 255, 255, 0.1)",
+                transform: "scale(1.02)",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+              },
             }}
           >
             {/* Gün numarası */}
@@ -348,20 +374,22 @@ const MonthCalendar = ({
         fullWidth
         PaperProps={{
           sx: {
-            backgroundColor: colors.background,
+            background: "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
             borderRadius: "16px",
-            border: `1px solid ${alpha("#fff", 0.1)}`,
-            backdropFilter: "blur(10px)",
+            border: `1px solid ${alpha("#fff", 0.15)}`,
+            backdropFilter: "blur(15px)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
           },
         }}
       >
         <DialogTitle
           sx={{
-            color: colors.text.primary,
+            color: "#ffffff",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            borderBottom: `1px solid ${alpha("#fff", 0.1)}`,
+            borderBottom: `1px solid ${alpha("#fff", 0.2)}`,
+            background: "rgba(255, 255, 255, 0.05)",
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -414,14 +442,16 @@ const MonthCalendar = ({
                       <Paper
                         sx={{
                           padding: 2,
-                          backgroundColor: alpha(colors.surface, 0.3),
-                          border: `1px solid ${alpha("#fff", 0.1)}`,
+                          backgroundColor: "rgba(255, 255, 255, 0.1)",
+                          border: `1px solid ${alpha("#fff", 0.2)}`,
                           borderRadius: "12px",
                           cursor: "pointer",
-                          transition: "all 0.2s",
+                          transition: "all 0.3s ease",
+                          backdropFilter: "blur(10px)",
                           "&:hover": {
-                            backgroundColor: alpha(colors.surface, 0.5),
-                            transform: "translateY(-2px)",
+                            backgroundColor: "rgba(255, 255, 255, 0.2)",
+                            transform: "translateY(-3px)",
+                            boxShadow: "0 8px 25px rgba(0,0,0,0.3)",
                           },
                         }}
                         onClick={() => {
@@ -436,10 +466,11 @@ const MonthCalendar = ({
                               onCheck && onCheck(routine, !isCompleted);
                             }}
                             sx={{
-                              color: isCompleted ? colors.primary : colors.text.secondary,
-                              backgroundColor: alpha(colors.surface, 0.3),
+                              color: isCompleted ? "#2196F3" : "rgba(255, 255, 255, 0.7)",
+                              backgroundColor: "rgba(255, 255, 255, 0.1)",
                               "&:hover": {
-                                backgroundColor: alpha(colors.primary, 0.2),
+                                backgroundColor: "rgba(33, 150, 243, 0.2)",
+                                transform: "scale(1.1)",
                               },
                             }}
                           >
@@ -478,14 +509,15 @@ const MonthCalendar = ({
                                   size="small"
                                   sx={{
                                     backgroundColor: alpha(
-                                      categoryColors[routine.category] || colors.primary,
+                                      categoryColors[routine.category] || "#2196F3",
                                       0.2
                                     ),
-                                    color: categoryColors[routine.category] || colors.primary,
+                                    color: categoryColors[routine.category] || "#2196F3",
                                     border: `1px solid ${alpha(
-                                      categoryColors[routine.category] || colors.primary,
-                                      0.3
+                                      categoryColors[routine.category] || "#2196F3",
+                                      0.4
                                     )}`,
+                                    backdropFilter: "blur(5px)",
                                   }}
                                 />
                               )}

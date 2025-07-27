@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -8,9 +8,21 @@ import {
   IconButton,
   Tooltip,
   useMediaQuery,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  Chip,
+  Divider,
+  Badge,
 } from "@mui/material";
-import { motion } from "framer-motion";
-import { CheckCircle, Circle } from "@mui/icons-material";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  CheckCircle, 
+  Circle, 
+  Close,
+  CalendarToday,
+  Schedule,
+} from "@mui/icons-material";
 
 const getTurkeyLocalDateString = (date = new Date()) => {
   return new Date(
@@ -54,12 +66,29 @@ const MonthCalendar = ({
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [selectedCell, setSelectedCell] = useState(null);
+  const [showRoutinesDialog, setShowRoutinesDialog] = useState(false);
+  
   const colors = {
     primary: "#3a7bd5",
     secondary: "#00d2ff",
     background: alpha("#121858", 0.7),
     surface: alpha("#ffffff", 0.1),
     text: { primary: "#ffffff", secondary: alpha("#ffffff", 0.7) },
+  };
+
+  const handleCellClick = (cell) => {
+    if (cell.routines.length > 0) {
+      setSelectedCell(cell);
+      setShowRoutinesDialog(true);
+    } else if (onDayClick) {
+      onDayClick(cell.date);
+    }
+  };
+
+  const handleCloseDialog = () => {
+    setShowRoutinesDialog(false);
+    setSelectedCell(null);
   };
 
   // Ayın ilk gününü ve son gününü hesapla
@@ -154,7 +183,7 @@ const MonthCalendar = ({
             component={motion.div}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => onDayClick && onDayClick(cell.date)}
+            onClick={() => handleCellClick(cell)}
             sx={{
               aspectRatio: "1",
               padding: { xs: "2px", sm: "8px" },
@@ -198,21 +227,22 @@ const MonthCalendar = ({
                 overflow: "hidden",
               }}
             >
-              {cell.routines.slice(0, isMobile ? 4 : 5).map((routine, routineIndex) => {
-                const isCompleted = getRoutineCompletedStatus(routine, cell.date);
-                
-                return (
-                  <Tooltip
-                    key={routine.id || routineIndex}
-                    title={`${routine.title} - ${isCompleted ? 'Tamamlandı' : 'Bekliyor'}`}
-                    placement="top"
-                  >
-                    <Box
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRoutineClick && onRoutineClick(routine);
-                      }}
-                                              sx={{
+                            <Box sx={{ position: "relative", width: "100%" }}>
+                {cell.routines.slice(0, isMobile ? 2 : 3).map((routine, routineIndex) => {
+                  const isCompleted = getRoutineCompletedStatus(routine, cell.date);
+                  
+                  return (
+                    <Tooltip
+                      key={routine.id || routineIndex}
+                      title={`${routine.title} - ${isCompleted ? 'Tamamlandı' : 'Bekliyor'}`}
+                      placement="top"
+                    >
+                      <Box
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRoutineClick && onRoutineClick(routine);
+                        }}
+                        sx={{
                           display: "flex",
                           alignItems: "center",
                           gap: { xs: 0.25, sm: 0.5 },
@@ -227,6 +257,7 @@ const MonthCalendar = ({
                             0.3
                           )}`,
                           cursor: "pointer",
+                          marginBottom: { xs: 0.5, sm: 1 },
                           "&:hover": {
                             backgroundColor: alpha(
                               categoryColors[routine.category] || colors.primary,
@@ -234,69 +265,261 @@ const MonthCalendar = ({
                             ),
                           },
                         }}
-                    >
-                      <IconButton
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onCheck && onCheck(routine, !isCompleted);
-                        }}
-                        sx={{
-                          padding: 0,
-                          color: isCompleted 
-                            ? colors.primary 
-                            : colors.text.secondary,
-                        }}
                       >
-                        {isCompleted ? (
-                          <CheckCircle fontSize="small" />
-                        ) : (
-                          <Circle fontSize="small" />
-                        )}
-                      </IconButton>
-                      
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: colors.text.primary,
-                          fontSize: { xs: "0.55rem", sm: "0.65rem" },
-                          fontWeight: isCompleted ? "bold" : "normal",
-                          textDecoration: isCompleted ? "line-through" : "none",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          flex: 1,
-                        }}
-                      >
-                        {routine.title}
-                      </Typography>
-                    </Box>
-                  </Tooltip>
-                );
-              })}
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCheck && onCheck(routine, !isCompleted);
+                          }}
+                          sx={{
+                            padding: 0,
+                            color: isCompleted 
+                              ? colors.primary 
+                              : colors.text.secondary,
+                          }}
+                        >
+                          {isCompleted ? (
+                            <CheckCircle fontSize="small" />
+                          ) : (
+                            <Circle fontSize="small" />
+                          )}
+                        </IconButton>
+                        
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: colors.text.primary,
+                            fontSize: { xs: "0.55rem", sm: "0.65rem" },
+                            fontWeight: isCompleted ? "bold" : "normal",
+                            textDecoration: isCompleted ? "line-through" : "none",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            flex: 1,
+                          }}
+                        >
+                          {routine.title}
+                        </Typography>
+                      </Box>
+                    </Tooltip>
+                  );
+                })}
+                
+                {/* Daha fazla rutin varsa badge göster */}
+                {cell.routines.length > (isMobile ? 2 : 3) && (
+                  <Badge
+                    badgeContent={cell.routines.length - (isMobile ? 2 : 3)}
+                    color="primary"
+                    sx={{
+                      position: "absolute",
+                      top: -5,
+                      right: -5,
+                      "& .MuiBadge-badge": {
+                        fontSize: { xs: "0.6rem", sm: "0.7rem" },
+                        minWidth: { xs: "16px", sm: "20px" },
+                        height: { xs: "16px", sm: "20px" },
+                        backgroundColor: colors.primary,
+                      },
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: { xs: "16px", sm: "20px" },
+                        height: { xs: "16px", sm: "20px" },
+                        backgroundColor: "transparent",
+                      }}
+                    />
+                  </Badge>
+                )}
+              </Box>
               
-              {/* Daha fazla rutin varsa göster */}
-              {cell.routines.length > (isMobile ? 4 : 5) && (
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color: colors.text.secondary,
-                    fontSize: { xs: "0.6rem", sm: "0.7rem" },
-                    textAlign: "center",
-                    fontStyle: "italic",
-                    backgroundColor: alpha(colors.surface, 0.3),
-                    padding: { xs: "1px 3px", sm: "2px 4px" },
-                    borderRadius: { xs: "2px", sm: "4px" },
-                    marginTop: { xs: 0.5, sm: 1 },
-                  }}
-                >
-                  +{cell.routines.length - (isMobile ? 4 : 5)} daha
-                </Typography>
-              )}
+
             </Box>
           </Paper>
         ))}
       </Box>
+
+      {/* Rutin Detay Popup */}
+      <Dialog
+        open={showRoutinesDialog}
+        onClose={handleCloseDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            backgroundColor: colors.background,
+            borderRadius: "16px",
+            border: `1px solid ${alpha("#fff", 0.1)}`,
+            backdropFilter: "blur(10px)",
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            color: colors.text.primary,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            borderBottom: `1px solid ${alpha("#fff", 0.1)}`,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <CalendarToday sx={{ color: colors.primary }} />
+            <Typography variant="h6">
+              {selectedCell && new Date(selectedCell.date).toLocaleDateString('tr-TR', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </Typography>
+          </Box>
+          <IconButton
+            onClick={handleCloseDialog}
+            sx={{ color: colors.text.secondary }}
+          >
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        
+        <DialogContent sx={{ padding: 0 }}>
+          {selectedCell && (
+            <Box sx={{ padding: 2 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: colors.text.secondary,
+                  mb: 2,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                }}
+              >
+                <Schedule fontSize="small" />
+                {selectedCell.routines.length} rutin
+              </Typography>
+              
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                {selectedCell.routines.map((routine, index) => {
+                  const isCompleted = getRoutineCompletedStatus(routine, selectedCell.date);
+                  
+                  return (
+                    <motion.div
+                      key={routine.id || index}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <Paper
+                        sx={{
+                          padding: 2,
+                          backgroundColor: alpha(colors.surface, 0.3),
+                          border: `1px solid ${alpha("#fff", 0.1)}`,
+                          borderRadius: "12px",
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                          "&:hover": {
+                            backgroundColor: alpha(colors.surface, 0.5),
+                            transform: "translateY(-2px)",
+                          },
+                        }}
+                        onClick={() => {
+                          onRoutineClick && onRoutineClick(routine);
+                          handleCloseDialog();
+                        }}
+                      >
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                          <IconButton
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onCheck && onCheck(routine, !isCompleted);
+                            }}
+                            sx={{
+                              color: isCompleted ? colors.primary : colors.text.secondary,
+                              backgroundColor: alpha(colors.surface, 0.3),
+                              "&:hover": {
+                                backgroundColor: alpha(colors.primary, 0.2),
+                              },
+                            }}
+                          >
+                            {isCompleted ? <CheckCircle /> : <Circle />}
+                          </IconButton>
+                          
+                          <Box sx={{ flex: 1 }}>
+                            <Typography
+                              variant="h6"
+                              sx={{
+                                color: colors.text.primary,
+                                fontWeight: isCompleted ? "bold" : "normal",
+                                textDecoration: isCompleted ? "line-through" : "none",
+                                mb: 0.5,
+                              }}
+                            >
+                              {routine.title}
+                            </Typography>
+                            
+                            {routine.description && (
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  color: colors.text.secondary,
+                                  mb: 1,
+                                }}
+                              >
+                                {routine.description}
+                              </Typography>
+                            )}
+                            
+                            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                              {routine.category && (
+                                <Chip
+                                  label={routine.category}
+                                  size="small"
+                                  sx={{
+                                    backgroundColor: alpha(
+                                      categoryColors[routine.category] || colors.primary,
+                                      0.2
+                                    ),
+                                    color: categoryColors[routine.category] || colors.primary,
+                                    border: `1px solid ${alpha(
+                                      categoryColors[routine.category] || colors.primary,
+                                      0.3
+                                    )}`,
+                                  }}
+                                />
+                              )}
+                              
+                              {routine.repeat && routine.repeat !== "none" && (
+                                <Chip
+                                  label={`${routine.repeat} (${routine.repeatCount})`}
+                                  size="small"
+                                  variant="outlined"
+                                  sx={{
+                                    color: colors.text.secondary,
+                                    borderColor: alpha("#fff", 0.2),
+                                  }}
+                                />
+                              )}
+                              
+                              <Chip
+                                label={isCompleted ? "Tamamlandı" : "Bekliyor"}
+                                size="small"
+                                color={isCompleted ? "success" : "warning"}
+                                variant="outlined"
+                              />
+                            </Box>
+                          </Box>
+                        </Box>
+                      </Paper>
+                    </motion.div>
+                  );
+                })}
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };

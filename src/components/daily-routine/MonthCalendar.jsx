@@ -198,7 +198,7 @@ const MonthCalendar = ({
                 overflow: "hidden",
               }}
             >
-              {cell.routines.slice(0, isMobile ? 2 : 3).map((routine, routineIndex) => {
+              {cell.routines.slice(0, isMobile ? 4 : 5).map((routine, routineIndex) => {
                 const isCompleted = getRoutineCompletedStatus(routine, cell.date);
                 
                 return (
@@ -259,7 +259,7 @@ const MonthCalendar = ({
                         variant="caption"
                         sx={{
                           color: colors.text.primary,
-                          fontSize: { xs: "0.6rem", sm: "0.7rem" },
+                          fontSize: { xs: "0.55rem", sm: "0.65rem" },
                           fontWeight: isCompleted ? "bold" : "normal",
                           textDecoration: isCompleted ? "line-through" : "none",
                           overflow: "hidden",
@@ -276,7 +276,7 @@ const MonthCalendar = ({
               })}
               
               {/* Daha fazla rutin varsa göster */}
-              {cell.routines.length > (isMobile ? 2 : 3) && (
+              {cell.routines.length > (isMobile ? 4 : 5) && (
                 <Typography
                   variant="caption"
                   sx={{
@@ -284,9 +284,13 @@ const MonthCalendar = ({
                     fontSize: { xs: "0.6rem", sm: "0.7rem" },
                     textAlign: "center",
                     fontStyle: "italic",
+                    backgroundColor: alpha(colors.surface, 0.3),
+                    padding: { xs: "1px 3px", sm: "2px 4px" },
+                    borderRadius: { xs: "2px", sm: "4px" },
+                    marginTop: { xs: 0.5, sm: 1 },
                   }}
                 >
-                  +{cell.routines.length - (isMobile ? 2 : 3)} daha
+                  +{cell.routines.length - (isMobile ? 4 : 5)} daha
                 </Typography>
               )}
             </Box>

@@ -360,15 +360,19 @@ const DailyRoutine = ({ user }) => {
     const weeklyStatsChanged = JSON.stringify(weeklyStats) !== JSON.stringify(lastWeeklyStatsState.current);
     const monthlyStatsChanged = JSON.stringify(monthlyStats) !== JSON.stringify(lastMonthlyStatsState.current);
     
-    // Boş diziye geçiş kontrolü
-    const routinesEmpty = Array.isArray(routines) && routines.length === 0;
-    const wasRoutinesEmpty = Array.isArray(lastRoutinesState.current) && lastRoutinesState.current.length === 0;
-    
-    if ((routinesChanged || weeklyStatsChanged || monthlyStatsChanged) && !(routinesEmpty && !wasRoutinesEmpty)) {
+    if (routinesChanged || weeklyStatsChanged || monthlyStatsChanged) {
+      console.log("Firebase'e kaydetme işlemi başlatılıyor...");
+      console.log("Routines değişti:", routinesChanged);
+      console.log("WeeklyStats değişti:", weeklyStatsChanged);
+      console.log("MonthlyStats değişti:", monthlyStatsChanged);
+      console.log("Yeni routines:", routines);
+      
       const saveData = async () => {
         try {
           const userRef = doc(db, "users", user.uid);
           await updateDoc(userRef, { routines, weeklyStats, monthlyStats });
+          
+          console.log("Firebase'e başarıyla kaydedildi");
           
           // State'leri güncelle
           lastRoutinesState.current = [...routines];
@@ -563,7 +567,9 @@ const DailyRoutine = ({ user }) => {
 
   const handleConfirmDelete = () => {
     if (routineToDelete) {
-      if (routineToDelete.completed) {
+      // Sadece bugün tamamlanmışsa istatistikleri güncelle
+      const isCompletedToday = getRoutineCompletedStatus(routineToDelete);
+      if (isCompletedToday) {
         setWeeklyStats((prev) => ({
           ...prev,
           completed: Math.max(prev.completed - 1, 0),
@@ -580,12 +586,34 @@ const DailyRoutine = ({ user }) => {
   };
 
   const handleConfirmDeleteRepeating = (deleteAll) => {
+    console.log("handleConfirmDeleteRepeating çağrıldı:", { deleteAll, routineToDelete });
     if (routineToDelete) {
-      if (deleteAll && routineToDelete.groupId) {
-        const routinesToDelete = routines.filter(
-          (r) => r.groupId === routineToDelete.groupId
-        );
-        const completedCount = routinesToDelete.filter((r) => r.completed).length;
+              if (deleteAll && routineToDelete.groupId) {
+          console.log("Tüm grup rutinlerini silme işlemi başlatılıyor...");
+          console.log("Grup ID:", routineToDelete.groupId);
+          
+          const routinesToDelete = routines.filter(
+            (r) => r.groupId === routineToDelete.groupId
+          );
+          
+          console.log("Silinecek grup rutinleri:", routinesToDelete);
+          console.log("Toplam rutin sayısı:", routines.length);
+        
+        // Tekrarlı rutinler için doğru tamamlanma sayısını hesapla
+        let completedCount = 0;
+        routinesToDelete.forEach((r) => {
+          if (r.repeat && r.repeat !== "none") {
+            // Tekrarlanan rutinler için completedDates uzunluğunu say
+            if (r.completedDates && r.completedDates.length > 0) {
+              completedCount += r.completedDates.length;
+            }
+          } else {
+            // Tekrarlanmayan rutinler için completed durumunu kontrol et
+            if (r.completed) {
+              completedCount += 1;
+            }
+          }
+        });
 
         if (completedCount > 0) {
           setWeeklyStats((prev) => ({
@@ -598,11 +626,15 @@ const DailyRoutine = ({ user }) => {
           }));
         }
 
-        setRoutines((prev) =>
-          prev.filter((r) => r.groupId !== routineToDelete.groupId)
-        );
+        setRoutines((prev) => {
+          const newRoutines = prev.filter((r) => r.groupId !== routineToDelete.groupId);
+          console.log("Silme sonrası kalan rutin sayısı:", newRoutines.length);
+          return newRoutines;
+        });
       } else {
-        if (routineToDelete.completed) {
+        // Sadece seçilen rutini sil
+        const isCompletedToday = getRoutineCompletedStatus(routineToDelete);
+        if (isCompletedToday) {
           setWeeklyStats((prev) => ({
             ...prev,
             completed: Math.max(prev.completed - 1, 0),
@@ -620,7 +652,50 @@ const DailyRoutine = ({ user }) => {
   };
 
   const handleConfirmDeleteAll = () => {
-    setRoutines((prev) => prev.filter((r) => !filteredRoutines.includes(r)));
+    console.log("handleConfirmDeleteAll çağrıldı:", { timeFilter, routinesCount: routines.length, filteredCount: filteredRoutines.length });
+    
+    // Aylık görünümde ise tüm rutinleri sil, değilse sadece filtrelenmiş rutinleri sil
+    const routinesToDelete = timeFilter === "Monthly" ? routines : filteredRoutines;
+    
+    // Tüm tamamlanan rutinleri say
+    let completedCount = 0;
+    routinesToDelete.forEach((r) => {
+      if (r.repeat && r.repeat !== "none") {
+        // Tekrarlanan rutinler için completedDates uzunluğunu say
+        if (r.completedDates && r.completedDates.length > 0) {
+          completedCount += r.completedDates.length;
+        }
+      } else {
+        // Tekrarlanmayan rutinler için completed durumunu kontrol et
+        if (r.completed) {
+          completedCount += 1;
+        }
+      }
+    });
+
+    if (completedCount > 0) {
+      setWeeklyStats((prev) => ({
+        ...prev,
+        completed: Math.max(prev.completed - completedCount, 0),
+      }));
+      setMonthlyStats((prev) => ({
+        ...prev,
+        completed: Math.max(prev.completed - completedCount, 0),
+      }));
+    }
+
+    // Aylık görünümde tüm rutinleri sil, değilse sadece filtrelenmiş rutinleri sil
+    if (timeFilter === "Monthly") {
+      console.log("Aylık görünümde tüm rutinler siliniyor...");
+      setRoutines([]);
+    } else {
+      console.log("Filtrelenmiş rutinler siliniyor...");
+      setRoutines((prev) => {
+        const newRoutines = prev.filter((r) => !filteredRoutines.includes(r));
+        console.log("Silme sonrası kalan rutin sayısı:", newRoutines.length);
+        return newRoutines;
+      });
+    }
     setOpenDeleteFilteredDialog(false);
   };
 
@@ -920,6 +995,7 @@ const DailyRoutine = ({ user }) => {
         open={openDeleteFilteredDialog}
         onClose={() => setOpenDeleteFilteredDialog(false)}
         onDeleteFiltered={handleConfirmDeleteAll}
+        timeFilter={timeFilter}
       />
     </Box>
   );

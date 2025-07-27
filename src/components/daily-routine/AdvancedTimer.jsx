@@ -189,25 +189,35 @@ const AdvancedTimer = ({ user }) => {
   const theme = createTheme({
     palette: {
       mode: darkMode ? "dark" : "light",
-      primary: { main: "#1976d2" },
-      secondary: { main: "#dc004e" },
+      primary: { main: "#2196F3" },
+      secondary: { main: "#3F51B5" },
       success: { main: "#4caf50" },
+      warning: { main: "#ff9800" },
+      error: { main: "#f44336" },
       background: {
-        default: darkMode ? "#121212" : "#f5f5f5",
-        paper: darkMode ? "#1e1e1e" : "#ffffff",
+        default: darkMode ? "#0a0a0a" : "#f5f5f5",
+        paper: darkMode ? "#1a2a6c" : "#ffffff",
       },
     },
     typography: {
       fontFamily: "'Roboto', 'Helvetica', 'Arial', sans-serif",
-      h4: { fontWeight: 600 },
+      h4: { fontWeight: 700 },
+      h5: { fontWeight: 600 },
     },
     components: {
       MuiPaper: {
         styleOverrides: {
           root: {
             transition: "all 0.3s ease",
+            background: darkMode 
+              ? "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)"
+              : "#ffffff",
+            backdropFilter: "blur(10px)",
+            border: darkMode 
+              ? "1px solid rgba(255, 255, 255, 0.15)"
+              : "1px solid rgba(0, 0, 0, 0.1)",
             boxShadow: darkMode
-              ? "0 8px 32px rgba(0, 0, 0, 0.5)"
+              ? "0 8px 32px rgba(0, 0, 0, 0.4)"
               : "0 8px 32px rgba(0, 0, 0, 0.1)",
           },
         },
@@ -215,10 +225,32 @@ const AdvancedTimer = ({ user }) => {
       MuiButton: {
         styleOverrides: {
           root: {
-            borderRadius: 8,
+            borderRadius: 12,
             textTransform: "none",
             fontWeight: 600,
-            padding: "8px 16px",
+            padding: "10px 20px",
+            transition: "all 0.3s ease",
+            "&:hover": {
+              transform: "translateY(-2px)",
+              boxShadow: "0 6px 20px rgba(33, 150, 243, 0.3)",
+            },
+          },
+        },
+      },
+      MuiCircularProgress: {
+        styleOverrides: {
+          root: {
+            filter: "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2))",
+          },
+        },
+      },
+      MuiChip: {
+        styleOverrides: {
+          root: {
+            borderRadius: 16,
+            fontWeight: 600,
+            backdropFilter: "blur(10px)",
+            border: "1px solid rgba(255, 255, 255, 0.2)",
           },
         },
       },
@@ -864,8 +896,32 @@ const AdvancedTimer = ({ user }) => {
             maxWidth: 450,
             mx: "auto",
             mt: 4,
-            bgcolor: theme.palette.background.paper, // EKLENDİ
-            color: theme.palette.text.primary, // EKLENDİ
+            background: darkMode 
+              ? "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)"
+              : "linear-gradient(135deg, #f5f5f5 0%, #e3f2fd 50%, #f3e5f5 100%)",
+            borderRadius: "24px",
+            backdropFilter: "blur(10px)",
+            border: darkMode 
+              ? "1px solid rgba(255, 255, 255, 0.15)"
+              : "1px solid rgba(0, 0, 0, 0.1)",
+            boxShadow: darkMode
+              ? "0 8px 32px rgba(0, 0, 0, 0.4)"
+              : "0 8px 32px rgba(0, 0, 0, 0.1)",
+            color: darkMode ? "#ffffff" : theme.palette.text.primary,
+            position: "relative",
+            "&::before": {
+              content: '""',
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: darkMode 
+                ? "rgba(255, 255, 255, 0.05)"
+                : "rgba(255, 255, 255, 0.3)",
+              borderRadius: "24px",
+              zIndex: 0,
+            },
           }}
         >
           {/* Header */}
@@ -875,9 +931,18 @@ const AdvancedTimer = ({ user }) => {
               justifyContent: "space-between",
               alignItems: "center",
               mb: 2,
+              position: "relative",
+              zIndex: 1,
             }}
           >
-            <Typography variant="h5" fontWeight="bold">
+            <Typography 
+              variant="h5" 
+              fontWeight="bold"
+              sx={{
+                color: darkMode ? "#ffffff" : theme.palette.text.primary,
+                textShadow: darkMode ? "0 2px 4px rgba(0,0,0,0.3)" : "none",
+              }}
+            >
               {isWorking
                 ? "Çalışma Zamanı"
                 : isLongBreak
@@ -889,7 +954,19 @@ const AdvancedTimer = ({ user }) => {
                 <IconButton
                   onClick={() => setShowHistory(true)}
                   size="small"
-                  sx={{ mr: 1 }}
+                  sx={{ 
+                    mr: 1,
+                    color: darkMode ? "#ffffff" : theme.palette.text.primary,
+                    backgroundColor: "rgba(255, 255, 255, 0.1)",
+                    border: "1px solid rgba(255, 255, 255, 0.2)",
+                    backdropFilter: "blur(10px)",
+                    transition: "all 0.3s ease",
+                    "&:hover": {
+                      backgroundColor: "rgba(255, 255, 255, 0.2)",
+                      transform: "scale(1.1)",
+                      boxShadow: "0 4px 12px rgba(33, 150, 243, 0.3)",
+                    },
+                  }}
                 >
                   <Badge badgeContent={history.length} color="primary">
                     <History />
@@ -897,19 +974,53 @@ const AdvancedTimer = ({ user }) => {
                 </IconButton>
               </Tooltip>
               <Tooltip title="Ayarlar">
-                <IconButton onClick={() => setShowSettings(true)} size="small">
+                <IconButton 
+                  onClick={() => setShowSettings(true)} 
+                  size="small"
+                  sx={{
+                    color: darkMode ? "#ffffff" : theme.palette.text.primary,
+                    backgroundColor: "rgba(255, 255, 255, 0.1)",
+                    border: "1px solid rgba(255, 255, 255, 0.2)",
+                    backdropFilter: "blur(10px)",
+                    transition: "all 0.3s ease",
+                    "&:hover": {
+                      backgroundColor: "rgba(255, 255, 255, 0.2)",
+                      transform: "scale(1.1)",
+                      boxShadow: "0 4px 12px rgba(33, 150, 243, 0.3)",
+                    },
+                  }}
+                >
                   <Settings />
                 </IconButton>
               </Tooltip>
             </Box>
           </Box>
           {/* Mode Bilgisi */}
-          <Box sx={{ mb: 3, display: "flex", justifyContent: "center" }}>
+          <Box 
+            sx={{ 
+              mb: 3, 
+              display: "flex", 
+              justifyContent: "center",
+              position: "relative",
+              zIndex: 1,
+            }}
+          >
             <Chip
               label={mode}
               color={isWorking ? "primary" : "secondary"}
               variant="outlined"
               icon={<Timer fontSize="small" />}
+              sx={{
+                background: "rgba(255, 255, 255, 0.1)",
+                backdropFilter: "blur(10px)",
+                border: "1px solid rgba(255, 255, 255, 0.2)",
+                color: darkMode ? "#ffffff" : theme.palette.text.primary,
+                fontWeight: 600,
+                "&:hover": {
+                  background: "rgba(255, 255, 255, 0.2)",
+                  transform: "scale(1.05)",
+                },
+              }}
             />
             {mode === TIMER_MODES.POMODORO && (
               <Chip
@@ -919,16 +1030,33 @@ const AdvancedTimer = ({ user }) => {
                 }/${sessionsBeforeLongBreak}`}
                 color="info"
                 variant="outlined"
-                sx={{ ml: 1 }}
+                sx={{ 
+                  ml: 1,
+                  background: "rgba(255, 255, 255, 0.1)",
+                  backdropFilter: "blur(10px)",
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  color: darkMode ? "#ffffff" : theme.palette.text.primary,
+                  fontWeight: 600,
+                  "&:hover": {
+                    background: "rgba(255, 255, 255, 0.2)",
+                    transform: "scale(1.05)",
+                  },
+                }}
               />
             )}
           </Box>
           {/* Günlük Toplam Çalışma Süresi */}
           <Typography
             variant="caption"
-            color="text.secondary"
             align="center"
-            sx={{ display: "block", mb: 2 }}
+            sx={{ 
+              display: "block", 
+              mb: 2,
+              color: darkMode ? "rgba(255, 255, 255, 0.8)" : theme.palette.text.secondary,
+              position: "relative",
+              zIndex: 1,
+              fontWeight: 500,
+            }}
           >
             Bugün Toplam: {calculateDailyTotal()}
           </Typography>
@@ -939,6 +1067,7 @@ const AdvancedTimer = ({ user }) => {
               display: "flex",
               justifyContent: "center",
               mb: 3,
+              zIndex: 1,
             }}
           >
             <Box sx={{ position: "relative", width: 200, height: 200 }}>
@@ -946,8 +1075,12 @@ const AdvancedTimer = ({ user }) => {
                 variant="determinate"
                 value={100}
                 size={200}
-                thickness={4}
-                sx={{ position: "absolute", color: theme.palette.divider }}
+                thickness={6}
+                sx={{ 
+                  position: "absolute", 
+                  color: darkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
+                  filter: "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2))",
+                }}
               />
               <CircularProgress
                 variant={
@@ -961,14 +1094,15 @@ const AdvancedTimer = ({ user }) => {
                     : (timer / initialTimer) * 100
                 }
                 size={200}
-                thickness={4}
+                thickness={6}
                 sx={{
                   position: "absolute",
                   color: isWorking
-                    ? theme.palette.primary.main
+                    ? "#2196F3"
                     : isLongBreak
-                    ? theme.palette.success.main
-                    : theme.palette.secondary.main,
+                    ? "#4caf50"
+                    : "#3F51B5",
+                  filter: "drop-shadow(0 4px 8px rgba(33, 150, 243, 0.3))",
                   animation: "none",
                 }}
               />
@@ -991,14 +1125,24 @@ const AdvancedTimer = ({ user }) => {
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <Typography variant="h3" fontWeight="bold">
+                  <Typography 
+                    variant="h3" 
+                    fontWeight="bold"
+                    sx={{
+                      color: darkMode ? "#ffffff" : theme.palette.text.primary,
+                      textShadow: darkMode ? "0 2px 4px rgba(0,0,0,0.3)" : "none",
+                    }}
+                  >
                     {formatTime(timer)}
                   </Typography>
                 </motion.div>
                 <Typography
                   variant="body2"
-                  color="text.secondary"
-                  sx={{ mt: 1, fontWeight: "medium" }}
+                  sx={{ 
+                    mt: 1, 
+                    fontWeight: "medium",
+                    color: darkMode ? "rgba(255, 255, 255, 0.8)" : theme.palette.text.secondary,
+                  }}
                 >
                   {isWorking
                     ? "Odaklanın"
@@ -1017,6 +1161,8 @@ const AdvancedTimer = ({ user }) => {
               flexWrap: "wrap",
               gap: 2,
               mb: 2,
+              position: "relative",
+              zIndex: 1,
             }}
           >
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
@@ -1027,10 +1173,18 @@ const AdvancedTimer = ({ user }) => {
                 startIcon={isRunning ? <Pause /> : <PlayArrow />}
                 sx={{
                   minWidth: 120,
-                  boxShadow: isRunning ? "none" : theme.shadows[3],
                   background: isRunning
-                    ? theme.palette.warning.main
-                    : theme.palette.primary.main,
+                    ? "linear-gradient(45deg, #ff9800 30%, #f57c00 90%)"
+                    : "linear-gradient(45deg, #2196F3 30%, #1976D2 90%)",
+                  color: "#ffffff",
+                  fontWeight: 600,
+                  boxShadow: "0 4px 12px rgba(33, 150, 243, 0.3)",
+                  "&:hover": {
+                    background: isRunning
+                      ? "linear-gradient(45deg, #f57c00 30%, #ef6c00 90%)"
+                      : "linear-gradient(45deg, #1976D2 30%, #1565C0 90%)",
+                    boxShadow: "0 6px 20px rgba(33, 150, 243, 0.4)",
+                  },
                 }}
               >
                 {isRunning ? "Duraklat" : "Başlat"}
@@ -1042,6 +1196,16 @@ const AdvancedTimer = ({ user }) => {
                 onClick={handleSkip}
                 startIcon={<SkipNext />}
                 disabled={mode === TIMER_MODES.FLOWTIME && isWorking}
+                sx={{
+                  border: "1px solid rgba(255, 255, 255, 0.3)",
+                  color: darkMode ? "#ffffff" : theme.palette.text.primary,
+                  background: "rgba(255, 255, 255, 0.1)",
+                  backdropFilter: "blur(10px)",
+                  "&:hover": {
+                    background: "rgba(255, 255, 255, 0.2)",
+                    border: "1px solid rgba(255, 255, 255, 0.4)",
+                  },
+                }}
               >
                 Atla
               </Button>
@@ -1052,6 +1216,16 @@ const AdvancedTimer = ({ user }) => {
                 color="error"
                 onClick={resetTimer}
                 startIcon={<Refresh />}
+                sx={{
+                  border: "1px solid rgba(244, 67, 54, 0.3)",
+                  color: "#f44336",
+                  background: "rgba(244, 67, 54, 0.1)",
+                  backdropFilter: "blur(10px)",
+                  "&:hover": {
+                    background: "rgba(244, 67, 54, 0.2)",
+                    border: "1px solid rgba(244, 67, 54, 0.4)",
+                  },
+                }}
               >
                 Sıfırla
               </Button>
@@ -1066,6 +1240,16 @@ const AdvancedTimer = ({ user }) => {
                   color="success"
                   onClick={handleFinishWorkFlowtime}
                   startIcon={<Done />}
+                  sx={{
+                    background: "linear-gradient(45deg, #4caf50 30%, #388e3c 90%)",
+                    color: "#ffffff",
+                    fontWeight: 600,
+                    boxShadow: "0 4px 12px rgba(76, 175, 80, 0.3)",
+                    "&:hover": {
+                      background: "linear-gradient(45deg, #388e3c 30%, #2e7d32 90%)",
+                      boxShadow: "0 6px 20px rgba(76, 175, 80, 0.4)",
+                    },
+                  }}
                 >
                   Çalışmayı Bitir
                 </Button>
@@ -1073,12 +1257,33 @@ const AdvancedTimer = ({ user }) => {
             )}
           </Box>
           {/* Tema/Ses/Bildirim Düğmeleri */}
-          <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+          <Box 
+            sx={{ 
+              display: "flex", 
+              justifyContent: "center", 
+              mt: 2,
+              position: "relative",
+              zIndex: 1,
+            }}
+          >
             <Tooltip title={darkMode ? "Açık Tema" : "Koyu Tema"}>
               <IconButton
                 onClick={() => setDarkMode(!darkMode)}
                 color="inherit"
                 size="small"
+                sx={{
+                  color: darkMode ? "#ffffff" : theme.palette.text.primary,
+                  backgroundColor: "rgba(255, 255, 255, 0.1)",
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  backdropFilter: "blur(10px)",
+                  transition: "all 0.3s ease",
+                  mx: 0.5,
+                  "&:hover": {
+                    backgroundColor: "rgba(255, 255, 255, 0.2)",
+                    transform: "scale(1.1)",
+                    boxShadow: "0 4px 12px rgba(33, 150, 243, 0.3)",
+                  },
+                }}
               >
                 {darkMode ? (
                   <LightMode fontSize="small" />
@@ -1092,6 +1297,19 @@ const AdvancedTimer = ({ user }) => {
                 onClick={() => setSoundEnabled(!soundEnabled)}
                 color="inherit"
                 size="small"
+                sx={{
+                  color: darkMode ? "#ffffff" : theme.palette.text.primary,
+                  backgroundColor: "rgba(255, 255, 255, 0.1)",
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  backdropFilter: "blur(10px)",
+                  transition: "all 0.3s ease",
+                  mx: 0.5,
+                  "&:hover": {
+                    backgroundColor: "rgba(255, 255, 255, 0.2)",
+                    transform: "scale(1.1)",
+                    boxShadow: "0 4px 12px rgba(33, 150, 243, 0.3)",
+                  },
+                }}
               >
                 {soundEnabled ? (
                   <VolumeUp fontSize="small" />
@@ -1109,6 +1327,19 @@ const AdvancedTimer = ({ user }) => {
                 onClick={() => setNotificationsEnabled(!notificationsEnabled)}
                 color="inherit"
                 size="small"
+                sx={{
+                  color: darkMode ? "#ffffff" : theme.palette.text.primary,
+                  backgroundColor: "rgba(255, 255, 255, 0.1)",
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  backdropFilter: "blur(10px)",
+                  transition: "all 0.3s ease",
+                  mx: 0.5,
+                  "&:hover": {
+                    backgroundColor: "rgba(255, 255, 255, 0.2)",
+                    transform: "scale(1.1)",
+                    boxShadow: "0 4px 12px rgba(33, 150, 243, 0.3)",
+                  },
+                }}
               >
                 {notificationsEnabled ? (
                   <Notifications fontSize="small" />

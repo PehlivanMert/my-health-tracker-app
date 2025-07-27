@@ -189,9 +189,12 @@ const MonthlyRoutines = ({
         justifyContent: "center",
         gap: 1,
         mb: 2,
-        backgroundColor: alpha(colors.surface, 0.3),
-        padding: "4px",
-        borderRadius: "20px",
+        background: "linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(63, 81, 181, 0.1) 100%)",
+        padding: "6px",
+        borderRadius: "24px",
+        border: "1px solid rgba(255, 255, 255, 0.15)",
+        backdropFilter: "blur(10px)",
+        boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
       }}
     >
 
@@ -200,17 +203,27 @@ const MonthlyRoutines = ({
         startIcon={<CalendarToday />}
         onClick={() => setViewMode(VIEW_MODES.CALENDAR)}
         sx={{
-          borderRadius: "18px",
+          borderRadius: "20px",
           fontSize: "0.8rem",
-          backgroundColor:
-            viewMode === VIEW_MODES.CALENDAR
-              ? alpha(colors.primary, 0.2)
-              : "transparent",
-          color:
-            viewMode === VIEW_MODES.CALENDAR
-              ? colors.text.primary
-              : colors.text.secondary,
-          "&:hover": { backgroundColor: alpha(colors.primary, 0.3) },
+          fontWeight: 600,
+          background: viewMode === VIEW_MODES.CALENDAR
+            ? "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)"
+            : "transparent",
+          color: viewMode === VIEW_MODES.CALENDAR
+            ? "#ffffff"
+            : "rgba(255, 255, 255, 0.8)",
+          border: viewMode === VIEW_MODES.CALENDAR
+            ? "none"
+            : "1px solid rgba(255, 255, 255, 0.2)",
+          padding: "8px 16px",
+          transition: "all 0.3s ease",
+          "&:hover": {
+            background: viewMode === VIEW_MODES.CALENDAR
+              ? "linear-gradient(45deg, #1976D2 30%, #303F9F 90%)"
+              : "rgba(255, 255, 255, 0.1)",
+            transform: "translateY(-1px)",
+            boxShadow: "0 4px 12px rgba(33, 150, 243, 0.3)",
+          },
         }}
       >
         Takvim
@@ -221,17 +234,27 @@ const MonthlyRoutines = ({
         startIcon={<List />}
         onClick={() => setViewMode(VIEW_MODES.LIST)}
         sx={{
-          borderRadius: "18px",
+          borderRadius: "20px",
           fontSize: "0.8rem",
-          backgroundColor:
-            viewMode === VIEW_MODES.LIST
-              ? alpha(colors.primary, 0.2)
-              : "transparent",
-          color:
-            viewMode === VIEW_MODES.LIST
-              ? colors.text.primary
-              : colors.text.secondary,
-          "&:hover": { backgroundColor: alpha(colors.primary, 0.3) },
+          fontWeight: 600,
+          background: viewMode === VIEW_MODES.LIST
+            ? "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)"
+            : "transparent",
+          color: viewMode === VIEW_MODES.LIST
+            ? "#ffffff"
+            : "rgba(255, 255, 255, 0.8)",
+          border: viewMode === VIEW_MODES.LIST
+            ? "none"
+            : "1px solid rgba(255, 255, 255, 0.2)",
+          padding: "8px 16px",
+          transition: "all 0.3s ease",
+          "&:hover": {
+            background: viewMode === VIEW_MODES.LIST
+              ? "linear-gradient(45deg, #1976D2 30%, #303F9F 90%)"
+              : "rgba(255, 255, 255, 0.1)",
+            transform: "translateY(-1px)",
+            boxShadow: "0 4px 12px rgba(33, 150, 243, 0.3)",
+          },
         }}
       >
         Liste
@@ -241,17 +264,27 @@ const MonthlyRoutines = ({
         startIcon={<Grid3x3 />}
         onClick={() => setViewMode(VIEW_MODES.GRID)}
         sx={{
-          borderRadius: "18px",
+          borderRadius: "20px",
           fontSize: "0.8rem",
-          backgroundColor:
-            viewMode === VIEW_MODES.GRID
-              ? alpha(colors.primary, 0.2)
-              : "transparent",
-          color:
-            viewMode === VIEW_MODES.GRID
-              ? colors.text.primary
-              : colors.text.secondary,
-          "&:hover": { backgroundColor: alpha(colors.primary, 0.3) },
+          fontWeight: 600,
+          background: viewMode === VIEW_MODES.GRID
+            ? "linear-gradient(45deg, #2196F3 30%, #3F51B5 90%)"
+            : "transparent",
+          color: viewMode === VIEW_MODES.GRID
+            ? "#ffffff"
+            : "rgba(255, 255, 255, 0.8)",
+          border: viewMode === VIEW_MODES.GRID
+            ? "none"
+            : "1px solid rgba(255, 255, 255, 0.2)",
+          padding: "8px 16px",
+          transition: "all 0.3s ease",
+          "&:hover": {
+            background: viewMode === VIEW_MODES.GRID
+              ? "linear-gradient(45deg, #1976D2 30%, #303F9F 90%)"
+              : "rgba(255, 255, 255, 0.1)",
+            transform: "translateY(-1px)",
+            boxShadow: "0 4px 12px rgba(33, 150, 243, 0.3)",
+          },
         }}
       >
         Grid
@@ -268,12 +301,24 @@ const MonthlyRoutines = ({
     >
       <Box
         sx={{
-          backgroundColor: colors.background,
+          background: "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
           borderRadius: "24px",
           padding: "20px",
-          boxShadow: `0 8px 32px 0 ${alpha("#000", 0.2)}`,
+          boxShadow: `0 8px 32px 0 ${alpha("#000", 0.3)}`,
           backdropFilter: "blur(10px)",
-          border: `1px solid ${alpha("#fff", 0.1)}`,
+          border: `1px solid ${alpha("#fff", 0.15)}`,
+          position: "relative",
+          "&::before": {
+            content: '""',
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(255, 255, 255, 0.05)",
+            borderRadius: "24px",
+            zIndex: 0,
+          },
         }}
       >
         <Box
@@ -282,14 +327,23 @@ const MonthlyRoutines = ({
             justifyContent: "space-between",
             alignItems: "center",
             mb: 3,
+            position: "relative",
+            zIndex: 1,
           }}
         >
           <IconButton
             onClick={goToPreviousMonth}
             sx={{
-              color: colors.text.primary,
-              backgroundColor: alpha(colors.surface, 0.3),
-              "&:hover": { backgroundColor: alpha(colors.surface, 0.5) },
+              color: "#ffffff",
+              backgroundColor: "rgba(255, 255, 255, 0.1)",
+              border: "1px solid rgba(255, 255, 255, 0.2)",
+              backdropFilter: "blur(10px)",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                backgroundColor: "rgba(255, 255, 255, 0.2)",
+                transform: "scale(1.1)",
+                boxShadow: "0 4px 12px rgba(33, 150, 243, 0.3)",
+              },
             }}
           >
             <ChevronLeft />
@@ -299,11 +353,15 @@ const MonthlyRoutines = ({
               variant="h5"
               component="div"
               sx={{
-                color: colors.text.primary,
-                fontWeight: 600,
-                background: `linear-gradient(45deg, ${colors.primary}, ${colors.secondary})`,
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
+                color: "#ffffff",
+                fontWeight: 700,
+                textShadow: "0 2px 4px rgba(0,0,0,0.3)",
+                cursor: "pointer",
+                transition: "all 0.3s ease",
+                "&:hover": {
+                  transform: "scale(1.05)",
+                  textShadow: "0 4px 8px rgba(0,0,0,0.4)",
+                },
               }}
               onClick={goToCurrentMonth}
             >
@@ -313,9 +371,16 @@ const MonthlyRoutines = ({
           <IconButton
             onClick={goToNextMonth}
             sx={{
-              color: colors.text.primary,
-              backgroundColor: alpha(colors.surface, 0.3),
-              "&:hover": { backgroundColor: alpha(colors.surface, 0.5) },
+              color: "#ffffff",
+              backgroundColor: "rgba(255, 255, 255, 0.1)",
+              border: "1px solid rgba(255, 255, 255, 0.2)",
+              backdropFilter: "blur(10px)",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                backgroundColor: "rgba(255, 255, 255, 0.2)",
+                transform: "scale(1.1)",
+                boxShadow: "0 4px 12px rgba(33, 150, 243, 0.3)",
+              },
             }}
           >
             <ChevronRight />

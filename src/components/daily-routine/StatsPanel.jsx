@@ -12,11 +12,11 @@ import { motion } from "framer-motion";
 // Modern glassmorphism kart bileşeni
 const GlowingCard = styled(motion.div)(({ theme, glowcolor }) => ({
   position: "relative",
-  background: "rgba(255, 255, 255, 0.05)",
+  background: "linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(63, 81, 181, 0.1) 100%)",
   backdropFilter: "blur(16px)",
   borderRadius: "24px",
   overflow: "hidden",
-  border: "1px solid rgba(255, 255, 255, 0.1)",
+  border: "1px solid rgba(255, 255, 255, 0.2)",
   boxShadow: `0 10px 30px ${glowcolor}22, inset 0 0 20px rgba(255, 255, 255, 0.05)`,
   padding: theme.spacing(3),
   height: "100%",
@@ -32,7 +32,11 @@ const GlowingCard = styled(motion.div)(({ theme, glowcolor }) => ({
     right: 0,
     height: "4px",
     background: `linear-gradient(90deg, transparent, ${glowcolor}, transparent)`,
-    opacity: 0.7,
+    opacity: 0.8,
+  },
+  "&:hover": {
+    transform: "translateY(-5px)",
+    boxShadow: `0 15px 35px ${glowcolor}33, inset 0 0 20px rgba(255, 255, 255, 0.08)`,
   },
 }));
 

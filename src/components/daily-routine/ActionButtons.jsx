@@ -13,9 +13,9 @@ import { styled } from "@mui/material/styles";
 import { motion } from "framer-motion";
 
 const NeonButton = styled(motion.button)(({ theme, buttoncolor }) => ({
-  background: "rgba(255, 255, 255, 0.03)",
+  background: "linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(63, 81, 181, 0.1) 100%)",
   backdropFilter: "blur(10px)",
-  border: "1px solid rgba(255, 255, 255, 0.1)",
+  border: "1px solid rgba(255, 255, 255, 0.2)",
   borderRadius: "16px",
   padding: "14px 24px",
   cursor: "pointer",
@@ -26,7 +26,7 @@ const NeonButton = styled(motion.button)(({ theme, buttoncolor }) => ({
   position: "relative",
   overflow: "hidden",
   textTransform: "none",
-  fontWeight: 500,
+  fontWeight: 600,
   fontSize: "1rem",
   color: "#fff",
   transition: "all 0.35s cubic-bezier(0.23, 1, 0.32, 1)",
@@ -57,8 +57,8 @@ const NeonButton = styled(motion.button)(({ theme, buttoncolor }) => ({
     zIndex: 1,
   },
   "&:hover": {
-    transform: "translateY(-5px)",
-    boxShadow: `0 15px 25px ${buttoncolor}44`,
+    transform: "translateY(-3px)",
+    boxShadow: `0 12px 25px ${buttoncolor}44`,
     "& .button-bg": {
       opacity: 1,
     },
@@ -79,9 +79,10 @@ const IconWrapper = styled(Box)(({ theme }) => ({
   marginRight: "14px",
   borderRadius: "50%",
   zIndex: 2,
-  background: "rgba(255,255,255,0.15)",
+  background: "rgba(255,255,255,0.2)",
   padding: "8px",
   transition: "all 0.3s ease",
+  border: "1px solid rgba(255, 255, 255, 0.3)",
 }));
 
 const buttonVariants = {

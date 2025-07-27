@@ -25,12 +25,12 @@ import LocalHospitalIcon from "@mui/icons-material/LocalHospital";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 
 const colors = {
-  primary: "#3a7bd5",
-  secondary: "#00d2ff",
+  primary: "#2196F3",
+  secondary: "#3F51B5",
   accent: "#6f42c1",
-  success: "#38b000",
-  warning: "#f9c74f",
-  error: "#d62828",
+  success: "#4caf50",
+  warning: "#ff9800",
+  error: "#f44336",
   background: {
     light: "#f8f9fa",
     paper: "rgba(255, 255, 255, 0.95)",
@@ -96,46 +96,47 @@ const CancelButton = styled("button")({
 
 const StyledDialog = styled(Dialog)(({ theme }) => ({
   '& .MuiDialog-paper': {
-    background: 'rgba(25, 25, 35, 0.85)',
+    background: 'linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)',
     backdropFilter: 'blur(20px)',
     borderRadius: '24px',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+    border: '1px solid rgba(255, 255, 255, 0.15)',
+    boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.4)',
     overflow: 'hidden',
   },
 }));
 
 const DialogHeader = styled(Box)(({ theme }) => ({
-  background: 'linear-gradient(135deg, rgba(74, 144, 226, 0.1) 0%, rgba(80, 227, 194, 0.1) 100%)',
+  background: 'rgba(255, 255, 255, 0.05)',
   padding: theme.spacing(3),
-  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+  borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
+  backdropFilter: 'blur(10px)',
 }));
 
 const StyledTextField = styled(TextField)(({ theme }) => ({
   '& .MuiOutlinedInput-root': {
-    background: 'rgba(255, 255, 255, 0.05)',
+    background: 'rgba(255, 255, 255, 0.1)',
     backdropFilter: 'blur(10px)',
     borderRadius: '12px',
     color: '#fff',
     transition: 'all 0.3s ease',
     '& fieldset': {
-      borderColor: 'rgba(255, 255, 255, 0.1)',
-    },
-    '&:hover fieldset': {
       borderColor: 'rgba(255, 255, 255, 0.2)',
     },
+    '&:hover fieldset': {
+      borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
     '&.Mui-focused fieldset': {
-      borderColor: '#4A90E2',
+      borderColor: '#2196F3',
     },
   },
   '& .MuiInputLabel-root': {
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 255, 255, 0.8)',
   },
   '& .MuiInputBase-input': {
     color: '#fff',
   },
   '& .MuiSelect-icon': {
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 255, 255, 0.8)',
   },
 }));
 

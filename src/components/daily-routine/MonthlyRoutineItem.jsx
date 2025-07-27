@@ -48,6 +48,25 @@ const MonthlyRoutineItem = ({
     return hour * 60 + minute;
   };
 
+  // Tamamlanma durumunu doğru hesapla
+  const getTurkeyLocalDateString = (date = new Date()) =>
+    new Date(
+      date.toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
+    ).toLocaleDateString("en-CA");
+
+  const getRoutineCompletedStatus = (routine) => {
+    if (routine.repeat && routine.repeat !== "none") {
+      // Tekrarlanan rutinler için bugünün tarihini completedDates'te kontrol et
+      const todayStr = getTurkeyLocalDateString(new Date());
+      return routine.completedDates && routine.completedDates.includes(todayStr);
+    } else {
+      // Tekrarlanmayan rutinler için normal completed alanını kullan
+      return routine.completed;
+    }
+  };
+
+  const isRoutineCompleted = getRoutineCompletedStatus(routine);
+
   const formatTimeCountdown = (targetTimeStr, routineDate, now = new Date()) => {
     const nowInTurkey = new Date(
       now.toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
@@ -71,8 +90,6 @@ const MonthlyRoutineItem = ({
     const seconds = String(remainingSeconds % 60).padStart(2, "0");
     return `${hours}:${minutes}:${seconds}`;
   };
-
-  const isRoutineCompleted = routine.completed;
 
   const getCountdownMessage = () => {
     const currentMin = currentTime.getHours() * 60 + currentTime.getMinutes();

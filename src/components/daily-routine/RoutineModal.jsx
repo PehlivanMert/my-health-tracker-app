@@ -305,6 +305,11 @@ const RoutineModal = ({ open, onClose, routine, initialDate, onSave }) => {
     onClose();
   };
 
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    handleSave();
+  };
+
   return (
     <StyledDialog
       open={open}
@@ -323,7 +328,7 @@ const RoutineModal = ({ open, onClose, routine, initialDate, onSave }) => {
         </Typography>
       </DialogHeader>
       <DialogContent sx={{ p: 3 }}>
-        <form onSubmit={handleSave}>
+        <form onSubmit={handleFormSubmit}>
           <StyledTextField
             fullWidth
             label="Başlık"

@@ -128,7 +128,24 @@ const RoutineCard = ({
   const iconSize = isMobile ? "1rem" : "1.2rem";
 
   // routine.completed ile tamamlanma durumu
-  const isRoutineCompleted = routine.completed;
+  const getTurkeyLocalDateString = (date = new Date()) =>
+    new Date(
+      date.toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
+    ).toLocaleDateString("en-CA");
+
+  // Tamamlanma durumunu doğru hesapla
+  const getRoutineCompletedStatus = (routine) => {
+    if (routine.repeat && routine.repeat !== "none") {
+      // Tekrarlanan rutinler için bugünün tarihini completedDates'te kontrol et
+      const todayStr = getTurkeyLocalDateString(new Date());
+      return routine.completedDates && routine.completedDates.includes(todayStr);
+    } else {
+      // Tekrarlanmayan rutinler için normal completed alanını kullan
+      return routine.completed;
+    }
+  };
+
+  const isRoutineCompleted = getRoutineCompletedStatus(routine);
   const isCompletedStr = isRoutineCompleted ? "true" : "false";
 
   // currentTime değerini Türkiye saat dilimine çeviriyoruz:

@@ -411,8 +411,20 @@ const DailyRoutine = ({ user }) => {
     return categoryMatch && searchMatch && timeMatch;
   });
 
-  const activeRoutinesForList = filteredRoutines.filter((r) => !r.completed);
-  const completedRoutinesForList = filteredRoutines.filter((r) => r.completed);
+  // Tamamlanma durumunu doğru hesaplayan yardımcı fonksiyon
+  const getRoutineCompletedStatus = (routine) => {
+    if (routine.repeat && routine.repeat !== "none") {
+      // Tekrarlanan rutinler için bugünün tarihini completedDates'te kontrol et
+      const todayStr = getTurkeyLocalDateString(new Date());
+      return routine.completedDates && routine.completedDates.includes(todayStr);
+    } else {
+      // Tekrarlanmayan rutinler için normal completed alanını kullan
+      return routine.completed;
+    }
+  };
+
+  const activeRoutinesForList = filteredRoutines.filter((r) => !getRoutineCompletedStatus(r));
+  const completedRoutinesForList = filteredRoutines.filter((r) => getRoutineCompletedStatus(r));
 
   const goToPreviousMonth = () => {
     const newDate = new Date(currentYear, currentMonth - 1, 1);
@@ -431,6 +443,13 @@ const DailyRoutine = ({ user }) => {
   };
 
   const handleSaveRoutine = (routineData) => {
+    console.log("handleSaveRoutine çağrıldı:", {
+      editingRoutine: editingRoutine ? editingRoutine.id : null,
+      repeat: routineData.repeat,
+      repeatCount: routineData.repeatCount,
+      title: routineData.title
+    });
+    
     const baseRoutine = {
       title: routineData.title,
       time: routineData.time,
@@ -445,6 +464,7 @@ const DailyRoutine = ({ user }) => {
       repeat: routineData.repeat,
       repeatCount: routineData.repeatCount,
     };
+    
     if (editingRoutine) {
       if (routineData.repeat && routineData.repeat !== "none") {
         const groupId = editingRoutine.groupId || uuidv4();
@@ -486,48 +506,50 @@ const DailyRoutine = ({ user }) => {
         setRoutines(finalRoutines);
       }
       setEditingRoutine(null);
-    } else {
-      let newRoutines = [];
-      if (routineData.repeat && routineData.repeat !== "none") {
-        const groupId = uuidv4();
-        const count = Number(routineData.repeatCount) || 1;
-        const startDate = new Date(routineData.date);
-        for (let i = 0; i < count; i++) {
-          let occurrenceDate = new Date(startDate);
-          if (routineData.repeat === "daily") {
-            occurrenceDate.setDate(startDate.getDate() + i);
-          } else if (routineData.repeat === "weekly") {
-            occurrenceDate.setDate(startDate.getDate() + i * 7);
-          } else if (routineData.repeat === "monthly") {
-            occurrenceDate.setMonth(startDate.getMonth() + i);
-          }
-          newRoutines.push({
-            ...baseRoutine,
-            id: uuidv4(),
-            date: getTurkeyLocalDateString(occurrenceDate),
-            groupId,
-          });
+      return; // Editing işlemi tamamlandığında fonksiyondan çık
+    }
+    
+    // Yeni rutin ekleme kısmı (sadece editing değilse çalışır)
+    let newRoutines = [];
+    if (routineData.repeat && routineData.repeat !== "none") {
+      const groupId = uuidv4();
+      const count = Number(routineData.repeatCount) || 1;
+      const startDate = new Date(routineData.date);
+      for (let i = 0; i < count; i++) {
+        let occurrenceDate = new Date(startDate);
+        if (routineData.repeat === "daily") {
+          occurrenceDate.setDate(startDate.getDate() + i);
+        } else if (routineData.repeat === "weekly") {
+          occurrenceDate.setDate(startDate.getDate() + i * 7);
+        } else if (routineData.repeat === "monthly") {
+          occurrenceDate.setMonth(startDate.getMonth() + i);
         }
-      } else {
         newRoutines.push({
           ...baseRoutine,
           id: uuidv4(),
-          date: getTurkeyLocalDateString(new Date(routineData.date)),
+          date: getTurkeyLocalDateString(occurrenceDate),
+          groupId,
         });
       }
-      const updatedRoutines = [...routines, ...newRoutines].sort((a, b) =>
-        a.time.localeCompare(b.time)
-      );
-      setRoutines(updatedRoutines);
-      setWeeklyStats((prev) => ({
-        ...prev,
-        added: prev.added + newRoutines.length,
-      }));
-      setMonthlyStats((prev) => ({
-        ...prev,
-        added: prev.added + newRoutines.length,
-      }));
+    } else {
+      newRoutines.push({
+        ...baseRoutine,
+        id: uuidv4(),
+        date: getTurkeyLocalDateString(new Date(routineData.date)),
+      });
     }
+    const updatedRoutines = [...routines, ...newRoutines].sort((a, b) =>
+      a.time.localeCompare(b.time)
+    );
+    setRoutines(updatedRoutines);
+    setWeeklyStats((prev) => ({
+      ...prev,
+      added: prev.added + newRoutines.length,
+    }));
+    setMonthlyStats((prev) => ({
+      ...prev,
+      added: prev.added + newRoutines.length,
+    }));
   };
 
   const handleRequestDelete = (routine) => {
@@ -606,12 +628,14 @@ const DailyRoutine = ({ user }) => {
     setRoutines((prev) =>
       prev.map((r) => {
         if (r.id === id) {
-          const updatedCompleted = !r.completed;
           const todayStr = getTurkeyLocalDateString(new Date());
 
-          // Tekrarlanan rutinler için completedDates array'ini güncelle
+          // Tekrarlanan rutinler için sadece completedDates array'ini kullan
           if (r.repeat && r.repeat !== "none") {
             const completedDates = r.completedDates || [];
+            const isCompletedToday = completedDates.includes(todayStr);
+            const updatedCompleted = !isCompletedToday;
+
             if (updatedCompleted) {
               if (!completedDates.includes(todayStr)) {
                 completedDates.push(todayStr);
@@ -643,9 +667,12 @@ const DailyRoutine = ({ user }) => {
               }));
             }
 
+            // Tekrarlanan rutinlerde completed alanını kullanma, sadece completedDates
             return { ...r, completedDates };
           } else {
             // Tekrarlanmayan rutinler için normal completed durumu
+            const updatedCompleted = !r.completed;
+            
             if (updatedCompleted) {
               setWeeklyStats((prev) => ({
                 ...prev,
@@ -701,7 +728,7 @@ const DailyRoutine = ({ user }) => {
   const handleSelectAll = () => {
     const todayStr = getTurkeyLocalDateString(new Date());
     const count = routines.filter(
-      (r) => r.date === todayStr && !r.completed
+      (r) => r.date === todayStr && !getRoutineCompletedStatus(r)
     ).length;
     if (count > 0) {
       setWeeklyStats((prev) => ({
@@ -714,14 +741,29 @@ const DailyRoutine = ({ user }) => {
       }));
     }
     setRoutines((prev) =>
-      prev.map((r) => (r.date === todayStr ? { ...r, completed: true } : r))
+      prev.map((r) => {
+        if (r.date === todayStr) {
+          if (r.repeat && r.repeat !== "none") {
+            // Tekrarlanan rutinler için completedDates'e bugünü ekle
+            const completedDates = r.completedDates || [];
+            if (!completedDates.includes(todayStr)) {
+              completedDates.push(todayStr);
+            }
+            return { ...r, completedDates };
+          } else {
+            // Tekrarlanmayan rutinler için completed'ı true yap
+            return { ...r, completed: true };
+          }
+        }
+        return r;
+      })
     );
   };
 
   const handleUnselectAll = () => {
     const todayStr = getTurkeyLocalDateString(new Date());
     const count = routines.filter(
-      (r) => r.date === todayStr && r.completed
+      (r) => r.date === todayStr && getRoutineCompletedStatus(r)
     ).length;
     if (count > 0) {
       setWeeklyStats((prev) => ({
@@ -734,7 +776,23 @@ const DailyRoutine = ({ user }) => {
       }));
     }
     setRoutines((prev) =>
-      prev.map((r) => (r.date === todayStr ? { ...r, completed: false } : r))
+      prev.map((r) => {
+        if (r.date === todayStr) {
+          if (r.repeat && r.repeat !== "none") {
+            // Tekrarlanan rutinler için completedDates'ten bugünü çıkar
+            const completedDates = r.completedDates || [];
+            const index = completedDates.indexOf(todayStr);
+            if (index > -1) {
+              completedDates.splice(index, 1);
+            }
+            return { ...r, completedDates };
+          } else {
+            // Tekrarlanmayan rutinler için completed'ı false yap
+            return { ...r, completed: false };
+          }
+        }
+        return r;
+      })
     );
   };
 

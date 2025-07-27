@@ -126,6 +126,10 @@ const MonthlyRoutines = ({
       daysInMonth.push(new Date(d));
     }
 
+    console.log("MonthlyRoutines useEffect çalıştı");
+    console.log("Toplam rutin sayısı:", routines.length);
+    console.log("Rutinler:", routines.map(r => ({ title: r.title, date: r.date, repeat: r.repeat, groupId: r.groupId })));
+
     let filtered = [];
     if (timeFilter !== "Monthly") {
       const targetDate = normalizeDate(new Date());
@@ -139,22 +143,27 @@ const MonthlyRoutines = ({
     } else {
       filtered = routines.filter((routine) => {
         if (!routine.date) return false;
-        if (!routine.repeat || routine.repeat === "none") {
+        
+        // Tekrarlanan rutinler için routineOccursOnDate kullan
+        if (routine.repeat && routine.repeat !== "none") {
+          return daysInMonth.some((day) => routineOccursOnDate(routine, day));
+        } else {
+          // Tekrarlanmayan rutinler için normal kontrol
           const routineDate = normalizeDate(new Date(routine.date));
           return (
             routineDate >= firstDay &&
             routineDate <= lastDay &&
             !routine.completed
           );
-        } else {
-          return daysInMonth.some((day) => routineOccursOnDate(routine, day));
         }
       });
     }
+    
+    console.log("Filtrelenen rutin sayısı:", filtered.length);
+    console.log("Filtrelenen rutinler:", filtered.map(r => ({ title: r.title, date: r.date, repeat: r.repeat, groupId: r.groupId })));
+    
     setFilteredRoutines(filtered);
   }, [routines, currentMonth, currentYear, timeFilter]);
-
-  const calendarRoutines = routines;
 
   const goToPreviousMonth = () => {
     const newDate = new Date(currentYear, currentMonth - 1, 1);
@@ -186,6 +195,7 @@ const MonthlyRoutines = ({
         borderRadius: "20px",
       }}
     >
+
       <Button
         size="small"
         startIcon={<CalendarToday />}
@@ -206,6 +216,7 @@ const MonthlyRoutines = ({
       >
         Takvim
       </Button>
+
       <Button
         size="small"
         startIcon={<List />}
@@ -318,7 +329,7 @@ const MonthlyRoutines = ({
           {viewMode === VIEW_MODES.CALENDAR && (
             <MonthCalendar
               key="calendar"
-              routines={calendarRoutines}
+              routines={filteredRoutines}
               currentMonth={currentMonth}
               currentYear={currentYear}
               categoryColors={categoryColors}

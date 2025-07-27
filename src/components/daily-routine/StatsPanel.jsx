@@ -88,12 +88,23 @@ const StatsPanel = ({ routines, weeklyStats, monthlyStats }) => {
   
   const todayStr = getTurkeyLocalDateString();
 
-  // Günlük başarı: bugünün tarihine sahip non-repeating rutinlerde "completed" alanına göre
+  // Tamamlanma durumunu doğru hesaplayan yardımcı fonksiyon
+  const getRoutineCompletedStatus = (routine) => {
+    if (routine.repeat && routine.repeat !== "none") {
+      // Tekrarlanan rutinler için bugünün tarihini completedDates'te kontrol et
+      return routine.completedDates && routine.completedDates.includes(todayStr);
+    } else {
+      // Tekrarlanmayan rutinler için normal completed alanını kullan
+      return routine.completed;
+    }
+  };
+
+  // Günlük başarı: bugünün tarihine sahip rutinlerde tamamlanma durumuna göre
   const dailyCompleted = routines.filter(
-    (r) => r.repeat === "none" && r.date === todayStr && r.completed
+    (r) => r.date === todayStr && getRoutineCompletedStatus(r)
   ).length;
   const dailyTotal = routines.filter(
-    (r) => r.repeat === "none" && r.date === todayStr
+    (r) => r.date === todayStr
   ).length;
 
   const statsData = [

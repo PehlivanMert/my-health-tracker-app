@@ -582,35 +582,34 @@ const DailyRoutine = ({ user }) => {
   };
 
   const handleConfirmDeleteRepeating = (deleteAll) => {
-    console.log("handleConfirmDeleteRepeating çağrıldı:", { deleteAll, routineToDelete });
     if (routineToDelete) {
-              if (deleteAll && routineToDelete.groupId) {
-          console.log("Tüm grup rutinlerini silme işlemi başlatılıyor...");
-          console.log("Grup ID:", routineToDelete.groupId);
-          
-          const routinesToDelete = routines.filter(
-            (r) => r.groupId === routineToDelete.groupId
-          );
-          
-          console.log("Silinecek grup rutinleri:", routinesToDelete);
-          console.log("Toplam rutin sayısı:", routines.length);
+      if (deleteAll && routineToDelete.groupId) {
+        // Tüm grup rutinlerini bul
+        const routinesToDelete = routines.filter(
+          (r) => r.groupId === routineToDelete.groupId
+        );
         
-        // Tekrarlı rutinler için doğru tamamlanma sayısını hesapla
+        if (routinesToDelete.length === 0) {
+          setRoutineToDelete(null);
+          setOpenDeleteRepeatingDialog(false);
+          return;
+        }
+        
+        // Tüm tamamlanan rutinleri say
         let completedCount = 0;
         routinesToDelete.forEach((r) => {
           if (r.repeat && r.repeat !== "none") {
-            // Tekrarlanan rutinler için completedDates uzunluğunu say
             if (r.completedDates && r.completedDates.length > 0) {
               completedCount += r.completedDates.length;
             }
           } else {
-            // Tekrarlanmayan rutinler için completed durumunu kontrol et
             if (r.completed) {
               completedCount += 1;
             }
           }
         });
 
+        // İstatistikleri güncelle
         if (completedCount > 0) {
           setWeeklyStats((prev) => ({
             ...prev,
@@ -622,11 +621,9 @@ const DailyRoutine = ({ user }) => {
           }));
         }
 
-        setRoutines((prev) => {
-          const newRoutines = prev.filter((r) => r.groupId !== routineToDelete.groupId);
-          console.log("Silme sonrası kalan rutin sayısı:", newRoutines.length);
-          return newRoutines;
-        });
+        // Tüm grup rutinlerini sil
+        setRoutines((prev) => prev.filter((r) => r.groupId !== routineToDelete.groupId));
+        
       } else {
         // Sadece seçilen rutini sil
         const isCompletedToday = getRoutineCompletedStatus(routineToDelete);
@@ -642,32 +639,17 @@ const DailyRoutine = ({ user }) => {
         }
         setRoutines((prev) => prev.filter((r) => r.id !== routineToDelete.id));
       }
+      
       setRoutineToDelete(null);
       setOpenDeleteRepeatingDialog(false);
     }
   };
 
   const handleConfirmDeleteAll = () => {
-    console.log("handleConfirmDeleteAll çağrıldı:", { 
-      timeFilter, 
-      routinesCount: routines.length, 
-      filteredCount: filteredRoutines.length,
-      currentYear,
-      currentMonth
-    });
-    
     // Her durumda sadece filtrelenmiş rutinleri sil
     const routinesToDelete = filteredRoutines;
     
-    console.log("Silinecek rutinler:", routinesToDelete);
-    console.log("Silinecek rutin sayısı:", routinesToDelete.length);
-    console.log("Seçili ay:", currentYear + "-" + currentMonth);
-    routinesToDelete.forEach((r, index) => {
-      console.log(`Rutin ${index + 1}:`, r.date, "Ay:", new Date(r.date).getMonth());
-    });
-    
     if (routinesToDelete.length === 0) {
-      console.log("Silinecek rutin bulunamadı!");
       setOpenDeleteFilteredDialog(false);
       return;
     }
@@ -688,8 +670,6 @@ const DailyRoutine = ({ user }) => {
       }
     });
 
-    console.log("Tamamlanan rutin sayısı:", completedCount);
-
     if (completedCount > 0) {
       setWeeklyStats((prev) => ({
         ...prev,
@@ -702,10 +682,8 @@ const DailyRoutine = ({ user }) => {
     }
 
     // Her durumda sadece filtrelenmiş rutinleri sil
-    console.log("Filtrelenmiş rutinler siliniyor...");
     setRoutines((prev) => {
       const newRoutines = prev.filter((r) => !filteredRoutines.includes(r));
-      console.log("Silme sonrası kalan rutin sayısı:", newRoutines.length);
       return newRoutines;
     });
     

@@ -139,10 +139,7 @@ const MonthlyRoutines = ({
       daysInMonth.push(new Date(d));
     }
 
-    console.log("MonthlyRoutines useEffect çalıştı");
-    console.log("Toplam rutin sayısı:", routines.length);
-    console.log("Seçili ay:", currentYear + "-" + currentMonth);
-    console.log("Rutinler:", routines.map(r => ({ title: r.title, date: r.date, repeat: r.repeat, groupId: r.groupId })));
+
 
     let filtered = [];
     if (timeFilter !== "Monthly") {
@@ -172,8 +169,7 @@ const MonthlyRoutines = ({
       });
     }
     
-    console.log("Filtrelenen rutin sayısı:", filtered.length);
-    console.log("Filtrelenen rutinler:", filtered.map(r => ({ title: r.title, date: r.date, repeat: r.repeat, groupId: r.groupId })));
+
     
     setFilteredRoutines(filtered);
   }, [routines, currentMonth, currentYear, timeFilter]);

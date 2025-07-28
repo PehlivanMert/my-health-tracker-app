@@ -401,11 +401,7 @@ const DailyRoutine = ({ user }) => {
         const filterDateStr = getTurkeyLocalDateString(filterDate);
         timeMatch = r.date === filterDateStr;
       } else if (timeFilter === "Monthly") {
-        const nowTurkey = new Date(
-          new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
-        );
-        const currentYear = nowTurkey.getFullYear();
-        const currentMonth = nowTurkey.getMonth();
+        // Aylık görünümde kullanıcının seçtiği ayı kullan
         const routineDate = new Date(r.date);
         timeMatch =
           routineDate.getFullYear() === currentYear &&
@@ -652,13 +648,23 @@ const DailyRoutine = ({ user }) => {
   };
 
   const handleConfirmDeleteAll = () => {
-    console.log("handleConfirmDeleteAll çağrıldı:", { timeFilter, routinesCount: routines.length, filteredCount: filteredRoutines.length });
+    console.log("handleConfirmDeleteAll çağrıldı:", { 
+      timeFilter, 
+      routinesCount: routines.length, 
+      filteredCount: filteredRoutines.length,
+      currentYear,
+      currentMonth
+    });
     
     // Her durumda sadece filtrelenmiş rutinleri sil
     const routinesToDelete = filteredRoutines;
     
     console.log("Silinecek rutinler:", routinesToDelete);
     console.log("Silinecek rutin sayısı:", routinesToDelete.length);
+    console.log("Seçili ay:", currentYear + "-" + currentMonth);
+    routinesToDelete.forEach((r, index) => {
+      console.log(`Rutin ${index + 1}:`, r.date, "Ay:", new Date(r.date).getMonth());
+    });
     
     if (routinesToDelete.length === 0) {
       console.log("Silinecek rutin bulunamadı!");
@@ -951,6 +957,12 @@ const DailyRoutine = ({ user }) => {
             notificationsEnabled={notificationsEnabled}
             categoryColors={categoryColors}
             timeFilter={timeFilter}
+            currentMonth={currentMonth}
+            currentYear={currentYear}
+            onMonthChange={(month, year) => {
+              setCurrentMonth(month);
+              setCurrentYear(year);
+            }}
             onDayClick={(date) => {
               setNewRoutineDate(getTurkeyLocalDateString(date));
               setEditingRoutine(null);

@@ -101,6 +101,9 @@ const MonthlyRoutines = ({
   notificationsEnabled,
   categoryColors,
   timeFilter,
+  currentMonth: parentCurrentMonth,
+  currentYear: parentCurrentYear,
+  onMonthChange,
   onDayClick,
 }) => {
   const theme = useTheme();
@@ -114,9 +117,19 @@ const MonthlyRoutines = ({
 
   const [viewMode, setViewMode] = useState(VIEW_MODES.CALENDAR);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [currentMonth, setCurrentMonth] = useState(currentDate.getMonth());
-  const [currentYear, setCurrentYear] = useState(currentDate.getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(parentCurrentMonth || currentDate.getMonth());
+  const [currentYear, setCurrentYear] = useState(parentCurrentYear || currentDate.getFullYear());
   const [filteredRoutines, setFilteredRoutines] = useState([]);
+
+    // Parent'tan gelen değerleri takip et
+  useEffect(() => {
+    if (parentCurrentMonth !== undefined && parentCurrentMonth !== currentMonth) {
+      setCurrentMonth(parentCurrentMonth);
+    }
+    if (parentCurrentYear !== undefined && parentCurrentYear !== currentYear) {
+      setCurrentYear(parentCurrentYear);
+    }
+  }, [parentCurrentMonth, parentCurrentYear, currentMonth, currentYear]);
 
   useEffect(() => {
     const firstDay = normalizeDate(new Date(currentYear, currentMonth, 1));
@@ -128,6 +141,7 @@ const MonthlyRoutines = ({
 
     console.log("MonthlyRoutines useEffect çalıştı");
     console.log("Toplam rutin sayısı:", routines.length);
+    console.log("Seçili ay:", currentYear + "-" + currentMonth);
     console.log("Rutinler:", routines.map(r => ({ title: r.title, date: r.date, repeat: r.repeat, groupId: r.groupId })));
 
     let filtered = [];
@@ -152,7 +166,7 @@ const MonthlyRoutines = ({
           const routineDate = normalizeDate(new Date(routine.date));
           return (
             routineDate >= firstDay &&
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        routineDate <= lastDay
+            routineDate <= lastDay
           );
         }
       });
@@ -166,14 +180,24 @@ const MonthlyRoutines = ({
 
   const goToPreviousMonth = () => {
     const newDate = new Date(currentYear, currentMonth - 1, 1);
-    setCurrentMonth(newDate.getMonth());
-    setCurrentYear(newDate.getFullYear());
+    const newMonth = newDate.getMonth();
+    const newYear = newDate.getFullYear();
+    setCurrentMonth(newMonth);
+    setCurrentYear(newYear);
+    if (onMonthChange) {
+      onMonthChange(newMonth, newYear);
+    }
   };
 
   const goToNextMonth = () => {
     const newDate = new Date(currentYear, currentMonth + 1, 1);
-    setCurrentMonth(newDate.getMonth());
-    setCurrentYear(newDate.getFullYear());
+    const newMonth = newDate.getMonth();
+    const newYear = newDate.getFullYear();
+    setCurrentMonth(newMonth);
+    setCurrentYear(newYear);
+    if (onMonthChange) {
+      onMonthChange(newMonth, newYear);
+    }
   };
 
   const goToCurrentMonth = () => {

@@ -206,11 +206,23 @@ const DailyRoutine = ({ user }) => {
     let updateRequired = false;
     const newReset = { ...resetData };
     
-    // Günlük sıfırlama - her gün
+    // Günlük sıfırlama - sadece daily tekrarlanan rutinler için
     if (resetData.daily !== todayStr) {
       console.log("Günlük sıfırlama yapılıyor");
       setRoutines((prev) =>
-        prev.map((r) => (r.repeat === "none" ? { ...r, completed: false } : r))
+        prev.map((r) => {
+          if (r.repeat === "daily") {
+            // Daily tekrarlanan rutinler için completedDates'ten bugünü çıkar
+            const completedDates = r.completedDates || [];
+            const todayStr = getTurkeyLocalDateString(new Date());
+            const index = completedDates.indexOf(todayStr);
+            if (index > -1) {
+              completedDates.splice(index, 1);
+            }
+            return { ...r, completedDates };
+          }
+          return r;
+        })
       );
       newReset.daily = todayStr;
       updateRequired = true;
@@ -221,9 +233,13 @@ const DailyRoutine = ({ user }) => {
       console.log("Haftalık sıfırlama yapılıyor");
       setWeeklyStats({ added: 0, completed: 0 });
       setRoutines((prev) =>
-        prev.map((r) =>
-          r.repeat === "weekly" ? { ...r, completed: false } : r
-        )
+        prev.map((r) => {
+          if (r.repeat === "weekly") {
+            // Weekly tekrarlanan rutinler için completedDates'i temizle
+            return { ...r, completedDates: [] };
+          }
+          return r;
+        })
       );
       newReset.weekly = String(currentWeek);
       updateRequired = true;
@@ -234,9 +250,13 @@ const DailyRoutine = ({ user }) => {
       console.log("Aylık sıfırlama yapılıyor");
       setMonthlyStats({ added: 0, completed: 0 });
       setRoutines((prev) =>
-        prev.map((r) =>
-          r.repeat === "monthly" ? { ...r, completed: false } : r
-        )
+        prev.map((r) => {
+          if (r.repeat === "monthly") {
+            // Monthly tekrarlanan rutinler için completedDates'i temizle
+            return { ...r, completedDates: [] };
+          }
+          return r;
+        })
       );
       newReset.monthly = currentMonthStr;
       updateRequired = true;
@@ -270,7 +290,16 @@ const DailyRoutine = ({ user }) => {
         if (docSnap.exists()) {
           let data = docSnap.data();
           // Kullanıcının mevcut rutinleri varsa onları kullan, yoksa boş dizi
-          const routinesData = data.routines || [];
+          let routinesData = data.routines || [];
+          
+          // Eski rutinlerde completedDates array'i eksikse ekle
+          routinesData = routinesData.map(routine => {
+            if (routine.repeat && routine.repeat !== "none" && !routine.completedDates) {
+              return { ...routine, completedDates: [] };
+            }
+            return routine;
+          });
+          
           const weeklyStatsData = data.weeklyStats || { added: 0, completed: 0 };
           const monthlyStatsData = data.monthlyStats || { added: 0, completed: 0 };
           
@@ -458,6 +487,7 @@ const DailyRoutine = ({ user }) => {
       icon: routineData.icon,
       notificationEnabled: false,
       completed: false,
+      completedDates: [], // Tekrarlanan rutinler için completedDates array'i ekle
       createdAt: editingRoutine
         ? editingRoutine.createdAt || new Date().toISOString()
         : new Date().toISOString(),
@@ -499,6 +529,7 @@ const DailyRoutine = ({ user }) => {
               ...r,
               ...baseRoutine,
               date: getTurkeyLocalDateString(new Date(routineData.date)),
+              completedDates: r.completedDates || [], // Mevcut completedDates'i koru
             };
           }
           return r;
@@ -870,7 +901,7 @@ const DailyRoutine = ({ user }) => {
   const today = new Date();
   const todayStr = getTurkeyLocalDateString(today);
   // Sadece tamamlanmamış rutinler hesaba katılıyor
-  const todayAndFutureActiveRoutines = routines.filter(r => r.date >= todayStr && !r.completed);
+  const todayAndFutureActiveRoutines = routines.filter(r => r.date >= todayStr && !getRoutineCompletedStatus(r));
   const allNotificationsEnabled = todayAndFutureActiveRoutines.length > 0 && todayAndFutureActiveRoutines.every(r => r.notificationEnabled);
 
   const toggleAllNotifications = () => {

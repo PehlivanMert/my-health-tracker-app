@@ -27,6 +27,17 @@ const getTurkeyTime = () => {
   );
 };
 
+// Rutin tamamlanma durumunu kontrol eder
+const getRoutineCompletedStatus = (routine, currentDateStr) => {
+  if (routine.repeat && routine.repeat !== "none") {
+    // Tekrarlanan rutinler için completedDates array'ini kontrol et
+    return routine.completedDates && routine.completedDates.includes(currentDateStr);
+  } else {
+    // Tekrarlanmayan rutinler için normal completed alanını kullan
+    return routine.completed;
+  }
+};
+
 // Cache TTL: 10 dakika (600.000 ms)
 const CACHE_TTL = 600000;
 
@@ -322,13 +333,16 @@ exports.handler = async (event, context) => {
           const currentDateStr = turkeyTime.toISOString().split("T")[0];
 
           userData.routines.forEach((routine) => {
+            // Rutin tamamlanma durumunu kontrol et
+            const isCompleted = getRoutineCompletedStatus(routine, currentDateStr);
+            
             // Eğer bildirimler kapalıysa, rutin tamamlanmışsa veya rutinin tarihi bugünün tarihi değilse bildirim gönderme.
             if (
               !routine.notificationEnabled ||
-              routine.completed ||
+              isCompleted ||
               routine.date !== currentDateStr
             ) {
-              console.log(`⏭️ [${userDoc.id}] Rutin "${routine.title}" atlanıyor (bildirim: ${routine.notificationEnabled}, tamamlandı: ${routine.completed}, tarih: ${routine.date})`);
+              console.log(`⏭️ [${userDoc.id}] Rutin "${routine.title}" atlanıyor (bildirim: ${routine.notificationEnabled}, tamamlandı: ${isCompleted}, tarih: ${routine.date})`);
               return;
             }
 

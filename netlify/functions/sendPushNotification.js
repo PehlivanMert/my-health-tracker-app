@@ -748,34 +748,46 @@ exports.handler = async (event, context) => {
           if (isSummaryTime) {
             console.log(`✅ [${userDoc.id}] GÜN SONU TAKVİYE ÖZET ZAMANI (${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')})`);
             
-            // Gün sonu özeti bildirimleri - tüm takviyeler için
-            if (suppSnapshot && suppSnapshot.forEach) {
-              const docSnaps = suppSnapshot.docs ? suppSnapshot.docs : Array.from(suppSnapshot);
-              let hasIncompleteSupplements = false;
-              let incompleteSupplements = [];
-              
-              for (const docSnap of docSnaps) {
-                const suppData = docSnap.data();
-                if (suppData.quantity > 0 && suppData.dailyUsage > 0) {
-                  const suppName = suppData.name || 'Bilinmeyen Takviye';
-                  const dailyUsage = suppData.dailyUsage || 1;
-                  const consumedToday = supplementConsumptionToday[suppName] || 0;
+            // Önce takviye var mı kontrol et
+            if (!suppSnapshot || suppSnapshot.size === 0) {
+              console.log(`✅ [${userDoc.id}] Hiç takviye yok, gün sonu özeti atlanıyor`);
+            } else {
+              // Gün sonu özeti bildirimleri - tüm takviyeler için
+              if (suppSnapshot && suppSnapshot.forEach) {
+                const docSnaps = suppSnapshot.docs ? suppSnapshot.docs : Array.from(suppSnapshot);
+                
+                // Aktif takviyeleri filtrele
+                const activeSupplements = docSnaps.filter(docSnap => {
+                  const suppData = docSnap.data();
+                  return suppData.quantity > 0 && suppData.dailyUsage > 0;
+                });
+                
+                if (activeSupplements.length === 0) {
+                  console.log(`✅ [${userDoc.id}] Aktif takviye yok, gün sonu özeti atlanıyor`);
+                } else {
+                  let hasIncompleteSupplements = false;
+                  let incompleteSupplements = [];
                   
-                  if (consumedToday < dailyUsage) {
-                    hasIncompleteSupplements = true;
-                    incompleteSupplements.push({
-                      name: suppName,
-                      consumed: consumedToday,
-                      daily: dailyUsage
-                    });
+                  for (const docSnap of activeSupplements) {
+                    const suppData = docSnap.data();
+                    const suppName = suppData.name || 'Bilinmeyen Takviye';
+                    const dailyUsage = suppData.dailyUsage || 1;
+                    const consumedToday = supplementConsumptionToday[suppName] || 0;
+                    
+                    if (consumedToday < dailyUsage) {
+                      hasIncompleteSupplements = true;
+                      incompleteSupplements.push({
+                        name: suppName,
+                        consumed: consumedToday,
+                        daily: dailyUsage
+                      });
+                    }
                   }
-                }
-              }
-              
-                              // Gün sonu özeti bildirimi gönder
-                const summaryTimeStr = `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}`;
-              
-              if (hasIncompleteSupplements) {
+                  
+                  // Gün sonu özeti bildirimi gönder
+                  const summaryTimeStr = `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}`;
+                  
+                  if (hasIncompleteSupplements) {
                 console.log(`✅ [${userDoc.id}] GÜN SONU TAKVİYE ÖZET (${summaryTimeStr}): ${incompleteSupplements.length} takviye tamamlanmadı`);
                 
                 const incompleteList = incompleteSupplements.map(s => `${s.name} (${s.consumed}/${s.daily})`).join(', ');
@@ -870,8 +882,9 @@ exports.handler = async (event, context) => {
               }
             }
           }
+        }
 
-          if (suppSnapshot && suppSnapshot.forEach) {
+        if (suppSnapshot && suppSnapshot.forEach) {
             const docSnaps = suppSnapshot.docs ? suppSnapshot.docs : Array.from(suppSnapshot);
             console.log(`💊 [${userDoc.id}] ${docSnaps.length} takviye kontrol ediliyor`);
             
@@ -1050,6 +1063,7 @@ exports.handler = async (event, context) => {
           } else {
             console.log(`💊 [${userDoc.id}] Takviye verisi bulunamadı`);
           }
+        }
         } else {
           if (!isWithinNotificationWindow) {
             console.log(`💊 [${userDoc.id}] Takviye bildirimleri atlanıyor (bildirim penceresi dışında)`);

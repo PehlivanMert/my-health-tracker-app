@@ -188,6 +188,17 @@ const CalendarComponent = ({ user }) => {
     galaksi: "#8A2BE2",
     aurora: "#00FF00",
     neonRüya: "#FF1177",
+    // Yeni eklenen 10 renk
+    mercan: "#FF6B6B",
+    turkuaz: "#40E0D0",
+    altın: "#FFD700",
+    pembe: "#FFC0CB",
+    mor: "#9370DB",
+    turuncu: "#FFA500",
+    yeşil: "#32CD32",
+    kırmızı: "#DC143C",
+    mavi: "#4169E1",
+    gümüş: "#C0C0C0",
   };
 
   const [events, setEvents] = useState([]);
@@ -590,7 +601,7 @@ const CalendarComponent = ({ user }) => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose}>İptal</Button>
+          <Button onClick={onClose} sx={{ color: "#fff" }}>İptal</Button>
           <Button
             onClick={() => onSave(type, until)}
             variant="contained"
@@ -1315,6 +1326,7 @@ const EventDialog = ({
           <Button 
             onClick={onClose}
             sx={{ 
+              color: "#fff",
               fontSize: { xs: "0.8rem", md: "inherit" },
               width: { xs: "100%", sm: "auto" }
             }}

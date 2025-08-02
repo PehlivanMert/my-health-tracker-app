@@ -753,7 +753,7 @@ exports.handler = async (event, context) => {
             windowEndTotal,
             summaryTimeTotal,
             summaryTimeStr: `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}`,
-            nowTotal,
+            nowTotal,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
             isWindowStart,
             isSummaryTime
           });

@@ -228,10 +228,10 @@ const MonthlyRoutineItem = ({
               onClick={() => onToggleNotification(routine.id)}
               size="small"
               sx={{
-                color: notificationsEnabled[routine.id] ? "#FFA726" : "#fff",
+                color: routine.notificationEnabled ? "#FFA726" : "#fff",
               }}
             >
-              {notificationsEnabled[routine.id] ? (
+              {routine.notificationEnabled ? (
                 <NotificationsActive fontSize="small" />
               ) : (
                 <NotificationsOff fontSize="small" />
@@ -240,7 +240,7 @@ const MonthlyRoutineItem = ({
           </Tooltip>
           <Tooltip title="Sil">
             <IconButton
-              onClick={() => onDelete(routine.id)}
+              onClick={() => onDelete(routine)}
               size="small"
               sx={{ color: "#FF5252" }}
             >

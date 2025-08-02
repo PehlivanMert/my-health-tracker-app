@@ -254,7 +254,11 @@ const MonthCalendar = ({
               }}
             >
                             <Box sx={{ position: "relative", width: "100%" }}>
-                {cell.routines.slice(0, isMobile ? 2 : 3).map((routine, routineIndex) => {
+                {routines.filter(routine => {
+                  if (!routine.date) return false;
+                  const routineDate = normalizeDate(new Date(routine.date));
+                  return isSameDay(routineDate, cell.date);
+                }).slice(0, isMobile ? 2 : 3).map((routine, routineIndex) => {
                   const isCompleted = getRoutineCompletedStatus(routine, cell.date);
                   
                   return (
@@ -296,7 +300,7 @@ const MonthCalendar = ({
                           size="small"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onCheck && onCheck(routine, !isCompleted);
+                            onCheck && onCheck(routine.id);
                           }}
                           sx={{
                             padding: 0,
@@ -333,9 +337,15 @@ const MonthCalendar = ({
                 })}
                 
                 {/* Daha fazla rutin varsa badge göster */}
-                {cell.routines.length > (isMobile ? 2 : 3) && (
-                  <Badge
-                    badgeContent={cell.routines.length - (isMobile ? 2 : 3)}
+                {(() => {
+                  const dayRoutines = routines.filter(routine => {
+                    if (!routine.date) return false;
+                    const routineDate = normalizeDate(new Date(routine.date));
+                    return isSameDay(routineDate, cell.date);
+                  });
+                  return dayRoutines.length > (isMobile ? 2 : 3) && (
+                    <Badge
+                      badgeContent={dayRoutines.length - (isMobile ? 2 : 3)}
                     color="primary"
                     sx={{
                       position: "absolute",
@@ -357,7 +367,8 @@ const MonthCalendar = ({
                       }}
                     />
                   </Badge>
-                )}
+                );
+                })()}
               </Box>
               
 
@@ -425,11 +436,19 @@ const MonthCalendar = ({
                 }}
               >
                 <Schedule fontSize="small" />
-                {selectedCell.routines.length} rutin
+                {routines.filter(routine => {
+                  if (!routine.date) return false;
+                  const routineDate = normalizeDate(new Date(routine.date));
+                  return isSameDay(routineDate, selectedCell.date);
+                }).length} rutin
               </Typography>
               
               <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                {selectedCell.routines.map((routine, index) => {
+                {routines.filter(routine => {
+                  if (!routine.date) return false;
+                  const routineDate = normalizeDate(new Date(routine.date));
+                  return isSameDay(routineDate, selectedCell.date);
+                }).map((routine, index) => {
                   const isCompleted = getRoutineCompletedStatus(routine, selectedCell.date);
                   
                   return (
@@ -463,7 +482,7 @@ const MonthCalendar = ({
                           <IconButton
                             onClick={(e) => {
                               e.stopPropagation();
-                              onCheck && onCheck(routine, !isCompleted);
+                              onCheck && onCheck(routine.id);
                             }}
                             sx={{
                               color: isCompleted ? "#2196F3" : "rgba(255, 255, 255, 0.7)",

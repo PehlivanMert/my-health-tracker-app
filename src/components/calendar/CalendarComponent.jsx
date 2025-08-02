@@ -498,6 +498,12 @@ const CalendarComponent = ({ user }) => {
       if (isStart) {
         newValue.start = dt;
         if (prev.allDay) newValue.start = newValue.start.startOf("day");
+        
+        // Başlangıç zamanı değiştiğinde bitiş zamanını da dinamik olarak güncelle
+        if (!prev.allDay && prev.end && prev.end.isValid) {
+          const duration = prev.end.diff(prev.start);
+          newValue.end = dt.plus(duration);
+        }
       } else {
         newValue.end = dt;
         if (prev.allDay) newValue.end = newValue.end.endOf("day");

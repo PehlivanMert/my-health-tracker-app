@@ -497,12 +497,19 @@ const CalendarComponent = ({ user }) => {
       const newValue = { ...prev };
       if (isStart) {
         newValue.start = dt;
-        if (prev.allDay) newValue.start = newValue.start.startOf("day");
-        
-        // Başlangıç zamanı değiştiğinde bitiş zamanını da dinamik olarak güncelle
-        if (!prev.allDay && prev.end && prev.end.isValid) {
-          const duration = prev.end.diff(prev.start);
-          newValue.end = dt.plus(duration);
+        if (prev.allDay) {
+          newValue.start = newValue.start.startOf("day");
+          // Tüm gün etkinliklerinde bitiş tarihini de güncelle
+          if (prev.end && prev.end.isValid) {
+            const duration = prev.end.diff(prev.start);
+            newValue.end = dt.plus(duration).endOf("day");
+          }
+        } else {
+          // Normal etkinliklerde hem tarih hem saat değişikliklerinde bitiş zamanını güncelle
+          if (prev.end && prev.end.isValid) {
+            const duration = prev.end.diff(prev.start);
+            newValue.end = dt.plus(duration);
+          }
         }
       } else {
         newValue.end = dt;

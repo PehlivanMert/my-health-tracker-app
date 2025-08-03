@@ -1061,7 +1061,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     
     // HEMEN EKLENDİ DURUMUNU GÖSTER
     setDrinkAdded(true);
-    setTimeout(() => setDrinkAdded(false), 3000); // 3 sn sonra eski haline dön
+    setTimeout(() => setDrinkAdded(false), 1500); // 1.5 sn sonra eski haline dön
     
     const contribution = DRINK_WATER_CONTRIBUTION[selectedDrink] || 1;
     const addedWater = Math.round(amount * contribution);

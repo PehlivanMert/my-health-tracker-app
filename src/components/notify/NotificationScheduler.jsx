@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, writeBatch } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
 
 /**
@@ -638,19 +638,19 @@ export const computeWaterReminderTimes = async (user) => {
     // Sadece günün başında (00:00'da) veya dailyWeatherAverages kaydedilmemişse çekilecek
     let dailyWeatherAverages = data.dailyWeatherAverages;
     let todayStr = now.toLocaleDateString("en-CA", { timeZone: "Europe/Istanbul" });
+    let hourlyWeatherData = data.hourlyWeatherData;
+    let weatherDataUpdated = false;
+    
     if (!dailyWeatherAverages || dailyWeatherAverages.date !== todayStr) {
       const avgWeather = await getDailyAverageWeatherData();
       if (avgWeather) {
         dailyWeatherAverages = { ...avgWeather, date: todayStr };
-        // Firestore'a kaydet
-        const waterRef = doc(db, "users", user.uid, "water", "current");
-        await setDoc(waterRef, { dailyWeatherAverages }, { merge: true });
+        weatherDataUpdated = true;
       }
     }
     
     // --- SAATLİK HAVA DURUMU VERİLERİ ---
     // Günlük ortalama hesaplaması için kullanılacak, ayrıca saatlik veriler de kaydedilecek
-    let hourlyWeatherData = data.hourlyWeatherData;
     if (!hourlyWeatherData || hourlyWeatherData.date !== todayStr) {
       // Sadece saatlik verileri al (günlük ortalama zaten dailyWeatherAverages'da var)
       const weatherData = await getDailyAverageWeatherData();
@@ -660,9 +660,19 @@ export const computeWaterReminderTimes = async (user) => {
           date: todayStr,
           hourlyData: weatherData.hourlyData 
         };
-        const waterRef = doc(db, "users", user.uid, "water", "current");
-        await setDoc(waterRef, { hourlyWeatherData }, { merge: true });
+        weatherDataUpdated = true;
       }
+    }
+    
+    // Batch operations ile optimize edilmiş weather data güncelleme
+    if (weatherDataUpdated) {
+      const waterRef = doc(db, "users", user.uid, "water", "current");
+      const batch = writeBatch(db);
+      batch.set(waterRef, { 
+        dailyWeatherAverages,
+        hourlyWeatherData 
+      }, { merge: true });
+      await batch.commit();
     }
     
     // Bildirim penceresi saatleri arasındaki ortalamaları kullan

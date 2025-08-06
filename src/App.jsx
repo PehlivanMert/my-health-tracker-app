@@ -64,21 +64,22 @@ import Exercises from "./components/exercises/exercise";
 import CalendarComponent from "./components/calendar/CalendarComponent";
 import WellnessTracker from "./components/wellnesstracker/WellnessTracker";
 import { auth, db } from "./components/auth/firebaseConfig";
-import { onAuthStateChanged, sendEmailVerification } from "firebase/auth";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { onAuthStateChanged, sendEmailVerification, signOut } from "firebase/auth";
+import { doc } from "firebase/firestore";
 import { handlePasswordReset } from "./components/auth/AuthHandlers";
 import Lottie from "lottie-react";
 import welcomeAnimation from "./assets/welcomeAnimation.json";
 import HealthDashboard from "./components/health-dashboard/HealthDashboard";
-import { computeAge } from "../src/utils/dateHelpers";
-import BirthdayCelebration from "/src/utils/BirthdayCelebration.jsx";
+import { calculateAge } from "./utils/dateHelpers";
+import BirthdayCelebration from "./utils/BirthdayCelebration.jsx";
 import { tr } from "date-fns/locale";
-import NotificationSettingsDialog from "../src/utils/NotificationSettingsDialog";
+import NotificationSettingsDialog from "./utils/NotificationSettingsDialog";
 import { GlobalStateContext } from "./components/context/GlobalStateContext";
 import { handleSaveNotificationWindow } from "./utils/notificationWindowUtils";
 import { messaging } from "./components/auth/firebaseConfig";
 import { onMessage } from "firebase/messaging";
 import OnboardingTour from "./components/onboarding/OnboardingTour";
+import { safeGetDoc, safeSetDoc, safeUpdateDoc, checkFirestoreConnection, clearFirestoreCache } from "./utils/firestoreUtils";
 
 // Animasyonlar
 const float = keyframes`
@@ -238,13 +239,14 @@ function App() {
     };
     
     detectPlatform();
-  }, []);
-
-  useEffect(() => {
+    
+    // Notification permission - sadece user varsa
     if (user) {
       requestNotificationPermissionAndSaveToken(user);
     }
   }, [user]);
+
+  // Bu useEffect kaldırıldı - platform detection useEffect'inde birleştirildi
 
   // Firebase Messaging: Foreground bildirimleri dinle
   useEffect(() => {
@@ -526,12 +528,15 @@ function App() {
     };
   }, [platform]);
 
-  // Zaman & Hava Durumu
+  // Optimize edilmiş timer - sadece gerekli olduğunda çalışır
   const [currentTime, setCurrentTime] = useState(new Date());
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+    // Sadece aktif tab'da timer çalışsın
+    if (activeTab === 0 || activeTab === 1) { // Rutin veya Su takibi tab'larında
+      const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+      return () => clearInterval(timer);
+    }
+  }, [activeTab]);
 
   // Egzersiz
   const [exercises, setExercises] = useState([]);
@@ -558,8 +563,25 @@ function App() {
     const loadUserData = async () => {
       if (!user) return;
       try {
+        // Firestore bağlantısını kontrol et
+        const isConnected = await checkFirestoreConnection();
+        if (!isConnected) {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('⚠️ Firestore bağlantısı yok, veri yükleme atlanıyor');
+          }
+          return;
+        }
+
         const userDocRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(userDocRef, { source: "server" });
+        
+        // Safe getDoc kullan
+        let docSnap = await safeGetDoc(userDocRef);
+        
+        // Eğer cache'de yoksa veya eskiyse server'dan çek
+        if (!docSnap.exists() || docSnap.metadata.fromCache) {
+          docSnap = await safeGetDoc(userDocRef, { source: "server" });
+        }
+        
         if (docSnap.exists()) {
           const data = docSnap.data();
           // Kullanıcının mevcut egzersizleri varsa onları kullan, yoksa boş dizi
@@ -584,7 +606,7 @@ function App() {
           const initialData = {
             exercises: [],
           };
-          await setDoc(userDocRef, initialData);
+          await safeSetDoc(userDocRef, initialData);
           setExercises([]);
           lastExercisesState.current = [];
           isInitialLoad.current = false;
@@ -614,7 +636,7 @@ function App() {
       const updateExercisesInFirestore = async () => {
         try {
           const userDocRef = doc(db, "users", user.uid);
-          await updateDoc(userDocRef, { exercises });
+          await safeUpdateDoc(userDocRef, { exercises });
           lastExercisesState.current = [...exercises];
         } catch (error) {
           if (process.env.NODE_ENV === 'development') {
@@ -791,7 +813,7 @@ function App() {
           }
           // Yaş hesaplama ve profile ekleme:
           if (birth) {
-            const age = computeAge(birth);
+            const age = calculateAge(birth);
             prof.age = age;
             // İsteğe bağlı: Firestore'daki profilde age alanı yoksa güncelleyin
             await updateDoc(userDocRef, { profile: { ...prof, age } });
@@ -892,7 +914,7 @@ function App() {
 
       // Yaşı hesapla ve profile ekle
       if (profileToSave.birthDate) {
-        profileToSave.age = computeAge(profileToSave.birthDate);
+        profileToSave.age = calculateAge(profileToSave.birthDate);
       }
 
       // Profil eksiksizse profileCompletionShown: true olarak kaydet
@@ -915,12 +937,24 @@ function App() {
       toast.error("Güncelleme hatası: " + error.message);
     }
   };
-  const handleSignOut = () => {
-    auth.signOut();
-    setUser(null);
-    localStorage.removeItem("currentUser");
-    localStorage.removeItem("welcomeShown");
-    setAnchorEl(null);
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      setUser(null);
+      setActiveTab(0);
+      localStorage.removeItem("activeTab");
+      
+      // Cache'i temizle
+      await clearFirestoreCache();
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log("✅ Kullanıcı başarıyla çıkış yaptı ve cache temizlendi");
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error("Çıkış hatası:", error);
+      }
+    }
   };
 
   if (!authChecked) return <div style={{ display: "none" }}></div>;

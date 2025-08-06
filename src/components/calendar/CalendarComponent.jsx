@@ -37,6 +37,8 @@ import {
   writeBatch,
   Timestamp,
   updateDoc,
+  where,
+  orderBy,
 } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
 
@@ -229,7 +231,20 @@ const CalendarComponent = ({ user }) => {
     if (!user) return;
     try {
       const eventsRef = collection(db, "users", user.uid, "calendarEvents");
-      const q = query(eventsRef);
+      
+      // Tarih aralığı belirle (3 ay öncesi ve 6 ay sonrası)
+      const now = new Date();
+      const startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+      const endDate = new Date(now.getFullYear(), now.getMonth() + 6, 31);
+      
+      // Optimize edilmiş query - sadece gerekli tarih aralığındaki etkinlikleri çek
+      const q = query(
+        eventsRef,
+        where("start", ">=", startDate),
+        where("start", "<=", endDate),
+        orderBy("start", "asc")
+      );
+      
       const snapshot = await getDocs(q);
       // fetchEvents fonksiyonundaki değişiklik
       const eventsData = snapshot.docs.map((docSnap) => {

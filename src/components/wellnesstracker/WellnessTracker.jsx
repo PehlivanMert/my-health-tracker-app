@@ -35,6 +35,8 @@ import {
   doc,
   getDoc,
   setDoc,
+  writeBatch,
+  runTransaction
 } from "firebase/firestore";
 import { db } from "../auth/firebaseConfig";
 import {
@@ -55,6 +57,7 @@ import SupplementNotificationSettingsDialog from "./SupplementNotificationSettin
 import { saveNextSupplementReminderTime } from "../notify/SupplementNotificationScheduler";
 import WaterNotificationSettingsDialog from "./WaterNotificationSettingsDialog";
 import UndoIcon from "@mui/icons-material/Undo";
+import { toast } from "react-toastify";
 
 const float = keyframes`
   0% { transform: translateY(0px); }
@@ -306,23 +309,29 @@ const WellnessTracker = ({ user }) => {
     console.log("Takviye bildirim sistemi temizleniyor...");
     }
     
-    for (const supp of supplements) {
-      const suppDocRef = doc(db, "users", user.uid, "supplements", supp.id);
-      try {
+    try {
+      // Batch operations ile optimize edilmiş temizlik
+      const batch = writeBatch(db);
+      
+      supplements.forEach(supp => {
+        const suppDocRef = doc(db, "users", user.uid, "supplements", supp.id);
         // Gereksiz alanları temizle
-        await updateDoc(suppDocRef, {
+        batch.update(suppDocRef, {
           lastNotificationTriggers: null,
           globalNotificationWindow: null,
           notificationsLastCalculated: null,
           // Sadece gerekli alanları tut
           nextSupplementReminderTime: null, // Yeniden hesaplanacak
         });
-        if (process.env.NODE_ENV === 'development') {
-        console.log(`${supp.name} için bildirim sistemi temizlendi`);
-        }
-      } catch (error) {
-        console.error(`${supp.name} temizleme hatası:`, error);
+      });
+      
+      await batch.commit();
+      
+      if (process.env.NODE_ENV === 'development') {
+      console.log(`${supplements.length} takviye için bildirim sistemi temizlendi`);
       }
+    } catch (error) {
+      console.error("Takviye temizleme hatası:", error);
     }
   };
 
@@ -386,35 +395,63 @@ const WellnessTracker = ({ user }) => {
   };
 
   const handleConsume = async (id) => {
-    const ref = getSupplementsRef();
+    const supplement = supplements.find((s) => s.id === id);
+    if (!supplement || supplement.quantity <= 0) return;
+
+    const newQuantity = supplement.quantity - 1;
+    const supplementRef = doc(db, "users", user.uid, "supplements", id);
+    const statsDocRef = doc(db, "users", user.uid, "stats", "supplementConsumption");
+    const today = new Date().toLocaleDateString("en-CA", {
+      timeZone: "Europe/Istanbul",
+    });
+
     try {
-      const supplement = supplements.find((supp) => supp.id === id);
-      const newQuantity = Math.max(0, supplement.quantity - 1);
-      const supplementRef = doc(ref, id);
-      await updateDoc(supplementRef, { quantity: newQuantity });
-      await fetchSupplements();
-      const suppName = supplement.name;
-      const today = new Date().toLocaleDateString("en-CA", {
-        timeZone: "Europe/Istanbul",
+      // Transaction ile atomik işlem
+      await runTransaction(db, async (transaction) => {
+        // Supplement dokümanını oku
+        const supplementDoc = await transaction.get(supplementRef);
+        if (!supplementDoc.exists()) {
+          throw new Error("Supplement bulunamadı");
+        }
+
+        // Stats dokümanını oku
+        const statsDoc = await transaction.get(statsDocRef);
+        const currentStats = statsDoc.exists() ? statsDoc.data() : {};
+        const todayStats = currentStats[today] || {};
+
+        // Yeni tüketim sayısını hesapla
+        const newCount = (todayStats[supplement.name] || 0) + 1;
+
+        // Supplement miktarını güncelle
+        transaction.update(supplementRef, { quantity: newQuantity });
+
+        // Stats'ı güncelle
+        const updatedStats = {
+          ...currentStats,
+          [today]: {
+            ...todayStats,
+            [supplement.name]: newCount,
+          },
+        };
+        transaction.set(statsDocRef, updatedStats);
       });
-      const statsDocRef = doc(
-        db,
-        "users",
-        user.uid,
-        "stats",
-        "supplementConsumption"
+
+      // Local state'i güncelle
+      setSupplements(prev =>
+        prev.map(s =>
+          s.id === id ? { ...s, quantity: newQuantity } : s
+        )
       );
-      const statsDocSnap = await getDoc(statsDocRef);
-      let updatedStats = statsDocSnap.exists() ? statsDocSnap.data() : {};
-      if (!updatedStats[today]) updatedStats[today] = {};
-      updatedStats[today][suppName] = (updatedStats[today][suppName] || 0) + 1;
-      updatedStats[today].total = (updatedStats[today].total || 0) + 1;
-      await setDoc(statsDocRef, updatedStats);
-      await fetchSupplementConsumptionToday();
-      // Takviye tüketildiğinde bildirim zamanını güncelleyelim (tüketim verisi güncellendikten sonra)
-      await saveNextSupplementReminderTime(user, supplement);
+
+      setSupplementConsumptionToday(prev => ({
+        ...prev,
+        [supplement.name]: (prev[supplement.name] || 0) + 1,
+      }));
+
+      toast.success(`${supplement.name} tüketildi!`);
     } catch (error) {
-      console.error("Error consuming supplement:", error);
+      console.error("Takviye tüketme hatası:", error);
+      toast.error("Takviye tüketilirken hata oluştu");
     }
   };
 
@@ -442,7 +479,12 @@ const WellnessTracker = ({ user }) => {
   const handleSaveSupplementNotifications = async (notifications) => {
     try {
       // notifications artık array formatında geliyor: [{id, notificationSchedule}, ...]
-      for (const notification of notifications) {
+      
+      // Batch operations ile optimize edilmiş güncelleme
+      const batch = writeBatch(db);
+      const validNotifications = [];
+      
+      notifications.forEach(notification => {
         const supplementRef = doc(db, "users", user.uid, "supplements", notification.id);
         
         // notificationSchedule array'ini kontrol et
@@ -454,9 +496,18 @@ const WellnessTracker = ({ user }) => {
         
         // Sadece tanımlı değerler varsa güncelle
         if (Object.keys(updateData).length > 0) {
-          await updateDoc(supplementRef, updateData);
-          
-          // Takviye verilerini al ve nextSupplementReminderTime'ı yeniden hesapla
+          batch.update(supplementRef, updateData);
+          validNotifications.push(notification);
+        }
+      });
+      
+      // Batch commit
+      if (validNotifications.length > 0) {
+        await batch.commit();
+        
+        // Takviye verilerini al ve nextSupplementReminderTime'ı yeniden hesapla
+        for (const notification of validNotifications) {
+          const supplementRef = doc(db, "users", user.uid, "supplements", notification.id);
           const supplementDoc = await getDoc(supplementRef);
           if (supplementDoc.exists()) {
             const supplementData = supplementDoc.data();
@@ -474,6 +525,7 @@ const WellnessTracker = ({ user }) => {
           }
         }
       }
+      
       // supplements listesini güncelle
       await fetchSupplements();
       setSupplementNotificationDialogOpen(false);
@@ -487,8 +539,7 @@ const WellnessTracker = ({ user }) => {
     try {
       // 1. Takviye miktarını Firestore'da 1 artır
       const supplementRef = doc(ref, supplement.id);
-      await updateDoc(supplementRef, { quantity: supplement.quantity + 1 });
-      await fetchSupplements();
+      
       // 2. supplementConsumptionToday ve Firestore'daki tüketim kaydını güncelle
       const suppName = supplement.name;
       const today = new Date().toLocaleDateString("en-CA", {
@@ -504,7 +555,14 @@ const WellnessTracker = ({ user }) => {
           delete updatedStats[today][suppName];
         }
         updatedStats[today].total = Math.max(0, (updatedStats[today].total || 1) - 1);
-        await setDoc(statsDocRef, updatedStats);
+        
+        // Batch operations ile optimize edilmiş güncelleme
+        const batch = writeBatch(db);
+        batch.update(supplementRef, { quantity: supplement.quantity + 1 });
+        batch.set(statsDocRef, updatedStats);
+        await batch.commit();
+        
+        await fetchSupplements();
         await fetchSupplementConsumptionToday();
         // Bildirim zamanını da güncelle
         await saveNextSupplementReminderTime(user, supplement);

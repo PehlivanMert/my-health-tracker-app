@@ -8,7 +8,7 @@ import {
   updateProfile, // eklenen import
 } from "firebase/auth";
 import { auth, db } from "./firebaseConfig"; // db eklenmeli
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, writeBatch } from "firebase/firestore";
 
 export const handleLogin = async (e, { loginData, setUser, setLoginData }) => {
   e.preventDefault();
@@ -64,49 +64,58 @@ export const handleRegister = async (
     const now = Date.now();
     localStorage.setItem("lastEmailSent", now);
 
-    // Firestore'da kullanıcının dokümanına "profile" adlı map alanı ekleniyor.
-    // Bu alanda age, birthDate, firstName, gender, height, lastName, profileImage, username, weight gibi alanlar yer alıyor.
-    await setDoc(
-      doc(db, "users", userCredential.user.uid),
-      {
-        profile: {
-          age: null,
-          birthDate: null, // İsteğe bağlı; henüz alınmadıysa null
-          firstName: loginData.firstName,
-          gender: "",
-          height: "",
-          lastName: loginData.lastName,
-          profileImage: "",
-          username: loginData.username,
-          weight: "",
-        },
-        // Varsayılan bildirim penceresi ayarları
-        notificationWindow: {
-          start: "08:00",
-          end: "22:00"
-        },
-        // Profil tamamlama durumu - yeni kullanıcılar için false
-        profileCompletionShown: false
+    // Batch operations kullanarak tüm verileri tek seferde kaydet
+    const batch = writeBatch(db);
+    
+    // Ana kullanıcı dokümanı
+    const userDocRef = doc(db, "users", userCredential.user.uid);
+    batch.set(userDocRef, {
+      profile: {
+        age: null,
+        birthDate: null,
+        firstName: loginData.firstName,
+        gender: "",
+        height: "",
+        lastName: loginData.lastName,
+        profileImage: "",
+        username: loginData.username,
+        weight: "",
       },
-      { merge: true }
-    );
+      notificationWindow: {
+        start: "08:00",
+        end: "22:00"
+      },
+      profileCompletionShown: false,
+      createdAt: new Date(),
+      lastLoginAt: new Date()
+    });
 
-    // Su verilerini varsayılan değerlerle başlat
-    await setDoc(
-      doc(db, "users", userCredential.user.uid, "water", "current"),
-      {
-        waterIntake: 0,
-        dailyWaterTarget: 2000,
-        glassSize: 250,
-        waterNotificationOption: "smart",
-        activityLevel: "orta",
-        notificationWindow: {
-          start: "08:00",
-          end: "22:00"
-        }
-      },
-      { merge: true }
-    );
+    // Su verileri
+    const waterDocRef = doc(db, "users", userCredential.user.uid, "water", "current");
+    batch.set(waterDocRef, {
+      waterIntake: 0,
+      dailyWaterTarget: 2000,
+      glassSize: 250,
+      waterNotificationOption: "smart",
+      activityLevel: "orta",
+      createdAt: new Date()
+    });
+
+    // API kullanım sayaçları
+    const exerciseUsageRef = doc(db, "users", userCredential.user.uid, "apiUsage", "exerciseAI");
+    batch.set(exerciseUsageRef, {
+      date: new Date().toISOString().slice(0, 10),
+      count: 0
+    });
+
+    const healthUsageRef = doc(db, "users", userCredential.user.uid, "apiUsage", "healthDashboard");
+    batch.set(healthUsageRef, {
+      date: new Date().toISOString().slice(0, 10),
+      count: 0
+    });
+
+    // Tüm işlemleri tek seferde commit et
+    await batch.commit();
 
     setUser(userCredential.user);
     toast.success("Kayıt başarılı! E-posta doğrulama gönderildi.");

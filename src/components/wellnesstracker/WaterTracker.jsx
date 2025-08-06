@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Box,
   Card,
@@ -16,7 +16,7 @@ import Confetti from "react-confetti";
 import Lottie from "lottie-react";
 import waterAnimation from "../../assets/waterAnimation.json";
 import { db } from "../auth/firebaseConfig";
-import { doc, updateDoc, getDoc, setDoc, arrayUnion, arrayRemove } from "firebase/firestore";
+import { doc, updateDoc, getDoc, setDoc, arrayUnion, arrayRemove, writeBatch } from "firebase/firestore";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import NotificationsIcon from "@mui/icons-material/Notifications";
@@ -771,7 +771,7 @@ const DRINK_OPTIONS = [
   { value: 'milkCoffee', label: 'Sütlü Kahve (Latte, Cappuccino)', icon: <LocalCafeIcon sx={{ color: '#BCAAA4' }} /> },
 ];
 
-const WaterTracker = ({ user, onWaterDataChange }) => {
+const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
   const [waterData, setWaterData] = useState({
     waterIntake: 0,
     dailyWaterTarget: 2000,
@@ -782,7 +782,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     lastResetDate: null,
     waterNotificationOption: "smart",
     customNotificationInterval: 1,
-    notificationWindow: { start: "08:00", end: "22:00" },
+
     nextWaterReminderTime: null,
     nextWaterReminderMessage: null,
     activityLevel: "orta",
@@ -855,10 +855,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         lastResetDate: data.lastResetDate || null,
         waterNotificationOption: data.waterNotificationOption || "smart",
         customNotificationInterval: data.customNotificationInterval || 1,
-        notificationWindow: data.notificationWindow || {
-          start: "08:00",
-          end: "22:00",
-        },
+
         nextWaterReminderTime: data.nextWaterReminderTime || null,
         nextWaterReminderMessage: data.nextWaterReminderMessage || null,
         activityLevel: data.activityLevel || "orta",
@@ -965,26 +962,29 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     }));
 
     try {
-      await setDoc(
-        ref,
-        {
-          waterIntake: newIntake,
-          dailyWaterTarget: waterData.dailyWaterTarget,
-          glassSize: glassSize,
-          waterNotificationOption: waterData.waterNotificationOption,
-          customNotificationInterval: waterData.customNotificationInterval,
-          activityLevel: waterData.activityLevel,
-          drinkHistory: arrayUnion({
-            type: 'water',
-            amount: glassSize,
-            contribution: 1,
-            addedWater: glassSize,
-            date: new Date().toISOString(),
-          }),
-        },
-        { merge: true }
-      );
-      setTimeout(fetchWaterData, 300);
+      // Batch operations ile optimize edilmiş yazma
+      const batch = writeBatch(db);
+      
+      const drinkHistoryEntry = {
+        type: 'water',
+        amount: glassSize,
+        contribution: 1,
+        addedWater: glassSize,
+        date: new Date().toISOString(),
+      };
+
+      batch.set(ref, {
+        waterIntake: newIntake,
+        dailyWaterTarget: waterData.dailyWaterTarget,
+        glassSize: waterData.glassSize,
+        waterNotificationOption: waterData.waterNotificationOption,
+        customNotificationInterval: waterData.customNotificationInterval,
+        activityLevel: waterData.activityLevel,
+        drinkHistory: arrayUnion(drinkHistoryEntry),
+      }, { merge: true });
+
+      await batch.commit();
+      
       const result = await scheduleWaterNotifications(user);
       setNextReminder(result.nextReminder);
     } catch (error) {
@@ -1148,10 +1148,13 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     }
   };
 
-  const fillPercentage = Math.min(
-    (waterData.waterIntake / waterData.dailyWaterTarget) * 100,
-    100
-  );
+  const waterPercentage = useMemo(() => {
+    return Math.min((waterData.waterIntake / waterData.dailyWaterTarget) * 100, 100);
+  }, [waterData.waterIntake, waterData.dailyWaterTarget]);
+
+  const isGoalAchieved = useMemo(() => {
+    return waterData.waterIntake >= waterData.dailyWaterTarget;
+  }, [waterData.waterIntake, waterData.dailyWaterTarget]);
 
   // ─── GECE YARISI RESET LOGİĞİ ─────────────────────────────
   // Bu useEffect, gün değişiminde (gece yarısı) sıfırlama işlemini tetikler.
@@ -1212,8 +1215,6 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
     waterData.dailyWaterTarget,
     waterData.customNotificationInterval,
     waterData.activityLevel,
-    waterData.notificationWindow?.start,
-    waterData.notificationWindow?.end,
   ]);
 
   // Su verisi değişikliklerini izle ve korumalı güncelleme yap
@@ -1262,14 +1263,14 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
         { merge: true }
       );
       
-      // Local state'i güncelle
+      // Local state'i güncelle - optimize edilmiş array işlemi
       setWaterData(prev => ({
         ...prev,
         waterIntake: newIntake,
         drinkHistory: prev.drinkHistory.filter(item => 
-          item.date !== drinkRecord.date || 
-          item.type !== drinkRecord.type ||
-          item.amount !== drinkRecord.amount
+          !(item.date === drinkRecord.date && 
+            item.type === drinkRecord.type && 
+            item.amount === drinkRecord.amount)
         ),
       }));
       
@@ -1286,7 +1287,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
       {showConfetti && (
         <Confetti
           recycle={false}
-          numberOfPieces={800}
+          numberOfPieces={300} // 800'den 300'e düşürüldü - performans için
           colors={[
             "#2196F3", 
             "#64B5F6", 
@@ -1300,26 +1301,15 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
             "#FFB74D"
           ]}
           drawShape={(ctx) => {
-            const shapes = ['circle', 'square', 'triangle'];
-            const shape = shapes[Math.floor(Math.random() * shapes.length)];
-            
+            // Basitleştirilmiş şekil çizimi - performans için
             ctx.beginPath();
-            if (shape === 'circle') {
-              ctx.arc(0, 0, 4, 0, 2 * Math.PI);
-            } else if (shape === 'square') {
-              ctx.rect(-3, -3, 6, 6);
-            } else if (shape === 'triangle') {
-              ctx.moveTo(0, -4);
-              ctx.lineTo(-3, 3);
-              ctx.lineTo(3, 3);
-              ctx.closePath();
-            }
+            ctx.arc(0, 0, 3, 0, 2 * Math.PI); // Sadece daire
             ctx.fill();
           }}
-          gravity={0.12}
-          wind={0.03}
-          initialVelocityY={12}
-          initialVelocityX={2}
+          gravity={0.15} // Biraz daha hızlı düşsün
+          wind={0.02}
+          initialVelocityY={10}
+          initialVelocityX={1}
           confettiSource={{
             x: window.innerWidth / 2,
             y: window.innerHeight,
@@ -1327,7 +1317,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
             h: 0,
           }}
           onConfettiComplete={() => setShowConfetti(false)}
-          tweenDuration={4000}
+          tweenDuration={3000} // 4000'den 3000'e düşürüldü
           style={{ 
             pointerEvents: "none",
             position: "fixed",
@@ -1360,7 +1350,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
       >
         Su Tüketimi
       </Typography>
-      <WaterContainer className={fillPercentage === 100 ? "goal-achieved" : ""}>
+      <WaterContainer className={waterPercentage === 100 ? "goal-achieved" : ""}>
         <Box
           sx={{
             position: "absolute",
@@ -1369,7 +1359,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
             width: "100%",
             height: "100%",
             transition: "transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
-            transform: `scaleY(${fillPercentage / 100})`,
+            transform: `scaleY(${waterPercentage / 100})`,
             transformOrigin: "bottom",
             overflow: "hidden",
           }}
@@ -1503,7 +1493,7 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
           </Box>
           <Typography variant="subtitle1" sx={{ color: "#fff", mt: 2 }}>
             Sonraki bildirim:{" "}
-            {waterData.waterIntake >= waterData.dailyWaterTarget &&
+            {isGoalAchieved &&
             waterData.waterNotificationOption !== "none"
               ? "Tebrikler hedefe ulaştınız"
               : waterData.waterNotificationOption === "none"
@@ -1824,6 +1814,6 @@ const WaterTracker = ({ user, onWaterDataChange }) => {
 </Dialog>
     </Box>
   );
-};
+});
 
 export default WaterTracker;

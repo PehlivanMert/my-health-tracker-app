@@ -12,19 +12,20 @@ export const handleSaveNotificationWindow = async (
     console.error("User bilgisi eksik!");
     return;
   }
-  const userRef = doc(db, "users", user.uid);
-  const waterRef = doc(db, "users", user.uid, "water", "current");
+  
   try {
-    // Global kullanıcı dokümanını güncelle
+    // Sadece ana kullanıcı dokümanında sakla
+    const userRef = doc(db, "users", user.uid);
     await setDoc(userRef, { notificationWindow: window }, { merge: true });
-    // Aynı ayarı water dokümanına da yansıt
-    await setDoc(waterRef, { notificationWindow: window }, { merge: true });
+    
     // Tüm supplementler için bildirim zamanlarını güncelle
     for (const supp of supplements) {
       await saveNextSupplementReminderTime(user, supp);
     }
+    
     console.log("Bildirim ayarları başarıyla güncellendi:", window);
   } catch (error) {
     console.error("Bildirim ayarları güncelleme hatası:", error);
+    throw error;
   }
 };

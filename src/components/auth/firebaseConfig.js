@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getMessaging } from "firebase/messaging";
 
@@ -17,6 +17,40 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+// Firestore persistence ayarları
+const initializeFirestore = async () => {
+  try {
+    // IndexedDB persistence'ı etkinleştir
+    await enableIndexedDbPersistence(db, {
+      synchronizeTabs: true, // Multi-tab senkronizasyonu
+    });
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ Firestore persistence başarıyla etkinleştirildi');
+    }
+  } catch (error) {
+    if (error.code === 'failed-precondition') {
+      // Multi-tab açık olduğunda bu hata oluşabilir
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ Firestore persistence: Multi-tab açık, persistence devre dışı');
+      }
+    } else if (error.code === 'unimplemented') {
+      // Browser desteklemiyor
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ Firestore persistence: Browser desteklemiyor');
+      }
+    } else {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Firestore persistence hatası:', error);
+      }
+    }
+  }
+};
+
+// Firestore'u başlat
+initializeFirestore();
+
 const storage = getStorage(app);
 const messaging = getMessaging(app);
 

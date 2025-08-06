@@ -9,12 +9,10 @@ let dbInstance = null;
  */
 const initializeDatabase = () => {
   if (!dbInstance) {
-    console.log('🔄 [dbConnection] Yeni database instance oluşturuluyor...');
+    console.log('🔄 [dbConnection] Database instance oluşturuluyor...');
     
     if (!admin.apps.length) {
-      console.log('🔄 [dbConnection] Firebase Admin SDK başlatılıyor...');
-      
-      // Environment variable kontrolü
+      // Environment variable kontrolü - Netlify'daki gerçek isimler
       if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
         console.error('❌ [dbConnection] FIREBASE_SERVICE_ACCOUNT environment variable bulunamadı!');
         throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable gerekli');
@@ -24,7 +22,7 @@ const initializeDatabase = () => {
         const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
         admin.initializeApp({
           credential: admin.credential.cert(serviceAccount),
-          databaseURL: process.env.FIREBASE_DATABASE_URL || serviceAccount.databaseURL,
+          databaseURL: process.env.FIREBASE_DATABASE_URL || `https://${process.env.VITE_FIREBASE_PROJECT_ID}.firebaseio.com`,
         });
         console.log('✅ [dbConnection] Firebase Admin SDK başlatıldı');
       } catch (error) {
@@ -43,10 +41,9 @@ const initializeDatabase = () => {
       cacheSizeBytes: admin.firestore.CACHE_SIZE_UNLIMITED
     });
     
-    console.log('✅ [dbConnection] Database instance oluşturuldu ve ayarlandı');
-    console.log('📊 [dbConnection] Connection pooling aktif');
+    console.log('✅ [dbConnection] Database instance hazır');
   } else {
-    console.log('🔄 [dbConnection] Mevcut database instance kullanılıyor (singleton)');
+    console.log('🔄 [dbConnection] Mevcut instance kullanılıyor');
   }
   return dbInstance;
 };
@@ -56,7 +53,6 @@ const initializeDatabase = () => {
  * @returns {Object} Firestore database instance
  */
 const getDatabase = () => {
-  console.log('🔄 [dbConnection] getDatabase() çağrıldı');
   return initializeDatabase();
 };
 
@@ -65,7 +61,6 @@ const getDatabase = () => {
  * @returns {Object} Firestore batch instance
  */
 const createBatch = () => {
-  console.log('🔄 [dbConnection] createBatch() çağrıldı');
   return getDatabase().batch();
 };
 
@@ -75,7 +70,6 @@ const createBatch = () => {
  * @returns {Promise} Transaction sonucu
  */
 const runTransaction = async (updateFunction) => {
-  console.log('🔄 [dbConnection] runTransaction() çağrıldı');
   return getDatabase().runTransaction(updateFunction);
 };
 
@@ -85,7 +79,6 @@ const runTransaction = async (updateFunction) => {
  * @returns {Object} Collection reference
  */
 const collection = (collectionPath) => {
-  console.log(`🔄 [dbConnection] collection(${collectionPath}) çağrıldı`);
   return getDatabase().collection(collectionPath);
 };
 
@@ -95,16 +88,13 @@ const collection = (collectionPath) => {
  * @returns {Object} Document reference
  */
 const doc = (docPath) => {
-  console.log(`🔄 [dbConnection] doc(${docPath}) çağrıldı`);
   return getDatabase().doc(docPath);
 };
 
-// Test fonksiyonu
+// Test fonksiyonu (sadece development için)
 const testConnection = () => {
-  console.log('🧪 [dbConnection] Test başlatılıyor...');
   try {
     const db = getDatabase();
-    console.log('✅ [dbConnection] Test başarılı - Database instance alındı');
     return true;
   } catch (error) {
     console.error('❌ [dbConnection] Test başarısız:', error.message);

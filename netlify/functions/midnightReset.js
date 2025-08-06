@@ -1,4 +1,4 @@
-const { getDatabase, createBatch } = require('./dbConnection');
+const { getDatabase, createBatch, admin } = require('./dbConnection');
 
 const db = getDatabase();
 
@@ -834,7 +834,7 @@ const resetWaterData = async (userId, waterData) => {
       waterIntake: 0,
       yesterdayWaterIntake: waterData.waterIntake || 0,
       lastResetDate: todayStr,
-      history: db.FieldValue.arrayUnion(newHistoryEntry),
+      history: admin.firestore.FieldValue.arrayUnion(newHistoryEntry),
       serverSideCalculated: true, // Reset sonrası server-side hesaplandığını işaretle
     });
 

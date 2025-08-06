@@ -1,4 +1,4 @@
-const { getDatabase } = require('./dbConnection');
+const { getDatabase, admin } = require('./dbConnection');
 const fetch = require("node-fetch");
 
 const db = getDatabase();

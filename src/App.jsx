@@ -745,7 +745,7 @@ function App() {
       try {
         // Firestore'dan profil tamamlama durumunu kontrol et
         const userDocRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(userDocRef);
+        const docSnap = await safeGetDoc(userDocRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
           const profileCompletionShown = data.profileCompletionShown;
@@ -797,35 +797,57 @@ function App() {
   useEffect(() => {
     if (user) {
       const fetchProfile = async () => {
-        const userDocRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(userDocRef);
-        let prof = {};
-        if (docSnap.exists() && docSnap.data().profile) {
-          prof = docSnap.data().profile;
-          // Firestore'da timestamp veya ISO formatında saklanıyorsa, Date objesine çevirin.
-          let birth;
-          if (prof.birthDate?.toDate) {
-            birth = prof.birthDate.toDate(); // 👈 Date objesi olarak sakla
-            prof.birthDate = birth; // Formatlama yapma!
-          } else if (prof.birthDate && prof.birthDate.includes("T")) {
-            birth = new Date(prof.birthDate);
-            prof.birthDate = format(birth, "yyyy-MM-dd");
+        try {
+          const userDocRef = doc(db, "users", user.uid);
+          const docSnap = await safeGetDoc(userDocRef);
+          let prof = {};
+          if (docSnap.exists() && docSnap.data().profile) {
+            prof = docSnap.data().profile;
+            // Firestore'da timestamp veya ISO formatında saklanıyorsa, Date objesine çevirin.
+            let birth;
+            if (prof.birthDate?.toDate) {
+              birth = prof.birthDate.toDate(); // 👈 Date objesi olarak sakla
+              prof.birthDate = birth; // Formatlama yapma!
+            } else if (prof.birthDate && prof.birthDate.includes("T")) {
+              birth = new Date(prof.birthDate);
+              prof.birthDate = format(birth, "yyyy-MM-dd");
+            }
+            // Yaş hesaplama ve profile ekleme:
+            if (birth) {
+              const age = calculateAge(birth);
+              prof.age = age;
+              // İsteğe bağlı: Firestore'daki profilde age alanı yoksa güncelleyin
+              await safeUpdateDoc(userDocRef, { profile: { ...prof, age } });
+            }
+            // Varsayılan değerler ve diğer alanlar:
+            prof.gender = prof.gender || "";
+            setProfileData(prof);
+            
+            // Profil tamamlama kontrolü
+            await checkAndShowProfileCompletion(prof);
+          } else {
+            // Profil verisi yoksa, varsayılan olarak ayarlayın
+            const defaultProfile = {
+              username: user.email,
+              firstName: "",
+              lastName: "",
+              profileImage: "",
+              height: "",
+              weight: "",
+              birthDate: "",
+              gender: "",
+              age: null,
+            };
+            setProfileData(defaultProfile);
+            
+            // Profil tamamlama kontrolü
+            await checkAndShowProfileCompletion(defaultProfile);
           }
-          // Yaş hesaplama ve profile ekleme:
-          if (birth) {
-            const age = calculateAge(birth);
-            prof.age = age;
-            // İsteğe bağlı: Firestore'daki profilde age alanı yoksa güncelleyin
-            await updateDoc(userDocRef, { profile: { ...prof, age } });
+        } catch (error) {
+          if (process.env.NODE_ENV === 'development') {
+            console.error("Profil yükleme hatası:", error);
           }
-          // Varsayılan değerler ve diğer alanlar:
-          prof.gender = prof.gender || "";
-          setProfileData(prof);
-          
-          // Profil tamamlama kontrolü
-          await checkAndShowProfileCompletion(prof);
-        } else {
-          // Profil verisi yoksa, varsayılan olarak ayarlayın
+          // Hata durumunda varsayılan profil
           const defaultProfile = {
             username: user.email,
             firstName: "",
@@ -838,9 +860,6 @@ function App() {
             age: null,
           };
           setProfileData(defaultProfile);
-          
-          // Profil tamamlama kontrolü
-          await checkAndShowProfileCompletion(defaultProfile);
         }
       };
 
@@ -919,14 +938,14 @@ function App() {
 
       // Profil eksiksizse profileCompletionShown: true olarak kaydet
       if (isProfileComplete(profileToSave)) {
-        await updateDoc(userDocRef, {
+        await safeUpdateDoc(userDocRef, {
           profile: profileToSave,
           profileCompletionShown: true
         });
         setOpenProfileCompletionModal(false);
         setShowOnboardingTour(true); // Profil tamamlanınca onboarding turunu aç
       } else {
-        await updateDoc(userDocRef, {
+        await safeUpdateDoc(userDocRef, {
           profile: profileToSave
         });
       }

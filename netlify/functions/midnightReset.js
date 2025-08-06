@@ -1,15 +1,6 @@
-const admin = require('firebase-admin');
+const { getDatabase, createBatch } = require('./dbConnection');
 
-if (!admin.apps.length) {
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL:
-      process.env.FIREBASE_DATABASE_URL || serviceAccount.databaseURL,
-  });
-}
-
-const db = admin.firestore();
+const db = getDatabase();
 
 // Türkiye saati için yardımcı fonksiyon (Server-side için güvenli)
 const getTurkeyTime = () => {
@@ -843,7 +834,7 @@ const resetWaterData = async (userId, waterData) => {
       waterIntake: 0,
       yesterdayWaterIntake: waterData.waterIntake || 0,
       lastResetDate: todayStr,
-      history: admin.firestore.FieldValue.arrayUnion(newHistoryEntry),
+      history: db.FieldValue.arrayUnion(newHistoryEntry),
       serverSideCalculated: true, // Reset sonrası server-side hesaplandığını işaretle
     });
 
@@ -883,11 +874,21 @@ exports.handler = async (event, context) => {
     let waterNotificationCount = 0;
     let supplementNotificationCount = 0;
 
+    // Batch operations için hazırlık
+    const batch = createBatch();
+    const userBatches = new Map(); // Her kullanıcı için ayrı batch
+
     for (const userDoc of usersSnapshot.docs) {
       const userId = userDoc.id;
       totalUsers++;
 
       try {
+        // Kullanıcı için batch oluştur
+        if (!userBatches.has(userId)) {
+          userBatches.set(userId, createBatch());
+        }
+        const userBatch = userBatches.get(userId);
+
         // Su verilerini al
         const waterDoc = await db.collection('users').doc(userId).collection('water').doc('current').get();
         const waterData = waterDoc.exists ? waterDoc.data() : null;
@@ -917,6 +918,17 @@ exports.handler = async (event, context) => {
 
       } catch (error) {
         console.error(`❌ [${userId}] Kullanıcı işleme hatası:`, error);
+      }
+    }
+
+    // Tüm batch'leri commit et
+    console.log('🔄 Batch operations commit ediliyor...');
+    for (const [userId, userBatch] of userBatches) {
+      try {
+        await userBatch.commit();
+        console.log(`✅ [${userId}] Batch operations tamamlandı`);
+      } catch (error) {
+        console.error(`❌ [${userId}] Batch commit hatası:`, error);
       }
     }
 

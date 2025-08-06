@@ -1,16 +1,7 @@
-const admin = require("firebase-admin");
+const { getDatabase } = require('./dbConnection');
 const fetch = require("node-fetch");
 
-if (!admin.apps.length) {
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL:
-      process.env.FIREBASE_DATABASE_URL || serviceAccount.databaseURL,
-  });
-}
-
-const db = admin.firestore();
+const db = getDatabase();
 
 // Takvim bildirimleri için offsetler (dakika cinsinden)
 const notificationOffsets = {

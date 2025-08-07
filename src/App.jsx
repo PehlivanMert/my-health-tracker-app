@@ -931,7 +931,9 @@ function App() {
   }, []);
 
   const handleAvatarClick = (event) => {
-    setAnchorEl(event.currentTarget);
+    if (event && event.currentTarget && event.currentTarget.offsetParent !== null) {
+      setAnchorEl(event.currentTarget);
+    }
   };
   const handleMenuClose = () => {
     setAnchorEl(null);
@@ -1057,15 +1059,7 @@ function App() {
                 background: "rgba(255, 255, 255, 0.1)",
               }}
             >
-              <UserAuth
-                isRegister={isRegister}
-                setIsRegister={setIsRegister}
-                loginData={loginData}
-                setLoginData={setLoginData}
-                setUser={setUser}
-                errors={errors}
-                setErrors={setErrors}
-              />
+              <UserAuth setUser={setUser} />
             </Box>
             <ToastContainer />
           </GlowingContainer>
@@ -1235,26 +1229,85 @@ function App() {
                   <WeatherWidget />
                 </Box>
 
-                <Avatar
-                  src={profileData.profileImage || ""}
-                  onClick={handleAvatarClick}
-                  sx={{
-                    cursor: "pointer",
-                    width: { xs: 30, sm: 40 },
-                    height: { xs: 30, sm: 40 },
-                  }}
-                />
-                <Menu
-                  anchorEl={anchorEl}
-                  open={Boolean(anchorEl)}
-                  onClose={handleMenuClose}
-                >
-                  <MenuItem onClick={handleProfileOpen}>Profil</MenuItem>
-                  <MenuItem onClick={handleNotificationSettingsOpen}>
+                <Box sx={{ position: 'relative' }}>
+                  <Avatar
+                    src={profileData.profileImage || ""}
+                    onClick={handleAvatarClick}
+                    sx={{
+                      cursor: "pointer",
+                      width: { xs: 30, sm: 40 },
+                      height: { xs: 30, sm: 40 },
+                    }}
+                  />
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl) && anchorEl !== null}
+                    onClose={handleMenuClose}
+                    anchorOrigin={{
+                      vertical: 'bottom',
+                      horizontal: 'right',
+                    }}
+                    transformOrigin={{
+                      vertical: 'top',
+                      horizontal: 'right',
+                    }}
+                    PaperProps={{
+                      sx: {
+                        background: 'linear-gradient(135deg, #2196F3 0%, #3F51B5 100%)',
+                        borderRadius: 2,
+                        boxShadow: '0 8px 32px rgba(33,150,243,0.3)',
+                        backdropFilter: 'blur(10px)',
+                        minWidth: 200,
+                        mt: 1,
+                      }
+                    }}
+                    MenuListProps={{
+                      sx: {
+                        py: 0,
+                      }
+                    }}
+                  >
+                  <MenuItem 
+                    onClick={handleProfileOpen}
+                    sx={{
+                      color: '#fff',
+                      fontWeight: 600,
+                      py: 1.5,
+                      '&:hover': {
+                        background: 'rgba(255,255,255,0.1)',
+                      }
+                    }}
+                  >
+                    Profil
+                  </MenuItem>
+                  <MenuItem 
+                    onClick={handleNotificationSettingsOpen}
+                    sx={{
+                      color: '#fff',
+                      fontWeight: 600,
+                      py: 1.5,
+                      '&:hover': {
+                        background: 'rgba(255,255,255,0.1)',
+                      }
+                    }}
+                  >
                     Bildirim Ayarları
                   </MenuItem>
-                  <MenuItem onClick={handleSignOut}>Çıkış Yap</MenuItem>
+                  <MenuItem 
+                    onClick={handleSignOut}
+                    sx={{
+                      color: '#fff',
+                      fontWeight: 600,
+                      py: 1.5,
+                      '&:hover': {
+                        background: 'rgba(255,255,255,0.1)',
+                      }
+                    }}
+                  >
+                    Çıkış Yap
+                  </MenuItem>
                 </Menu>
+                </Box>
               </Toolbar>
             </AppBar>
 

@@ -35,6 +35,9 @@ export const handleLogin = async (e, { loginData, setUser, setLoginData }) => {
       case "auth/invalid-email":
         toast.error("Geçersiz email formatı");
         break;
+      case "auth/invalid-credential":
+        toast.error("Geçersiz email veya şifre");
+        break;
       default:
         toast.error("Giriş işlemi başarısız oldu");
     }

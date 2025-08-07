@@ -817,7 +817,11 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
 
   // For mobile/tablet menu
   const [anchorEl, setAnchorEl] = useState(null);
-  const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
+  const handleMenuOpen = (event) => {
+    if (event && event.currentTarget) {
+      setAnchorEl(event.currentTarget);
+    }
+  };
   const handleMenuClose = () => setAnchorEl(null);
   const handleStandardGlassSelect = (size) => {
     setLocalGlassSize(String(size));
@@ -1582,18 +1586,29 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
               <IconButton onClick={handleMenuOpen} sx={{ ml: 1, color: "#21CBF3", width: 36, height: 36 }}>
                 <MoreVertIcon />
               </IconButton>
-              <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}
-  PaperProps={{
-    sx: {
-      background: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)',
-      borderRadius: 3,
-      boxShadow: '0 8px 32px rgba(33,150,243,0.18)',
-      backdropFilter: 'blur(10px)',
-      p: 1,
-      minWidth: 180,
-    }
-  }}
->
+              <Menu 
+                anchorEl={anchorEl} 
+                open={Boolean(anchorEl)} 
+                onClose={handleMenuClose}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'right',
+                }}
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}
+                PaperProps={{
+                  sx: {
+                    background: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)',
+                    borderRadius: 3,
+                    boxShadow: '0 8px 32px rgba(33,150,243,0.18)',
+                    backdropFilter: 'blur(10px)',
+                    p: 1,
+                    minWidth: 180,
+                  }
+                }}
+              >
   {STANDARD_GLASS_SIZES.map((glass) => (
     <MenuItem
       key={glass.value}

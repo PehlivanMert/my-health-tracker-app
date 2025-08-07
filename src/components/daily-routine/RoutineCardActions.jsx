@@ -81,7 +81,9 @@ const RoutineCardActions = ({
   const [anchorEl, setAnchorEl] = React.useState(null);
   const open = Boolean(anchorEl);
   const handleMenuOpen = (event) => {
-    setAnchorEl(event.currentTarget);
+    if (event && event.currentTarget) {
+      setAnchorEl(event.currentTarget);
+    }
   };
   const handleMenuClose = () => {
     setAnchorEl(null);
@@ -93,7 +95,19 @@ const RoutineCardActions = ({
         <IconButton onClick={handleMenuOpen} size="small">
           <MoreVertIcon />
         </IconButton>
-        <Menu anchorEl={anchorEl} open={open} onClose={handleMenuClose}>
+        <Menu 
+          anchorEl={anchorEl} 
+          open={open} 
+          onClose={handleMenuClose}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+        >
           <MenuItem onClick={() => { handleMenuClose(); onEdit(routine); }}>
             <ListItemIcon><Edit fontSize="small" /></ListItemIcon>
             <ListItemText primary="Düzenle" />

@@ -134,7 +134,7 @@ const GlowingTextField = styled(TextField, {
     background: "rgba(255, 255, 255, 0.09)",
     backdropFilter: "blur(5px)",
     WebkitBackdropFilter: "blur(5px)",
-    color: "#ffffff",
+    color: "#2196F3",
     transition: "all 0.3s ease",
     "& fieldset": {
       borderColor: "rgba(255, 255, 255, 0.15)",
@@ -151,18 +151,18 @@ const GlowingTextField = styled(TextField, {
     },
     "& input:-webkit-autofill": {
       WebkitBoxShadow: `0 0 0 100px rgba(255, 255, 255, 0.09) inset`,
-      WebkitTextFillColor: "#ffffff",
+      WebkitTextFillColor: "#2196F3",
       transition: "background-color 5000s ease-in-out 0s",
     },
   },
   "& .MuiInputLabel-root": {
-    color: "rgba(255, 255, 255, 0.7)",
+    color: "#2196F3",
   },
   "& .MuiInputLabel-root.Mui-focused": {
     color: $focusColor,
   },
   "& .MuiInputAdornment-root": {
-    color: "rgba(255, 255, 255, 0.5)",
+    color: "#2196F3",
   },
 }));
 
@@ -449,7 +449,7 @@ const UserAuth = ({ setUser }) => {
           </motion.div>
           <Typography
             variant="body1"
-            sx={{ color: "rgba(255, 255, 255, 0.7)", marginBottom: 4 }}
+            sx={{ color: "#2196F3", marginBottom: 4, fontWeight: 500 }}
           >
             {isResetting
               ? "E-posta adresinizi girin"
@@ -483,7 +483,7 @@ const UserAuth = ({ setUser }) => {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <Email sx={{ color: "rgba(255, 255, 255, 0.5)" }} />
+                      <Email sx={{ color: "#2196F3" }} />
                     </InputAdornment>
                   ),
                 }}
@@ -514,7 +514,7 @@ const UserAuth = ({ setUser }) => {
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <Lock sx={{ color: "rgba(255, 255, 255, 0.5)" }} />
+                          <Lock sx={{ color: "#2196F3" }} />
                         </InputAdornment>
                       ),
                       endAdornment: (
@@ -523,7 +523,7 @@ const UserAuth = ({ setUser }) => {
                             aria-label="toggle password visibility"
                             onClick={() => setShowPassword(!showPassword)}
                             edge="end"
-                            sx={{ color: "rgba(255, 255, 255, 0.5)" }}
+                            sx={{ color: "#2196F3" }}
                           >
                             {showPassword ? <VisibilityOff /> : <Visibility />}
                           </IconButton>
@@ -561,7 +561,7 @@ const UserAuth = ({ setUser }) => {
                           startAdornment: (
                             <InputAdornment position="start">
                               <Lock
-                                sx={{ color: "rgba(255, 255, 255, 0.5)" }}
+                                sx={{ color: "#2196F3" }}
                               />
                             </InputAdornment>
                           ),
@@ -594,7 +594,7 @@ const UserAuth = ({ setUser }) => {
                           startAdornment: (
                             <InputAdornment position="start">
                               <Person
-                                sx={{ color: "rgba(255, 255, 255, 0.5)" }}
+                                sx={{ color: "#2196F3" }}
                               />
                             </InputAdornment>
                           ),
@@ -627,7 +627,7 @@ const UserAuth = ({ setUser }) => {
                           startAdornment: (
                             <InputAdornment position="start">
                               <Person
-                                sx={{ color: "rgba(255, 255, 255, 0.5)" }}
+                                sx={{ color: "#2196F3" }}
                               />
                             </InputAdornment>
                           ),

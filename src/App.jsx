@@ -749,6 +749,7 @@ function App() {
     weight: "",
     birthDate: "",
     gender: "",
+    age: null,
   });
   const [showWelcome, setShowWelcome] = useState(false);
   const [showOnboardingTour, setShowOnboardingTour] = useState(false);
@@ -839,6 +840,9 @@ function App() {
           let prof = {};
           if (profileData && profileData.profile) {
             prof = profileData.profile;
+            if (process.env.NODE_ENV === 'development') {
+              console.log("Profil verisi yüklendi:", prof);
+            }
             // Firestore'da timestamp veya ISO formatında saklanıyorsa, Date objesine çevirin.
             let birth;
             if (prof.birthDate?.toDate) {
@@ -857,6 +861,7 @@ function App() {
             }
             // Varsayılan değerler ve diğer alanlar:
             prof.gender = prof.gender || "";
+            prof.username = prof.username || user.email;
             setProfileData(prof);
             
             // Profil tamamlama kontrolü
@@ -939,6 +944,9 @@ function App() {
     setAnchorEl(null);
   };
   const handleProfileOpen = () => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log("Profil modalı açılıyor, mevcut profil verisi:", profileData);
+    }
     setOpenProfileModal(true);
     setAnchorEl(null);
   };
@@ -1239,74 +1247,76 @@ function App() {
                       height: { xs: 30, sm: 40 },
                     }}
                   />
-                  <Menu
-                    anchorEl={anchorEl}
-                    open={Boolean(anchorEl) && anchorEl !== null}
-                    onClose={handleMenuClose}
-                    anchorOrigin={{
-                      vertical: 'bottom',
-                      horizontal: 'right',
-                    }}
-                    transformOrigin={{
-                      vertical: 'top',
-                      horizontal: 'right',
-                    }}
-                    PaperProps={{
-                      sx: {
-                        background: 'linear-gradient(135deg, #2196F3 0%, #3F51B5 100%)',
-                        borderRadius: 2,
-                        boxShadow: '0 8px 32px rgba(33,150,243,0.3)',
-                        backdropFilter: 'blur(10px)',
-                        minWidth: 200,
-                        mt: 1,
-                      }
-                    }}
-                    MenuListProps={{
-                      sx: {
-                        py: 0,
-                      }
-                    }}
-                  >
-                  <MenuItem 
-                    onClick={handleProfileOpen}
-                    sx={{
-                      color: '#fff',
-                      fontWeight: 600,
-                      py: 1.5,
-                      '&:hover': {
-                        background: 'rgba(255,255,255,0.1)',
-                      }
-                    }}
-                  >
-                    Profil
-                  </MenuItem>
-                  <MenuItem 
-                    onClick={handleNotificationSettingsOpen}
-                    sx={{
-                      color: '#fff',
-                      fontWeight: 600,
-                      py: 1.5,
-                      '&:hover': {
-                        background: 'rgba(255,255,255,0.1)',
-                      }
-                    }}
-                  >
-                    Bildirim Ayarları
-                  </MenuItem>
-                  <MenuItem 
-                    onClick={handleSignOut}
-                    sx={{
-                      color: '#fff',
-                      fontWeight: 600,
-                      py: 1.5,
-                      '&:hover': {
-                        background: 'rgba(255,255,255,0.1)',
-                      }
-                    }}
-                  >
-                    Çıkış Yap
-                  </MenuItem>
-                </Menu>
+                  {anchorEl && (
+                    <Menu
+                      anchorEl={anchorEl}
+                      open={Boolean(anchorEl)}
+                      onClose={handleMenuClose}
+                      anchorOrigin={{
+                        vertical: 'bottom',
+                        horizontal: 'right',
+                      }}
+                      transformOrigin={{
+                        vertical: 'top',
+                        horizontal: 'right',
+                      }}
+                      PaperProps={{
+                        sx: {
+                          background: 'linear-gradient(135deg, #2196F3 0%, #3F51B5 100%)',
+                          borderRadius: 2,
+                          boxShadow: '0 8px 32px rgba(33,150,243,0.3)',
+                          backdropFilter: 'blur(10px)',
+                          minWidth: 200,
+                          mt: 1,
+                        }
+                      }}
+                      MenuListProps={{
+                        sx: {
+                          py: 0,
+                        }
+                      }}
+                    >
+                    <MenuItem 
+                      onClick={handleProfileOpen}
+                      sx={{
+                        color: '#fff',
+                        fontWeight: 600,
+                        py: 1.5,
+                        '&:hover': {
+                          background: 'rgba(255,255,255,0.1)',
+                        }
+                      }}
+                    >
+                      Profil
+                    </MenuItem>
+                    <MenuItem 
+                      onClick={handleNotificationSettingsOpen}
+                      sx={{
+                        color: '#fff',
+                        fontWeight: 600,
+                        py: 1.5,
+                        '&:hover': {
+                          background: 'rgba(255,255,255,0.1)',
+                        }
+                      }}
+                    >
+                      Bildirim Ayarları
+                    </MenuItem>
+                    <MenuItem 
+                      onClick={handleSignOut}
+                      sx={{
+                        color: '#fff',
+                        fontWeight: 600,
+                        py: 1.5,
+                        '&:hover': {
+                          background: 'rgba(255,255,255,0.1)',
+                        }
+                      }}
+                    >
+                      Çıkış Yap
+                    </MenuItem>
+                  </Menu>
+                  )}
                 </Box>
               </Toolbar>
             </AppBar>

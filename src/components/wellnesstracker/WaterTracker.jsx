@@ -831,8 +831,24 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
     const todayStr = getTurkeyTime().toLocaleDateString("en-CA", {
       timeZone: "Europe/Istanbul",
     });
+    
     // Eğer lastResetDate yoksa veya bugünden farklıysa reset yap
     if (!data.lastResetDate || data.lastResetDate !== todayStr) {
+      // PWA cache kontrolü - eğer veri çok eskiyse (24 saatten fazla) reset yapma
+      const lastUpdate = data.lastUpdate ? new Date(data.lastUpdate) : null;
+      const now = new Date();
+      const hoursSinceLastUpdate = lastUpdate ? (now - lastUpdate) / (1000 * 60 * 60) : 0;
+      
+      if (hoursSinceLastUpdate > 24) {
+        console.warn("PWA Cache problemi tespit edildi - Reset atlanıyor");
+        // Sadece lastUpdate'i güncelle, reset yapma
+        const ref = getWaterDocRef();
+        await updateDoc(ref, {
+          lastUpdate: new Date().toISOString()
+        });
+        return;
+      }
+      
       // NOT: Burada state'deki waterData yerine, Firestore'dan çekilen data (en güncel veri) kullanılıyor.
       await resetDailyWaterIntake(getWaterDocRef, data, fetchWaterData, user);
     }
@@ -853,6 +869,7 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
         drinkHistory: data.drinkHistory || [],
         yesterdayWaterIntake: data.yesterdayWaterIntake || 0,
         lastResetDate: data.lastResetDate || null,
+        lastUpdate: data.lastUpdate || null,
         waterNotificationOption: data.waterNotificationOption || "smart",
         customNotificationInterval: data.customNotificationInterval || 1,
 
@@ -892,6 +909,7 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
         drinkHistory: [],
         yesterdayWaterIntake: 0,
         lastResetDate: null,
+        lastUpdate: new Date().toISOString(),
         waterNotificationOption: "smart",
         customNotificationInterval: 1,
         notificationWindow: { start: "08:00", end: "22:00" },
@@ -981,6 +999,7 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
         customNotificationInterval: waterData.customNotificationInterval,
         activityLevel: waterData.activityLevel,
         drinkHistory: arrayUnion(drinkHistoryEntry),
+        lastUpdate: new Date().toISOString(),
       }, { merge: true });
 
       await batch.commit();

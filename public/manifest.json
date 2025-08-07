@@ -32,5 +32,6 @@
   },
   "launch_handler": {
     "client_mode": "navigate-existing"
-  }
+  },
+  "version": "2.0.0"
 }

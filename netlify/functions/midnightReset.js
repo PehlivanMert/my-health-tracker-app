@@ -2,6 +2,15 @@ const { getDatabase, createBatch, admin } = require('./dbConnection');
 
 const db = getDatabase();
 
+// Cache TTL: 10 dakika (600.000 ms)
+const CACHE_TTL = 600000;
+
+// Global cache değişkenleri
+let cachedUsers = null;
+let cachedUsersTimestamp = 0;
+const userDataCache = {};
+const weatherCache = {};
+
 // Türkiye saati için yardımcı fonksiyon (Server-side için güvenli)
 const getTurkeyTime = () => {
   const now = new Date();
@@ -41,10 +50,40 @@ const calculateDailyWaterTarget = (bmr, multiplier = 1.4) => {
   return dailyWaterTarget;
 };
 
+// Cache'lenmiş kullanıcıları alır
+const getCachedUsers = async () => {
+  const nowMillis = Date.now();
+  if (cachedUsers && nowMillis - cachedUsersTimestamp < CACHE_TTL) {
+    console.log("Kullanıcılar cache'den alınıyor.");
+    return cachedUsers;
+  }
+  console.log("Kullanıcılar Firestore'dan çekiliyor.");
+  const snapshot = await db.collection("users").get();
+  cachedUsers = snapshot.docs;
+  cachedUsersTimestamp = nowMillis;
+  return cachedUsers;
+};
+
+// Cache'lenmiş kullanıcı verilerini alır
+const getCachedUserData = async (userId) => {
+  const nowMillis = Date.now();
+  if (
+    userDataCache[userId] &&
+    nowMillis - userDataCache[userId].timestamp < CACHE_TTL
+  ) {
+    console.log(`Kullanıcı verileri cache'den alınıyor (user: ${userId}).`);
+    return userDataCache[userId].data;
+  }
+  console.log(`Kullanıcı verileri Firestore'dan çekiliyor (user: ${userId}).`);
+  const userDoc = await db.collection('users').doc(userId).get();
+  userDataCache[userId] = { data: userDoc, timestamp: nowMillis };
+  return userDoc;
+};
+
 // Global bildirim penceresi alma (SupplementNotificationScheduler.js ile birebir aynı)
 const getGlobalNotificationWindow = async (userId) => {
   try {
-    const userDoc = await db.collection('users').doc(userId).get();
+    const userDoc = await getCachedUserData(userId);
     if (userDoc.exists) {
       const data = userDoc.data();
       if (data.notificationWindow) {
@@ -834,6 +873,7 @@ const resetWaterData = async (userId, waterData) => {
       waterIntake: 0,
       yesterdayWaterIntake: waterData.waterIntake || 0,
       lastResetDate: todayStr,
+      lastUpdate: new Date().toISOString(),
       history: admin.firestore.FieldValue.arrayUnion(newHistoryEntry),
       serverSideCalculated: true, // Reset sonrası server-side hesaplandığını işaretle
     });
@@ -867,8 +907,8 @@ exports.handler = async (event, context) => {
   try {
     console.log('🌙 Gece yarısı sıfırlama ve bildirim hesaplama başlatılıyor...');
     
-    // Tüm kullanıcıları al
-    const usersSnapshot = await db.collection('users').get();
+    // Tüm kullanıcıları al (cache ile)
+    const usersSnapshot = await getCachedUsers();
     let totalUsers = 0;
     let waterResetCount = 0;
     let waterNotificationCount = 0;

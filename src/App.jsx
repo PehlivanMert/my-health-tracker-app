@@ -80,6 +80,7 @@ import { messaging } from "./components/auth/firebaseConfig";
 import { onMessage } from "firebase/messaging";
 import OnboardingTour from "./components/onboarding/OnboardingTour";
 import { safeGetDoc, safeSetDoc, safeUpdateDoc, checkFirestoreConnection, clearFirestoreCache } from "./utils/firestoreUtils";
+import { cacheManager, cachedFirestoreGet, invalidateUserCache, clearPWACache, debugCache } from "./utils/cacheUtils";
 
 // Animasyonlar
 const float = keyframes`
@@ -563,6 +564,14 @@ function App() {
     const loadUserData = async () => {
       if (!user) return;
       try {
+        // Kullanıcının email doğrulamasını kontrol et
+        if (!user.emailVerified) {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('⚠️ Email doğrulanmamış, veri yükleme atlanıyor');
+          }
+          return;
+        }
+
         // Firestore bağlantısını kontrol et
         const isConnected = await checkFirestoreConnection();
         if (!isConnected) {
@@ -574,28 +583,41 @@ function App() {
 
         const userDocRef = doc(db, "users", user.uid);
         
-        // Safe getDoc kullan
-        let docSnap = await safeGetDoc(userDocRef);
+        // Cache'den egzersiz verilerini al
+        const cacheKey = `user_exercises_${user.uid}`;
+        let exercisesData = null;
         
-        // Eğer cache'de yoksa veya eskiyse server'dan çek
-        if (!docSnap.exists() || docSnap.metadata.fromCache) {
-          docSnap = await safeGetDoc(userDocRef, { source: "server" });
+        try {
+          exercisesData = await cachedFirestoreGet(
+            cacheKey,
+            async () => {
+              const docSnap = await safeGetDoc(userDocRef);
+              return docSnap.exists() ? docSnap.data() : null;
+            },
+            5 * 60 * 1000 // 5 dakika cache
+          );
+        } catch (error) {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('⚠️ Cache fetch hatası, direkt Firestore\'dan çekiliyor:', error);
+          }
+          // Cache hatası durumunda direkt Firestore'dan çek
+          const docSnap = await safeGetDoc(userDocRef);
+          exercisesData = docSnap.exists() ? docSnap.data() : null;
         }
         
-        if (docSnap.exists()) {
-          const data = docSnap.data();
+        if (exercisesData) {
           // Kullanıcının mevcut egzersizleri varsa onları kullan, yoksa boş dizi
-          const exercisesData = data.exercises || [];
-          setExercises(exercisesData);
-          lastExercisesState.current = exercisesData;
+          const exercises = exercisesData.exercises || [];
+          setExercises(exercises);
+          lastExercisesState.current = exercises;
           
           if (
-            data.profile &&
-            data.profile.birthDate &&
-            data.profile.birthDate.toDate
+            exercisesData.profile &&
+            exercisesData.profile.birthDate &&
+            exercisesData.profile.birthDate.toDate
           ) {
-            data.profile.birthDate = format(
-              data.profile.birthDate.toDate(),
+            exercisesData.profile.birthDate = format(
+              exercisesData.profile.birthDate.toDate(),
               "yyyy-MM-dd"
             );
           }
@@ -614,7 +636,7 @@ function App() {
         }
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
-        console.error("Veri yükleme hatası:", error);
+          console.error("Veri yükleme hatası:", error);
         }
         isDataLoading.current = false;
       }
@@ -638,9 +660,13 @@ function App() {
           const userDocRef = doc(db, "users", user.uid);
           await safeUpdateDoc(userDocRef, { exercises });
           lastExercisesState.current = [...exercises];
+          
+          // Cache'i temizle
+          invalidateUserCache(user.uid);
+          
         } catch (error) {
           if (process.env.NODE_ENV === 'development') {
-          console.error("Veri kaydetme hatası:", error);
+            console.error("Veri kaydetme hatası:", error);
           }
         }
       };
@@ -679,7 +705,7 @@ function App() {
           }
         } catch (error) {
           if (process.env.NODE_ENV === 'development') {
-          console.error("Yenileme hatası:", error);
+            console.error("Yenileme hatası:", error);
           }
         }
       }, 2000);
@@ -798,11 +824,21 @@ function App() {
     if (user) {
       const fetchProfile = async () => {
         try {
-          const userDocRef = doc(db, "users", user.uid);
-          const docSnap = await safeGetDoc(userDocRef);
+          const cacheKey = `user_profile_${user.uid}`;
+          
+          const profileData = await cachedFirestoreGet(
+            cacheKey,
+            async () => {
+              const userDocRef = doc(db, "users", user.uid);
+              const docSnap = await safeGetDoc(userDocRef);
+              return docSnap.exists() ? docSnap.data() : null;
+            },
+            10 * 60 * 1000 // 10 dakika cache
+          );
+
           let prof = {};
-          if (docSnap.exists() && docSnap.data().profile) {
-            prof = docSnap.data().profile;
+          if (profileData && profileData.profile) {
+            prof = profileData.profile;
             // Firestore'da timestamp veya ISO formatında saklanıyorsa, Date objesine çevirin.
             let birth;
             if (prof.birthDate?.toDate) {
@@ -817,7 +853,7 @@ function App() {
               const age = calculateAge(birth);
               prof.age = age;
               // İsteğe bağlı: Firestore'daki profilde age alanı yoksa güncelleyin
-              await safeUpdateDoc(userDocRef, { profile: { ...prof, age } });
+              await safeUpdateDoc(doc(db, "users", user.uid), { profile: { ...prof, age } });
             }
             // Varsayılan değerler ve diğer alanlar:
             prof.gender = prof.gender || "";
@@ -950,6 +986,9 @@ function App() {
         });
       }
 
+      // Cache'i temizle
+      invalidateUserCache(user.uid);
+
       toast.success("Profil başarıyla güncellendi");
       setOpenProfileModal(false);
     } catch (error) {
@@ -963,11 +1002,16 @@ function App() {
       setActiveTab(0);
       localStorage.removeItem("activeTab");
       
-      // Cache'i temizle
+      // Cache'leri temizle
       await clearFirestoreCache();
+      cacheManager.clear(); // Client-side cache'i temizle
+      await clearPWACache(); // PWA cache'i temizle
+      
+      // Debug için cache durumunu logla
+      debugCache();
       
       if (process.env.NODE_ENV === 'development') {
-        console.log("✅ Kullanıcı başarıyla çıkış yaptı ve cache temizlendi");
+        console.log("✅ Kullanıcı başarıyla çıkış yaptı ve tüm cache'ler temizlendi");
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {

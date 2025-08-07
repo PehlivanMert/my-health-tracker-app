@@ -96,12 +96,20 @@ export const cachedFirestoreGet = async (key, fetchFunction, ttl = 5 * 60 * 1000
   if (process.env.NODE_ENV === 'development') {
     console.log(`Cache miss: ${key}`);
   }
-  const data = await fetchFunction();
   
-  // Cache'e kaydet
-  cacheManager.set(key, data, ttl);
-  
-  return data;
+  try {
+    const data = await fetchFunction();
+    
+    // Cache'e kaydet
+    cacheManager.set(key, data, ttl);
+    
+    return data;
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error(`Cache fetch error for ${key}:`, error);
+    }
+    throw error;
+  }
 };
 
 // Cache invalidation helpers
@@ -117,5 +125,55 @@ export const invalidateCollectionCache = (collection, userId) => {
   cacheManager.deletePattern(key);
   if (process.env.NODE_ENV === 'development') {
     console.log(`Collection cache invalidated: ${collection} for user ${userId}`);
+  }
+};
+
+// PWA cache temizleme
+export const clearPWACache = async () => {
+  try {
+    // Service Worker cache'ini temizle
+    if ('caches' in window) {
+      const cacheNames = await caches.keys();
+      await Promise.all(
+        cacheNames.map(cacheName => caches.delete(cacheName))
+      );
+      if (process.env.NODE_ENV === 'development') {
+        console.log('PWA cache temizlendi');
+      }
+    }
+    
+    // IndexedDB cache'ini temizle
+    if ('indexedDB' in window) {
+      const databases = await window.indexedDB.databases();
+      databases.forEach(db => {
+        if (db.name.includes('firebase') || db.name.includes('water')) {
+          window.indexedDB.deleteDatabase(db.name);
+        }
+      });
+    }
+    
+    // LocalStorage'ı temizle (sadece cache ile ilgili)
+    Object.keys(localStorage).forEach(key => {
+      if (key.includes('cache') || key.includes('firebase')) {
+        localStorage.removeItem(key);
+      }
+    });
+    
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('PWA cache temizleme hatası:', error);
+    }
+  }
+};
+
+// Cache debug fonksiyonu
+export const debugCache = () => {
+  if (process.env.NODE_ENV === 'development') {
+    console.log('=== CACHE DEBUG ===');
+    console.log('Cache Manager Stats:', cacheManager.getStats());
+    console.log('Cache Size:', cacheManager.size());
+    console.log('Cache Keys:', Array.from(cacheManager.cache.keys()));
+    console.log('TTL Keys:', Array.from(cacheManager.ttl.keys()));
+    console.log('==================');
   }
 }; 

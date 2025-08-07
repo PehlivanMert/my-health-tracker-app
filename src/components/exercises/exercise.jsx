@@ -58,6 +58,8 @@ import { toast } from "react-toastify";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db, auth } from "../auth/firebaseConfig";
+import { safeGetDoc, safeSetDoc, safeUpdateDoc } from "../../utils/firestoreUtils";
+import { invalidateUserCache } from "../../utils/cacheUtils";
 
 // Gemini AI konfigürasyonu
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
@@ -164,7 +166,7 @@ const Exercises = ({ exercises, setExercises }) => {
     const fetchProfileData = async () => {
       try {
         const userDocRef = doc(db, "users", auth.currentUser?.uid);
-        const docSnap = await getDoc(userDocRef);
+        const docSnap = await safeGetDoc(userDocRef);
         if (docSnap.exists() && docSnap.data().profile) {
           setProfileData(docSnap.data().profile);
         }
@@ -182,14 +184,14 @@ const Exercises = ({ exercises, setExercises }) => {
   useEffect(() => {
     const fetchGeminiUsage = async () => {
       const usageDocRef = doc(db, "users", auth.currentUser?.uid, "apiUsage", "exerciseAI");
-      const docSnap = await getDoc(usageDocRef);
+      const docSnap = await safeGetDoc(usageDocRef);
       if (docSnap.exists()) {
         setGeminiUsage(docSnap.data());
       } else {
         // Eğer doküman yoksa oluştur
         const todayStr = new Date().toISOString().slice(0, 10);
         const initialUsage = { date: todayStr, count: 0 };
-        await setDoc(usageDocRef, initialUsage);
+        await safeSetDoc(usageDocRef, initialUsage);
         setGeminiUsage(initialUsage);
       }
     };
@@ -215,7 +217,7 @@ const Exercises = ({ exercises, setExercises }) => {
     } else {
       updatedUsage.count += 1;
     }
-    await updateDoc(usageDocRef, updatedUsage);
+    await safeUpdateDoc(usageDocRef, updatedUsage);
     setGeminiUsage(updatedUsage);
   };
 
@@ -407,9 +409,12 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
 
       // Firestore'a kaydet (mevcut exercises'i koruyarak)
       const userDocRef = doc(db, "users", auth.currentUser?.uid);
-      await updateDoc(userDocRef, {
+      await safeUpdateDoc(userDocRef, {
         exercises: updatedExercises
       });
+      
+      // Cache'i temizle
+      invalidateUserCache(auth.currentUser?.uid);
 
       // Gemini kullanım sayacını artır
       await incrementGeminiUsage();
@@ -776,9 +781,12 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
                             // Firestore'dan da sil
                             try {
                               const userDocRef = doc(db, "users", auth.currentUser?.uid);
-                              await updateDoc(userDocRef, {
+                              await safeUpdateDoc(userDocRef, {
                                 exercises: updatedExercises
                               });
+                              
+                              // Cache'i temizle
+                              invalidateUserCache(auth.currentUser?.uid);
                             } catch (error) {
                               toast.error("Program silinirken hata oluştu!");
                             }

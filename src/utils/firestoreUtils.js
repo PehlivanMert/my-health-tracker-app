@@ -60,8 +60,18 @@ export const safeUpdateDoc = async (docRef, data) => {
 // Firestore bağlantı durumu kontrolü
 export const checkFirestoreConnection = async () => {
   try {
-    const testDoc = doc(db, "_test", "connection");
-    await getDoc(testDoc);
+    // Authentication kontrolü
+    const { auth } = await import("../components/auth/firebaseConfig");
+    if (!auth.currentUser) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ Kullanıcı giriş yapmamış');
+      }
+      return false;
+    }
+
+    // Kullanıcının kendi dokümanına erişim testi
+    const userDoc = doc(db, "users", auth.currentUser.uid);
+    await getDoc(userDoc);
     return true;
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {

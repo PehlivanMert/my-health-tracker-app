@@ -58,10 +58,21 @@ const getCachedUsers = async () => {
     return cachedUsers;
   }
   console.log("Kullanıcılar Firestore'dan çekiliyor.");
-  const snapshot = await db.collection("users").get();
-  cachedUsers = snapshot.docs;
-  cachedUsersTimestamp = nowMillis;
-  return cachedUsers;
+  try {
+    const snapshot = await db.collection("users").get();
+    if (snapshot && snapshot.docs) {
+      cachedUsers = snapshot.docs;
+      cachedUsersTimestamp = nowMillis;
+      console.log(`✅ ${cachedUsers.length} kullanıcı başarıyla alındı`);
+      return cachedUsers;
+    } else {
+      console.warn("⚠️ Firestore'dan kullanıcı verisi alınamadı, boş array döndürülüyor");
+      return [];
+    }
+  } catch (error) {
+    console.error("❌ Kullanıcıları alma hatası:", error);
+    return [];
+  }
 };
 
 // Cache'lenmiş kullanıcı verilerini alır
@@ -908,7 +919,26 @@ exports.handler = async (event, context) => {
     console.log('🌙 Gece yarısı sıfırlama ve bildirim hesaplama başlatılıyor...');
     
     // Tüm kullanıcıları al (cache ile)
-    const usersSnapshot = await getCachedUsers();
+    const usersDocs = await getCachedUsers();
+    
+    if (!usersDocs || usersDocs.length === 0) {
+      console.log("ℹ️ İşlenecek kullanıcı bulunamadı");
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success: true,
+          message: 'İşlenecek kullanıcı bulunamadı',
+          stats: {
+            totalUsers: 0,
+            waterResetCount: 0,
+            waterNotificationCount: 0,
+            supplementNotificationCount: 0,
+          },
+        }),
+      };
+    }
+    
     let totalUsers = 0;
     let waterResetCount = 0;
     let waterNotificationCount = 0;
@@ -918,7 +948,13 @@ exports.handler = async (event, context) => {
     const batch = createBatch();
     const userBatches = new Map(); // Her kullanıcı için ayrı batch
 
-    for (const userDoc of usersSnapshot.docs) {
+    console.log(`🔄 ${usersDocs.length} kullanıcı işleniyor...`);
+    for (const userDoc of usersDocs) {
+      if (!userDoc || !userDoc.id) {
+        console.warn("⚠️ Geçersiz kullanıcı dokümanı, atlanıyor");
+        continue;
+      }
+      
       const userId = userDoc.id;
       totalUsers++;
 

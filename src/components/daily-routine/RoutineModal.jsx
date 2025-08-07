@@ -447,7 +447,18 @@ const RoutineModal = ({ open, onClose, routine, initialDate, onSave }) => {
         </form>
       </DialogContent>
       <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
-        <Button onClick={onClose}>
+        <Button 
+          onClick={onClose}
+          sx={{ 
+            color: '#fff',
+            borderColor: 'rgba(255, 255, 255, 0.3)',
+            '&:hover': {
+              borderColor: 'rgba(255, 255, 255, 0.5)',
+              backgroundColor: 'rgba(255, 255, 255, 0.1)'
+            }
+          }}
+          variant="outlined"
+        >
           İptal
         </Button>
         <Button

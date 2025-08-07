@@ -367,6 +367,7 @@ const getNextSupplementReminderTime = async (suppData, userId) => {
     });
     
     if (midnightSummary) {
+      console.log(`🌙 [${userId}] ${suppData.name} için gece yarısı özeti bulundu: ${midnightSummary.toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })}`);
       return midnightSummary;
     }
   }
@@ -705,11 +706,11 @@ const computeSupplementReminderTimes = async (suppData, userId) => {
 
   // Tüketim kontrolü: Eğer günlük kullanım hedefine ulaşılmışsa bildirim zamanı hesaplanmaz.
   let consumptionReached = false;
+  let consumed = 0; // Değişkeni dışarıda tanımla
   if (suppData.dailyUsage > 0) {
     try {
       const consumptionDocRef = db.collection('users').doc(userId).collection('stats').doc('supplementConsumption');
       const consumptionDoc = await consumptionDocRef.get();
-      let consumed = 0;
       if (consumptionDoc.exists) {
         const consumptionData = consumptionDoc.data();
         const todayConsumption = consumptionData[todayStr] || {};
@@ -734,23 +735,22 @@ const computeSupplementReminderTimes = async (suppData, userId) => {
   }
   const { windowStart, windowEnd } = computeWindowTimes(globalNotifWindow);
   
-  // Dinamik gün sonu özeti zamanı hesaplama
-  const windowEndHour = windowEnd.getHours();
-  const windowEndMinute = windowEnd.getMinutes();
-  const windowEndTotal = windowEndHour * 60 + windowEndMinute;
-  
+  // Dinamik gün sonu özeti zamanı hesaplama - Düzeltilmiş versiyon
   let summaryTime;
   
-  // Eğer pencere bitişi gece yarısından önceyse (00:00'dan önce)
-  if (windowEndTotal > 0 && windowEndTotal < 24 * 60) {
-    // Pencere bitişinden 1 dakika önce
-    const summaryTimeTotal = windowEndTotal - 1;
-    summaryTime = new Date(todayStr + 'T' + 
-    `${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')}:00+03:00`);
+  // Pencere bitiş zamanını al
+  const windowEndTime = new Date(windowEnd);
+  
+  // Eğer pencere bitişi bugün içindeyse, o zamandan 1 dakika önce
+  if (windowEndTime.getDate() === now.getDate()) {
+    summaryTime = new Date(windowEndTime.getTime() - 60000); // 1 dakika önce
   } else {
-    // Pencere bitişi gece yarısı (00:00) veya sonrasıysa, günün sonu (23:59)
+    // Pencere bitişi yarınsa veya daha sonra, bugünün sonu (23:59)
     summaryTime = new Date(todayStr + 'T23:59:00+03:00');
   }
+  
+  // Zamanı saniye ve milisaniye olmadan ayarla
+  summaryTime.setSeconds(0, 0);
 
   // Manuel bildirim zamanı varsa
   if (suppData.notificationSchedule && suppData.notificationSchedule.length > 0) {
@@ -841,21 +841,26 @@ const saveNextSupplementReminderTime = async (userId, suppData) => {
       return null;
     }
   }
-  // ... eski otomatik hesaplama kodu ...
-  const nextReminder = await getNextSupplementReminderTime(suppData, userId);
-  if (!nextReminder) {
-    console.warn(`saveNextSupplementReminderTime - [${userId}] ${suppData.name} için sonraki bildirim zamanı hesaplanamadı`);
+  // Otomatik hesaplama kodu
+  try {
+    const nextReminder = await getNextSupplementReminderTime(suppData, userId);
+    if (!nextReminder) {
+      console.warn(`saveNextSupplementReminderTime - [${userId}] ${suppData.name} için sonraki bildirim zamanı hesaplanamadı`);
+      return null;
+    }
+    const suppDocRef = db.collection('users').doc(userId).collection('supplements').doc(suppData.id);
+    // Sadece gerekli alanları kaydet
+    const updateData = {
+      nextSupplementReminderTime: nextReminder.toISOString(),
+      notificationsLastCalculated: new Date(),
+    };
+    await suppDocRef.update(updateData);
+    console.log(`💊 [${userId}] ${suppData.name} bildirimi kaydedildi: ${nextReminder.toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })}`);
+    return nextReminder;
+  } catch (error) {
+    console.error(`❌ saveNextSupplementReminderTime - [${userId}] ${suppData.name} için hata:`, error);
     return null;
   }
-  const suppDocRef = db.collection('users').doc(userId).collection('supplements').doc(suppData.id);
-  // Sadece gerekli alanları kaydet
-  const updateData = {
-    nextSupplementReminderTime: nextReminder.toISOString(),
-    notificationsLastCalculated: new Date(),
-  };
-  await suppDocRef.update(updateData);
-  console.log(`💊 [${userId}] ${suppData.name} bildirimi kaydedildi: ${nextReminder.toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })}`);
-  return nextReminder;
 };
 
 // Su verilerini sıfırla
@@ -980,16 +985,33 @@ exports.handler = async (event, context) => {
         if (waterNotification) waterNotificationCount++;
 
         // Takviye bildirimlerini hesapla
-        const supplementsSnapshot = await db.collection('users').doc(userId).collection('supplements').get();
-        for (const suppDoc of supplementsSnapshot.docs) {
-          const suppData = { ...suppDoc.data(), id: suppDoc.id };
-          const supplementNotification = await saveNextSupplementReminderTime(userId, suppData);
-          if (supplementNotification) {
-            supplementNotificationCount++;
-            console.log(`💊 [${userId}] Takviye bildirimi hesaplandı: ${suppData.name} - ${supplementNotification.toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })}`);
+        try {
+          const supplementsSnapshot = await db.collection('users').doc(userId).collection('supplements').get();
+          if (supplementsSnapshot && supplementsSnapshot.docs) {
+            for (const suppDoc of supplementsSnapshot.docs) {
+              try {
+                const suppData = { ...suppDoc.data(), id: suppDoc.id };
+                if (!suppData.name) {
+                  console.warn(`⚠️ [${userId}] Takviye adı bulunamadı, atlanıyor`);
+                  continue;
+                }
+                
+                const supplementNotification = await saveNextSupplementReminderTime(userId, suppData);
+                if (supplementNotification) {
+                  supplementNotificationCount++;
+                  console.log(`💊 [${userId}] Takviye bildirimi hesaplandı: ${suppData.name} - ${supplementNotification.toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })}`);
+                } else {
+                  console.log(`🔄 [${userId}] Takviye bildirimi hesaplanmadı: ${suppData.name} (günlük hedefe ulaşılmış veya bildirim yok)`);
+                }
+              } catch (suppError) {
+                console.error(`❌ [${userId}] Takviye işleme hatası (${suppDoc.id}):`, suppError);
+              }
+            }
           } else {
-            console.log(`🔄 [${userId}] Takviye bildirimi hesaplanmadı: ${suppData.name} (günlük hedefe ulaşılmış veya bildirim yok)`);
+            console.log(`ℹ️ [${userId}] Takviye bulunamadı`);
           }
+        } catch (supplementsError) {
+          console.error(`❌ [${userId}] Takviye listesi alma hatası:`, supplementsError);
         }
 
       } catch (error) {

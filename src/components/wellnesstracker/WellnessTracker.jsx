@@ -130,7 +130,6 @@ const StyledAccordionSummary = styled(AccordionSummary)(({ theme }) => ({
   color: "white",
   padding: { xs: "8px 20px", sm: "10px 25px", md: "12px 35px" },
   transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-  cursor: "pointer",
   display: 'flex',
   alignItems: 'center',
   gap: 1.5,
@@ -653,28 +652,46 @@ const WellnessTracker = ({ user }) => {
               Takviyelerim
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }}>
-              <Tooltip title="Takviye Ekle">
-                <IconButton
-                  onClick={e => { e.stopPropagation(); setOpenSupplementDialog(true); }}
-                  onMouseDown={e => e.stopPropagation()}
-                  onFocus={e => e.stopPropagation()}
-                  size="small"
-                  sx={{ color: '#fff', background: 'rgba(33,150,243,0.18)', ml: 0.5, '&:hover': { background: 'rgba(33,150,243,0.32)' } }}
-                >
-                  <AddIcon sx={{ fontSize: { xs: 22, sm: 24, md: 26 } }} />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Bildirimler">
-                <IconButton
-                  onClick={e => { e.stopPropagation(); setSupplementNotificationDialogOpen(true); }}
-                  onMouseDown={e => e.stopPropagation()}
-                  onFocus={e => e.stopPropagation()}
-                  size="small"
-                  sx={{ color: '#fff', background: 'rgba(33,150,243,0.18)', ml: 0.5, '&:hover': { background: 'rgba(33,150,243,0.32)' } }}
-                >
-                  <NotificationsIcon sx={{ fontSize: { xs: 22, sm: 24, md: 26 } }} />
-                </IconButton>
-              </Tooltip>
+              <span
+                onClick={e => { e.stopPropagation(); setOpenSupplementDialog(true); }}
+                onMouseDown={e => e.stopPropagation()}
+                onFocus={e => e.stopPropagation()}
+                style={{ 
+                  color: '#fff', 
+                  background: 'rgba(33,150,243,0.18)', 
+                  marginLeft: '4px', 
+                  padding: '8px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onMouseEnter={(e) => e.target.style.background = 'rgba(33,150,243,0.32)'}
+                onMouseLeave={(e) => e.target.style.background = 'rgba(33,150,243,0.18)'}
+              >
+                <AddIcon sx={{ fontSize: { xs: 22, sm: 24, md: 26 } }} />
+              </span>
+              <span
+                onClick={e => { e.stopPropagation(); setSupplementNotificationDialogOpen(true); }}
+                onMouseDown={e => e.stopPropagation()}
+                onFocus={e => e.stopPropagation()}
+                style={{ 
+                  color: '#fff', 
+                  background: 'rgba(33,150,243,0.18)', 
+                  marginLeft: '4px', 
+                  padding: '8px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onMouseEnter={(e) => e.target.style.background = 'rgba(33,150,243,0.32)'}
+                onMouseLeave={(e) => e.target.style.background = 'rgba(33,150,243,0.18)'}
+              >
+                <NotificationsIcon sx={{ fontSize: { xs: 22, sm: 24, md: 26 } }} />
+              </span>
             </Box>
           </StyledAccordionSummary>
           <CustomAccordionDetails>

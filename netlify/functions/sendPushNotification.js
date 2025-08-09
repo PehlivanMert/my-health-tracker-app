@@ -94,6 +94,18 @@ const getCachedWater = async (userId) => {
   return snapshot;
 };
 
+// Gece yarısı özeti için taze su verilerini alır (cache bypass)
+const getFreshWaterForMidnight = async (userId) => {
+  console.log(`🌙 [${userId}] Gece yarısı özeti için taze su verileri çekiliyor...`);
+  const snapshot = await db
+    .collection("users")
+    .doc(userId)
+    .collection("water")
+    .doc("current")
+    .get();
+  return snapshot;
+};
+
 // Cache'lenmiş supplement verilerini alır
 const getCachedSupplements = async (userId) => {
   const nowMillis = Date.now();
@@ -111,6 +123,17 @@ const getCachedSupplements = async (userId) => {
     .collection("supplements")
     .get();
   supplementsCache[userId] = { data: snapshot, timestamp: nowMillis };
+  return snapshot;
+};
+
+// Gece yarısı özeti için taze takviye verilerini alır (cache bypass)
+const getFreshSupplementsForMidnight = async (userId) => {
+  console.log(`🌙 [${userId}] Gece yarısı özeti için taze takviye verileri çekiliyor...`);
+  const snapshot = await db
+    .collection("users")
+    .doc(userId)
+    .collection("supplements")
+    .get();
   return snapshot;
 };
 
@@ -610,12 +633,16 @@ exports.handler = async (event, context) => {
             const midnight = new Date(now);
             midnight.setHours(0, 0, 0, 0);
             if (Math.abs(now.getTime() - midnight.getTime()) < 60000) {
+              // Gece yarısı özeti için taze su verilerini çek
+              const freshWaterSnap = await getFreshWaterForMidnight(userDoc.id);
+              const freshWaterData = freshWaterSnap.exists ? freshWaterSnap.data() : waterData;
+              
               console.log(
-                `✅ [${userDoc.id}] GECE YARISI SU RESET: ${waterData.waterIntake >= waterData.dailyWaterTarget ? 'HEDEF TAMAMLANDI' : 'HEDEF TAMAMLANAMADI'}`
+                `✅ [${userDoc.id}] GECE YARISI SU RESET: ${freshWaterData.waterIntake >= freshWaterData.dailyWaterTarget ? 'HEDEF TAMAMLANDI' : 'HEDEF TAMAMLANAMADI'}`
               );
               
               let resetMessage = "";
-              if (waterData.waterIntake >= waterData.dailyWaterTarget) {
+              if (freshWaterData.waterIntake >= freshWaterData.dailyWaterTarget) {
                 // Başarı mesajları (25 adet)
                 const successMessages = [
                   "🎉 Harika! Bugün su hedefini gerçekleştirdin!",
@@ -651,31 +678,31 @@ exports.handler = async (event, context) => {
               } else {
                 // Başarısız mesajlar (25 adet)
                 const failMessages = [
-                  `💧 Bugün ${waterData.waterIntake} ml su içtin, hedefin ${waterData.dailyWaterTarget} ml. Yarın daha iyi yapabilirsin!`,
-                  `🌊 Su hedefin ${waterData.dailyWaterTarget} ml idi, ancak bugün sadece ${waterData.waterIntake} ml içtin.`,
-                  `🎯 Hedefin ${waterData.dailyWaterTarget} ml, bugün ${waterData.waterIntake} ml su içtin. Biraz daha çabalayalım!`,
-                  `💦 Yeterince su içemedin: ${waterData.waterIntake} ml / ${waterData.dailyWaterTarget} ml.`,
-                  `⭐ Bugün su hedefine ulaşamadın (${waterData.waterIntake} / ${waterData.dailyWaterTarget} ml). Yarın şansın daha iyi olsun!`,
-                  `🚀 Hedefin ${waterData.dailyWaterTarget} ml, ancak bugün ${waterData.waterIntake} ml su içtin. Daha fazlasını dene!`,
-                  `💧 Su alımında eksik kaldın: ${waterData.waterIntake} ml içtin, hedefin ${waterData.dailyWaterTarget} ml.`,
-                  `🌟 Günlük hedefin ${waterData.dailyWaterTarget} ml, bugün ${waterData.waterIntake} ml su içtin. Hedefe yaklaşabilirsin!`,
-                  `🎯 Bugün su alımın hedefin altındaydı (${waterData.waterIntake} / ${waterData.dailyWaterTarget} ml). Yarın daha iyi yap!`,
-                  `💎 Su hedefin ${waterData.dailyWaterTarget} ml, fakat bugün sadece ${waterData.waterIntake} ml içtin. Bir sonraki sefer daha dikkatli!`,
-                  `💧 Bugün ${waterData.waterIntake} ml su içtin, hedefin ${waterData.dailyWaterTarget} ml. Yarın daha iyi yapabilirsin!`,
-                  `🌊 Su hedefin ${waterData.dailyWaterTarget} ml idi, ancak bugün sadece ${waterData.waterIntake} ml içtin.`,
-                  `🎯 Hedefin ${waterData.dailyWaterTarget} ml, bugün ${waterData.waterIntake} ml su içtin. Biraz daha çabalayalım!`,
-                  `💦 Yeterince su içemedin: ${waterData.waterIntake} ml / ${waterData.dailyWaterTarget} ml.`,
-                  `⭐ Bugün su hedefine ulaşamadın (${waterData.waterIntake} / ${waterData.dailyWaterTarget} ml). Yarın şansın daha iyi olsun!`,
-                  `🚀 Hedefin ${waterData.dailyWaterTarget} ml, ancak bugün ${waterData.waterIntake} ml su içtin. Daha fazlasını dene!`,
-                  `💧 Su alımında eksik kaldın: ${waterData.waterIntake} ml içtin, hedefin ${waterData.dailyWaterTarget} ml.`,
-                  `🌟 Günlük hedefin ${waterData.dailyWaterTarget} ml, bugün ${waterData.waterIntake} ml su içtin. Hedefe yaklaşabilirsin!`,
-                  `🎯 Bugün su alımın hedefin altındaydı (${waterData.waterIntake} / ${waterData.dailyWaterTarget} ml). Yarın daha iyi yap!`,
-                  `💎 Su hedefin ${waterData.dailyWaterTarget} ml, fakat bugün sadece ${waterData.waterIntake} ml içtin. Bir sonraki sefer daha dikkatli!`,
-                  `🌊 Bugün ${waterData.waterIntake} ml su içtin, hedefin ${waterData.dailyWaterTarget} ml. Yarın daha iyi yapabilirsin!`,
-                  `💧 Su hedefin ${waterData.dailyWaterTarget} ml idi, ancak bugün sadece ${waterData.waterIntake} ml içtin.`,
-                  `🎯 Hedefin ${waterData.dailyWaterTarget} ml, bugün ${waterData.waterIntake} ml su içtin. Biraz daha çabalayalım!`,
-                  `💦 Yeterince su içemedin: ${waterData.waterIntake} ml / ${waterData.dailyWaterTarget} ml.`,
-                  `⭐ Bugün su hedefine ulaşamadın (${waterData.waterIntake} / ${waterData.dailyWaterTarget} ml). Yarın şansın daha iyi olsun!`,
+                  `💧 Bugün ${freshWaterData.waterIntake} ml su içtin, hedefin ${freshWaterData.dailyWaterTarget} ml. Yarın daha iyi yapabilirsin!`,
+                  `🌊 Su hedefin ${freshWaterData.dailyWaterTarget} ml idi, ancak bugün sadece ${freshWaterData.waterIntake} ml içtin.`,
+                  `🎯 Hedefin ${freshWaterData.dailyWaterTarget} ml, bugün ${freshWaterData.waterIntake} ml su içtin. Biraz daha çabalayalım!`,
+                  `💦 Yeterince su içemedin: ${freshWaterData.waterIntake} ml / ${freshWaterData.dailyWaterTarget} ml.`,
+                  `⭐ Bugün su hedefine ulaşamadın (${freshWaterData.waterIntake} / ${freshWaterData.dailyWaterTarget} ml). Yarın şansın daha iyi olsun!`,
+                  `🚀 Hedefin ${freshWaterData.dailyWaterTarget} ml, ancak bugün ${freshWaterData.waterIntake} ml su içtin. Daha fazlasını dene!`,
+                  `💧 Su alımında eksik kaldın: ${freshWaterData.waterIntake} ml içtin, hedefin ${freshWaterData.dailyWaterTarget} ml.`,
+                  `🌟 Günlük hedefin ${freshWaterData.dailyWaterTarget} ml, bugün ${freshWaterData.waterIntake} ml su içtin. Hedefe yaklaşabilirsin!`,
+                  `🎯 Bugün su alımın hedefin altındaydı (${freshWaterData.waterIntake} / ${freshWaterData.dailyWaterTarget} ml). Yarın daha iyi yap!`,
+                  `💎 Su hedefin ${freshWaterData.dailyWaterTarget} ml, fakat bugün sadece ${freshWaterData.waterIntake} ml içtin. Bir sonraki sefer daha dikkatli!`,
+                  `💧 Bugün ${freshWaterData.waterIntake} ml su içtin, hedefin ${freshWaterData.dailyWaterTarget} ml. Yarın daha iyi yapabilirsin!`,
+                  `🌊 Su hedefin ${freshWaterData.dailyWaterTarget} ml idi, ancak bugün sadece ${freshWaterData.waterIntake} ml içtin.`,
+                  `🎯 Hedefin ${freshWaterData.dailyWaterTarget} ml, bugün ${freshWaterData.waterIntake} ml su içtin. Biraz daha çabalayalım!`,
+                  `💦 Yeterince su içemedin: ${freshWaterData.waterIntake} ml / ${freshWaterData.dailyWaterTarget} ml.`,
+                  `⭐ Bugün su hedefine ulaşamadın (${freshWaterData.waterIntake} / ${freshWaterData.dailyWaterTarget} ml). Yarın şansın daha iyi olsun!`,
+                  `🚀 Hedefin ${freshWaterData.dailyWaterTarget} ml, ancak bugün ${freshWaterData.waterIntake} ml su içtin. Daha fazlasını dene!`,
+                  `💧 Su alımında eksik kaldın: ${freshWaterData.waterIntake} ml içtin, hedefin ${freshWaterData.dailyWaterTarget} ml.`,
+                  `🌟 Günlük hedefin ${freshWaterData.dailyWaterTarget} ml, bugün ${freshWaterData.waterIntake} ml su içtin. Hedefe yaklaşabilirsin!`,
+                  `🎯 Bugün su alımın hedefin altındaydı (${freshWaterData.waterIntake} / ${freshWaterData.dailyWaterTarget} ml). Yarın daha iyi yap!`,
+                  `💎 Su hedefin ${freshWaterData.dailyWaterTarget} ml, fakat bugün sadece ${freshWaterData.waterIntake} ml içtin. Bir sonraki sefer daha dikkatli!`,
+                  `🌊 Bugün ${freshWaterData.waterIntake} ml su içtin, hedefin ${freshWaterData.dailyWaterTarget} ml. Yarın daha iyi yapabilirsin!`,
+                  `💧 Su hedefin ${freshWaterData.dailyWaterTarget} ml idi, ancak bugün sadece ${freshWaterData.waterIntake} ml içtin.`,
+                  `🎯 Hedefin ${freshWaterData.dailyWaterTarget} ml, bugün ${freshWaterData.waterIntake} ml su içtin. Biraz daha çabalayalım!`,
+                  `💦 Yeterince su içemedin: ${freshWaterData.waterIntake} ml / ${freshWaterData.dailyWaterTarget} ml.`,
+                  `⭐ Bugün su hedefine ulaşamadın (${freshWaterData.waterIntake} / ${freshWaterData.dailyWaterTarget} ml). Yarın şansın daha iyi olsun!`,
                 ];
                 resetMessage =
                   failMessages[Math.floor(Math.random() * failMessages.length)];
@@ -753,13 +780,17 @@ exports.handler = async (event, context) => {
           if (isSummaryTime) {
             console.log(`✅ [${userDoc.id}] GÜN SONU TAKVİYE ÖZET ZAMANI (${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')})`);
             
+            // Gece yarısı özeti için taze takviye verilerini çek
+            const freshSuppSnapshot = await getFreshSupplementsForMidnight(userDoc.id);
+            const freshSupplementConsumptionToday = await getSupplementConsumptionStatsForMidnight(userDoc.id);
+            
             // Önce takviye var mı kontrol et
-            if (!suppSnapshot || suppSnapshot.size === 0) {
+            if (!freshSuppSnapshot || freshSuppSnapshot.size === 0) {
               console.log(`✅ [${userDoc.id}] Hiç takviye yok, gün sonu özeti atlanıyor`);
             } else {
               // Gün sonu özeti bildirimleri - tüm takviyeler için
-              if (suppSnapshot && suppSnapshot.forEach) {
-                const docSnaps = suppSnapshot.docs ? suppSnapshot.docs : Array.from(suppSnapshot);
+              if (freshSuppSnapshot && freshSuppSnapshot.forEach) {
+                const docSnaps = freshSuppSnapshot.docs ? freshSuppSnapshot.docs : Array.from(freshSuppSnapshot);
                 
                 // Aktif takviyeleri filtrele
                 const activeSupplements = docSnaps.filter(docSnap => {
@@ -777,7 +808,7 @@ exports.handler = async (event, context) => {
                     const suppData = docSnap.data();
                     const suppName = suppData.name || 'Bilinmeyen Takviye';
                     const dailyUsage = suppData.dailyUsage || 1;
-                    const consumedToday = supplementConsumptionToday[suppName] || 0;
+                    const consumedToday = freshSupplementConsumptionToday[suppName] || 0;
                     
                     if (consumedToday < dailyUsage) {
                       hasIncompleteSupplements = true;

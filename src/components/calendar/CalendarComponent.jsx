@@ -736,7 +736,7 @@ const CalendarComponent = ({ user }) => {
             multiMonthPlugin,
             rrulePlugin,
           ]}
-          initialView={isMobile ? "timeGridDay" : "dayGridMonth"}
+          initialView="dayGridMonth"
           firstDay={1}
           headerToolbar={{
             left: "prev,next today",

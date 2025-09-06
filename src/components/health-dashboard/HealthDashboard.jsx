@@ -56,6 +56,7 @@ import {
   Hiking,
   DirectionsBike,
   FitnessCenter as GymIcon,
+  Close as CloseIcon,
 } from "@mui/icons-material";
 import { keyframes } from "@emotion/react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -387,6 +388,9 @@ const HealthDashboard = ({ user }) => {
   const [showHistory, setShowHistory] = useState(false);
   const [customizationOpen, setCustomizationOpen] = useState(false);
   const [customization, setCustomization] = useState({});
+  const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Geçmişte kaydedilen öneriden seçim yapıldığında ana içerikte göster
   const handleSelectRecommendation = (rec) => {
@@ -534,7 +538,20 @@ const HealthDashboard = ({ user }) => {
       toast.error("Gemini günde sadece iki kez kullanılabilir.");
       return;
     }
-    setLoading(true);
+    
+    // Başlangıç bildirimi göster
+    setIsGenerating(true);
+    setNotificationMessage("🤖 AI önerilerinizi hazırlıyor... Lütfen bekleyin.");
+    setShowSuccessNotification(true);
+    
+    setCustomizationOpen(false); // Pop-up'ı kapat
+    setCustomization({}); // State'i sıfırla
+    
+    // Arka planda çalıştır
+    generateRecommendationsAsync(customizationInput);
+  };
+
+  const generateRecommendationsAsync = async (customizationInput = customization) => {
     try {
       const age = profileData.age;
       const bmi = calculateBMI();
@@ -661,6 +678,47 @@ Son 7 Gün Takviye Kullanımı:
 ${JSON.stringify(healthData.supplementStats, null, 2) || "Veri yok"}
 
 Tarih ve Saat: ${currentDateTime}
+
+🌟 UYGULAMA ÖZELLİKLERİ:
+Bu uygulama çok kapsamlı bir sağlık takip uygulamasıdır ve şu özelliklere sahiptir:
+
+💧 DETAYLI SU TAKİBİ:
+- Günlük su hedefi belirleme ve takip
+- Akıllı su hatırlatıcıları (hava durumu, aktivite seviyesi, kişisel tercihlere göre)
+- Su içme geçmişi ve istatistikleri
+- Farklı içecek türleri (su, çay, kahve, spor içeceği vb.) takibi
+- Hava durumuna göre su ihtiyacı önerileri
+- Motivasyonel mesajlar ve başarı kutlamaları
+
+💊 TAKVİYE TAKİBİ:
+- Detaylı takviye envanteri (miktar, kalan süre, günlük kullanım)
+- Akıllı takviye hatırlatıcıları
+- Takviye tüketim istatistikleri ve trendleri
+- Takviye bitme uyarıları
+- Kişiselleştirilmiş takviye önerileri
+
+🏃‍♂️ AI EGZERSİZ RUTİN:
+- Kişiselleştirilmiş egzersiz programları (yaş, cinsiyet, hedefler, fitness seviyesi)
+- Detaylı egzersiz açıklamaları ve teknikleri
+- Aşamalı program ilerlemesi
+- Egzersiz geçmişi ve performans takibi
+- Motivasyonel egzersiz önerileri
+
+📅 AKILLI TAKVİM:
+- Günlük rutin planlama ve takip
+- Rutin hatırlatıcıları ve bildirimleri
+- Aylık rutin görünümü
+- Rutin tamamlama istatistikleri
+- Kişiselleştirilmiş rutin önerileri
+
+🎯 DİĞER ÖZELLİKLER:
+- VKİ hesaplama ve analizi
+- Hava durumu entegrasyonu
+- Konum bazlı aktivite önerileri
+- Kişiselleştirilmiş beslenme önerileri
+- Okuma ve izleme önerileri
+- Motivasyonel mesajlar
+- Kapsamlı sağlık istatistikleri
 
 🌟 *Kişiselleştirilmiş Sağlık Rehberi* 🌟
 
@@ -925,12 +983,30 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 
         setApiCooldown(true);
         setTimeout(() => setApiCooldown(false), 60000);
+        
+        // Başarı bildirimi göster
+        setIsGenerating(false);
+        setNotificationMessage("🎉 Kişiselleştirilmiş sağlık önerileriniz hazır!");
+        setShowSuccessNotification(true);
+        
+        // 5 saniye sonra bildirimi kapat
+        setTimeout(() => {
+          setShowSuccessNotification(false);
+        }, 5000);
       }
-      setCustomizationOpen(false); // Öneri üretildiğinde pop-up'ı kapat
-      setCustomization({}); // State'i sıfırla
     } catch (error) {
       console.error("Gemini API Hatası:", error);
       console.error("Hata Detayları:", error.response || error.message);
+      
+      // Hata bildirimi göster
+      setIsGenerating(false);
+      setNotificationMessage("❌ Öneri oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.");
+      setShowSuccessNotification(true);
+      
+      // 5 saniye sonra bildirimi kapat
+      setTimeout(() => {
+        setShowSuccessNotification(false);
+      }, 5000);
       
       if (error.message?.includes("400")) {
         toast.error("API anahtarı geçersiz veya model bulunamadı. Lütfen ayarları kontrol edin.");
@@ -942,7 +1018,6 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
         toast.error("Öneri oluşturulamadı: " + error.message);
       }
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -1176,7 +1251,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
               variant="contained"
               startIcon={<Refresh />}
               onClick={handleOpenCustomization}
-              disabled={loading || apiCooldown || !canUseGemini()}
+              disabled={apiCooldown || !canUseGemini() || isGenerating}
               sx={{
                 borderRadius: "12px",
                 py: { xs: 1, md: 1.5 },
@@ -1190,7 +1265,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                 "&:hover": { background: "rgba(255,255,255,0.3)" },
               }}
             >
-              {loading ? "Öneri Oluşturuluyor..." : 
+              {isGenerating ? "AI Önerileri Hazırlanıyor..." :
                !canUseGemini() ? "Günlük Limit Doldu" : 
                "Günlük Kişisel Önerini Oluştur"}
             </Button>
@@ -2011,22 +2086,78 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
             </CardContent>
           </Card>
         )}
-        {loading && (
+        
+        {/* Pop-up Bildirimi */}
+        {showSuccessNotification && (
           <Box
             sx={{
               position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              bgcolor: "rgba(0,0,0,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 9999,
+              top: { xs: 10, sm: 20 },
+              right: { xs: 10, sm: 20 },
+              left: { xs: 10, sm: "auto" },
+              zIndex: 10000,
+              animation: "slideInRight 0.5s ease-out",
+              "@keyframes slideInRight": {
+                from: {
+                  transform: "translateX(100%)",
+                  opacity: 0,
+                },
+                to: {
+                  transform: "translateX(0)",
+                  opacity: 1,
+                },
+              },
             }}
           >
-            <CircularProgress size={80} thickness={2} />
+            <Card
+              sx={{
+                background: notificationMessage.includes("❌") 
+                  ? "linear-gradient(135deg, #ff5252 0%, #f44336 100%)"
+                  : notificationMessage.includes("🤖")
+                  ? "linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)"
+                  : "linear-gradient(135deg, #4caf50 0%, #66bb6a 100%)",
+                color: "white",
+                borderRadius: { xs: "12px", sm: "16px" },
+                boxShadow: 8,
+                p: { xs: 2, sm: 3 },
+                minWidth: { xs: "auto", sm: 320 },
+                maxWidth: { xs: "100%", sm: 450 },
+                width: { xs: "100%", sm: "auto" },
+                border: "2px solid rgba(255,255,255,0.2)",
+                backdropFilter: "blur(10px)",
+              }}
+            >
+              <Box display="flex" alignItems="center" gap={{ xs: 1.5, sm: 2 }}>
+                {isGenerating && (
+                  <CircularProgress 
+                    size={{ xs: 20, sm: 24 }} 
+                    sx={{ color: "white" }} 
+                  />
+                )}
+                <Typography 
+                  variant="body1" 
+                  sx={{ 
+                    fontWeight: 600, 
+                    flex: 1, 
+                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                    lineHeight: 1.4,
+                    wordBreak: "break-word"
+                  }}
+                >
+                  {notificationMessage}
+                </Typography>
+                <IconButton
+                  onClick={() => setShowSuccessNotification(false)}
+                  sx={{ 
+                    color: "white", 
+                    p: { xs: 0.25, sm: 0.5 },
+                    minWidth: "auto"
+                  }}
+                >
+                  <CloseIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
+                </IconButton>
+              </Box>
+            </Card>
           </Box>
         )}
       </Box>

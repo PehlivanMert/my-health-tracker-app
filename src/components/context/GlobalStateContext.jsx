@@ -9,6 +9,11 @@ export const GlobalStateContext = createContext();
 export const GlobalStateProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [supplements, setSupplements] = useState([]);
+  const [healthDashboardState, setHealthDashboardState] = useState({
+    isGenerating: false,
+    showSuccessNotification: false,
+    notificationMessage: "",
+  });
 
   // Firebase Auth ile kullanıcı durumunu izleyelim
   useEffect(() => {
@@ -46,7 +51,14 @@ export const GlobalStateProvider = ({ children }) => {
 
   return (
     <GlobalStateContext.Provider
-      value={{ user, setUser, supplements, setSupplements }}
+      value={{ 
+        user, 
+        setUser, 
+        supplements, 
+        setSupplements,
+        healthDashboardState,
+        setHealthDashboardState
+      }}
     >
       {children}
     </GlobalStateContext.Provider>

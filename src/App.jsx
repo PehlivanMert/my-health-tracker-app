@@ -30,6 +30,9 @@ import {
   TextField,
   FormControl,
   InputLabel,
+  Card,
+  IconButton,
+  CircularProgress,
 } from "@mui/material";
 
 // Bottom Navigation ve ikonlar
@@ -41,6 +44,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import PersonIcon from "@mui/icons-material/Person";
+import { Close as CloseIcon } from "@mui/icons-material";
 import background from "./assets/background.jpg";
 
 // Framer Motion ve React Icons
@@ -164,7 +168,7 @@ ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
 function App() {
   // Bildirim ayarları
-  const { user, setUser, supplements } = useContext(GlobalStateContext);
+  const { user, setUser, supplements, healthDashboardState, setHealthDashboardState } = useContext(GlobalStateContext);
   const [openNotificationSettings, setOpenNotificationSettings] =
     useState(false);
 
@@ -2226,6 +2230,81 @@ function App() {
           </div>
         </Box>
       )}
+      
+      {/* Global Health Dashboard Pop-up */}
+      {healthDashboardState?.showSuccessNotification && (
+        <Box
+          sx={{
+            position: "fixed",
+            top: { xs: 10, sm: 20 },
+            right: { xs: 10, sm: 20 },
+            left: { xs: 10, sm: "auto" },
+            zIndex: 10000,
+            animation: "slideInRight 0.5s ease-out",
+            "@keyframes slideInRight": {
+              from: {
+                transform: "translateX(100%)",
+                opacity: 0,
+              },
+              to: {
+                transform: "translateX(0)",
+                opacity: 1,
+              },
+            },
+          }}
+        >
+          <Card
+            sx={{
+              background: healthDashboardState.notificationMessage?.includes("❌") 
+                ? "linear-gradient(135deg, #ff5252 0%, #f44336 100%)"
+                : healthDashboardState.notificationMessage?.includes("🤖")
+                ? "linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)"
+                : "linear-gradient(135deg, #4caf50 0%, #66bb6a 100%)",
+              color: "white",
+              borderRadius: { xs: "12px", sm: "16px" },
+              boxShadow: 8,
+              p: { xs: 2, sm: 3 },
+              minWidth: { xs: "auto", sm: 320 },
+              maxWidth: { xs: "100%", sm: 450 },
+              width: { xs: "100%", sm: "auto" },
+              border: "2px solid rgba(255,255,255,0.2)",
+              backdropFilter: "blur(10px)",
+            }}
+          >
+            <Box display="flex" alignItems="center" gap={{ xs: 1.5, sm: 2 }}>
+              {healthDashboardState.isGenerating && (
+                <CircularProgress 
+                  size={isMobile ? 20 : 24} 
+                  sx={{ color: "white" }} 
+                />
+              )}
+              <Typography 
+                variant="body1" 
+                sx={{ 
+                  fontWeight: 600, 
+                  flex: 1, 
+                  fontSize: { xs: "0.9rem", sm: "1rem" },
+                  lineHeight: 1.4,
+                  wordBreak: "break-word"
+                }}
+              >
+                {healthDashboardState.notificationMessage}
+              </Typography>
+              <IconButton
+                onClick={() => setHealthDashboardState(prev => ({ ...prev, showSuccessNotification: false }))}
+                sx={{ 
+                  color: "white", 
+                  p: { xs: 0.25, sm: 0.5 },
+                  minWidth: "auto"
+                }}
+              >
+                <CloseIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
+              </IconButton>
+            </Box>
+          </Card>
+        </Box>
+      )}
+      
       <ToastContainer position="bottom-right" autoClose={3000} />
     </>
   );

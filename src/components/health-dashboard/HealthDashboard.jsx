@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   doc,
   getDoc,
@@ -70,6 +70,7 @@ import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
+import { GlobalStateContext } from '../context/GlobalStateContext';
 
 const float = keyframes`
   0% { transform: translateY(0px); }
@@ -368,6 +369,7 @@ const CUSTOMIZABLE_FIELDS = {
 const HealthDashboard = ({ user }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const { healthDashboardState, setHealthDashboardState } = useContext(GlobalStateContext);
   const [healthData, setHealthData] = useState({
     recommendations: "",
     bmi: null,
@@ -388,9 +390,13 @@ const HealthDashboard = ({ user }) => {
   const [showHistory, setShowHistory] = useState(false);
   const [customizationOpen, setCustomizationOpen] = useState(false);
   const [customization, setCustomization] = useState({});
-  const [showSuccessNotification, setShowSuccessNotification] = useState(false);
-  const [notificationMessage, setNotificationMessage] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
+  // Global state'den değerleri al
+  const { showSuccessNotification, notificationMessage, isGenerating } = healthDashboardState;
+  
+  // Global state güncelleme fonksiyonları
+  const updateGlobalState = (updates) => {
+    setHealthDashboardState(prev => ({ ...prev, ...updates }));
+  };
 
   // Geçmişte kaydedilen öneriden seçim yapıldığında ana içerikte göster
   const handleSelectRecommendation = (rec) => {
@@ -540,9 +546,11 @@ const HealthDashboard = ({ user }) => {
     }
     
     // Başlangıç bildirimi göster
-    setIsGenerating(true);
-    setNotificationMessage("🤖 AI önerilerinizi hazırlıyor... Lütfen bekleyin.");
-    setShowSuccessNotification(true);
+    updateGlobalState({
+      isGenerating: true,
+      notificationMessage: "🤖 AI önerilerinizi hazırlıyor... Lütfen bekleyin.",
+      showSuccessNotification: true
+    });
     
     setCustomizationOpen(false); // Pop-up'ı kapat
     setCustomization({}); // State'i sıfırla
@@ -985,13 +993,22 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
         setTimeout(() => setApiCooldown(false), 60000);
         
         // Başarı bildirimi göster
-        setIsGenerating(false);
-        setNotificationMessage("🎉 Kişiselleştirilmiş sağlık önerileriniz hazır!");
-        setShowSuccessNotification(true);
+        updateGlobalState({
+          isGenerating: false,
+          notificationMessage: "🎉 Kişiselleştirilmiş sağlık önerileriniz hazır!",
+          showSuccessNotification: true
+        });
+        
+        // Console log ekle
+        console.log("✅ Gemini'den cevap geldi ve öneriler güncellendi:", {
+          timestamp: new Date().toISOString(),
+          recommendationLength: recommendationText.length,
+          hasRecommendations: !!recommendationText
+        });
         
         // 5 saniye sonra bildirimi kapat
         setTimeout(() => {
-          setShowSuccessNotification(false);
+          updateGlobalState({ showSuccessNotification: false });
         }, 5000);
       }
     } catch (error) {
@@ -999,13 +1016,15 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
       console.error("Hata Detayları:", error.response || error.message);
       
       // Hata bildirimi göster
-      setIsGenerating(false);
-      setNotificationMessage("❌ Öneri oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.");
-      setShowSuccessNotification(true);
+      updateGlobalState({
+        isGenerating: false,
+        notificationMessage: "❌ Öneri oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.",
+        showSuccessNotification: true
+      });
       
       // 5 saniye sonra bildirimi kapat
       setTimeout(() => {
-        setShowSuccessNotification(false);
+        updateGlobalState({ showSuccessNotification: false });
       }, 5000);
       
       if (error.message?.includes("400")) {
@@ -2087,79 +2106,6 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
           </Card>
         )}
         
-        {/* Pop-up Bildirimi */}
-        {showSuccessNotification && (
-          <Box
-            sx={{
-              position: "fixed",
-              top: { xs: 10, sm: 20 },
-              right: { xs: 10, sm: 20 },
-              left: { xs: 10, sm: "auto" },
-              zIndex: 10000,
-              animation: "slideInRight 0.5s ease-out",
-              "@keyframes slideInRight": {
-                from: {
-                  transform: "translateX(100%)",
-                  opacity: 0,
-                },
-                to: {
-                  transform: "translateX(0)",
-                  opacity: 1,
-                },
-              },
-            }}
-          >
-            <Card
-              sx={{
-                background: notificationMessage.includes("❌") 
-                  ? "linear-gradient(135deg, #ff5252 0%, #f44336 100%)"
-                  : notificationMessage.includes("🤖")
-                  ? "linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)"
-                  : "linear-gradient(135deg, #4caf50 0%, #66bb6a 100%)",
-                color: "white",
-                borderRadius: { xs: "12px", sm: "16px" },
-                boxShadow: 8,
-                p: { xs: 2, sm: 3 },
-                minWidth: { xs: "auto", sm: 320 },
-                maxWidth: { xs: "100%", sm: 450 },
-                width: { xs: "100%", sm: "auto" },
-                border: "2px solid rgba(255,255,255,0.2)",
-                backdropFilter: "blur(10px)",
-              }}
-            >
-              <Box display="flex" alignItems="center" gap={{ xs: 1.5, sm: 2 }}>
-                {isGenerating && (
-                  <CircularProgress 
-                    size={{ xs: 20, sm: 24 }} 
-                    sx={{ color: "white" }} 
-                  />
-                )}
-                <Typography 
-                  variant="body1" 
-                  sx={{ 
-                    fontWeight: 600, 
-                    flex: 1, 
-                    fontSize: { xs: "0.9rem", sm: "1rem" },
-                    lineHeight: 1.4,
-                    wordBreak: "break-word"
-                  }}
-                >
-                  {notificationMessage}
-                </Typography>
-                <IconButton
-                  onClick={() => setShowSuccessNotification(false)}
-                  sx={{ 
-                    color: "white", 
-                    p: { xs: 0.25, sm: 0.5 },
-                    minWidth: "auto"
-                  }}
-                >
-                  <CloseIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
-                </IconButton>
-              </Box>
-            </Card>
-          </Box>
-        )}
       </Box>
       <Dialog open={customizationOpen} onClose={handleCloseCustomization} PaperProps={{
         sx: {

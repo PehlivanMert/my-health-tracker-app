@@ -212,8 +212,13 @@ const Exercises = ({ exercises, setExercises }) => {
       } else {
         // Eğer doküman yoksa oluştur - Türkiye saatine göre
         const now = new Date();
-        const turkeyTime = new Date(now.toLocaleString("en-US", {timeZone: "Europe/Istanbul"}));
-        const todayStr = turkeyTime.toISOString().slice(0, 10);
+        const turkeyDate = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Europe/Istanbul',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).format(now);
+        const todayStr = turkeyDate; // Format: YYYY-MM-DD
         const initialUsage = { date: todayStr, count: 0 };
         await safeSetDoc(usageDocRef, initialUsage);
         setGeminiUsage(initialUsage);
@@ -226,32 +231,84 @@ const Exercises = ({ exercises, setExercises }) => {
   }, []);
 
   const canUseGemini = () => {
-    if (!geminiUsage) return false;
+    if (!geminiUsage) {
+      console.log("🚫 canUseGemini: geminiUsage is null/undefined");
+      return false;
+    }
     
-    // Türkiye saatine göre bugünün tarihini al
+    // Türkiye saatine göre bugünün tarihini al - DÜZELTME
     const now = new Date();
-    const turkeyTime = new Date(now.toLocaleString("en-US", {timeZone: "Europe/Istanbul"}));
-    const todayStr = turkeyTime.toISOString().slice(0, 10);
+    // Daha güvenilir yöntem: Intl.DateTimeFormat kullan
+    const turkeyDate = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Istanbul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(now);
+    const todayStr = turkeyDate; // Format: YYYY-MM-DD
     
-    if (geminiUsage.date !== todayStr) return true;
-    return geminiUsage.count < 3; // Günde 3 kez kullanabilir
+    // Debug için ek bilgi
+    console.log("🕐 Tarih hesaplama DEBUG:", {
+      originalDate: now.toISOString(),
+      turkeyDate: turkeyDate,
+      todayStr: todayStr,
+      turkeyTimeString: now.toLocaleString("tr-TR", {timeZone: "Europe/Istanbul"})
+    });
+    
+    console.log("🔍 Exercise canUseGemini DEBUG:", {
+      geminiUsageDate: geminiUsage.date,
+      todayStr: todayStr,
+      count: geminiUsage.count,
+      isDifferentDay: geminiUsage.date !== todayStr,
+      canUse: geminiUsage.date !== todayStr || geminiUsage.count < 3,
+      currentTime: now.toLocaleString("tr-TR", {timeZone: "Europe/Istanbul"})
+    });
+    
+    if (geminiUsage.date !== todayStr) {
+      console.log("✅ Yeni gün - limit sıfırlandı!");
+      return true;
+    }
+    
+    const canUse = geminiUsage.count < 3;
+    console.log(canUse ? "✅ Kullanılabilir" : "🚫 Limit doldu");
+    return canUse;
   };
 
   const incrementGeminiUsage = async () => {
-    // Türkiye saatine göre bugünün tarihini al
+    // Türkiye saatine göre bugünün tarihini al - DÜZELTME
     const now = new Date();
-    const turkeyTime = new Date(now.toLocaleString("en-US", {timeZone: "Europe/Istanbul"}));
-    const todayStr = turkeyTime.toISOString().slice(0, 10);
+    const turkeyDate = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Istanbul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(now);
+    const todayStr = turkeyDate; // Format: YYYY-MM-DD
+    
+    console.log("📈 incrementGeminiUsage DEBUG:", {
+      oldDate: geminiUsage.date,
+      newDate: todayStr,
+      oldCount: geminiUsage.count,
+      isNewDay: geminiUsage.date !== todayStr
+    });
     
     const usageDocRef = doc(db, "users", auth.currentUser?.uid, "apiUsage", "exerciseAI");
     let updatedUsage = { ...geminiUsage };
     if (geminiUsage.date !== todayStr) {
       updatedUsage = { date: todayStr, count: 1 };
+      console.log("🔄 Yeni gün - sayaç sıfırlandı ve 1'e ayarlandı");
     } else {
       updatedUsage.count += 1;
+      console.log(`📊 Sayaç artırıldı: ${geminiUsage.count} → ${updatedUsage.count}`);
     }
     await safeUpdateDoc(usageDocRef, updatedUsage);
     setGeminiUsage(updatedUsage);
+  };
+
+  // Test fonksiyonu - console'da çağırılabilir
+  window.testGeminiLimit = () => {
+    console.log("🧪 Test: canUseGemini() =", canUseGemini());
+    console.log("🧪 Test: geminiUsage =", geminiUsage);
   };
 
   const generatePersonalizedProgramAsync = async () => {

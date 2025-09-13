@@ -87,6 +87,21 @@ self.skipWaiting();
 
 // 3. Fetch event: Önce önbellekten yanıtla, yoksa ağa başvur; navigasyon istekleri offline.html ile yanıtlasın
 self.addEventListener("fetch", (event) => {
+  // Sadece GET isteklerini işle
+  if (event.request.method !== "GET") {
+    return;
+  }
+  
+  // Chrome extension isteklerini yok say
+  if (event.request.url.startsWith("chrome-extension://")) {
+    return;
+  }
+  
+  // Firebase isteklerini yok say
+  if (event.request.url.includes("firebase") || event.request.url.includes("googleapis")) {
+    return;
+  }
+  
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request)
@@ -94,12 +109,23 @@ self.addEventListener("fetch", (event) => {
           // İsteğin başarılı olması durumunda, cache'i de güncelleyebilirsiniz.
           return response;
         })
-        .catch(() => caches.match("/offline.html"))
+        .catch((error) => {
+          console.log("Fetch error for navigation:", error);
+          return caches.match("/offline.html");
+        })
     );
   } else {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
-        return cachedResponse || fetch(event.request);
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        
+        return fetch(event.request).catch((error) => {
+          console.log("Fetch error for resource:", error);
+          // Eğer fetch başarısız olursa, boş response döndür
+          return new Response("", { status: 404, statusText: "Not Found" });
+        });
       })
     );
   }

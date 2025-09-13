@@ -411,8 +411,10 @@ const HealthDashboard = ({ user }) => {
       if (docSnap.exists()) {
         setGeminiUsage(docSnap.data());
       } else {
-        // Eğer doküman yoksa oluştur
-        const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Istanbul" });
+        // Eğer doküman yoksa oluştur - Türkiye saatine göre
+        const now = new Date();
+        const turkeyTime = new Date(now.toLocaleString("en-US", {timeZone: "Europe/Istanbul"}));
+        const todayStr = turkeyTime.toISOString().slice(0, 10);
         const initialUsage = { date: todayStr, count: 0 };
         await setDoc(usageDocRef, initialUsage);
         setGeminiUsage(initialUsage);
@@ -426,24 +428,76 @@ const HealthDashboard = ({ user }) => {
 
   // Gemini kullanım sınırını kontrol eden fonksiyon: Eğer kullanım sayısı 2'ye ulaşmışsa false döner.
   const canUseGemini = () => {
-    if (!geminiUsage) return true; // Veriler henüz yüklenmediyse true döndür (buton aktif olsun)
-    const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Istanbul" });
-    if (geminiUsage.date !== todayStr) return true; // Yeni gün, sayaç sıfırlanır
-    return geminiUsage.count < 2;
+    if (!geminiUsage) {
+      console.log("🚫 HealthDashboard canUseGemini: geminiUsage is null/undefined");
+      return true; // Veriler henüz yüklenmediyse true döndür (buton aktif olsun)
+    }
+    
+    // Türkiye saatine göre bugünün tarihini al - DÜZELTME
+    const now = new Date();
+    const turkeyDate = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Istanbul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(now);
+    const todayStr = turkeyDate; // Format: YYYY-MM-DD
+    
+    console.log("🔍 HealthDashboard canUseGemini DEBUG:", {
+      geminiUsageDate: geminiUsage.date,
+      todayStr: todayStr,
+      count: geminiUsage.count,
+      isDifferentDay: geminiUsage.date !== todayStr,
+      canUse: geminiUsage.date !== todayStr || geminiUsage.count < 2,
+      currentTime: now.toLocaleString("tr-TR", {timeZone: "Europe/Istanbul"})
+    });
+    
+    if (geminiUsage.date !== todayStr) {
+      console.log("✅ HealthDashboard - Yeni gün - limit sıfırlandı!");
+      return true; // Yeni gün, sayaç sıfırlanır
+    }
+    
+    const canUse = geminiUsage.count < 2;
+    console.log(canUse ? "✅ HealthDashboard - Kullanılabilir" : "🚫 HealthDashboard - Limit doldu");
+    return canUse;
   };
 
   // Gemini API kullanımı sonrası sayacı bir artıran fonksiyon
   const incrementGeminiUsage = async () => {
-    const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Istanbul" });
+    // Türkiye saatine göre bugünün tarihini al - DÜZELTME
+    const now = new Date();
+    const turkeyDate = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Istanbul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(now);
+    const todayStr = turkeyDate; // Format: YYYY-MM-DD
+    
+    console.log("📈 HealthDashboard incrementGeminiUsage DEBUG:", {
+      oldDate: geminiUsage.date,
+      newDate: todayStr,
+      oldCount: geminiUsage.count,
+      isNewDay: geminiUsage.date !== todayStr
+    });
+    
     const usageDocRef = doc(db, "users", user.uid, "apiUsage", "healthDashboard");
     let updatedUsage = { ...geminiUsage };
     if (geminiUsage.date !== todayStr) {
       updatedUsage = { date: todayStr, count: 1 };
+      console.log("🔄 HealthDashboard - Yeni gün - sayaç sıfırlandı ve 1'e ayarlandı");
     } else {
       updatedUsage.count += 1;
+      console.log(`📊 HealthDashboard - Sayaç artırıldı: ${geminiUsage.count} → ${updatedUsage.count}`);
     }
     await updateDoc(usageDocRef, updatedUsage);
     setGeminiUsage(updatedUsage);
+  };
+
+  // Test fonksiyonu - console'da çağırılabilir
+  window.testHealthGeminiLimit = () => {
+    console.log("🧪 HealthDashboard Test: canUseGemini() =", canUseGemini());
+    console.log("🧪 HealthDashboard Test: geminiUsage =", geminiUsage);
   };
 
   // Firebase'den kullanıcı verilerini çekiyoruz.

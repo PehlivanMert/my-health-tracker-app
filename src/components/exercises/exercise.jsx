@@ -210,8 +210,10 @@ const Exercises = ({ exercises, setExercises }) => {
       if (docSnap.exists()) {
         setGeminiUsage(docSnap.data());
       } else {
-        // Eğer doküman yoksa oluştur
-        const todayStr = new Date().toISOString().slice(0, 10);
+        // Eğer doküman yoksa oluştur - Türkiye saatine göre
+        const now = new Date();
+        const turkeyTime = new Date(now.toLocaleString("en-US", {timeZone: "Europe/Istanbul"}));
+        const todayStr = turkeyTime.toISOString().slice(0, 10);
         const initialUsage = { date: todayStr, count: 0 };
         await safeSetDoc(usageDocRef, initialUsage);
         setGeminiUsage(initialUsage);
@@ -225,13 +227,22 @@ const Exercises = ({ exercises, setExercises }) => {
 
   const canUseGemini = () => {
     if (!geminiUsage) return false;
-    const todayStr = new Date().toISOString().slice(0, 10);
+    
+    // Türkiye saatine göre bugünün tarihini al
+    const now = new Date();
+    const turkeyTime = new Date(now.toLocaleString("en-US", {timeZone: "Europe/Istanbul"}));
+    const todayStr = turkeyTime.toISOString().slice(0, 10);
+    
     if (geminiUsage.date !== todayStr) return true;
     return geminiUsage.count < 3; // Günde 3 kez kullanabilir
   };
 
   const incrementGeminiUsage = async () => {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    // Türkiye saatine göre bugünün tarihini al
+    const now = new Date();
+    const turkeyTime = new Date(now.toLocaleString("en-US", {timeZone: "Europe/Istanbul"}));
+    const todayStr = turkeyTime.toISOString().slice(0, 10);
+    
     const usageDocRef = doc(db, "users", auth.currentUser?.uid, "apiUsage", "exerciseAI");
     let updatedUsage = { ...geminiUsage };
     if (geminiUsage.date !== todayStr) {
@@ -1632,10 +1643,21 @@ const ProgramDisplay = ({ program }) => {
                   <AccordionDetails>
                     {(() => {
                       // Öğünleri doğru sırada göstermek için sıralama
-                      const mealOrder = ['breakfast', 'lunch', 'dinner', 'snacks'];
+                      // Ara öğünler öğünler arasında olmalı, sonda değil
+                      const mealOrder = ['breakfast', 'lunch', 'dinner'];
                       const sortedMeals = Object.entries(dayMeals).sort((a, b) => {
                         const aIndex = mealOrder.indexOf(a[0]);
                         const bIndex = mealOrder.indexOf(b[0]);
+                        
+                        // Eğer ikisi de mealOrder'da yoksa (snacks gibi), alfabetik sırala
+                        if (aIndex === -1 && bIndex === -1) {
+                          return a[0].localeCompare(b[0]);
+                        }
+                        
+                        // Eğer biri mealOrder'da yoksa, onu sona koy
+                        if (aIndex === -1) return 1;
+                        if (bIndex === -1) return -1;
+                        
                         return aIndex - bIndex;
                       });
 

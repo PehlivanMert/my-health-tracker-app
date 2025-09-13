@@ -34,6 +34,9 @@ import {
   ListItemText,
   ListItemIcon,
   useMediaQuery,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
 } from "@mui/material";
 import {
   Delete,
@@ -160,6 +163,23 @@ const Exercises = ({ exercises, setExercises }) => {
   const [userRequest, setUserRequest] = useState("");
   const [generatedProgram, setGeneratedProgram] = useState(null);
   const [geminiUsage, setGeminiUsage] = useState(null);
+  
+  // Yeni state'ler
+  const [includeNutrition, setIncludeNutrition] = useState(false);
+  const [bodyComposition, setBodyComposition] = useState({
+    bodyFat: "",
+    muscleMass: "",
+    waterPercentage: "",
+    boneMass: ""
+  });
+  const [nutritionPreferences, setNutritionPreferences] = useState({
+    likedFoods: "",
+    dislikedFoods: "",
+    allergies: "",
+    dietaryRestrictions: "",
+    mealFrequency: "",
+    cookingTime: ""
+  });
 
   // Kullanıcı profil verilerini çek
   useEffect(() => {
@@ -239,6 +259,38 @@ const Exercises = ({ exercises, setExercises }) => {
       // Güncel model adını kullan
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
+      // Vücut kompozisyonu bilgilerini hazırla
+      const bodyCompInfo = Object.values(bodyComposition).some(val => val.trim()) 
+        ? `\nVÜCUT KOMPOZİSYONU:
+- Vücut Yağı: ${bodyComposition.bodyFat || "Belirtilmemiş"}%
+- Kas Kütlesi: ${bodyComposition.muscleMass || "Belirtilmemiş"} kg
+- Su Oranı: ${bodyComposition.waterPercentage || "Belirtilmemiş"}%
+- Kemik Kütlesi: ${bodyComposition.boneMass || "Belirtilmemiş"} kg`
+        : "";
+
+      // Beslenme tercihlerini hazırla
+      const nutritionInfo = includeNutrition 
+        ? `\nBESLENME TERCİHLERİ:
+- Sevdiği Yiyecekler: ${nutritionPreferences.likedFoods || "Belirtilmemiş"}
+- Sevmediği Yiyecekler: ${nutritionPreferences.dislikedFoods || "Belirtilmemiş"}
+- Alerjiler: ${nutritionPreferences.allergies || "Yok"}
+- Diyet Kısıtlamaları: ${nutritionPreferences.dietaryRestrictions || "Yok"}
+- Beslenme Düzeni: ${nutritionPreferences.mealFrequency || "Belirtilmemiş"}
+- Yemek Hazırlama Süresi: ${nutritionPreferences.cookingTime || "Belirtilmemiş"}
+
+ÖNEMLİ BESLENME NOTLARI:
+${nutritionPreferences.mealFrequency === "16:8" ? "- 16:8 Aralıklı Oruç: 16 saat açlık, 8 saat yeme penceresi" : ""}
+${nutritionPreferences.mealFrequency === "18:6" ? "- 18:6 Aralıklı Oruç: 18 saat açlık, 6 saat yeme penceresi" : ""}
+${nutritionPreferences.mealFrequency === "20:4" ? "- 20:4 Aralıklı Oruç: 20 saat açlık, 4 saat yeme penceresi" : ""}
+${nutritionPreferences.mealFrequency === "OMAD" ? "- OMAD: Günde sadece 1 büyük öğün" : ""}
+${nutritionPreferences.mealFrequency === "5:2" ? "- 5:2 Diyeti: 5 gün normal beslenme, 2 gün düşük kalori" : ""}
+${nutritionPreferences.mealFrequency === "keto" ? "- Ketojenik Diyet: Düşük karbonhidrat, yüksek yağ" : ""}
+${nutritionPreferences.mealFrequency === "paleo" ? "- Paleo Diyeti: İşlenmemiş, doğal besinler" : ""}
+${nutritionPreferences.mealFrequency === "mediterranean" ? "- Akdeniz Diyeti: Zeytinyağı, balık, sebze ağırlıklı" : ""}
+${nutritionPreferences.mealFrequency === "vegan" ? "- Vegan Diyet: Hayvansal ürün yok" : ""}
+${nutritionPreferences.mealFrequency === "vegetarian" ? "- Vejetaryen Diyet: Et yok, süt ürünleri var" : ""}`
+        : "";
+
       const prompt = `Sen profesyonel bir fitness koçusun. Kullanıcının bilgilerine göre kişiselleştirilmiş bir spor programı oluştur.
 
 KULLANICI BİLGİLERİ:
@@ -246,15 +298,27 @@ KULLANICI BİLGİLERİ:
 - Yaş: ${profileData.age || "Belirtilmemiş"}
 - Cinsiyet: ${profileData.gender === "male" ? "Erkek" : profileData.gender === "female" ? "Kadın" : "Belirtilmemiş"}
 - Boy: ${profileData.height || "Belirtilmemiş"} cm
-- Kilo: ${profileData.weight || "Belirtilmemiş"} kg
+- Kilo: ${profileData.weight || "Belirtilmemiş"} kg${bodyCompInfo}
 
 KULLANICI İSTEKLERİ:
-${userRequest}
+${userRequest}${nutritionInfo}
 
-Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir format kullanma:
+ÖNEMLİ: ${includeNutrition ? 'KULLANICI BESLENME PROGRAMI İSTİYOR! Beslenme programını da dahil et.' : 'Kullanıcı sadece spor programı istiyor, beslenme programı dahil etme.'}
+
+Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir format kullanma:`;
+
+      // Geliştirme için prompt'u console'a yazdır
+      console.log("=== GEMINI PROMPT ===");
+      console.log(prompt);
+      console.log("=== BESLENME DURUMU ===");
+      console.log("includeNutrition:", includeNutrition);
+      console.log("nutritionInfo:", nutritionInfo);
+      console.log("===================");
+
+      const fullPrompt = prompt + `
 
 {
-  "title": "🏋️ KİŞİSELLEŞTİRİLMİŞ SPOR PROGRAMI",
+  "title": "${includeNutrition ? '🏋️ KİŞİSELLEŞTİRİLMİŞ SPOR PROGRAMI 🍎 BESLENME PROGRAMI' : '🏋️ KİŞİSELLEŞTİRİLMİŞ SPOR PROGRAMI'}",
   "summary": "Kullanıcının hedeflerine uygun kısa özet (2-3 cümle)",
   "goals": [
     "Hedef 1",
@@ -371,22 +435,48 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
     "YouTube'da 'egzersiz adı nasıl yapılır' araması yapın",
     "Doğru form için video izleyin",
     "Başlangıç seviyesi videoları tercih edin"
-  ]
+  ]${includeNutrition ? `,
+  "nutrition": {
+    "dailyCalories": "Günlük kalori hedefi",
+    "macros": {
+      "protein": "Protein gramı",
+      "carbs": "Karbonhidrat gramı", 
+      "fat": "Yağ gramı"
+    },
+    "meals": {
+      "breakfast": {
+        "time": "Kahvaltı saati",
+        "foods": ["Yiyecek 1", "Yiyecek 2"],
+        "calories": "Kalori miktarı"
+      },
+      "lunch": {
+        "time": "Öğle yemeği saati",
+        "foods": ["Yiyecek 1", "Yiyecek 2"],
+        "calories": "Kalori miktarı"
+      },
+      "dinner": {
+        "time": "Akşam yemeği saati",
+        "foods": ["Yiyecek 1", "Yiyecek 2"],
+        "calories": "Kalori miktarı"
+      }
+    },
+    "nutritionNotes": [
+      "Beslenme notu 1",
+      "Beslenme notu 2"
+    ]
+  }` : ''}
 }
 
-ÖNEMLİ KURALLAR:
-1. SADECE JSON formatında cevap ver, başka hiçbir metin ekleme
-2. Her gün için en az 2-3 egzersiz ekle
-3. Egzersiz isimleri Türkçe olsun
-4. Zorluk seviyesi: Başlangıç, Orta, İleri
-5. Süreler gerçekçi olsun (30-60 dakika arası)
-6. Video arama terimleri Türkçe olsun
-7. Kullanıcının seviyesine uygun egzersizler seç
-8. JSON formatını bozma, geçerli JSON olsun`;
+ÖNEMLİ KURALLAR:`;
 
-      const result = await model.generateContent(prompt);
+      const result = await model.generateContent(fullPrompt);
       const response = await result.response;
       const programText = response.text();
+
+      // Geliştirme için Gemini'den gelen cevabı console'a yazdır
+      console.log("=== GEMINI RESPONSE ===");
+      console.log(programText);
+      console.log("=====================");
 
       // Programı parse et ve yapılandırılmış hale getir
       const parsedProgram = parseProgram(programText);
@@ -421,6 +511,24 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
 
       toast.success("Kişiselleştirilmiş spor programınız hazır!");
       setOpenModal(false);
+      
+      // Form'u temizle
+      setUserRequest("");
+      setIncludeNutrition(false);
+      setBodyComposition({
+        bodyFat: "",
+        muscleMass: "",
+        waterPercentage: "",
+        boneMass: ""
+      });
+      setNutritionPreferences({
+        likedFoods: "",
+        dislikedFoods: "",
+        allergies: "",
+        dietaryRestrictions: "",
+        mealFrequency: "",
+        cookingTime: ""
+      });
 
     } catch (error) {
       // Daha detaylı hata mesajları
@@ -467,7 +575,8 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
         goals: Array.isArray(program.goals) ? program.goals : [],
         weeklyProgram: program.weeklyProgram || {},
         notes: Array.isArray(program.notes) ? program.notes : [],
-        videoSuggestions: Array.isArray(program.videoSuggestions) ? program.videoSuggestions : []
+        videoSuggestions: Array.isArray(program.videoSuggestions) ? program.videoSuggestions : [],
+        nutrition: program.nutrition || null // Beslenme bölümünü ekle
       };
       
       // Haftalık programı kontrol et ve düzelt
@@ -503,7 +612,8 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
       goals: [],
       weeklyProgram: {},
       notes: [],
-      videoSuggestions: []
+      videoSuggestions: [],
+      nutrition: null // Beslenme bölümünü ekle
     };
 
     let currentSection = '';
@@ -859,7 +969,26 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
               <Typography variant="h5" sx={{ color: "#2196F3", fontSize: { xs: "1.2rem", md: "1.5rem" } }}>
                 AI Spor Koçu
               </Typography>
-              <IconButton onClick={() => setOpenModal(false)}>
+              <IconButton onClick={() => {
+                setOpenModal(false);
+                // Form'u temizle
+                setUserRequest("");
+                setIncludeNutrition(false);
+                setBodyComposition({
+                  bodyFat: "",
+                  muscleMass: "",
+                  waterPercentage: "",
+                  boneMass: ""
+                });
+                setNutritionPreferences({
+                  likedFoods: "",
+                  dislikedFoods: "",
+                  allergies: "",
+                  dietaryRestrictions: "",
+                  mealFrequency: "",
+                  cookingTime: ""
+                });
+              }}>
                 <Close sx={{ color: "#2196F3" }} />
               </IconButton>
             </Box>
@@ -872,13 +1001,178 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
               <TextField
                 label="Hedeflerinizi ve isteklerinizi detaylı olarak yazın..."
                 multiline
-                rows={6}
+                rows={4}
                 fullWidth
                 value={userRequest}
                 onChange={(e) => setUserRequest(e.target.value)}
                 placeholder="Örnek: Kilo vermek istiyorum, haftada 3 gün antrenman yapabilirim, evde egzersiz yapmak istiyorum, başlangıç seviyesindeyim..."
                 sx={{ mb: 3 }}
               />
+
+              {/* Vücut Kompozisyonu Bölümü */}
+              <Typography variant="h6" sx={{ mb: 2, color: "#2196F3", fontSize: { xs: "1rem", md: "1.25rem" } }}>
+                📊 Vücut Kompozisyonu (İsteğe Bağlı)
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2, color: "#666", fontSize: { xs: "0.8rem", md: "0.9rem" } }}>
+                Eğer vücut yağı, kas kütlesi, su oranı gibi bilgilerinizi biliyorsanız ekleyebilirsiniz. Bu bilgiler daha kişiselleştirilmiş program oluşturmamıza yardımcı olur.
+              </Typography>
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={6}>
+                  <TextField
+                    label="Vücut Yağı (%)"
+                    fullWidth
+                    value={bodyComposition.bodyFat}
+                    onChange={(e) => setBodyComposition(prev => ({ ...prev, bodyFat: e.target.value }))}
+                    placeholder="Örnek: 15"
+                    size="small"
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    label="Kas Kütlesi (kg)"
+                    fullWidth
+                    value={bodyComposition.muscleMass}
+                    onChange={(e) => setBodyComposition(prev => ({ ...prev, muscleMass: e.target.value }))}
+                    placeholder="Örnek: 35"
+                    size="small"
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    label="Su Oranı (%)"
+                    fullWidth
+                    value={bodyComposition.waterPercentage}
+                    onChange={(e) => setBodyComposition(prev => ({ ...prev, waterPercentage: e.target.value }))}
+                    placeholder="Örnek: 60"
+                    size="small"
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    label="Kemik Kütlesi (kg)"
+                    fullWidth
+                    value={bodyComposition.boneMass}
+                    onChange={(e) => setBodyComposition(prev => ({ ...prev, boneMass: e.target.value }))}
+                    placeholder="Örnek: 2.5"
+                    size="small"
+                  />
+                </Grid>
+              </Grid>
+
+              {/* Beslenme Programı Seçeneği */}
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={includeNutrition}
+                    onChange={(e) => setIncludeNutrition(e.target.checked)}
+                    sx={{ color: "#2196F3" }}
+                  />
+                }
+                label={
+                  <Typography variant="h6" sx={{ color: "#2196F3", fontSize: { xs: "1rem", md: "1.25rem" } }}>
+                    🍎 Beslenme Programı da İstiyorum
+                  </Typography>
+                }
+                sx={{ mb: 2 }}
+              />
+
+              {/* Beslenme Tercihleri */}
+              {includeNutrition && (
+                <Collapse in={includeNutrition}>
+                  <Box sx={{ mb: 3, p: 2, bgcolor: "#f5f5f5", borderRadius: 2 }}>
+                    <Typography variant="h6" sx={{ mb: 2, color: "#2196F3", fontSize: { xs: "1rem", md: "1.25rem" } }}>
+                      🍽️ Beslenme Tercihleriniz
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12}>
+                        <TextField
+                          label="Sevdiğiniz Yiyecekler"
+                          fullWidth
+                          multiline
+                          rows={2}
+                          value={nutritionPreferences.likedFoods}
+                          onChange={(e) => setNutritionPreferences(prev => ({ ...prev, likedFoods: e.target.value }))}
+                          placeholder="Örnek: Tavuk, balık, sebzeler, meyveler, yulaf..."
+                          size="small"
+                        />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <TextField
+                          label="Sevmediğiniz Yiyecekler"
+                          fullWidth
+                          multiline
+                          rows={2}
+                          value={nutritionPreferences.dislikedFoods}
+                          onChange={(e) => setNutritionPreferences(prev => ({ ...prev, dislikedFoods: e.target.value }))}
+                          placeholder="Örnek: Süt ürünleri, baharatlı yemekler..."
+                          size="small"
+                        />
+                      </Grid>
+                      <Grid item xs={6}>
+                        <TextField
+                          label="Alerjiler"
+                          fullWidth
+                          value={nutritionPreferences.allergies}
+                          onChange={(e) => setNutritionPreferences(prev => ({ ...prev, allergies: e.target.value }))}
+                          placeholder="Örnek: Fındık, gluten..."
+                          size="small"
+                        />
+                      </Grid>
+                      <Grid item xs={6}>
+                        <TextField
+                          label="Diyet Kısıtlamaları"
+                          fullWidth
+                          value={nutritionPreferences.dietaryRestrictions}
+                          onChange={(e) => setNutritionPreferences(prev => ({ ...prev, dietaryRestrictions: e.target.value }))}
+                          placeholder="Örnek: Vejetaryen, düşük karbonhidrat..."
+                          size="small"
+                        />
+                      </Grid>
+                      <Grid item xs={6}>
+                        <FormControl fullWidth size="small">
+                          <InputLabel>Beslenme Düzeni</InputLabel>
+                          <Select
+                            value={nutritionPreferences.mealFrequency}
+                            onChange={(e) => setNutritionPreferences(prev => ({ ...prev, mealFrequency: e.target.value }))}
+                            label="Beslenme Düzeni"
+                          >
+                            <MenuItem value="2">2 Öğün (Aralıklı Oruç)</MenuItem>
+                            <MenuItem value="3">3 Öğün (Klasik)</MenuItem>
+                            <MenuItem value="4">4 Öğün</MenuItem>
+                            <MenuItem value="5">5 Öğün</MenuItem>
+                            <MenuItem value="6">6 Öğün (Sık Beslenme)</MenuItem>
+                            <MenuItem value="16:8">16:8 Aralıklı Oruç</MenuItem>
+                            <MenuItem value="18:6">18:6 Aralıklı Oruç</MenuItem>
+                            <MenuItem value="20:4">20:4 Aralıklı Oruç</MenuItem>
+                            <MenuItem value="OMAD">OMAD (Günde 1 Öğün)</MenuItem>
+                            <MenuItem value="5:2">5:2 Diyeti</MenuItem>
+                            <MenuItem value="keto">Ketojenik Diyet</MenuItem>
+                            <MenuItem value="paleo">Paleo Diyeti</MenuItem>
+                            <MenuItem value="mediterranean">Akdeniz Diyeti</MenuItem>
+                            <MenuItem value="vegan">Vegan Diyeti</MenuItem>
+                            <MenuItem value="vegetarian">Vejetaryen Diyeti</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <FormControl fullWidth size="small">
+                          <InputLabel>Yemek Hazırlama Süresi</InputLabel>
+                          <Select
+                            value={nutritionPreferences.cookingTime}
+                            onChange={(e) => setNutritionPreferences(prev => ({ ...prev, cookingTime: e.target.value }))}
+                            label="Yemek Hazırlama Süresi"
+                          >
+                            <MenuItem value="15">15 dakika</MenuItem>
+                            <MenuItem value="30">30 dakika</MenuItem>
+                            <MenuItem value="45">45 dakika</MenuItem>
+                            <MenuItem value="60">1 saat</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                    </Grid>
+                  </Box>
+                </Collapse>
+              )}
 
               {error && (
                 <Alert severity="error" sx={{ mb: 3, fontSize: { xs: "0.8rem", md: "inherit" } }}>
@@ -889,7 +1183,26 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
               <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "center", gap: 2 }}>
                 <Button
                   variant="outlined"
-                  onClick={() => setOpenModal(false)}
+                  onClick={() => {
+                    setOpenModal(false);
+                    // Form'u temizle
+                    setUserRequest("");
+                    setIncludeNutrition(false);
+                    setBodyComposition({
+                      bodyFat: "",
+                      muscleMass: "",
+                      waterPercentage: "",
+                      boneMass: ""
+                    });
+                    setNutritionPreferences({
+                      likedFoods: "",
+                      dislikedFoods: "",
+                      allergies: "",
+                      dietaryRestrictions: "",
+                      mealFrequency: "",
+                      cookingTime: ""
+                    });
+                  }}
                   sx={{ borderColor: "#2196F3", color: "#2196F3", fontSize: { xs: "0.8rem", md: "inherit" } }}
                 >
                   İptal
@@ -1054,6 +1367,103 @@ const ProgramDisplay = ({ program }) => {
               </ListItem>
             ))}
           </List>
+        </Paper>
+      )}
+
+      {/* Beslenme Programı */}
+      {program.nutrition && (
+        <Paper sx={{ p: { xs: 2, md: 3 }, mt: 3, background: "rgba(255,152,0,0.1)", border: "1px solid rgba(255,152,0,0.3)" }}>
+          <Typography variant="h6" sx={{ color: "#FF9800", mb: 2, fontWeight: 600, fontSize: { xs: "1rem", md: "1.25rem" } }}>
+            🍎 Beslenme Programı
+          </Typography>
+          
+          {/* Günlük Kalori */}
+          {program.nutrition.dailyCalories && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ color: "#FF9800", fontWeight: 600, mb: 1 }}>
+                📊 Günlük Kalori Hedefi
+              </Typography>
+              <Typography variant="body1" sx={{ color: "#fff", fontSize: { xs: "0.9rem", md: "1rem" } }}>
+                {program.nutrition.dailyCalories}
+              </Typography>
+            </Box>
+          )}
+
+          {/* Makro Besinler */}
+          {program.nutrition.macros && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ color: "#FF9800", fontWeight: 600, mb: 1 }}>
+                🥗 Makro Besin Dağılımı
+              </Typography>
+              <Grid container spacing={1}>
+                <Grid item xs={4}>
+                  <Chip label={`Protein: ${program.nutrition.macros.protein}`} size="small" sx={{ background: "rgba(76,175,80,0.2)", color: "#fff", width: "100%" }} />
+                </Grid>
+                <Grid item xs={4}>
+                  <Chip label={`Karbonhidrat: ${program.nutrition.macros.carbs}`} size="small" sx={{ background: "rgba(33,150,243,0.2)", color: "#fff", width: "100%" }} />
+                </Grid>
+                <Grid item xs={4}>
+                  <Chip label={`Yağ: ${program.nutrition.macros.fat}`} size="small" sx={{ background: "rgba(255,152,0,0.2)", color: "#fff", width: "100%" }} />
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+
+          {/* Öğün Planları */}
+          {program.nutrition.meals && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ color: "#FF9800", fontWeight: 600, mb: 1 }}>
+                🍽️ Öğün Planları
+              </Typography>
+              {Object.entries(program.nutrition.meals).map(([mealName, meal]) => (
+                <Accordion key={mealName} sx={{ mb: 1, background: "rgba(255,255,255,0.05)" }}>
+                  <AccordionSummary expandIcon={<ExpandMore sx={{ color: "#FF9800" }} />}>
+                    <Typography sx={{ color: "#FF9800", fontWeight: 600 }}>
+                      {mealName === 'breakfast' ? '🌅 Kahvaltı' : 
+                       mealName === 'lunch' ? '🌞 Öğle Yemeği' : 
+                       mealName === 'dinner' ? '🌙 Akşam Yemeği' : 
+                       mealName === 'snacks' ? '🍎 Ara Öğünler' : mealName}
+                      {meal.time && ` (${meal.time})`}
+                      {meal.calories && ` - ${meal.calories} kalori`}
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    {meal.foods && Array.isArray(meal.foods) && (
+                      <List dense>
+                        {meal.foods.map((food, index) => (
+                          <ListItem key={index} sx={{ py: 0.5 }}>
+                            <ListItemIcon>
+                              <Chip label="•" size="small" sx={{ background: "rgba(255,152,0,0.3)", color: "#fff", minWidth: "20px", height: "20px" }} />
+                            </ListItemIcon>
+                            <ListItemText primary={food} sx={{ color: "#fff", fontSize: { xs: "0.85rem", md: "1rem" } }} />
+                          </ListItem>
+                        ))}
+                      </List>
+                    )}
+                  </AccordionDetails>
+                </Accordion>
+              ))}
+            </Box>
+          )}
+
+          {/* Beslenme Notları */}
+          {program.nutrition.nutritionNotes && program.nutrition.nutritionNotes.length > 0 && (
+            <Box>
+              <Typography variant="subtitle1" sx={{ color: "#FF9800", fontWeight: 600, mb: 1 }}>
+                💡 Beslenme Notları
+              </Typography>
+              <List dense>
+                {program.nutrition.nutritionNotes.map((note, index) => (
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon>
+                      <Chip label="•" size="small" sx={{ background: "rgba(255,152,0,0.3)", color: "#fff", minWidth: "20px", height: "20px" }} />
+                    </ListItemIcon>
+                    <ListItemText primary={note} sx={{ color: "#fff", fontSize: { xs: "0.85rem", md: "1rem" } }} />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          )}
         </Paper>
       )}
 

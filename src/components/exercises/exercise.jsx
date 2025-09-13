@@ -525,9 +525,9 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
   "nutrition": {
     "dailyCalories": "Kullanıcının hesaplanmış günlük kalori ihtiyacı (örn: 1850-2100 kalori - kilo verme için 500 kalori açığı)",
     "macros": {
-      "protein": "Protein gramı (vücut ağırlığının kg başına 1.6-2.2g)",
-      "carbs": "Karbonhidrat gramı (kalorinin %45-65'i)", 
-      "fat": "Yağ gramı (kalorinin %20-35'i)"
+      "protein": "Protein gramı",
+      "carbs": "Karbonhidrat gramı", 
+      "fat": "Yağ gramı"
     },
     "weeklyMeals": {
       "Pazartesi": {

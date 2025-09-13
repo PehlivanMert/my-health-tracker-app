@@ -56,6 +56,7 @@ import {
   DirectionsBike,
   SelfImprovement,
   Spa,
+  OpenInFull,
 } from "@mui/icons-material";
 import { toast } from "react-toastify";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -182,6 +183,9 @@ const Exercises = ({ exercises, setExercises }) => {
     mealFrequency: "",
     cookingTime: ""
   });
+  
+  // Textarea büyütme state'i
+  const [isTextareaExpanded, setIsTextareaExpanded] = useState(false);
 
   // Kullanıcı profil verilerini çek
   useEffect(() => {
@@ -1195,6 +1199,7 @@ BESLENME PROGRAMI TALİMATLARI:
                 // Form'u temizle
                 setUserRequest("");
                 setIncludeNutrition(false);
+                setIsTextareaExpanded(false);
                 setBodyComposition({
                   bodyFat: "",
                   muscleMass: "",
@@ -1219,16 +1224,46 @@ BESLENME PROGRAMI TALİMATLARI:
               <Typography variant="h6" sx={{ mb: 2, color: "#2196F3", fontSize: { xs: "1rem", md: "1.25rem" } }}>
                 Spor Hedefleriniz ve İstekleriniz
               </Typography>
-              <TextField
-                label="Hedeflerinizi ve isteklerinizi detaylı olarak yazın..."
-                multiline
-                rows={4}
-                fullWidth
-                value={userRequest}
-                onChange={(e) => setUserRequest(e.target.value)}
-                placeholder="Örnek: Kilo vermek istiyorum, haftada 3 gün antrenman yapabilirim, evde egzersiz yapmak istiyorum, başlangıç seviyesindeyim..."
-                sx={{ mb: 3 }}
-              />
+              <Box sx={{ position: "relative" }}>
+                <TextField
+                  label="Hedeflerinizi ve isteklerinizi detaylı olarak yazın..."
+                  multiline
+                  rows={isTextareaExpanded ? 12 : 4}
+                  fullWidth
+                  value={userRequest}
+                  onChange={(e) => setUserRequest(e.target.value)}
+                  placeholder="Örnek: Kilo vermek istiyorum, haftada 3 gün antrenman yapabilirim, evde egzersiz yapmak istiyorum, başlangıç seviyesindeyim..."
+                  sx={{ 
+                    mb: 3,
+                    "& .MuiInputBase-root": {
+                      minHeight: isTextareaExpanded ? "300px" : "auto"
+                    }
+                  }}
+                />
+                <IconButton
+                  onClick={() => {
+                    setIsTextareaExpanded(!isTextareaExpanded);
+                    console.log('Textarea büyütüldü:', !isTextareaExpanded);
+                  }}
+                  sx={{
+                    position: "absolute",
+                    bottom: 12,
+                    right: 8,
+                    backgroundColor: "rgba(33, 150, 243, 0.1)",
+                    border: "1px solid rgba(33, 150, 243, 0.3)",
+                    "&:hover": {
+                      backgroundColor: "rgba(33, 150, 243, 0.2)",
+                      border: "1px solid rgba(33, 150, 243, 0.5)",
+                    },
+                    zIndex: 1,
+                    width: 32,
+                    height: 32
+                  }}
+                  size="small"
+                >
+                  <OpenInFull sx={{ fontSize: "1rem", color: "#2196F3" }} />
+                </IconButton>
+              </Box>
 
               {/* Vücut Kompozisyonu Bölümü */}
               <Typography variant="h6" sx={{ mb: 2, color: "#2196F3", fontSize: { xs: "1rem", md: "1.25rem" } }}>
@@ -1409,6 +1444,7 @@ BESLENME PROGRAMI TALİMATLARI:
                     // Form'u temizle
                     setUserRequest("");
                     setIncludeNutrition(false);
+                    setIsTextareaExpanded(false);
                     setBodyComposition({
                       bodyFat: "",
                       muscleMass: "",

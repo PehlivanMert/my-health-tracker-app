@@ -15,6 +15,12 @@ export const GlobalStateProvider = ({ children }) => {
     notificationMessage: "",
   });
 
+  const [exerciseAIState, setExerciseAIState] = useState({
+    isGenerating: false,
+    showSuccessNotification: false,
+    notificationMessage: "",
+  });
+
   // Firebase Auth ile kullanıcı durumunu izleyelim
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -57,7 +63,9 @@ export const GlobalStateProvider = ({ children }) => {
         supplements, 
         setSupplements,
         healthDashboardState,
-        setHealthDashboardState
+        setHealthDashboardState,
+        exerciseAIState,
+        setExerciseAIState
       }}
     >
       {children}

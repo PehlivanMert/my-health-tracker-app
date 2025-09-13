@@ -168,7 +168,7 @@ ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
 function App() {
   // Bildirim ayarları
-  const { user, setUser, supplements, healthDashboardState, setHealthDashboardState } = useContext(GlobalStateContext);
+  const { user, setUser, supplements, healthDashboardState, setHealthDashboardState, exerciseAIState, setExerciseAIState } = useContext(GlobalStateContext);
   const [openNotificationSettings, setOpenNotificationSettings] =
     useState(false);
 
@@ -2231,6 +2231,65 @@ function App() {
         </Box>
       )}
       
+      {/* Global Exercise AI Pop-up */}
+      {exerciseAIState?.showSuccessNotification && (
+        <Box
+          sx={{
+            position: "fixed",
+            top: { xs: 10, sm: 20 },
+            right: { xs: 10, sm: 20 },
+            zIndex: 9999,
+            maxWidth: { xs: "calc(100vw - 20px)", sm: "400px" },
+            width: "100%",
+          }}
+        >
+          <Card
+            sx={{
+              background: exerciseAIState.notificationMessage?.includes("❌") 
+                ? "linear-gradient(135deg, #ff5252 0%, #f44336 100%)"
+                : exerciseAIState.notificationMessage?.includes("🤖")
+                ? "linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)"
+                : "linear-gradient(135deg, #4caf50 0%, #66bb6a 100%)",
+              color: "white",
+              borderRadius: { xs: "12px", sm: "16px" },
+              boxShadow: 8,
+              p: { xs: 2, sm: 3 },
+              border: "2px solid rgba(255,255,255,0.2)",
+              backdropFilter: "blur(10px)",
+            }}
+          >
+            <Box display="flex" alignItems="center" gap={{ xs: 1.5, sm: 2 }}>
+              {exerciseAIState.isGenerating && (
+                <CircularProgress 
+                  size={isMobile ? 20 : 24} 
+                  sx={{ color: "white" }} 
+                />
+              )}
+              <Typography
+                sx={{
+                  flex: 1,
+                  fontSize: { xs: "0.9rem", sm: "1rem" },
+                  lineHeight: 1.4,
+                  wordBreak: "break-word"
+                }}
+              >
+                {exerciseAIState.notificationMessage}
+              </Typography>
+              <IconButton
+                onClick={() => setExerciseAIState(prev => ({ ...prev, showSuccessNotification: false }))}
+                sx={{ 
+                  color: "white",
+                  p: { xs: 0.5, sm: 1 },
+                  "&:hover": { backgroundColor: "rgba(255,255,255,0.1)" }
+                }}
+              >
+                <CloseIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
+              </IconButton>
+            </Box>
+          </Card>
+        </Box>
+      )}
+
       {/* Global Health Dashboard Pop-up */}
       {healthDashboardState?.showSuccessNotification && (
         <Box

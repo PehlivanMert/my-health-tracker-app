@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Box,
   Typography,
@@ -63,6 +63,7 @@ import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db, auth } from "../auth/firebaseConfig";
 import { safeGetDoc, safeSetDoc, safeUpdateDoc } from "../../utils/firestoreUtils";
 import { invalidateUserCache } from "../../utils/cacheUtils";
+import { GlobalStateContext } from "../context/GlobalStateContext";
 
 // Gemini AI konfigürasyonu
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
@@ -155,6 +156,7 @@ const getDifficultyColor = (difficulty) => {
 const Exercises = ({ exercises, setExercises }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const { exerciseAIState, setExerciseAIState } = useContext(GlobalStateContext);
   const [openModal, setOpenModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -241,19 +243,24 @@ const Exercises = ({ exercises, setExercises }) => {
     setGeminiUsage(updatedUsage);
   };
 
-  const generatePersonalizedProgram = async () => {
+  const generatePersonalizedProgramAsync = async () => {
     if (!canUseGemini()) {
-      toast.error("Gemini günde sadece 3 kez kullanılabilir. Yarın tekrar deneyin.");
+      setExerciseAIState({
+        isGenerating: false,
+        showSuccessNotification: true,
+        notificationMessage: "Gemini günde sadece 3 kez kullanılabilir. Yarın tekrar deneyin."
+      });
       return;
     }
 
     if (!userRequest.trim()) {
-      toast.error("Lütfen spor hedeflerinizi ve isteklerinizi belirtin.");
+      setExerciseAIState({
+        isGenerating: false,
+        showSuccessNotification: true,
+        notificationMessage: "Lütfen spor hedeflerinizi ve isteklerinizi belirtin."
+      });
       return;
     }
-
-    setLoading(true);
-    setError("");
 
     try {
       // Güncel model adını kullan
@@ -443,21 +450,40 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
       "carbs": "Karbonhidrat gramı", 
       "fat": "Yağ gramı"
     },
-    "meals": {
-      "breakfast": {
-        "time": "Kahvaltı saati",
-        "foods": ["Yiyecek 1", "Yiyecek 2"],
-        "calories": "Kalori miktarı"
+    "weeklyMeals": {
+      "Pazartesi": {
+        "breakfast": {
+          "time": "08:00-09:00",
+          "foods": ["Yiyecek 1", "Yiyecek 2"],
+          "calories": "400-450"
+        },
+        "lunch": {
+          "time": "12:00-13:00", 
+          "foods": ["Yiyecek 1", "Yiyecek 2"],
+          "calories": "600-700"
+        },
+        "dinner": {
+          "time": "18:00-19:00",
+          "foods": ["Yiyecek 1", "Yiyecek 2"],
+          "calories": "500-600"
+        }
       },
-      "lunch": {
-        "time": "Öğle yemeği saati",
-        "foods": ["Yiyecek 1", "Yiyecek 2"],
-        "calories": "Kalori miktarı"
-      },
-      "dinner": {
-        "time": "Akşam yemeği saati",
-        "foods": ["Yiyecek 1", "Yiyecek 2"],
-        "calories": "Kalori miktarı"
+      "Salı": {
+        "breakfast": {
+          "time": "08:00-09:00",
+          "foods": ["Farklı yiyecek 1", "Farklı yiyecek 2"],
+          "calories": "400-450"
+        },
+        "lunch": {
+          "time": "12:00-13:00",
+          "foods": ["Farklı yiyecek 1", "Farklı yiyecek 2"],
+          "calories": "600-700"
+        },
+        "dinner": {
+          "time": "18:00-19:00",
+          "foods": ["Farklı yiyecek 1", "Farklı yiyecek 2"],
+          "calories": "500-600"
+        }
       }
     },
     "nutritionNotes": [
@@ -469,7 +495,22 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
 
 ÖNEMLİ KURALLAR:`;
 
-      const result = await model.generateContent(fullPrompt);
+      // Haftalık beslenme talimatını ekle
+      const nutritionInstructions = includeNutrition ? `
+
+BESLENME PROGRAMI TALİMATLARI:
+- Haftalık beslenme planı hazırla (7 gün)
+- Her gün için farklı yemekler kullan, aynı yemekleri tekrarlama
+- Öğün sayısına göre plan yap: ${nutritionPreferences.mealFrequency} öğün
+- Her gün farklı protein kaynakları, sebzeler ve karbonhidratlar kullan
+- Kullanıcının sevdiği yiyecekleri dahil et: ${nutritionPreferences.likedFoods}
+- Kullanıcının sevmediği yiyecekleri hariç tut: ${nutritionPreferences.dislikedFoods}
+- Alerjileri dikkate al: ${nutritionPreferences.allergies}
+- Diyet kısıtlamalarını uygula: ${nutritionPreferences.dietaryRestrictions}` : '';
+
+      const finalPrompt = fullPrompt + nutritionInstructions;
+
+      const result = await model.generateContent(finalPrompt);
       const response = await result.response;
       const programText = response.text();
 
@@ -509,8 +550,11 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
       // Gemini kullanım sayacını artır
       await incrementGeminiUsage();
 
-      toast.success("Kişiselleştirilmiş spor programınız hazır!");
-      setOpenModal(false);
+      setExerciseAIState({
+        isGenerating: false,
+        showSuccessNotification: true,
+        notificationMessage: "Kişiselleştirilmiş spor programınız hazır!"
+      });
       
       // Form'u temizle
       setUserRequest("");
@@ -532,22 +576,35 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
 
     } catch (error) {
       // Daha detaylı hata mesajları
+      let errorMessage = "Program oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.";
+      
       if (error.message?.includes("API_KEY")) {
-        setError("Gemini API anahtarı bulunamadı. Lütfen .env dosyasını kontrol edin.");
-        toast.error("API anahtarı eksik veya geçersiz!");
+        errorMessage = "Gemini API anahtarı bulunamadı. Lütfen .env dosyasını kontrol edin.";
       } else if (error.message?.includes("404")) {
-        setError("Gemini API modeli bulunamadı. Lütfen daha sonra tekrar deneyin.");
-        toast.error("API modeli geçici olarak kullanılamıyor!");
+        errorMessage = "Gemini API modeli bulunamadı. Lütfen daha sonra tekrar deneyin.";
       } else if (error.message?.includes("429")) {
-        setError("API kullanım limiti aşıldı. Lütfen daha sonra tekrar deneyin.");
-        toast.error("API limiti aşıldı!");
-      } else {
-        setError("Program oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.");
-        toast.error("Program oluşturulamadı: " + error.message);
+        errorMessage = "API kullanım limiti aşıldı. Lütfen daha sonra tekrar deneyin.";
       }
-    } finally {
-      setLoading(false);
+      
+      setExerciseAIState({
+        isGenerating: false,
+        showSuccessNotification: true,
+        notificationMessage: errorMessage
+      });
+      
+      console.error("Gemini API hatası:", error);
     }
+  };
+
+  const generatePersonalizedProgram = () => {
+    setExerciseAIState({
+      isGenerating: true,
+      showSuccessNotification: false,
+      notificationMessage: ""
+    });
+    
+    setOpenModal(false);
+    generatePersonalizedProgramAsync();
   };
 
   const parseProgram = (programText) => {
@@ -806,14 +863,15 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
             <AnimatedButton
               startIcon={<Add />}
               onClick={() => setOpenModal(true)}
-              disabled={!canUseGemini()}
+              disabled={!canUseGemini() || exerciseAIState?.isGenerating}
               sx={{
                 padding: { xs: "8px 16px", sm: "10px 20px", md: "12px 30px" },
                 fontSize: { xs: "0.7rem", sm: "0.8rem", md: "inherit" },
                 whiteSpace: "nowrap",
               }}
             >
-              {canUseGemini() ? "Yeni Program Oluştur" : "Günlük Limit Doldu"}
+              {exerciseAIState?.isGenerating ? "Program Oluşturuluyor..." : 
+               canUseGemini() ? "Yeni Program Oluştur" : "Günlük Limit Doldu"}
             </AnimatedButton>
           </Box>
 
@@ -1409,8 +1467,52 @@ const ProgramDisplay = ({ program }) => {
             </Box>
           )}
 
-          {/* Öğün Planları */}
-          {program.nutrition.meals && (
+          {/* Haftalık Beslenme Planı */}
+          {program.nutrition.weeklyMeals && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ color: "#FF9800", fontWeight: 600, mb: 2 }}>
+                🗓️ Haftalık Beslenme Planı
+              </Typography>
+              {Object.entries(program.nutrition.weeklyMeals).map(([dayName, dayMeals]) => (
+                <Accordion key={dayName} sx={{ mb: 2, background: "rgba(255,255,255,0.05)" }}>
+                  <AccordionSummary expandIcon={<ExpandMore sx={{ color: "#FF9800" }} />}>
+                    <Typography sx={{ color: "#FF9800", fontWeight: 600, fontSize: { xs: "0.9rem", md: "1rem" } }}>
+                      📅 {dayName}
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    {Object.entries(dayMeals).map(([mealName, meal]) => (
+                      <Box key={mealName} sx={{ mb: 2, p: 2, background: "rgba(255,255,255,0.03)", borderRadius: 1 }}>
+                        <Typography variant="subtitle2" sx={{ color: "#FF9800", fontWeight: 600, mb: 1 }}>
+                          {mealName === 'breakfast' ? '🌅 Kahvaltı' : 
+                           mealName === 'lunch' ? '🌞 Öğle Yemeği' : 
+                           mealName === 'dinner' ? '🌙 Akşam Yemeği' : 
+                           mealName === 'snacks' ? '🍎 Ara Öğünler' : mealName}
+                          {meal.time && ` (${meal.time})`}
+                          {meal.calories && ` - ${meal.calories} kalori`}
+                        </Typography>
+                        {meal.foods && Array.isArray(meal.foods) && (
+                          <List dense>
+                            {meal.foods.map((food, index) => (
+                              <ListItem key={index} sx={{ py: 0.5, px: 0 }}>
+                                <ListItemIcon sx={{ minWidth: 24 }}>
+                                  <Chip label="•" size="small" sx={{ background: "rgba(255,152,0,0.3)", color: "#fff", minWidth: "16px", height: "16px", fontSize: "0.7rem" }} />
+                                </ListItemIcon>
+                                <ListItemText primary={food} sx={{ color: "#fff", fontSize: { xs: "0.8rem", md: "0.9rem" } }} />
+                              </ListItem>
+                            ))}
+                          </List>
+                        )}
+                      </Box>
+                    ))}
+                  </AccordionDetails>
+                </Accordion>
+              ))}
+            </Box>
+          )}
+
+          {/* Eski Öğün Planları (fallback) */}
+          {program.nutrition.meals && !program.nutrition.weeklyMeals && (
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle1" sx={{ color: "#FF9800", fontWeight: 600, mb: 1 }}>
                 🍽️ Öğün Planları

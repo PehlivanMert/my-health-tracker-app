@@ -312,6 +312,8 @@ ${userRequest}${nutritionInfo}
 
 ÖNEMLİ: ${includeNutrition ? 'KULLANICI BESLENME PROGRAMI İSTİYOR! Beslenme programını da dahil et.' : 'Kullanıcı sadece spor programı istiyor, beslenme programı dahil etme.'}
 
+KALORİ HESAPLAMA: Kullanıcının yaş, cinsiyet, boy, kilo ve aktivite seviyesine göre günlük kalori ihtiyacını hesapla. Erkekler için: 88.362 + (13.397 × kg) + (4.799 × cm) - (5.677 × yaş), Kadınlar için: 447.593 + (9.247 × kg) + (3.098 × cm) - (4.330 × yaş). Sonucu aktivite seviyesine göre çarp (1.2-1.9 arası).
+
 Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir format kullanma:`;
 
       // Geliştirme için prompt'u console'a yazdır
@@ -439,56 +441,149 @@ Lütfen aşağıdaki JSON formatında kesinlikle cevap ver. Başka hiçbir forma
     "İlerlemenizi takip etmek için not alın"
   ],
   "videoSuggestions": [
-    "YouTube'da 'egzersiz adı nasıl yapılır' araması yapın",
-    "Doğru form için video izleyin",
-    "Başlangıç seviyesi videoları tercih edin"
+    "Push-up doğru form tekniği",
+    "Squat nasıl yapılır başlangıç",
+    "Plank egzersizi doğru pozisyon",
+    "Lunge hareketi adım adım",
+    "Pull-up başlangıç seviyesi",
+    "Burpee egzersizi nasıl yapılır",
+    "Kardiyo egzersizleri evde",
+    "Esneme hareketleri antrenman sonrası"
   ]${includeNutrition ? `,
   "nutrition": {
-    "dailyCalories": "Günlük kalori hedefi",
+    "dailyCalories": "Kullanıcının hesaplanmış günlük kalori ihtiyacı (örn: 1850-2100 kalori - kilo verme için 500 kalori açığı)",
     "macros": {
-      "protein": "Protein gramı",
-      "carbs": "Karbonhidrat gramı", 
-      "fat": "Yağ gramı"
+      "protein": "Protein gramı (vücut ağırlığının kg başına 1.6-2.2g)",
+      "carbs": "Karbonhidrat gramı (kalorinin %45-65'i)", 
+      "fat": "Yağ gramı (kalorinin %20-35'i)"
     },
     "weeklyMeals": {
       "Pazartesi": {
         "breakfast": {
           "time": "08:00-09:00",
-          "foods": ["Yiyecek 1", "Yiyecek 2"],
+          "foods": ["Yulaf ezmesi", "Muz", "Badem", "Süt"],
           "calories": "400-450"
         },
         "lunch": {
           "time": "12:00-13:00", 
-          "foods": ["Yiyecek 1", "Yiyecek 2"],
+          "foods": ["Izgara tavuk göğsü", "Bulgur pilavı", "Salata"],
           "calories": "600-700"
         },
         "dinner": {
           "time": "18:00-19:00",
-          "foods": ["Yiyecek 1", "Yiyecek 2"],
+          "foods": ["Somon balığı", "Sebze yemeği", "Esmer pirinç"],
           "calories": "500-600"
         }
       },
       "Salı": {
         "breakfast": {
           "time": "08:00-09:00",
-          "foods": ["Farklı yiyecek 1", "Farklı yiyecek 2"],
+          "foods": ["Omlet", "Tam buğday ekmeği", "Avokado"],
           "calories": "400-450"
         },
         "lunch": {
           "time": "12:00-13:00",
-          "foods": ["Farklı yiyecek 1", "Farklı yiyecek 2"],
+          "foods": ["Hindi eti", "Quinoa", "Brokoli"],
           "calories": "600-700"
         },
         "dinner": {
           "time": "18:00-19:00",
-          "foods": ["Farklı yiyecek 1", "Farklı yiyecek 2"],
+          "foods": ["Ton balığı", "Patates", "Yeşil salata"],
+          "calories": "500-600"
+        }
+      },
+      "Çarşamba": {
+        "breakfast": {
+          "time": "08:00-09:00",
+          "foods": ["Smoothie", "Protein tozu", "Çilek"],
+          "calories": "400-450"
+        },
+        "lunch": {
+          "time": "12:00-13:00",
+          "foods": ["Dana eti", "Esmer makarna", "Mantar"],
+          "calories": "600-700"
+        },
+        "dinner": {
+          "time": "18:00-19:00",
+          "foods": ["Karides", "Sebze kızartması", "Kahverengi pirinç"],
+          "calories": "500-600"
+        }
+      },
+      "Perşembe": {
+        "breakfast": {
+          "time": "08:00-09:00",
+          "foods": ["Peynirli tost", "Domates", "Zeytin"],
+          "calories": "400-450"
+        },
+        "lunch": {
+          "time": "12:00-13:00",
+          "foods": ["Tavuk salatası", "Tam buğday ekmeği", "Ceviz"],
+          "calories": "600-700"
+        },
+        "dinner": {
+          "time": "18:00-19:00",
+          "foods": ["Kuzu eti", "Patlıcan", "Bulgur"],
+          "calories": "500-600"
+        }
+      },
+      "Cuma": {
+        "breakfast": {
+          "time": "08:00-09:00",
+          "foods": ["Yumurta", "Ispanak", "Tam buğday ekmeği"],
+          "calories": "400-450"
+        },
+        "lunch": {
+          "time": "12:00-13:00",
+          "foods": ["Balık", "Pilav", "Sebze"],
+          "calories": "600-700"
+        },
+        "dinner": {
+          "time": "18:00-19:00",
+          "foods": ["Tavuk", "Mantar", "Quinoa"],
+          "calories": "500-600"
+        }
+      },
+      "Cumartesi": {
+        "breakfast": {
+          "time": "08:00-09:00",
+          "foods": ["Pancake", "Meyve", "Yoğurt"],
+          "calories": "400-450"
+        },
+        "lunch": {
+          "time": "12:00-13:00",
+          "foods": ["Et", "Patates", "Salata"],
+          "calories": "600-700"
+        },
+        "dinner": {
+          "time": "18:00-19:00",
+          "foods": ["Balık", "Sebze", "Pilav"],
+          "calories": "500-600"
+        }
+      },
+      "Pazar": {
+        "breakfast": {
+          "time": "08:00-09:00",
+          "foods": ["Kahvaltı tabağı", "Peynir", "Zeytin"],
+          "calories": "400-450"
+        },
+        "lunch": {
+          "time": "12:00-13:00",
+          "foods": ["Et yemeği", "Pilav", "Salata"],
+          "calories": "600-700"
+        },
+        "dinner": {
+          "time": "18:00-19:00",
+          "foods": ["Balık", "Sebze", "Bulgur"],
           "calories": "500-600"
         }
       }
     },
     "nutritionNotes": [
-      "Beslenme notu 1",
-      "Beslenme notu 2"
+      "Günde en az 2-3 litre su için",
+      "Öğünler arasında 3-4 saat bekleyin",
+      "Egzersiz öncesi karbonhidrat, sonrası protein alın",
+      "Meyve ve sebzeleri bol tüketin",
+      "İşlenmiş gıdalardan kaçının"
     ]
   }` : ''}
 }
@@ -1292,8 +1387,8 @@ const ProgramDisplay = ({ program }) => {
     <Box sx={{ color: "#fff" }}>
       {/* Program Özeti */}
       {program.summary && (
-        <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3, background: "rgba(33,150,243,0.1)", border: "1px solid rgba(33,150,243,0.3)" }}>
-          <Typography variant="h6" sx={{ color: "#2196F3", mb: 2, fontWeight: 600, fontSize: { xs: "1rem", md: "1.25rem" } }}>
+        <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3, background: "rgba(156,39,176,0.1)", border: "1px solid rgba(156,39,176,0.3)" }}>
+          <Typography variant="h6" sx={{ color: "#9C27B0", mb: 2, fontWeight: 600, fontSize: { xs: "1rem", md: "1.25rem" } }}>
             📋 Program Özeti
           </Typography>
           <Typography variant="body1" sx={{ color: "#fff", fontSize: { xs: "0.9rem", md: "1rem" } }}>
@@ -1304,15 +1399,15 @@ const ProgramDisplay = ({ program }) => {
 
       {/* Hedefler */}
       {program.goals.length > 0 && (
-        <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3, background: "rgba(76,175,80,0.1)", border: "1px solid rgba(76,175,80,0.3)" }}>
-          <Typography variant="h6" sx={{ color: "#4CAF50", mb: 2, fontWeight: 600, fontSize: { xs: "1rem", md: "1.25rem" } }}>
+        <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3, background: "rgba(156,39,176,0.1)", border: "1px solid rgba(156,39,176,0.3)" }}>
+          <Typography variant="h6" sx={{ color: "#9C27B0", mb: 2, fontWeight: 600, fontSize: { xs: "1rem", md: "1.25rem" } }}>
             🎯 Hedefler
           </Typography>
           <List dense>
             {program.goals.map((goal, index) => (
               <ListItem key={index} sx={{ py: 0.5 }}>
                 <ListItemIcon>
-                  <TrendingUp sx={{ color: "#4CAF50", fontSize: { xs: 18, md: 20 } }} />
+                  <TrendingUp sx={{ color: "#9C27B0", fontSize: { xs: 18, md: 20 } }} />
                 </ListItemIcon>
                 <ListItemText primary={goal} sx={{ color: "#fff", fontSize: { xs: "0.85rem", md: "1rem" } }} />
               </ListItem>
@@ -1322,7 +1417,7 @@ const ProgramDisplay = ({ program }) => {
       )}
 
       {/* Haftalık Program */}
-      <Typography variant="h6" sx={{ color: "#FF9800", mb: 2, fontWeight: 600, fontSize: { xs: "1rem", md: "1.25rem" } }}>
+      <Typography variant="h6" sx={{ color: "#FF6F00", mb: 2, fontWeight: 600, fontSize: { xs: "1rem", md: "1.25rem" } }}>
         📅 Haftalık Program
       </Typography>
       
@@ -1375,7 +1470,7 @@ const ProgramDisplay = ({ program }) => {
                   {dayProgram.exercises.map((exercise, index) => (
                     <ListItem key={index} sx={{ py: 1 }}>
                       <ListItemIcon>
-                        <FitnessCenter sx={{ color: "#FF9800", fontSize: { xs: 18, md: 20 } }} />
+                        <FitnessCenter sx={{ color: "#FF6F00", fontSize: { xs: 18, md: 20 } }} />
                       </ListItemIcon>
                       <ListItemText 
                         primary={exercise.name || exercise}
@@ -1411,15 +1506,15 @@ const ProgramDisplay = ({ program }) => {
 
       {/* Önemli Notlar */}
       {program.notes.length > 0 && (
-        <Paper sx={{ p: { xs: 2, md: 3 }, mt: 3, background: "rgba(255,152,0,0.1)", border: "1px solid rgba(255,152,0,0.3)" }}>
-          <Typography variant="h6" sx={{ color: "#FF9800", mb: 2, fontWeight: 600, fontSize: { xs: "1rem", md: "1.25rem" } }}>
+        <Paper sx={{ p: { xs: 2, md: 3 }, mt: 3, background: "rgba(255,111,0,0.1)", border: "1px solid rgba(255,111,0,0.3)" }}>
+          <Typography variant="h6" sx={{ color: "#FF6F00", mb: 2, fontWeight: 600, fontSize: { xs: "1rem", md: "1.25rem" } }}>
             💡 Önemli Notlar
           </Typography>
           <List dense>
             {program.notes.map((note, index) => (
               <ListItem key={index} sx={{ py: 0.5 }}>
                 <ListItemIcon>
-                  <Typography sx={{ color: "#FF9800", fontSize: { xs: 18, md: 20 } }}>•</Typography>
+                  <Typography sx={{ color: "#FF6F00", fontSize: { xs: 18, md: 20 } }}>•</Typography>
                 </ListItemIcon>
                 <ListItemText primary={note} sx={{ color: "#fff", fontSize: { xs: "0.85rem", md: "1rem" } }} />
               </ListItem>
@@ -1430,15 +1525,15 @@ const ProgramDisplay = ({ program }) => {
 
       {/* Beslenme Programı */}
       {program.nutrition && (
-        <Paper sx={{ p: { xs: 2, md: 3 }, mt: 3, background: "rgba(255,152,0,0.1)", border: "1px solid rgba(255,152,0,0.3)" }}>
-          <Typography variant="h6" sx={{ color: "#FF9800", mb: 2, fontWeight: 600, fontSize: { xs: "1rem", md: "1.25rem" } }}>
+        <Paper sx={{ p: { xs: 2, md: 3 }, mt: 3, background: "rgba(255,111,0,0.1)", border: "1px solid rgba(255,111,0,0.3)" }}>
+          <Typography variant="h6" sx={{ color: "#FF6F00", mb: 2, fontWeight: 600, fontSize: { xs: "1rem", md: "1.25rem" } }}>
             🍎 Beslenme Programı
           </Typography>
           
           {/* Günlük Kalori */}
           {program.nutrition.dailyCalories && (
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" sx={{ color: "#FF9800", fontWeight: 600, mb: 1 }}>
+              <Typography variant="subtitle1" sx={{ color: "#FF6F00", fontWeight: 600, mb: 1 }}>
                 📊 Günlük Kalori Hedefi
               </Typography>
               <Typography variant="body1" sx={{ color: "#fff", fontSize: { xs: "0.9rem", md: "1rem" } }}>
@@ -1450,18 +1545,63 @@ const ProgramDisplay = ({ program }) => {
           {/* Makro Besinler */}
           {program.nutrition.macros && (
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" sx={{ color: "#FF9800", fontWeight: 600, mb: 1 }}>
+              <Typography variant="subtitle1" sx={{ color: "#FF6F00", fontWeight: 600, mb: 1 }}>
                 🥗 Makro Besin Dağılımı
               </Typography>
               <Grid container spacing={1}>
-                <Grid item xs={4}>
-                  <Chip label={`Protein: ${program.nutrition.macros.protein}`} size="small" sx={{ background: "rgba(76,175,80,0.2)", color: "#fff", width: "100%" }} />
+                <Grid item xs={12} sm={4}>
+                  <Chip 
+                    label={`Protein: ${program.nutrition.macros.protein}`} 
+                    size="small" 
+                    sx={{ 
+                      background: "rgba(76,175,80,0.3)", 
+                      color: "#fff", 
+                      width: "100%",
+                      fontSize: { xs: "0.7rem", sm: "0.75rem" },
+                      height: { xs: "28px", sm: "32px" },
+                      "& .MuiChip-label": {
+                        whiteSpace: "normal",
+                        lineHeight: 1.2,
+                        padding: { xs: "4px 8px", sm: "6px 12px" }
+                      }
+                    }} 
+                  />
                 </Grid>
-                <Grid item xs={4}>
-                  <Chip label={`Karbonhidrat: ${program.nutrition.macros.carbs}`} size="small" sx={{ background: "rgba(33,150,243,0.2)", color: "#fff", width: "100%" }} />
+                <Grid item xs={12} sm={4}>
+                  <Chip 
+                    label={`Karbonhidrat: ${program.nutrition.macros.carbs}`} 
+                    size="small" 
+                    sx={{ 
+                      background: "rgba(33,150,243,0.3)", 
+                      color: "#fff", 
+                      width: "100%",
+                      fontSize: { xs: "0.7rem", sm: "0.75rem" },
+                      height: { xs: "28px", sm: "32px" },
+                      "& .MuiChip-label": {
+                        whiteSpace: "normal",
+                        lineHeight: 1.2,
+                        padding: { xs: "4px 8px", sm: "6px 12px" }
+                      }
+                    }} 
+                  />
                 </Grid>
-                <Grid item xs={4}>
-                  <Chip label={`Yağ: ${program.nutrition.macros.fat}`} size="small" sx={{ background: "rgba(255,152,0,0.2)", color: "#fff", width: "100%" }} />
+                <Grid item xs={12} sm={4}>
+                  <Chip 
+                    label={`Yağ: ${program.nutrition.macros.fat}`} 
+                    size="small" 
+                    sx={{ 
+                      background: "rgba(255,152,0,0.3)", 
+                      color: "#fff", 
+                      width: "100%",
+                      fontSize: { xs: "0.7rem", sm: "0.75rem" },
+                      height: { xs: "28px", sm: "32px" },
+                      "& .MuiChip-label": {
+                        whiteSpace: "normal",
+                        lineHeight: 1.2,
+                        padding: { xs: "4px 8px", sm: "6px 12px" }
+                      }
+                    }} 
+                  />
                 </Grid>
               </Grid>
             </Box>
@@ -1470,20 +1610,38 @@ const ProgramDisplay = ({ program }) => {
           {/* Haftalık Beslenme Planı */}
           {program.nutrition.weeklyMeals && (
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" sx={{ color: "#FF9800", fontWeight: 600, mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ color: "#FF6F00", fontWeight: 600, mb: 2 }}>
                 🗓️ Haftalık Beslenme Planı
               </Typography>
-              {Object.entries(program.nutrition.weeklyMeals).map(([dayName, dayMeals]) => (
+              {(() => {
+                // Günleri doğru sırada göstermek için sıralama
+                const dayOrder = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+                const sortedDays = Object.entries(program.nutrition.weeklyMeals).sort((a, b) => {
+                  const aIndex = dayOrder.indexOf(a[0]);
+                  const bIndex = dayOrder.indexOf(b[0]);
+                  return aIndex - bIndex;
+                });
+
+                return sortedDays.map(([dayName, dayMeals]) => (
                 <Accordion key={dayName} sx={{ mb: 2, background: "rgba(255,255,255,0.05)" }}>
-                  <AccordionSummary expandIcon={<ExpandMore sx={{ color: "#FF9800" }} />}>
-                    <Typography sx={{ color: "#FF9800", fontWeight: 600, fontSize: { xs: "0.9rem", md: "1rem" } }}>
+                  <AccordionSummary expandIcon={<ExpandMore sx={{ color: "#FF6F00" }} />}>
+                    <Typography sx={{ color: "#FF6F00", fontWeight: 600, fontSize: { xs: "0.9rem", md: "1rem" } }}>
                       📅 {dayName}
                     </Typography>
                   </AccordionSummary>
                   <AccordionDetails>
-                    {Object.entries(dayMeals).map(([mealName, meal]) => (
+                    {(() => {
+                      // Öğünleri doğru sırada göstermek için sıralama
+                      const mealOrder = ['breakfast', 'lunch', 'dinner', 'snacks'];
+                      const sortedMeals = Object.entries(dayMeals).sort((a, b) => {
+                        const aIndex = mealOrder.indexOf(a[0]);
+                        const bIndex = mealOrder.indexOf(b[0]);
+                        return aIndex - bIndex;
+                      });
+
+                      return sortedMeals.map(([mealName, meal]) => (
                       <Box key={mealName} sx={{ mb: 2, p: 2, background: "rgba(255,255,255,0.03)", borderRadius: 1 }}>
-                        <Typography variant="subtitle2" sx={{ color: "#FF9800", fontWeight: 600, mb: 1 }}>
+                        <Typography variant="subtitle2" sx={{ color: "#FF6F00", fontWeight: 600, mb: 1 }}>
                           {mealName === 'breakfast' ? '🌅 Kahvaltı' : 
                            mealName === 'lunch' ? '🌞 Öğle Yemeği' : 
                            mealName === 'dinner' ? '🌙 Akşam Yemeği' : 
@@ -1496,7 +1654,7 @@ const ProgramDisplay = ({ program }) => {
                             {meal.foods.map((food, index) => (
                               <ListItem key={index} sx={{ py: 0.5, px: 0 }}>
                                 <ListItemIcon sx={{ minWidth: 24 }}>
-                                  <Chip label="•" size="small" sx={{ background: "rgba(255,152,0,0.3)", color: "#fff", minWidth: "16px", height: "16px", fontSize: "0.7rem" }} />
+                                  <Chip label="•" size="small" sx={{ background: "rgba(255,111,0,0.3)", color: "#fff", minWidth: "16px", height: "16px", fontSize: "0.7rem" }} />
                                 </ListItemIcon>
                                 <ListItemText primary={food} sx={{ color: "#fff", fontSize: { xs: "0.8rem", md: "0.9rem" } }} />
                               </ListItem>
@@ -1504,23 +1662,25 @@ const ProgramDisplay = ({ program }) => {
                           </List>
                         )}
                       </Box>
-                    ))}
+                      ));
+                    })()}
                   </AccordionDetails>
                 </Accordion>
-              ))}
+                ));
+              })()}
             </Box>
           )}
 
           {/* Eski Öğün Planları (fallback) */}
           {program.nutrition.meals && !program.nutrition.weeklyMeals && (
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" sx={{ color: "#FF9800", fontWeight: 600, mb: 1 }}>
+              <Typography variant="subtitle1" sx={{ color: "#FF6F00", fontWeight: 600, mb: 1 }}>
                 🍽️ Öğün Planları
               </Typography>
               {Object.entries(program.nutrition.meals).map(([mealName, meal]) => (
                 <Accordion key={mealName} sx={{ mb: 1, background: "rgba(255,255,255,0.05)" }}>
-                  <AccordionSummary expandIcon={<ExpandMore sx={{ color: "#FF9800" }} />}>
-                    <Typography sx={{ color: "#FF9800", fontWeight: 600 }}>
+                  <AccordionSummary expandIcon={<ExpandMore sx={{ color: "#FF6F00" }} />}>
+                    <Typography sx={{ color: "#FF6F00", fontWeight: 600 }}>
                       {mealName === 'breakfast' ? '🌅 Kahvaltı' : 
                        mealName === 'lunch' ? '🌞 Öğle Yemeği' : 
                        mealName === 'dinner' ? '🌙 Akşam Yemeği' : 
@@ -1535,7 +1695,7 @@ const ProgramDisplay = ({ program }) => {
                         {meal.foods.map((food, index) => (
                           <ListItem key={index} sx={{ py: 0.5 }}>
                             <ListItemIcon>
-                              <Chip label="•" size="small" sx={{ background: "rgba(255,152,0,0.3)", color: "#fff", minWidth: "20px", height: "20px" }} />
+                              <Chip label="•" size="small" sx={{ background: "rgba(255,111,0,0.3)", color: "#fff", minWidth: "20px", height: "20px" }} />
                             </ListItemIcon>
                             <ListItemText primary={food} sx={{ color: "#fff", fontSize: { xs: "0.85rem", md: "1rem" } }} />
                           </ListItem>
@@ -1551,14 +1711,14 @@ const ProgramDisplay = ({ program }) => {
           {/* Beslenme Notları */}
           {program.nutrition.nutritionNotes && program.nutrition.nutritionNotes.length > 0 && (
             <Box>
-              <Typography variant="subtitle1" sx={{ color: "#FF9800", fontWeight: 600, mb: 1 }}>
+              <Typography variant="subtitle1" sx={{ color: "#FF6F00", fontWeight: 600, mb: 1 }}>
                 💡 Beslenme Notları
               </Typography>
               <List dense>
                 {program.nutrition.nutritionNotes.map((note, index) => (
                   <ListItem key={index} sx={{ py: 0.5 }}>
                     <ListItemIcon>
-                      <Chip label="•" size="small" sx={{ background: "rgba(255,152,0,0.3)", color: "#fff", minWidth: "20px", height: "20px" }} />
+                      <Chip label="•" size="small" sx={{ background: "rgba(255,111,0,0.3)", color: "#fff", minWidth: "20px", height: "20px" }} />
                     </ListItemIcon>
                     <ListItemText primary={note} sx={{ color: "#fff", fontSize: { xs: "0.85rem", md: "1rem" } }} />
                   </ListItem>
@@ -1576,31 +1736,41 @@ const ProgramDisplay = ({ program }) => {
             🎥 Video Önerileri
           </Typography>
           <Typography variant="body2" sx={{ color: "#fff", mb: 2, fontSize: { xs: "0.8rem", md: "0.875rem" } }}>
-            Her egzersiz için YouTube'da arama yapabileceğiniz anahtar kelimeler:
+            Egzersizlerinizi doğru form ile yapmak için YouTube'da arama yapabileceğiniz anahtar kelimeler:
           </Typography>
-          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+          <Grid container spacing={1}>
             {program.videoSuggestions.map((suggestion, index) => (
-              <Chip
-                key={index}
-                label={suggestion}
-                size="small"
-                icon={<YouTube />}
-                onClick={() => {
-                  const searchTerm = encodeURIComponent(suggestion);
-                  window.open(`https://www.youtube.com/results?search_query=${searchTerm}`, '_blank');
-                }}
-                sx={{ 
-                  background: "rgba(244,67,54,0.2)",
-                  color: "#fff",
-                  cursor: "pointer",
-                  fontSize: { xs: "0.7rem", md: "0.75rem" },
-                  "&:hover": {
-                    background: "rgba(244,67,54,0.4)",
-                  }
-                }}
-              />
+              <Grid item xs={12} sm={6} md={4} key={index}>
+                <Chip
+                  label={suggestion}
+                  size="small"
+                  icon={<YouTube />}
+                  onClick={() => {
+                    const searchTerm = encodeURIComponent(suggestion);
+                    window.open(`https://www.youtube.com/results?search_query=${searchTerm}`, '_blank');
+                  }}
+                  sx={{ 
+                    background: "rgba(244,67,54,0.3)",
+                    color: "#fff",
+                    cursor: "pointer",
+                    width: "100%",
+                    fontSize: { xs: "0.7rem", sm: "0.75rem" },
+                    height: { xs: "32px", sm: "36px" },
+                    "&:hover": {
+                      background: "rgba(244,67,54,0.5)",
+                      transform: "scale(1.02)",
+                    },
+                    transition: "all 0.2s ease",
+                    "& .MuiChip-label": {
+                      whiteSpace: "normal",
+                      lineHeight: 1.2,
+                      padding: { xs: "4px 8px", sm: "6px 12px" }
+                    }
+                  }}
+                />
+              </Grid>
             ))}
-          </Box>
+          </Grid>
         </Paper>
       )}
     </Box>

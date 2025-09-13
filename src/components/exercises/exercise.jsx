@@ -1073,7 +1073,9 @@ BESLENME PROGRAMI TALİMATLARI:
             </Box>
           ) : (
             <Grid container spacing={2}>
-              {exercises.map((exercise) => (
+              {exercises
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                .map((exercise) => (
                 <Grid item xs={12} key={exercise.id}>
                   <GlowingCard
                     $glowColor="#A6F6FF"

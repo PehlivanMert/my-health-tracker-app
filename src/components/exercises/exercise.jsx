@@ -599,8 +599,8 @@ BESLENME PROGRAMI TALİMATLARI:
   const generatePersonalizedProgram = () => {
     setExerciseAIState({
       isGenerating: true,
-      showSuccessNotification: false,
-      notificationMessage: ""
+      showSuccessNotification: true,
+      notificationMessage: "🤖 AI spor programınızı hazırlıyor... Lütfen bekleyin."
     });
     
     setOpenModal(false);

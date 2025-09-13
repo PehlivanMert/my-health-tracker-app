@@ -181,6 +181,17 @@ function App() {
     setOpenNotificationSettings(false);
   };
 
+  // Exercise AI bildirim otomatik kapanma
+  useEffect(() => {
+    if (exerciseAIState?.showSuccessNotification && !exerciseAIState?.isGenerating) {
+      const timer = setTimeout(() => {
+        setExerciseAIState(prev => ({ ...prev, showSuccessNotification: false }));
+      }, 5000); // 5 saniye sonra kapan
+
+      return () => clearTimeout(timer);
+    }
+  }, [exerciseAIState?.showSuccessNotification, exerciseAIState?.isGenerating, setExerciseAIState]);
+
   // Temel state'ler
   const [isLoading, setIsLoading] = useState(true);
   const [transition, setTransition] = useState(false);
@@ -2232,7 +2243,7 @@ function App() {
       )}
       
       {/* Global Exercise AI Pop-up */}
-      {exerciseAIState?.showSuccessNotification && (
+      {(exerciseAIState?.showSuccessNotification || exerciseAIState?.isGenerating) && (
         <Box
           sx={{
             position: "fixed",

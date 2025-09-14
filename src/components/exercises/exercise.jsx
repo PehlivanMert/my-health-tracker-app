@@ -1774,6 +1774,16 @@ const ProgramDisplay = ({ program }) => {
                                   <Chip label="•" size="small" sx={{ background: "rgba(255,111,0,0.3)", color: "#fff", minWidth: "16px", height: "16px", fontSize: "0.7rem" }} />
                                 </ListItemIcon>
                                 <ListItemText primary={food} sx={{ color: "#fff", fontSize: { xs: "0.8rem", md: "0.9rem" } }} />
+                                <IconButton
+                                  size="small"
+                                  onClick={() => {
+                                    const searchTerm = encodeURIComponent(`${food} tarifi`);
+                                    window.open(`https://www.youtube.com/results?search_query=${searchTerm}`, '_blank');
+                                  }}
+                                  sx={{ color: "#FF0000", ml: 1 }}
+                                >
+                                  <YouTube />
+                                </IconButton>
                               </ListItem>
                             ))}
                           </List>
@@ -1815,6 +1825,16 @@ const ProgramDisplay = ({ program }) => {
                               <Chip label="•" size="small" sx={{ background: "rgba(255,111,0,0.3)", color: "#fff", minWidth: "20px", height: "20px" }} />
                             </ListItemIcon>
                             <ListItemText primary={food} sx={{ color: "#fff", fontSize: { xs: "0.85rem", md: "1rem" } }} />
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                const searchTerm = encodeURIComponent(`${food} tarifi`);
+                                window.open(`https://www.youtube.com/results?search_query=${searchTerm}`, '_blank');
+                              }}
+                              sx={{ color: "#FF0000", ml: 1 }}
+                            >
+                              <YouTube />
+                            </IconButton>
                           </ListItem>
                         ))}
                       </List>

@@ -1,0 +1,55 @@
+
+Ameliyat Sonrası İyileşme Takibi
+================================
+
+Hasta: Hava Şahin
+Tarih: 21 September 2025
+
+DOKTOR YORUMU
+--------------------------------------------------
+Tahlil sonuçları, ameliyat sonrası iyileşme sürecinin beklenen şekilde ilerlediğini gösteriyor. En önemli bulgulardan biri, yüksek seyreden enfeksiyon belirteci olan CRP değerinin giderek normale dönmesidir. Bu durum, vücudun iltihaplanma sürecini kontrol altına aldığını ve enfeksiyon riskinin azaldığını gösterir. Kan sayımı parametrelerinde de benzer olumlu bir seyir izlenmektedir. Ameliyat sonrası yükselen WBC ve Nötrofil değerleri düşüşe geçmiştir. Bu, bağışıklık sisteminin normale döndüğünü teyit eder. Diğer önemli parametrelerden biri olan kan şekeri (Glukoz) seviyesi de süreç içinde düşüş eğilimindedir, bu da ameliyat stresinin azaldığına işaret eder. Ancak, Potasyum seviyesinin sınırda düşük seyretmesi takip edilmelidir. Elektrolit dengesinin korunması iyileşme için önemlidir. Genel olarak, tüm parametreler olumlu bir trend izlemekte ve hastanın iyileşme sürecinin başarılı bir şekilde ilerlediğini göstermektedir.
+
+GÜNLÜK PARAMETRE DEĞERLERİ
+--------------------------------------------------
+
+Aşağıdaki veriler ameliyat sonrası iyileşme sürecini göstermektedir:
+
+18 Eylül 2024:
+- WBC: 14.30 (x10^3/μL) - Yüksek
+- Nötrofil: 13.31 (x10^3/μL) - Yüksek  
+- CRP: 3.04 (mg/dl) - Yüksek
+- Glukoz: 174 (mg/dl) - Yüksek
+- Potasyum: 3.42 (mmol/L) - Düşük
+- HCT: 37.8 (%)
+
+19 Eylül 2024:
+- WBC: 15.47 (x10^3/μL) - Yüksek
+- Nötrofil: 13.99 (x10^3/μL) - Yüksek
+- CRP: 2.17 (mg/dl) - Yüksek (İyileşme eğilimi)
+- Glukoz: 168 (mg/dl) - Yüksek (İyileşme eğilimi)
+- Potasyum: 3.12 (mmol/L) - Düşük
+- HCT: 35.4 (%)
+
+20 Eylül 2024:
+- WBC: 9.62 (x10^3/μL) - Normal aralıkta
+- Nötrofil: 8.06 (x10^3/μL) - Yüksek (İyileşme eğilimi)
+- CRP: 0.47 (mg/dl) - Normal aralıkta
+- Glukoz: 169 (mg/dl) - Yüksek
+- Potasyum: 3.09 (mmol/L) - Düşük
+- HCT: 32.9 (%)
+
+21 Eylül 2024:
+- WBC: 6.46 (x10^3/μL) - Normal aralıkta
+- Nötrofil: 5.12 (x10^3/μL) - Normal aralıkta
+- CRP: 0.246 (mg/dl) - Normal aralıkta
+- Glukoz: 151 (mg/dl) - Yüksek (İyileşme eğilimi)
+- Potasyum: 3.48 (mmol/L) - Düşük (İyileşme eğilimi)
+- HCT: 35.4 (%)
+
+ÖZET
+--------------------------------------------------
+İyileşme süreci başarılı bir şekilde ilerlemektedir. Enfeksiyon belirteçleri 
+(CRP, WBC, Nötrofil) normale dönmüştür. Kan şekeri seviyesi düşüş eğilimindedir.
+Potasyum seviyesi takip edilmelidir.
+
+Bu rapor 21.09.2025 11:18 tarihinde oluşturulmuştur.

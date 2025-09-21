@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Ameliyat Sonrası İyileşme Takibi</title>
+   <script src="https://cdn.tailwindcss.com"></script>
+   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+   <style>
+       body {
+           font-family: 'Inter', sans-serif;
+           background-color: #f3f4f6;
+       }
+       .container {
+           max-width: 90%;
+           margin: 0 auto;
+       }
+       .card {
+           background-color: white;
+           padding: 1.5rem;
+           border-radius: 1rem;
+           box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+       }
+       .chart-container {
+           position: relative;
+           height: 400px;
+       }
+   </style>
+
+    <style media="print">
+        body {
+            font-size: 12px !important;
+            line-height: 1.3 !important;
+        }
+        .container {
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .card {
+            box-shadow: none !important;
+            border: 1px solid #ddd !important;
+            margin-bottom: 20px !important;
+            page-break-inside: avoid !important;
+        }
+        .chart-container {
+            height: 250px !important;
+        }
+        table {
+            font-size: 10px !important;
+        }
+        th, td {
+            padding: 4px !important;
+        }
+        .grid {
+            display: block !important;
+        }
+        .grid > div {
+            display: block !important;
+            width: 100% !important;
+            margin-bottom: 15px !important;
+        }
+        h1 {
+            font-size: 18px !important;
+        }
+        h2 {
+            font-size: 16px !important;
+        }
+        h3 {
+            font-size: 14px !important;
+        }
+        @page {
+            size: A4;
+            margin: 1cm;
+        }
+    </style></head>
+<body class="bg-gray-100 p-4 sm:p-8">
+   <div class="container space-y-8">
+       <header class="text-center">
+           <h1 class="text-3xl sm:text-4xl font-bold text-gray-800">Ameliyat Sonrası İyileşme Takip Raporu</h1>
+           <p class="text-gray-600 mt-2">Hava Şahin - Günlük Tahlil Sonuçları</p>
+       </header>
+
+       <!-- Doctor's Commentary -->
+       <div class="card">
+           <h2 class="text-xl sm:text-2xl font-semibold text-gray-700 mb-4">Doktor Yorumu</h2>
+           <p class="text-gray-600 leading-relaxed">
+               Tahlil sonuçları, ameliyat sonrası iyileşme sürecinin beklenen şekilde ilerlediğini gösteriyor. En önemli bulgulardan biri, yüksek seyreden enfeksiyon belirteci olan <strong>CRP</strong> değerinin giderek normale dönmesidir. Bu durum, vücudun iltihaplanma sürecini kontrol altına aldığını ve enfeksiyon riskinin azaldığını gösterir.
+               <br><br>
+               Kan sayımı parametrelerinde de benzer olumlu bir seyir izlenmektedir. Ameliyat sonrası yükselen <strong>WBC</strong> ve <strong>Nötrofil</strong> değerleri düşüşe geçmiştir. Bu, bağışıklık sisteminin normale döndüğünü teyit eder.
+               <br><br>
+               Diğer önemli parametrelerden biri olan kan şekeri (<strong>Glukoz</strong>) seviyesi de süreç içinde düşüş eğilimindedir, bu da ameliyat stresinin azaldığına işaret eder.
+               <br><br>
+               Ancak, <strong>Potasyum</strong> seviyesinin sınırda düşük seyretmesi takip edilmelidir. Elektrolit dengesinin korunması iyileşme için önemlidir. Genel olarak, tüm parametreler olumlu bir trend izlemekte ve hastanın iyileşme sürecinin başarılı bir şekilde ilerlediğini göstermektedir.
+           </p>
+       </div>
+
+       <!-- Charts for Key Parameters -->
+       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+           <!-- CRP Chart -->
+           <div class="card">
+               <h3 class="text-lg font-semibold text-gray-700 mb-4 text-center">CRP Değerleri (mg/dl)</h3>
+               <div class="chart-container">
+                   <canvas id="crpChart"></canvas>
+               </div>
+           </div>
+
+           <!-- WBC Chart -->
+           <div class="card">
+               <h3 class="text-lg font-semibold text-gray-700 mb-4 text-center">WBC Değerleri (x10^3/μL)</h3>
+               <div class="chart-container">
+                   <canvas id="wbcChart"></canvas>
+               </div>
+           </div>
+           
+           <!-- Nötrofil Chart -->
+           <div class="card">
+               <h3 class="text-lg font-semibold text-gray-700 mb-4 text-center">Nötrofil Değerleri (x10^3/μL)</h3>
+               <div class="chart-container">
+                   <canvas id="neutrophilChart"></canvas>
+               </div>
+           </div>
+
+           <!-- Glukoz Chart -->
+           <div class="card">
+               <h3 class="text-lg font-semibold text-gray-700 mb-4 text-center">Glukoz Değerleri (mg/dl)</h3>
+               <div class="chart-container">
+                   <canvas id="glucoseChart"></canvas>
+               </div>
+           </div>
+
+           <!-- Potasyum Chart -->
+           <div class="card">
+               <h3 class="text-lg font-semibold text-gray-700 mb-4 text-center">Potasyum Değerleri (mmol/L)</h3>
+               <div class="chart-container">
+                   <canvas id="potassiumChart"></canvas>
+               </div>
+           </div>
+
+           <!-- HCT Chart -->
+           <div class="card">
+               <h3 class="text-lg font-semibold text-gray-700 mb-4 text-center">HCT Değerleri (%)</h3>
+               <div class="chart-container">
+                   <canvas id="hctChart"></canvas>
+               </div>
+           </div>
+       </div>
+
+       <!-- Detailed Daily Data Table -->
+       <div class="card overflow-x-auto">
+           <h2 class="text-xl sm:text-2xl font-semibold text-gray-700 mb-4">Günlük Parametre Değişim Tablosu</h2>
+           <div class="flex items-center space-x-4 mb-4 text-sm font-medium">
+               <div class="flex items-center">
+                   <div class="w-4 h-4 rounded-full bg-green-500 mr-2"></div>
+                   <span>Normal Değer</span>
+               </div>
+               <div class="flex items-center">
+                   <div class="w-4 h-4 rounded-full bg-red-500 mr-2"></div>
+                   <span>Yüksek/Düşük Değer</span>
+               </div>
+               <div class="flex items-center">
+                   <div class="w-4 h-4 rounded-full bg-blue-500 mr-2"></div>
+                   <span>İyileşme (Normale Yaklaşma)</span>
+               </div>
+           </div>
+           <table class="min-w-full divide-y divide-gray-200">
+               <thead class="bg-gray-50">
+                   <tr>
+                       <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parametre</th>
+                       <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">18 Eylül</th>
+                       <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">19 Eylül</th>
+                       <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">20 Eylül</th>
+                       <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">21 Eylül</th>
+                       <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referans Değeri</th>
+                   </tr>
+               </thead>
+               <tbody class="bg-white divide-y divide-gray-200">
+                   <!-- Data rows will be generated by JavaScript -->
+               </tbody>
+           </table>
+       </div>
+   </div>
+
+   <script>
+       const dailyData = [
+           {
+               date: "18 Eylül",
+               data: {
+                   "WBC": "14.30", "Nötrofil": "13.31", "Lenfosit": "0.69", "Monosit": "0.30", "Eozinofil": "0.00", "Bazofil": "0.00",
+                   "Nötrofil %": "93.1", "Lenfosit %": "4.8", "Monosit %": "2.1", "Eozinofil %": "0.0", "Bazofil %": "0.0",
+                   "RBC": "4.37", "HGB": "13.3", "HCT": "37.8", "MCV": "86.5", "MCH": "30.3", "MCHC": "35.1",
+                   "RDW": "13.0", "MPV": "12.1", "PLT": "251", "PCT": "0.303", "PDW": "16.3",
+                   "Glukoz": "174", "Kreatinin": "0.86", "Kalsiyum": "8.1", "Albümin": "4.0", "Potasyum": "3.42", "Üre": "9.4",
+                   "eGFR": "72.91", "Sodyum": "143", "Klorür": "105", "C reaktif protein (CRP)": "3.04", "Alanin aminotransferaz (ALT)": "23",
+                   "Fosfor": "2.23", "Aspartat aminotransferaz (AST)": "27", "Serbest T4": "2.47", "Serbest T3": "2.60",
+                   "TSH": "3.500", "Adrenokortikotropik hormon (ACTH)": "119", "Büyüme hormonu (Somatotropin)": "0.615",
+                   "Kortizol": "59.6", "Prolaktin": "9.97", "Lüteinizan hormon (LH)": "39.10", "Follikül stimülan hormon (FSH)": "69.20"
+               }
+           },
+           {
+               date: "19 Eylül",
+               data: {
+                   "WBC": "15.47", "Nötrofil": "13.99", "Lenfosit": "1.04", "Monosit": "0.41", "Eozinofil": "0.00", "Bazofil": "0.03",
+                   "Nötrofil %": "90.4", "Lenfosit %": "6.7", "Monosit %": "2.7", "Eozinofil %": "0.0", "Bazofil %": "0.2",
+                   "RBC": "4.02", "HGB": "12.2", "HCT": "35.4", "MCV": "88.0", "MCH": "30.3", "MCHC": "34.4",
+                   "RDW": "13.1", "MPV": "11.0", "PLT": "216", "PCT": "0.237", "PDW": "16.5",
+                   "Albümin": "4.0", "FIB-4": "1.55", "Klorür": "113", "Sodyum": "145", "Potasyum": "3.12",
+                   "Kalsiyum": "8.7", "Aspartat aminotransferaz (AST)": "28", "Üre": "14.3", "Alanin aminotransferaz (ALT)": "26",
+                   "Kreatinin": "0.91", "Fosfor": "1.52", "Glukoz": "168", "C reaktif protein (CRP)": "2.17", "eGFR": "68.09"
+               }
+           },
+           {
+               date: "20 Eylül",
+               data: {
+                   "Lökosit Hücresi": "0", "Eritrosit Hücresi": "0", "Trible Fosfat": "0", "Urik Asit Kristali": "0", "Hyalen Silendir": "0",
+                   "Yassı Olmayan Epitel": "0", "Yassı Epitel": "0", "Maya": "0", "CaOxd Kristali": "0", "Ürobilinojen": "Normal",
+                   "Glukoz (idrar)": "Negatif", "Bilirubin (idrar)": "Negatif", "Keton (idrar)": "Negatif", "Dansite": "1.008",
+                   "pH (idrar)": "7.0", "Protein (idrar)": "Negatif", "Nitrit (idrar)": "Negatif",
+                   "WBC": "9.62", "Nötrofil": "8.06", "Lenfosit": "1.27", "Monosit": "0.29", "Eozinofil": "0.00", "Bazofil": "0.00",
+                   "Nötrofil %": "83.8", "Lenfosit %": "13.2", "Monosit %": "3.0", "Eozinofil %": "0.0", "Bazofil %": "0.0",
+                   "RBC": "3.74", "HGB": "11.4", "HCT": "32.9", "MCV": "87.9", "MCH": "30.4", "MCHC": "34.6",
+                   "RDW": "13.2", "MPV": "11.8", "PLT": "191", "PCT": "0.225", "PDW": "16.2",
+                   "Klorür": "107", "Sodyum": "141", "Potasyum": "3.09", "Albümin": "3.3", "Aspartat aminotransferaz (AST)": "14",
+                   "Alanin aminotransferaz (ALT)": "25", "Üre": "13.4", "eGFR": ">90", "Kreatinin": "0.69", "Kalsiyum": "7.7",
+                   "C reaktif protein (CRP)": "0.47", "Glukoz": "169", "Fosfor": "2.04"
+               }
+           },
+           {
+               date: "21 Eylül",
+               data: {
+                   "Lökosit Hücresi": "0", "Eritrosit Hücresi": "0", "Trible Fosfat": "0", "Urik Asit Kristali": "0", "Hyalen Silendir": "0",
+                   "Yassı Olmayan Epitel": "0", "Yassı Epitel": "0", "Maya": "0", "CaOxd Kristali": "0", "Ürobilinojen": "Normal",
+                   "Glukoz (idrar)": "Negatif", "Bilirubin (idrar)": "Negatif", "Keton (idrar)": "Negatif", "Dansite": "1.011",
+                   "pH (idrar)": "6.5", "Protein (idrar)": "Negatif", "Nitrit (idrar)": "Negatif",
+                   "Sodyum": "137",
+                   "WBC": "6.46", "Nötrofil": "5.12", "Lenfosit": "1.12", "Monosit": "0.22", "Eozinofil": "0.00", "Bazofil": "0.00",
+                   "Nötrofil %": "79.3", "Lenfosit %": "17.3", "Monosit %": "3.4", "Eozinofil %": "0.0", "Bazofil %": "0.0",
+                   "RBC": "4.07", "HGB": "12.4", "HCT": "35.4", "MCV": "86.8", "MCH": "30.5", "MCHC": "35.2",
+                   "RDW": "13.1", "MPV": "11.5", "PLT": "188", "PCT": "0.216", "PDW": "16.2",
+                   "Potasyum": "3.48", "Alanin aminotransferaz (ALT)": "27", "Aspartat aminotransferaz (AST)": "15",
+                   "eGFR": "80.79", "Glukoz": "151", "Kalsiyum": "8.9", "Kreatinin": "0.79", "Magnezyum": "2.10",
+                   "Üre": "16.3", "C reaktif protein (CRP)": "0.246", "Gamma glutamil transferaz (GGT)": "21"
+               }
+           }
+       ];
+
+       const referenceValues = {
+           "WBC": "4-10", "Nötrofil": "2-7", "Lenfosit": "0.8-4", "Monosit": "0.12-1.2", "Eozinofil": "0-0.8", "Bazofil": "0-0.25",
+           "Nötrofil %": "40-74", "Lenfosit %": "20-40", "Monosit %": "3-12", "Eozinofil %": "0-7.6", "Bazofil %": "0-2.5",
+           "RBC": "3.5-6.13", "HGB": "11-16", "HCT": "37-47", "MCV": "80-100", "MCH": "27-34", "MCHC": "32-36",
+           "RDW": "11-16", "MPV": "6.5-12.5", "PLT": "150-400", "PCT": "0.108-3.82", "PDW": "15-17",
+           "Glukoz": "70-110", "Kreatinin": "0.60-1.10", "Kalsiyum": "8.1-10.7", "Albümin": "3.1-5.5", "Potasyum": "3.50-5.20",
+           "Üre": "8.2-23.2", "Sodyum": "134-148", "Klorür": "96-108", "C reaktif protein (CRP)": "0-0.5", "Alanin aminotransferaz (ALT)": "0-35",
+           "Fosfor": "2.53-4.78", "Aspartat aminotransferaz (AST)": "0-35", "Serbest T4": "0.72-1.72", "Serbest T3": "1.80-4.20",
+           "TSH": "0.300-4.500", "Adrenokortikotropik hormon (ACTH)": "7.2-63.5", "Büyüme hormonu (Somatotropin)": "0-8",
+           "Kortizol": "5.72-19.42", "Prolaktin": "3.10-23.03", "Lüteinizan hormon (LH)": "", "Follikül stimülan hormon (FSH)": "",
+           "Lökosit Hücresi": "0-5", "Eritrosit Hücresi": "0-3", "Trible Fosfat": "0-3", "Urik Asit Kristali": "0-5", "Hyalen Silendir": "0-1",
+           "Yassı Olmayan Epitel": "0-1", "Yassı Epitel": "0-5", "Maya": "0", "CaOxd Kristali": "0-5", "Ürobilinojen": "Normal",
+           "Glukoz (idrar)": "Negatif", "Bilirubin (idrar)": "Negatif", "Keton (idrar)": "Negatif", "Dansite": "1.005-1.03",
+           "pH (idrar)": "4.5-8", "Protein (idrar)": "Negatif", "Nitrit (idrar)": "Negatif", "eGFR": "", "FIB-4": "",
+           "Magnezyum": "1.62-2.62", "Gamma glutamil transferaz (GGT)": "7-32"
+       };
+       
+       const labels = dailyData.map(d => d.date);
+
+       const createChart = (ctx, label, data, referenceMin, referenceMax) => {
+           new Chart(ctx, {
+               type: 'line',
+               data: {
+                   labels: labels,
+                   datasets: [{
+                       label: label,
+                       data: data,
+                       borderColor: '#2563eb',
+                       backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                       tension: 0.3,
+                       borderWidth: 2,
+                       fill: true
+                   }, {
+                       label: 'Referans Alt Sınır',
+                       data: Array(labels.length).fill(referenceMin),
+                       borderColor: '#9ca3af',
+                       borderDash: [5, 5],
+                       pointRadius: 0
+                   }, {
+                       label: 'Referans Üst Sınır',
+                       data: Array(labels.length).fill(referenceMax),
+                       borderColor: '#9ca3af',
+                       borderDash: [5, 5],
+                       pointRadius: 0
+                   }]
+               },
+               options: {
+                   responsive: true,
+                   maintainAspectRatio: false,
+                   scales: {
+                       y: {
+                           beginAtZero: false
+                       }
+                   }
+               }
+           });
+       };
+
+       const createCharts = () => {
+           const crpData = dailyData.map(d => d.data["C reaktif protein (CRP)"]);
+           const wbcData = dailyData.map(d => d.data["WBC"]);
+           const neutrophilData = dailyData.map(d => d.data["Nötrofil"]);
+           const glucoseData = dailyData.map(d => d.data["Glukoz"]);
+           const potassiumData = dailyData.map(d => d.data["Potasyum"]);
+           const hctData = dailyData.map(d => d.data["HCT"]);
+
+           createChart(document.getElementById('crpChart'), 'CRP', crpData, 0, 0.5);
+           createChart(document.getElementById('wbcChart'), 'WBC', wbcData, 4, 10);
+           createChart(document.getElementById('neutrophilChart'), 'Nötrofil', neutrophilData, 2, 7);
+           createChart(document.getElementById('glucoseChart'), 'Glukoz', glucoseData, 70, 110);
+           createChart(document.getElementById('potassiumChart'), 'Potasyum', potassiumData, 3.5, 5.2);
+           createChart(document.getElementById('hctChart'), 'HCT', hctData, 37, 47);
+       };
+
+       // Helper function to determine the color class for a value
+       const getColorClass = (param, value, prevValue) => {
+           const ref = referenceValues[param];
+           if (!ref) return ''; // No reference value, no color change
+
+           const parsedValue = parseFloat(value);
+           if (isNaN(parsedValue)) {
+               // Handle text values like "Negatif" or "Normal"
+               if (value === ref) return 'text-green-600';
+               return 'text-red-600';
+           }
+
+           const parts = ref.split('-');
+           if (parts.length === 2) {
+               const min = parseFloat(parts[0]);
+               const max = parseFloat(parts[1]);
+
+               // Check for normal range
+               if (parsedValue >= min && parsedValue <= max) {
+                   return 'text-green-600';
+               }
+
+               // Check for improvement (blue)
+               if (prevValue !== null) {
+                   const parsedPrevValue = parseFloat(prevValue);
+                   if (!isNaN(parsedPrevValue)) {
+                       const isImproving = (parsedValue > parsedPrevValue && parsedPrevValue < max) || // Low value increasing
+                                           (parsedValue < parsedPrevValue && parsedPrevValue > min);  // High value decreasing
+                       if (isImproving) {
+                           // Check if the current value is closer to the normal range than the previous one
+                           const distFromNormalCurrent = Math.min(Math.abs(parsedValue - min), Math.abs(parsedValue - max));
+                           const distFromNormalPrev = Math.min(Math.abs(parsedPrevValue - min), Math.abs(parsedPrevValue - max));
+                           if (distFromNormalCurrent < distFromNormalPrev) {
+                               return 'text-blue-600';
+                           }
+                       }
+                   }
+               }
+           }
+
+           // Default to red for out-of-range values
+           return 'text-red-600';
+       };
+
+       const populateTable = () => {
+           const tbody = document.querySelector('tbody');
+           const allParameters = new Set();
+           dailyData.forEach(day => {
+               Object.keys(day.data).forEach(param => allParameters.add(param));
+           });
+
+           const sortedParameters = Array.from(allParameters).sort();
+
+           sortedParameters.forEach(param => {
+               const row = document.createElement('tr');
+               row.className = "hover:bg-gray-50";
+
+               const paramCell = document.createElement('td');
+               paramCell.className = "px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900";
+               paramCell.textContent = param;
+               row.appendChild(paramCell);
+
+               for (let i = 0; i < dailyData.length; i++) {
+                   const value = dailyData[i].data[param];
+                   const prevValue = i > 0 ? dailyData[i - 1].data[param] : null;
+
+                   const valueCell = document.createElement('td');
+                   valueCell.className = "px-3 py-4 whitespace-nowrap text-sm";
+                   
+                   if (value) {
+                       const colorClass = getColorClass(param, value, prevValue);
+                       valueCell.textContent = value;
+                       if (colorClass) {
+                           valueCell.classList.add(colorClass);
+                       }
+                   } else {
+                       valueCell.textContent = "-";
+                   }
+                   row.appendChild(valueCell);
+               }
+
+               const refCell = document.createElement('td');
+               refCell.className = "px-3 py-4 whitespace-nowrap text-sm text-gray-500";
+               refCell.textContent = referenceValues[param] || "-";
+               row.appendChild(refCell);
+
+               tbody.appendChild(row);
+           });
+       };
+
+       window.onload = () => {
+           createCharts();
+           populateTable();
+       };
+   </script>
+</body>
+</html>

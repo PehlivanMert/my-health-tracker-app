@@ -776,6 +776,196 @@ exports.handler = async (event, context) => {
             isSummaryTime
           });
 
+          // 🔍 MANUEL BİLDİRİM KONTROLÜ - GÜN SONU ÖZETİNDEN ÖNCE
+          console.log(`🔍 [${userDoc.id}] MANUEL BİLDİRİM KONTROLÜ BAŞLATILIYOR...`);
+          console.log(`🔍 [${userDoc.id}] suppSnapshot kontrolü: ${!!suppSnapshot}, forEach: ${!!suppSnapshot?.forEach}, docs: ${!!suppSnapshot?.docs}, size: ${suppSnapshot?.size || 0}`);
+
+        if (suppSnapshot && suppSnapshot.forEach) {
+            const docSnaps = suppSnapshot.docs ? suppSnapshot.docs : Array.from(suppSnapshot);
+            console.log(`💊 [${userDoc.id}] ${docSnaps.length} takviye manuel bildirim için kontrol ediliyor`);
+            
+            for (const docSnap of docSnaps) {
+              const suppData = docSnap.data();
+              const suppName = suppData.name || 'Bilinmeyen Takviye';
+              console.log(`🔍 [${userDoc.id}] ${suppName} kontrol ediliyor - quantity: ${suppData.quantity}, dailyUsage: ${suppData.dailyUsage}`);
+              
+              if (
+                suppData.quantity > 0 &&
+                suppData.dailyUsage > 0
+              ) {
+                const dailyUsage = suppData.dailyUsage || 1;
+                const consumedToday = supplementConsumptionToday[suppName] || 0;
+                const estimatedRemainingDays = Math.floor(suppData.quantity / dailyUsage);
+
+                console.log(`💊 [${userDoc.id}] ${suppName}: ${consumedToday}/${dailyUsage} alındı, ${estimatedRemainingDays} gün kaldı`);
+
+                // 1. Kullanıcı günlük miktarı tamamladıysa bu takviye için bildirim atma
+                if (consumedToday >= dailyUsage) {
+                  console.log(`✅ [${userDoc.id}] ${suppName} günlük miktarı tamamlandı, bildirim atlanıyor`);
+                  continue; // Sadece bu takviye için döngüden çık, diğerlerini etkileme
+                }
+
+                // 2. 14/7/3/1 gün kaldı bildirimi pencere başında
+                if ([14, 7, 3, 1].includes(estimatedRemainingDays) && isWindowStart) {
+                  console.log(`✅ [${userDoc.id}] TAKVİYE STOK UYARISI: ${suppName} - ${estimatedRemainingDays} gün kaldı`);
+                  const motivasyonlar = [
+                    `Harika gidiyorsun! ${suppName} takviyenden sadece ${estimatedRemainingDays} gün kaldı, sağlığın için istikrarlı ol!`,
+                    `Az kaldı! ${suppName} takviyenden ${estimatedRemainingDays} gün sonra yenilemen gerekebilir.`,
+                    `Motivasyonunu koru! ${suppName} takviyenden ${estimatedRemainingDays} gün sonra bitecek.`,
+                    `Düzenli kullanım harika! ${suppName} takviyenden ${estimatedRemainingDays} gün kaldı.`,
+                  ];
+                  notificationsForThisUser.push({
+                    tokens: fcmTokens,
+                    data: {
+                      title: `${suppName} Takviyenden ${estimatedRemainingDays} Gün Kaldı!`,
+                      body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
+                      supplementId: docSnap.id,
+                    },
+                  });
+                }
+
+                // 3. Kullanıcının girdiği tüm bildirim saatlerini kontrol et
+                console.log(`🔍 [${userDoc.id}] ${suppName} notificationSchedule kontrolü:`, suppData.notificationSchedule);
+                if (suppData.notificationSchedule && suppData.notificationSchedule.length > 0) {
+                  const currentTimeStr = `${nowHour.toString().padStart(2, '0')}:${nowMinute.toString().padStart(2, '0')}`;
+                  console.log(`🔍 [${userDoc.id}] ${suppName} zaman kontrolü - şu anki: ${currentTimeStr}, planlanan: ${suppData.notificationSchedule.join(', ')}`);
+                  
+                  // Şu anki saat, bildirim saatlerinden biri mi kontrol et
+                  if (suppData.notificationSchedule.includes(currentTimeStr)) {
+                    console.log(`✅ [${userDoc.id}] TAKVİYE ZAMANI: ${suppName} - ${currentTimeStr}`);
+                    const motivasyonlar = [
+                      `Takviyeni almayı unutma! Düzenli kullanım sağlığın için çok önemli.`,
+                      `Bugün de ${suppName} takviyeni alırsan zinciri bozmayacaksın!`,
+                      `Vücudun sana teşekkür edecek! ${suppName} takviyeni almayı unutma.`,
+                      `Sağlıklı bir gün için ${suppName} takviyeni şimdi alabilirsin!`,
+                      `⏰ ${suppName} takviyesi zamanı! Sağlığın için önemli.`,
+                      `💊 ${suppName} takviyeni almayı unutma! Düzenli kullanım şart.`,
+                      `🌟 ${suppName} takviyesi için zaman geldi! Vücudun hazır.`,
+                      `🎯 ${suppName} takviyeni al ve hedeflerine ulaş!`,
+                      `💪 ${suppName} takviyesi zamanı! Güçlü kal.`,
+                      `✨ ${suppName} takviyeni al ve parla!`,
+                      `🚀 ${suppName} takviyesi için hazır mısın?`,
+                      `⭐ ${suppName} takviyeni al ve yıldız gibi parla!`,
+                      `🏆 ${suppName} takviyesi zamanı! Şampiyon gibi devam et.`,
+                      `🎊 ${suppName} takviyeni al ve kutla!`,
+                      `💎 ${suppName} takviyesi zamanı! Değerli vücudun için.`,
+                      `🌈 ${suppName} takviyeni al ve renkli kal!`,
+                      `🔥 ${suppName} takviyesi zamanı! Ateşli kal.`,
+                      `⚡ ${suppName} takviyeni al ve enerjik ol!`,
+                      `🌺 ${suppName} takviyesi zamanı! Çiçek gibi aç.`,
+                      `🌙 ${suppName} takviyeni al ve ay gibi parla!`,
+                      `☀️ ${suppName} takviyesi zamanı! Güneş gibi ışılda.`,
+                      `🌊 ${suppName} takviyeni al ve dalga gibi ak!`,
+                      `🌳 ${suppName} takviyesi zamanı! Ağaç gibi güçlü ol.`,
+                      `🦋 ${suppName} takviyeni al ve kelebek gibi hafif ol!`,
+                      `🦁 ${suppName} takviyesi zamanı! Aslan gibi güçlü ol.`,
+                      `🦅 ${suppName} takviyeni al ve kartal gibi yüksel!`,
+                      `🐬 ${suppName} takviyesi zamanı! Yunus gibi neşeli ol.`,
+                      `🦄 ${suppName} takviyeni al ve efsanevi ol!`,
+                      `🧚‍♀️ ${suppName} takviyesi zamanı! Peri gibi hafif ol.`,
+                      `👑 ${suppName} takviyeni al ve kral gibi ol!`,
+                      `💫 ${suppName} takviyesi zamanı! Yıldız gibi parla.`,
+                      `🎪 ${suppName} takviyeni al ve sirk gibi eğlenceli ol!`,
+                      `🎭 ${suppName} takviyesi zamanı! Sahne gibi parla.`,
+                      `🎨 ${suppName} takviyeni al ve sanat gibi güzel ol!`,
+                      `🎵 ${suppName} takviyesi zamanı! Müzik gibi uyumlu ol.`,
+                      `🎬 ${suppName} takviyeni al ve film gibi etkileyici ol!`,
+                      `🎮 ${suppName} takviyesi zamanı! Oyun gibi eğlenceli ol.`,
+                      `🎲 ${suppName} takviyeni al ve şans gibi güzel ol!`,
+                      `🎯 ${suppName} takviyesi zamanı! Hedef gibi odaklan.`,
+                      `🎪 ${suppName} takviyeni al ve parti gibi eğlenceli ol!`,
+                    ];
+                    notificationsForThisUser.push({
+                      tokens: fcmTokens,
+                      data: {
+                        title: `${suppName} Takviyesi Zamanı!`,
+                        body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
+                        supplementId: docSnap.id,
+                      },
+                    });
+                    // Bildirim gönderildikten sonra bir sonraki zamanı kaydet
+                    await updateNextSupplementReminderTime(userDoc.id, docSnap);
+                  } else {
+                    console.log(`💊 [${userDoc.id}] ${suppName} henüz zamanı gelmedi (${currentTimeStr}, planlanan: ${suppData.notificationSchedule.join(', ')})`);
+                  }
+                } else {
+                  // Eski sistem: nextSupplementReminderTime kontrolü (geriye uyumluluk için)
+                  console.log(`🔍 [${userDoc.id}] ${suppName} eski sistem kontrolü - nextSupplementReminderTime:`, suppData.nextSupplementReminderTime);
+                  if (suppData.nextSupplementReminderTime) {
+                    const nextReminder = new Date(suppData.nextSupplementReminderTime);
+                    const nextReminderTurkey = new Date(
+                      nextReminder.toLocaleString("en-US", {
+                        timeZone: "Europe/Istanbul",
+                      })
+                    );
+                    if (Math.abs(now - nextReminderTurkey) / 60000 < 0.5) {
+                      console.log(`✅ [${userDoc.id}] TAKVİYE ZAMANI (ESKİ SİSTEM): ${suppName} - ${nextReminderTurkey.toLocaleTimeString('tr-TR')}`);
+                      const motivasyonlar = [
+                        `Takviyeni almayı unutma! Düzenli kullanım sağlığın için çok önemli.`,
+                        `Bugün de ${suppName} takviyeni alırsan zinciri bozmayacaksın!`,
+                        `Vücudun sana teşekkür edecek! ${suppName} takviyeni almayı unutma.`,
+                        `Sağlıklı bir gün için ${suppName} takviyeni şimdi alabilirsin!`,
+                        `⏰ ${suppName} takviyesi zamanı! Sağlığın için önemli.`,
+                        `💊 ${suppName} takviyeni almayı unutma! Düzenli kullanım şart.`,
+                        `🌟 ${suppName} takviyesi için zaman geldi! Vücudun hazır.`,
+                        `🎯 ${suppName} takviyeni al ve hedeflerine ulaş!`,
+                        `💪 ${suppName} takviyesi zamanı! Güçlü kal.`,
+                        `✨ ${suppName} takviyeni al ve parla!`,
+                        `🚀 ${suppName} takviyesi için hazır mısın?`,
+                        `⭐ ${suppName} takviyeni al ve yıldız gibi parla!`,
+                        `🏆 ${suppName} takviyesi zamanı! Şampiyon gibi devam et.`,
+                        `🎊 ${suppName} takviyeni al ve kutla!`,
+                        `💎 ${suppName} takviyesi zamanı! Değerli vücudun için.`,
+                        `🌈 ${suppName} takviyeni al ve renkli kal!`,
+                        `🔥 ${suppName} takviyesi zamanı! Ateşli kal.`,
+                        `⚡ ${suppName} takviyeni al ve enerjik ol!`,
+                        `🌺 ${suppName} takviyesi zamanı! Çiçek gibi aç.`,
+                        `🌙 ${suppName} takviyeni al ve ay gibi parla!`,
+                        `☀️ ${suppName} takviyesi zamanı! Güneş gibi ışılda.`,
+                        `🌊 ${suppName} takviyesi zamanı! Dalga gibi ak.`,
+                        `🌳 ${suppName} takviyesi zamanı! Ağaç gibi güçlü ol.`,
+                        `🦋 ${suppName} takviyeni al ve kelebek gibi hafif ol!`,
+                        `🦁 ${suppName} takviyesi zamanı! Aslan gibi güçlü ol.`,
+                        `🦅 ${suppName} takviyeni al ve kartal gibi yüksel!`,
+                        `🐬 ${suppName} takviyesi zamanı! Yunus gibi neşeli ol.`,
+                        `🦄 ${suppName} takviyeni al ve efsanevi ol!`,
+                        `🧚‍♀️ ${suppName} takviyesi zamanı! Peri gibi hafif ol.`,
+                        `👑 ${suppName} takviyeni al ve kral gibi ol!`,
+                        `💫 ${suppName} takviyesi zamanı! Yıldız gibi parla.`,
+                        `🎪 ${suppName} takviyeni al ve sirk gibi eğlenceli ol!`,
+                        `🎭 ${suppName} takviyesi zamanı! Sahne gibi parla.`,
+                        `🎨 ${suppName} takviyeni al ve sanat gibi güzel ol!`,
+                        `🎵 ${suppName} takviyesi zamanı! Müzik gibi uyumlu ol.`,
+                        `🎬 ${suppName} takviyeni al ve film gibi etkileyici ol!`,
+                        `🎮 ${suppName} takviyesi zamanı! Oyun gibi eğlenceli ol.`,
+                        `🎲 ${suppName} takviyeni al ve şans gibi güzel ol!`,
+                        `🎯 ${suppName} takviyesi zamanı! Hedef gibi odaklan.`,
+                        `🎪 ${suppName} takviyeni al ve parti gibi eğlenceli ol!`,
+                      ];
+                      notificationsForThisUser.push({
+                        tokens: fcmTokens,
+                        data: {
+                          title: `${suppName} Takviyesi Zamanı!`,
+                          body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
+                          supplementId: docSnap.id,
+                        },
+                      });
+                    } else {
+                      console.log(`💊 [${userDoc.id}] ${suppName} henüz zamanı gelmedi (${Math.abs(now - nextReminderTurkey) / 60000} dakika fark)`);
+                    }
+                  } else {
+                    console.log(`💊 [${userDoc.id}] ${suppName} için bildirim zamanı ayarlanmamış`);
+                  }
+                }
+              } else {
+                console.log(`💊 [${userDoc.id}] ${suppName} geçersiz (miktar: ${suppData.quantity}, günlük: ${suppData.dailyUsage})`);
+              }
+            }
+          } else {
+            console.log(`💊 [${userDoc.id}] Takviye verisi bulunamadı (manuel bildirim için)`);
+          }
+          console.log(`🔍 [${userDoc.id}] MANUEL BİLDİRİM KONTROLÜ TAMAMLANDI`);
+
           // Dinamik gün sonu özeti kontrolü - takviye döngüsünün dışında
           if (isSummaryTime) {
             console.log(`✅ [${userDoc.id}] GÜN SONU TAKVİYE ÖZET ZAMANI (${Math.floor(summaryTimeTotal / 60).toString().padStart(2, '0')}:${(summaryTimeTotal % 60).toString().padStart(2, '0')})`);
@@ -919,193 +1109,13 @@ exports.handler = async (event, context) => {
             }
           }
         }
-
-        if (suppSnapshot && suppSnapshot.forEach) {
-            const docSnaps = suppSnapshot.docs ? suppSnapshot.docs : Array.from(suppSnapshot);
-            console.log(`💊 [${userDoc.id}] ${docSnaps.length} takviye kontrol ediliyor`);
-            
-            for (const docSnap of docSnaps) {
-              const suppData = docSnap.data();
-              const suppName = suppData.name || 'Bilinmeyen Takviye'; // <-- BURAYA TAŞINDI
-              if (
-                suppData.quantity > 0 &&
-                suppData.dailyUsage > 0
-              ) {
-                const dailyUsage = suppData.dailyUsage || 1;
-                const consumedToday = supplementConsumptionToday[suppName] || 0;
-                const estimatedRemainingDays = Math.floor(suppData.quantity / dailyUsage);
-
-                console.log(`💊 [${userDoc.id}] ${suppName}: ${consumedToday}/${dailyUsage} alındı, ${estimatedRemainingDays} gün kaldı`);
-
-                // 1. Kullanıcı günlük miktarı tamamladıysa bu takviye için bildirim atma
-                if (consumedToday >= dailyUsage) {
-                  console.log(`✅ [${userDoc.id}] ${suppName} günlük miktarı tamamlandı, bildirim atlanıyor`);
-                  continue; // Sadece bu takviye için döngüden çık, diğerlerini etkileme
-                }
-
-                // 2. 14/7/3/1 gün kaldı bildirimi pencere başında
-                if ([14, 7, 3, 1].includes(estimatedRemainingDays) && isWindowStart) {
-                  console.log(`✅ [${userDoc.id}] TAKVİYE STOK UYARISI: ${suppName} - ${estimatedRemainingDays} gün kaldı`);
-                  const motivasyonlar = [
-                    `Harika gidiyorsun! ${suppName} takviyenden sadece ${estimatedRemainingDays} gün kaldı, sağlığın için istikrarlı ol!`,
-                    `Az kaldı! ${suppName} takviyenden ${estimatedRemainingDays} gün sonra yenilemen gerekebilir.`,
-                    `Motivasyonunu koru! ${suppName} takviyenden ${estimatedRemainingDays} gün sonra bitecek.`,
-                    `Düzenli kullanım harika! ${suppName} takviyenden ${estimatedRemainingDays} gün kaldı.`,
-                  ];
-                  notificationsForThisUser.push({
-                    tokens: fcmTokens,
-                    data: {
-                      title: `${suppName} Takviyenden ${estimatedRemainingDays} Gün Kaldı!`,
-                      body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
-                      supplementId: docSnap.id,
-                    },
-                  });
-                }
-
-                // 3. Kullanıcının girdiği tüm bildirim saatlerini kontrol et
-                if (suppData.notificationSchedule && suppData.notificationSchedule.length > 0) {
-                  const currentTimeStr = `${nowHour.toString().padStart(2, '0')}:${nowMinute.toString().padStart(2, '0')}`;
-                  
-                  // Şu anki saat, bildirim saatlerinden biri mi kontrol et
-                  if (suppData.notificationSchedule.includes(currentTimeStr)) {
-                    console.log(`✅ [${userDoc.id}] TAKVİYE ZAMANI: ${suppName} - ${currentTimeStr}`);
-                    const motivasyonlar = [
-                      `Takviyeni almayı unutma! Düzenli kullanım sağlığın için çok önemli.`,
-                      `Bugün de ${suppName} takviyeni alırsan zinciri bozmayacaksın!`,
-                      `Vücudun sana teşekkür edecek! ${suppName} takviyeni almayı unutma.`,
-                      `Sağlıklı bir gün için ${suppName} takviyeni şimdi alabilirsin!`,
-                      `⏰ ${suppName} takviyesi zamanı! Sağlığın için önemli.`,
-                      `💊 ${suppName} takviyeni almayı unutma! Düzenli kullanım şart.`,
-                      `🌟 ${suppName} takviyesi için zaman geldi! Vücudun hazır.`,
-                      `🎯 ${suppName} takviyeni al ve hedeflerine ulaş!`,
-                      `💪 ${suppName} takviyesi zamanı! Güçlü kal.`,
-                      `✨ ${suppName} takviyeni al ve parla!`,
-                      `🚀 ${suppName} takviyesi için hazır mısın?`,
-                      `⭐ ${suppName} takviyeni al ve yıldız gibi parla!`,
-                      `🏆 ${suppName} takviyesi zamanı! Şampiyon gibi devam et.`,
-                      `🎊 ${suppName} takviyeni al ve kutla!`,
-                      `💎 ${suppName} takviyesi zamanı! Değerli vücudun için.`,
-                      `🌈 ${suppName} takviyeni al ve renkli kal!`,
-                      `🔥 ${suppName} takviyesi zamanı! Ateşli kal.`,
-                      `⚡ ${suppName} takviyeni al ve enerjik ol!`,
-                      `🌺 ${suppName} takviyesi zamanı! Çiçek gibi aç.`,
-                      `🌙 ${suppName} takviyeni al ve ay gibi parla!`,
-                      `☀️ ${suppName} takviyesi zamanı! Güneş gibi ışılda.`,
-                      `🌊 ${suppName} takviyeni al ve dalga gibi ak!`,
-                      `🌳 ${suppName} takviyesi zamanı! Ağaç gibi güçlü ol.`,
-                      `🦋 ${suppName} takviyeni al ve kelebek gibi hafif ol!`,
-                      `🦁 ${suppName} takviyesi zamanı! Aslan gibi güçlü ol.`,
-                      `🦅 ${suppName} takviyeni al ve kartal gibi yüksel!`,
-                      `🐬 ${suppName} takviyesi zamanı! Yunus gibi neşeli ol.`,
-                      `🦄 ${suppName} takviyeni al ve efsanevi ol!`,
-                      `🧚‍♀️ ${suppName} takviyesi zamanı! Peri gibi hafif ol.`,
-                      `👑 ${suppName} takviyeni al ve kral gibi ol!`,
-                      `💫 ${suppName} takviyesi zamanı! Yıldız gibi parla.`,
-                      `🎪 ${suppName} takviyeni al ve sirk gibi eğlenceli ol!`,
-                      `🎭 ${suppName} takviyesi zamanı! Sahne gibi parla.`,
-                      `🎨 ${suppName} takviyeni al ve sanat gibi güzel ol!`,
-                      `🎵 ${suppName} takviyesi zamanı! Müzik gibi uyumlu ol.`,
-                      `🎬 ${suppName} takviyeni al ve film gibi etkileyici ol!`,
-                      `🎮 ${suppName} takviyesi zamanı! Oyun gibi eğlenceli ol.`,
-                      `🎲 ${suppName} takviyeni al ve şans gibi güzel ol!`,
-                      `🎯 ${suppName} takviyesi zamanı! Hedef gibi odaklan.`,
-                      `🎪 ${suppName} takviyeni al ve parti gibi eğlenceli ol!`,
-                    ];
-                    notificationsForThisUser.push({
-                      tokens: fcmTokens,
-                      data: {
-                        title: `${suppName} Takviyesi Zamanı!`,
-                        body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
-                        supplementId: docSnap.id,
-                      },
-                    });
-                    // Bildirim gönderildikten sonra bir sonraki zamanı kaydet
-                    await updateNextSupplementReminderTime(userDoc.id, docSnap);
-                  } else {
-                    console.log(`💊 [${userDoc.id}] ${suppName} henüz zamanı gelmedi (${currentTimeStr}, planlanan: ${suppData.notificationSchedule.join(', ')})`);
-                  }
-                } else {
-                  // Eski sistem: nextSupplementReminderTime kontrolü (geriye uyumluluk için)
-                  if (suppData.nextSupplementReminderTime) {
-                    const nextReminder = new Date(suppData.nextSupplementReminderTime);
-                    const nextReminderTurkey = new Date(
-                      nextReminder.toLocaleString("en-US", {
-                        timeZone: "Europe/Istanbul",
-                      })
-                    );
-                    if (Math.abs(now - nextReminderTurkey) / 60000 < 0.5) {
-                      console.log(`✅ [${userDoc.id}] TAKVİYE ZAMANI (ESKİ SİSTEM): ${suppName} - ${nextReminderTurkey.toLocaleTimeString('tr-TR')}`);
-                      const motivasyonlar = [
-                        `Takviyeni almayı unutma! Düzenli kullanım sağlığın için çok önemli.`,
-                        `Bugün de ${suppName} takviyeni alırsan zinciri bozmayacaksın!`,
-                        `Vücudun sana teşekkür edecek! ${suppName} takviyeni almayı unutma.`,
-                        `Sağlıklı bir gün için ${suppName} takviyeni şimdi alabilirsin!`,
-                        `⏰ ${suppName} takviyesi zamanı! Sağlığın için önemli.`,
-                        `💊 ${suppName} takviyeni almayı unutma! Düzenli kullanım şart.`,
-                        `🌟 ${suppName} takviyesi için zaman geldi! Vücudun hazır.`,
-                        `🎯 ${suppName} takviyeni al ve hedeflerine ulaş!`,
-                        `💪 ${suppName} takviyesi zamanı! Güçlü kal.`,
-                        `✨ ${suppName} takviyeni al ve parla!`,
-                        `🚀 ${suppName} takviyesi için hazır mısın?`,
-                        `⭐ ${suppName} takviyeni al ve yıldız gibi parla!`,
-                        `🏆 ${suppName} takviyesi zamanı! Şampiyon gibi devam et.`,
-                        `🎊 ${suppName} takviyeni al ve kutla!`,
-                        `💎 ${suppName} takviyesi zamanı! Değerli vücudun için.`,
-                        `🌈 ${suppName} takviyeni al ve renkli kal!`,
-                        `🔥 ${suppName} takviyesi zamanı! Ateşli kal.`,
-                        `⚡ ${suppName} takviyeni al ve enerjik ol!`,
-                        `🌺 ${suppName} takviyesi zamanı! Çiçek gibi aç.`,
-                        `🌙 ${suppName} takviyeni al ve ay gibi parla!`,
-                        `☀️ ${suppName} takviyesi zamanı! Güneş gibi ışılda.`,
-                        `🌊 ${suppName} takviyesi zamanı! Dalga gibi ak.`,
-                        `🌳 ${suppName} takviyesi zamanı! Ağaç gibi güçlü ol.`,
-                        `🦋 ${suppName} takviyeni al ve kelebek gibi hafif ol!`,
-                        `🦁 ${suppName} takviyesi zamanı! Aslan gibi güçlü ol.`,
-                        `🦅 ${suppName} takviyeni al ve kartal gibi yüksel!`,
-                        `🐬 ${suppName} takviyesi zamanı! Yunus gibi neşeli ol.`,
-                        `🦄 ${suppName} takviyeni al ve efsanevi ol!`,
-                        `🧚‍♀️ ${suppName} takviyesi zamanı! Peri gibi hafif ol.`,
-                        `👑 ${suppName} takviyeni al ve kral gibi ol!`,
-                        `💫 ${suppName} takviyesi zamanı! Yıldız gibi parla.`,
-                        `🎪 ${suppName} takviyeni al ve sirk gibi eğlenceli ol!`,
-                        `🎭 ${suppName} takviyesi zamanı! Sahne gibi parla.`,
-                        `🎨 ${suppName} takviyeni al ve sanat gibi güzel ol!`,
-                        `🎵 ${suppName} takviyesi zamanı! Müzik gibi uyumlu ol.`,
-                        `🎬 ${suppName} takviyeni al ve film gibi etkileyici ol!`,
-                        `🎮 ${suppName} takviyesi zamanı! Oyun gibi eğlenceli ol.`,
-                        `🎲 ${suppName} takviyeni al ve şans gibi güzel ol!`,
-                        `🎯 ${suppName} takviyesi zamanı! Hedef gibi odaklan.`,
-                        `🎪 ${suppName} takviyeni al ve parti gibi eğlenceli ol!`,
-                      ];
-                      notificationsForThisUser.push({
-                        tokens: fcmTokens,
-                        data: {
-                          title: `${suppName} Takviyesi Zamanı!`,
-                          body: motivasyonlar[Math.floor(Math.random() * motivasyonlar.length)],
-                          supplementId: docSnap.id,
-                        },
-                      });
-                    } else {
-                      console.log(`💊 [${userDoc.id}] ${suppName} henüz zamanı gelmedi (${Math.abs(now - nextReminderTurkey) / 60000} dakika fark)`);
-                    }
-                  } else {
-                    console.log(`💊 [${userDoc.id}] ${suppName} için bildirim zamanı ayarlanmamış`);
-                  }
-                }
-              } else {
-                console.log(`💊 [${userDoc.id}] ${suppName} geçersiz (miktar: ${suppData.quantity}, günlük: ${suppData.dailyUsage})`);
-              }
-            }
-          } else {
-            console.log(`💊 [${userDoc.id}] Takviye verisi bulunamadı`);
-          }
-        }
         } else {
           if (!isWithinNotificationWindow) {
             console.log(`💊 [${userDoc.id}] Takviye bildirimleri atlanıyor (bildirim penceresi dışında)`);
           } else if (!suppSnapshot) {
             console.log(`💊 [${userDoc.id}] Takviye verisi bulunamadı`);
           }
+        }
         }
 
         // Kullanıcıya ait bildirimler varsa, kullanıcı ID'si ile birlikte ekle

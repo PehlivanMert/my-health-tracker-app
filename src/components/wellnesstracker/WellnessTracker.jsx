@@ -217,6 +217,7 @@ const WellnessTracker = ({ user }) => {
   const [supplementConsumptionToday, setSupplementConsumptionToday] = useState(
     {}
   );
+  const [supplementStatsData, setSupplementStatsData] = useState([]);
   const [notificationDialogOpen, setNotificationDialogOpen] = useState(false);
   const [
     supplementNotificationDialogOpen,
@@ -267,10 +268,66 @@ const WellnessTracker = ({ user }) => {
     }
   };
 
+  // Su verilerini yenilemek için fonksiyon
+  const refreshWaterData = async () => {
+    try {
+      // WaterTracker'dan su verilerini yeniden çek
+      const waterRef = doc(db, "users", user.uid, "water", "current");
+      const waterDocSnap = await getDoc(waterRef);
+      if (waterDocSnap.exists()) {
+        const waterDataFromDB = waterDocSnap.data();
+        setWaterData({
+          history: waterDataFromDB.history || [],
+          nextWaterReminderTime: waterDataFromDB.nextWaterReminderTime || null,
+          ...waterDataFromDB
+        });
+      }
+    } catch (error) {
+      console.error("Su verileri yenileme hatası:", error);
+    }
+  };
+
+  // Takviye istatistik verilerini yenilemek için fonksiyon
+  const fetchSupplementConsumptionStats = async () => {
+    try {
+      const statsRef = doc(db, "users", user.uid, "stats", "supplementConsumption");
+      const docSnap = await getDoc(statsRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const sortedDates = Object.keys(data).sort(
+          (a, b) => new Date(a + "T00:00:00") - new Date(b + "T00:00:00")
+        );
+        const allSuppNames = new Set();
+        sortedDates.forEach((date) => {
+          Object.keys(data[date]).forEach((suppName) => {
+            if (suppName !== "total") allSuppNames.add(suppName);
+          });
+        });
+        const chartData = sortedDates.map((date) => {
+          const dayStats = data[date];
+          const dayData = {
+            date: new Date(date + "T00:00:00").toLocaleDateString("tr-TR"),
+            fullDate: date,
+          };
+          allSuppNames.forEach((suppName) => {
+            dayData[suppName] = dayStats[suppName] || 0;
+          });
+          return dayData;
+        });
+        return chartData;
+      }
+      return [];
+    } catch (error) {
+      console.error("Takviye istatistik verileri çekme hatası:", error);
+      return [];
+    }
+  };
+
   useEffect(() => {
     if (!user) return;
     fetchSupplements();
     fetchSupplementConsumptionToday();
+    fetchSupplementConsumptionStats().then(setSupplementStatsData);
   }, [user]);
 
   // Takviye tüketim verisi değişikliklerini izle ve korumalı güncelleme yap
@@ -1008,7 +1065,14 @@ const WellnessTracker = ({ user }) => {
             <Grid container spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mt: 2, borderRadius: 24, overflow: 'hidden' }}>
               <Grid item xs={12} md={6} sx={{ borderRadius: 24, overflow: 'hidden' }}>
                 <Box sx={{ borderRadius: 24, overflow: 'hidden' }}>
-                  <WaterConsumptionChart waterHistory={Array.isArray(waterData.history) ? waterData.history : []} />
+                  <WaterConsumptionChart 
+                    waterHistory={Array.isArray(waterData.history) ? waterData.history : []} 
+                    nextReminder={waterData.nextWaterReminderTime}
+                    onRefresh={() => {
+                      // Su verilerini yenile
+                      refreshWaterData();
+                    }}
+                  />
                 </Box>
               </Grid>
               <Grid item xs={12} md={6} sx={{ borderRadius: 24, overflow: 'hidden' }}>
@@ -1016,6 +1080,14 @@ const WellnessTracker = ({ user }) => {
                   <SupplementConsumptionChart
                     user={user}
                     supplements={supplements}
+                    consumptionData={supplementStatsData}
+                    onRefresh={async () => {
+                      // Takviye verilerini yenile
+                      await fetchSupplements();
+                      await fetchSupplementConsumptionToday();
+                      const statsData = await fetchSupplementConsumptionStats();
+                      setSupplementStatsData(statsData);
+                    }}
                   />
                 </Box>
               </Grid>

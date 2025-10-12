@@ -101,7 +101,7 @@ const StatsCard = styled(Box)(({ theme }) => ({
   },
 }));
 
-const WaterConsumptionChart = ({ waterHistory, nextReminder }) => {
+const WaterConsumptionChart = ({ waterHistory, nextReminder, onRefresh }) => {
   const [timeRange, setTimeRange] = useState("month");
   const [displayType, setDisplayType] = useState("area");
   const [isLoading, setIsLoading] = useState(false);
@@ -200,6 +200,15 @@ const WaterConsumptionChart = ({ waterHistory, nextReminder }) => {
 
   const handleRefresh = () => {
     setIsLoading(true);
+    // Parent component'ten refresh fonksiyonu varsa onu çağır
+    if (onRefresh && typeof onRefresh === 'function') {
+      onRefresh();
+    } else {
+      // Fallback: Sayfayı yenile
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
+    }
     setTimeout(() => setIsLoading(false), 1000);
   };
 
@@ -260,29 +269,44 @@ const WaterConsumptionChart = ({ waterHistory, nextReminder }) => {
             
             <MuiTooltip 
               title={
-                <Box sx={{ p: 1, maxWidth: 300 }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                <Box sx={{ p: 1, maxWidth: isMobile ? 250 : 300 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
                     💧 Su Tüketimi İstatistikleri
                   </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
+                  <Typography variant="body2" sx={{ mb: 1, fontSize: isMobile ? "0.75rem" : "0.875rem" }}>
                     • <strong>Ortalama:</strong> Seçilen dönemdeki günlük ortalama su tüketimi
                   </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
+                  <Typography variant="body2" sx={{ mb: 1, fontSize: isMobile ? "0.75rem" : "0.875rem" }}>
                     • <strong>Toplam:</strong> Dönem boyunca toplam tüketilen su miktarı
                   </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
+                  <Typography variant="body2" sx={{ mb: 1, fontSize: isMobile ? "0.75rem" : "0.875rem" }}>
                     • <strong>En Yüksek:</strong> Tek günde tüketilen en fazla su miktarı
                   </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
+                  <Typography variant="body2" sx={{ mb: 1, fontSize: isMobile ? "0.75rem" : "0.875rem" }}>
                     • <strong>Trend:</strong> Son 7 gün vs önceki 7 gün karşılaştırması
                   </Typography>
-                  <Typography variant="body2">
+                  <Typography variant="body2" sx={{ fontSize: isMobile ? "0.75rem" : "0.875rem" }}>
                     📊 Grafik türlerini değiştirerek verilerinizi farklı açılardan inceleyebilirsiniz.
                   </Typography>
                 </Box>
               }
-              placement="left"
+              placement={isMobile ? "top" : "left"}
               arrow
+              PopperProps={{
+                modifiers: [
+                  {
+                    name: 'preventOverflow',
+                    enabled: true,
+                    options: {
+                      boundary: 'viewport',
+                    },
+                  },
+                  {
+                    name: 'flip',
+                    enabled: true,
+                  },
+                ],
+              }}
             >
               <IconButton 
                 size="small"

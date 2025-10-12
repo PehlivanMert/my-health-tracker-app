@@ -105,7 +105,9 @@ const StatsCard = styled(Box)(({ theme }) => ({
 const SupplementConsumptionChart = ({
   user,
   supplements,
+  consumptionData: propConsumptionData,
   onOpenSupplementNotificationSettings,
+  onRefresh,
 }) => {
   const [consumptionData, setConsumptionData] = useState([]);
   const [timeRange, setTimeRange] = useState("month");
@@ -154,8 +156,12 @@ const SupplementConsumptionChart = ({
   };
 
   useEffect(() => {
-    if (user) fetchConsumptionData();
-  }, [user]);
+    if (propConsumptionData && propConsumptionData.length > 0) {
+      setConsumptionData(propConsumptionData);
+    } else if (user) {
+      fetchConsumptionData();
+    }
+  }, [user, propConsumptionData]);
 
   const getFilteredData = () => {
     return consumptionData.filter((entry) => {
@@ -267,6 +273,13 @@ const SupplementConsumptionChart = ({
 
   const handleRefresh = () => {
     setIsLoading(true);
+    // Parent component'ten refresh fonksiyonu varsa onu çağır
+    if (onRefresh && typeof onRefresh === 'function') {
+      onRefresh();
+    } else {
+      // Fallback: Veriyi yeniden yükle
+      fetchConsumptionData();
+    }
     setTimeout(() => setIsLoading(false), 1000);
   };
 
@@ -327,38 +340,53 @@ const SupplementConsumptionChart = ({
             
             <MuiTooltip 
               title={
-                <Box sx={{ p: 1, maxWidth: 320 }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                <Box sx={{ p: 1, maxWidth: isMobile ? 280 : 320 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, fontSize: isMobile ? "0.8rem" : "0.875rem" }}>
                     💊 Takviye İstatistikleri
                   </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
+                  <Typography variant="body2" sx={{ mb: 1, fontSize: isMobile ? "0.75rem" : "0.875rem" }}>
                     • <strong>Toplam Kullanım:</strong> Seçilen dönemdeki toplam takviye sayısı
                   </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
+                  <Typography variant="body2" sx={{ mb: 1, fontSize: isMobile ? "0.75rem" : "0.875rem" }}>
                     • <strong>Takviye Sayısı:</strong> Kullanılan farklı takviye çeşit sayısı
                   </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
+                  <Typography variant="body2" sx={{ mb: 1, fontSize: isMobile ? "0.75rem" : "0.875rem" }}>
                     • <strong>En Çok Kullanılan:</strong> En fazla tüketilen takviye
                   </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
+                  <Typography variant="body2" sx={{ mb: 1, fontSize: isMobile ? "0.75rem" : "0.875rem" }}>
                     • <strong>En Tutarlı:</strong> En düzenli kullanılan takviye
                   </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
+                  <Typography variant="body2" sx={{ mb: 1, fontSize: isMobile ? "0.75rem" : "0.875rem" }}>
                     📊 <strong>Grafik Türleri:</strong>
                   </Typography>
-                  <Typography variant="body2" sx={{ ml: 2, mb: 0.5 }}>
+                  <Typography variant="body2" sx={{ ml: 2, mb: 0.5, fontSize: isMobile ? "0.75rem" : "0.875rem" }}>
                     • Çubuk: Günlük kullanım karşılaştırması
                   </Typography>
-                  <Typography variant="body2" sx={{ ml: 2, mb: 0.5 }}>
+                  <Typography variant="body2" sx={{ ml: 2, mb: 0.5, fontSize: isMobile ? "0.75rem" : "0.875rem" }}>
                     • Yığılmış: Toplam kullanım görünümü
                   </Typography>
-                  <Typography variant="body2" sx={{ ml: 2 }}>
+                  <Typography variant="body2" sx={{ ml: 2, fontSize: isMobile ? "0.75rem" : "0.875rem" }}>
                     • Pasta: Takviye dağılım oranları
                   </Typography>
                 </Box>
               }
-              placement="left"
+              placement={isMobile ? "top" : "left"}
               arrow
+              PopperProps={{
+                modifiers: [
+                  {
+                    name: 'preventOverflow',
+                    enabled: true,
+                    options: {
+                      boundary: 'viewport',
+                    },
+                  },
+                  {
+                    name: 'flip',
+                    enabled: true,
+                  },
+                ],
+              }}
             >
               <IconButton 
                 size="small"

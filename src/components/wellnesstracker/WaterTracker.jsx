@@ -720,19 +720,64 @@ const resetDailyWaterIntake = async (
 
 // ─────────────────────────────────────────────────────────────────
 
-// 500ml için özel SVG şişe ikonu
-const BottleIcon = (props) => (
+// Modern bardak ve şişe ikonları
+const TeaCupIcon = (props) => (
+  <SvgIcon {...props} viewBox="0 0 24 24">
+    <path d="M7 2h10c1.1 0 2 .9 2 2v2c0 .55-.45 1-1 1h-1v9c0 1.1-.9 2-2 2H9c-1.1 0-2-.9-2-2V7H6c-.55 0-1-.45-1-1V4c0-1.1.9-2 2-2z" fill="#1976d2"/>
+    <path d="M9 7v9h6V7H9z" fill="#fff" opacity="0.2"/>
+    <circle cx="17" cy="19" r="2" fill="#1976d2"/>
+  </SvgIcon>
+);
+
+const SmallGlassIcon = (props) => (
+  <SvgIcon {...props} viewBox="0 0 24 24">
+    <path d="M8 3h8c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H8c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2z" fill="#2196f3"/>
+    <path d="M9 6h6v8H9V6z" fill="#fff" opacity="0.2"/>
+    <path d="M12 3v2" stroke="#fff" strokeWidth="1" opacity="0.3"/>
+  </SvgIcon>
+);
+
+const MediumGlassIcon = (props) => (
+  <SvgIcon {...props} viewBox="0 0 24 24">
+    <path d="M7 2h10c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2z" fill="#00bcd4"/>
+    <path d="M8 4h8v12H8V4z" fill="#fff" opacity="0.2"/>
+    <path d="M12 2v3" stroke="#fff" strokeWidth="1.5" opacity="0.4"/>
+  </SvgIcon>
+);
+
+const MugIcon = (props) => (
+  <SvgIcon {...props} viewBox="0 0 24 24">
+    <path d="M6 2h10c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H6c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2z" fill="#43a047"/>
+    <path d="M7 4h8v10H7V4z" fill="#fff" opacity="0.2"/>
+    <path d="M18 8h2v4h-2z" fill="#43a047"/>
+    <circle cx="19" cy="6" r="1" fill="#fff" opacity="0.6"/>
+  </SvgIcon>
+);
+
+const PetBottleIcon = (props) => (
   <SvgIcon {...props} viewBox="0 0 24 24">
     <path d="M9 2c0-.55.45-1 1-1h4c.55 0 1 .45 1 1v2.5c0 .28.22.5.5.5s.5.22.5.5V7c0 .28-.22.5-.5.5s-.5.22-.5.5V9c0 .55-.45 1-1 1h-2c-.55 0-1-.45-1-1V8c0-.28-.22-.5-.5-.5S9 7.28 9 7V5.5c0-.28.22-.5.5-.5s.5-.22.5-.5V2zm2 0v2h2V2h-2zm-2 7v13c0 1.1.9 2 2 2s2-.9 2-2V9h-4z" fill="#1976d2"/>
+    <path d="M10 4h4v1h-4z" fill="#fff" opacity="0.3"/>
+    <path d="M11 10h2v8h-2z" fill="#fff" opacity="0.1"/>
+  </SvgIcon>
+);
+
+const GlassBottleIcon = (props) => (
+  <SvgIcon {...props} viewBox="0 0 24 24">
+    <path d="M10 2c0-.55.45-1 1-1h2c.55 0 1 .45 1 1v2.5c0 .28.22.5.5.5s.5.22.5.5V7c0 .28-.22.5-.5.5s-.5.22-.5.5V9c0 .55-.45 1-1 1h-2c-.55 0-1-.45-1-1V8c0-.28-.22-.5-.5-.5S10 7.28 10 7V5.5c0-.28.22-.5.5-.5s.5-.22.5-.5V2zm2 0v2h2V2h-2zm-2 7v13c0 1.1.9 2 2 2s2-.9 2-2V9h-4z" fill="#ff9800"/>
+    <path d="M11 3h2v1h-2z" fill="#fff" opacity="0.4"/>
+    <path d="M12 10h1v8h-1z" fill="#fff" opacity="0.2"/>
+    <path d="M10 6h4v1h-4z" fill="#fff" opacity="0.1"/>
   </SvgIcon>
 );
 
 const STANDARD_GLASS_SIZES = [
-  { value: 100, label: "100ml", icon: <EmojiFoodBeverageIcon fontSize="small" sx={{ color: '#1976d2' }} />, desc: 'Çay Bardağı' },
-  { value: 200, label: "200ml", icon: <LocalDrinkIcon fontSize="small" sx={{ color: '#2196f3' }} />, desc: 'Küçük Su Bardağı' },
-  { value: 250, label: "250ml", icon: <WineBarIcon fontSize="small" sx={{ color: '#00bcd4' }} />, desc: 'Orta Bardak' },
-  { value: 300, label: "300ml", icon: <SportsBarIcon fontSize="small" sx={{ color: '#43a047' }} />, desc: 'Kupa' },
-  { value: 500, label: "500ml", icon: <BottleIcon fontSize="small" sx={{ color: '#1976d2' }} />, desc: 'Şişe' },
+  { value: 100, label: "100ml", icon: <TeaCupIcon fontSize="small" sx={{ color: '#1976d2' }} />, desc: 'Çay Bardağı' },
+  { value: 200, label: "200ml", icon: <SmallGlassIcon fontSize="small" sx={{ color: '#2196f3' }} />, desc: 'Küçük Su Bardağı' },
+  { value: 250, label: "250ml", icon: <MediumGlassIcon fontSize="small" sx={{ color: '#00bcd4' }} />, desc: 'Orta Bardak' },
+  { value: 300, label: "300ml", icon: <MugIcon fontSize="small" sx={{ color: '#43a047' }} />, desc: 'Kupa' },
+  { value: 500, label: "500ml", icon: <PetBottleIcon fontSize="small" sx={{ color: '#1976d2' }} />, desc: 'Pet Şişe' },
+  { value: 700, label: "700ml", icon: <GlassBottleIcon fontSize="small" sx={{ color: '#ff9800' }} />, desc: 'Cam Şişe' },
 ];
 
 // --- İçecek katkı oranları tablosu ---

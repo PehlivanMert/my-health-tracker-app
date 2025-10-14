@@ -438,7 +438,7 @@ const DailyRoutine = ({ user }) => {
       }
     }
     return categoryMatch && searchMatch && timeMatch;
-  });
+  }).sort((a, b) => a.time.localeCompare(b.time));
 
   // Tamamlanma durumunu doğru hesaplayan yardımcı fonksiyon
   const getRoutineCompletedStatus = (routine) => {

@@ -293,7 +293,7 @@ const RoutineModal = ({ open, onClose, routine, initialDate, onSave }) => {
         completed: false,
       });
     }
-  }, [routine, initialDate]);
+  }, [routine, initialDate, open]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

@@ -533,7 +533,7 @@ const ModernSupplementCard = ({
                 fontWeight: 700,
               }}
             >
-              {supplement.dailyUsage} adet hedef
+              {supplement.dailyUsage} adet
             </Typography>
           </Box>
 

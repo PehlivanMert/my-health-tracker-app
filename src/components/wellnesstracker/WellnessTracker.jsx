@@ -49,6 +49,8 @@ import {
   Vaccines,
 } from "@mui/icons-material";
 import NotificationsOffIcon from "@mui/icons-material/NotificationsOff";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SupplementDialog from "./SupplementDialog";
 import WaterTracker from "./WaterTracker";
 import WaterConsumptionChart from "./WaterConsumptionChart";
@@ -63,6 +65,19 @@ const float = keyframes`
   0% { transform: translateY(0px); }
   50% { transform: translateY(-20px); }
   100% { transform: translateY(0px); }
+`;
+
+const shimmer = keyframes`
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+`;
+
+// Global CSS animasyonu için style tag ekle
+const globalStyles = `
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
 `;
 
 const supplementColors = [
@@ -121,6 +136,519 @@ const getSupplementIcon = (name) => {
     .split("")
     .reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return supplementIcons[hash % supplementIcons.length];
+};
+
+// Modern takviye kartı bileşeni
+const ModernSupplementCard = ({ 
+  supplement, 
+  consumedToday, 
+  remainingToday, 
+  progress, 
+  daysLeft,
+  onConsume,
+  onEdit,
+  onDelete,
+  onUndo
+}) => {
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notificationTimes, setNotificationTimes] = useState([]);
+
+  useEffect(() => {
+    if (supplement.notificationSchedule && Array.isArray(supplement.notificationSchedule)) {
+      // notificationSchedule bir string array'i olabilir
+      const times = supplement.notificationSchedule
+        .filter(time => time && typeof time === 'string')
+        .sort();
+      setNotificationTimes(times);
+    } else {
+      setNotificationTimes([]);
+    }
+  }, [supplement.notificationSchedule]);
+
+  const formatTime = (timeString) => {
+    try {
+      const [hours, minutes] = timeString.split(':');
+      return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+    } catch {
+      return timeString;
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+    >
+      <Box
+        sx={{
+          background: "linear-gradient(145deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)",
+          borderRadius: "24px",
+          p: { xs: 3, sm: 3.5, md: 4 },
+          backdropFilter: "blur(20px)",
+          border: "1px solid rgba(255,255,255,0.2)",
+          position: "relative",
+          overflow: "hidden",
+          cursor: "pointer",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          "&::before": {
+            content: '""',
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: "5px",
+            background: `linear-gradient(90deg, ${getSupplementColor(supplement.name)}, ${getSupplementColor(supplement.name)}80)`,
+            borderRadius: "24px 24px 0 0",
+          },
+          "&:hover": {
+            transform: "translateY(-4px)",
+            boxShadow: "0 12px 40px rgba(0,0,0,0.15)",
+            border: "1px solid rgba(255,255,255,0.3)",
+          }
+        }}
+      >
+        {/* Header - İkon ve İsim */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: { xs: 2, sm: 2.5 },
+            mb: 2.5,
+          }}
+        >
+          <Box
+            sx={{
+              width: { xs: 52, sm: 56, md: 60 },
+              height: { xs: 52, sm: 56, md: 60 },
+              borderRadius: "18px",
+              background: `linear-gradient(135deg, ${getSupplementColor(supplement.name)}, ${getSupplementColor(supplement.name)}CC)`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: `0 8px 24px ${getSupplementColor(supplement.name)}40`,
+              position: "relative",
+              flexShrink: 0,
+              "&::after": {
+                content: '""',
+                position: "absolute",
+                inset: 0,
+                borderRadius: "18px",
+                background: "linear-gradient(135deg, rgba(255,255,255,0.2), transparent)",
+              }
+            }}
+          >
+            {getSupplementIcon(supplement.name)}
+          </Box>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography
+              variant="h6"
+              sx={{
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: { xs: "1.2rem", sm: "1.3rem", md: "1.4rem" },
+                lineHeight: 1.2,
+                mb: 0.5,
+                textShadow: "0 2px 4px rgba(0,0,0,0.3)",
+                wordBreak: "break-word",
+              }}
+            >
+              {supplement.name}
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                color: "rgba(255,255,255,0.7)",
+                fontSize: { xs: "0.85rem", sm: "0.9rem" },
+                fontWeight: 500,
+              }}
+            >
+              {supplement.quantity} adet • {daysLeft} gün kaldı
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* Action Buttons - Ayrı satırda */}
+        <Box 
+          sx={{ 
+            display: "flex", 
+            justifyContent: "flex-end", 
+            gap: 0.8,
+            mb: 2.5,
+            flexWrap: "wrap",
+          }}
+        >
+          {notificationTimes.length > 0 && (
+            <Tooltip title={`${notificationTimes.length} bildirim saati`}>
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowNotifications(!showNotifications);
+                }}
+                sx={{
+                  color: "rgba(255,255,255,0.7)",
+                  background: "rgba(255,255,255,0.1)",
+                  "&:hover": { 
+                    color: "#fff",
+                    background: "rgba(255,255,255,0.2)",
+                  },
+                  padding: "8px",
+                  borderRadius: "8px",
+                }}
+              >
+                <AccessTimeIcon sx={{ fontSize: { xs: "1.1rem", sm: "1.2rem" } }} />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Tooltip title="Geri Al">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                onUndo(supplement);
+              }}
+              sx={{
+                color: "rgba(255,255,255,0.7)",
+                background: "rgba(255,255,255,0.1)",
+                "&:hover": { 
+                  color: "#2196f3",
+                  background: "rgba(33,150,243,0.2)",
+                },
+                padding: "8px",
+                borderRadius: "8px",
+              }}
+              disabled={!(consumedToday > 0)}
+            >
+              <UndoIcon sx={{ fontSize: { xs: "1.1rem", sm: "1.2rem" } }} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Düzenle">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(supplement);
+              }}
+              sx={{
+                color: "rgba(255,255,255,0.7)",
+                background: "rgba(255,255,255,0.1)",
+                "&:hover": { 
+                  color: "#fff",
+                  background: "rgba(255,255,255,0.2)",
+                },
+                padding: "8px",
+                borderRadius: "8px",
+              }}
+            >
+              <EditIcon sx={{ fontSize: { xs: "1.1rem", sm: "1.2rem" } }} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Sil">
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(supplement.id);
+              }}
+              sx={{
+                color: "rgba(255,255,255,0.7)",
+                background: "rgba(255,255,255,0.1)",
+                "&:hover": { 
+                  color: "#ff4444",
+                  background: "rgba(255,68,68,0.2)",
+                },
+                padding: "8px",
+                borderRadius: "8px",
+              }}
+            >
+              <DeleteIcon sx={{ fontSize: { xs: "1.1rem", sm: "1.2rem" } }} />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        {/* Notification Times (Expandable) */}
+        <AnimatePresence>
+          {showNotifications && notificationTimes.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Box
+                sx={{
+                  background: "rgba(255,255,255,0.1)",
+                  borderRadius: "12px",
+                  p: 1.5,
+                  mb: 2,
+                  border: "1px solid rgba(255,255,255,0.15)",
+                }}
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    mb: 1,
+                    color: "rgba(255,255,255,0.9)",
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                  }}
+                >
+                  <AccessTimeIcon sx={{ fontSize: "1rem" }} />
+                  Bildirim Saatleri
+                </Box>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 0.8,
+                  }}
+                >
+                  {notificationTimes.map((time, index) => (
+                    <Box
+                      key={index}
+                      sx={{
+                        background: `linear-gradient(135deg, ${getSupplementColor(supplement.name)}40, ${getSupplementColor(supplement.name)}20)`,
+                        color: getSupplementColor(supplement.name),
+                        padding: "4px 8px",
+                        borderRadius: "8px",
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        border: `1px solid ${getSupplementColor(supplement.name)}30`,
+                      }}
+                    >
+                      {formatTime(time)}
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Progress Bar */}
+        <Box sx={{ mb: 3 }}>
+          <Box
+            sx={{
+              height: { xs: 8, sm: 10 },
+              bgcolor: "rgba(255,255,255,0.15)",
+              borderRadius: 6,
+              overflow: "hidden",
+              position: "relative",
+              boxShadow: "inset 0 2px 4px rgba(0,0,0,0.1)",
+            }}
+          >
+            <Box
+              sx={{
+                width: `${progress}%`,
+                height: "100%",
+                background: `linear-gradient(90deg, ${getSupplementColor(supplement.name)}, ${getSupplementColor(supplement.name)}CC)`,
+                borderRadius: 6,
+                transition: "width 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
+                position: "relative",
+                boxShadow: `0 2px 8px ${getSupplementColor(supplement.name)}30`,
+                "&::after": {
+                  content: '""',
+                  position: "absolute",
+                  inset: 0,
+                  background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)",
+                  animation: "shimmer 2s infinite",
+                }
+              }}
+            />
+            <Box
+              sx={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                color: progress > 50 ? "#fff" : "rgba(255,255,255,0.8)",
+                fontSize: { xs: "0.75rem", sm: "0.8rem" },
+                fontWeight: 700,
+                textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+                pointerEvents: "none",
+              }}
+            >
+              {Math.round(progress)}%
+            </Box>
+          </Box>
+        </Box>
+
+        {/* Daily Consumption Stats */}
+        <Box
+          sx={{
+            background: "rgba(255,255,255,0.08)",
+            borderRadius: "16px",
+            p: { xs: 2.5, sm: 3 },
+            mb: 3,
+            border: "1px solid rgba(255,255,255,0.1)",
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 2.5,
+            }}
+          >
+            <Typography
+              variant="body1"
+              sx={{
+                color: "rgba(255,255,255,0.9)",
+                fontSize: { xs: "0.9rem", sm: "1rem" },
+                fontWeight: 600,
+              }}
+            >
+              Günlük Tüketim
+            </Typography>
+            <Typography
+              variant="body1"
+              sx={{
+                color: getSupplementColor(supplement.name),
+                fontSize: { xs: "0.9rem", sm: "1rem" },
+                fontWeight: 700,
+              }}
+            >
+              {supplement.dailyUsage} adet hedef
+            </Typography>
+          </Box>
+
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 2,
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1.5,
+                flex: 1,
+              }}
+            >
+              <Box
+                sx={{
+                  width: { xs: 44, sm: 48 },
+                  height: { xs: 44, sm: 48 },
+                  bgcolor: `linear-gradient(135deg, ${getSupplementColor(supplement.name)}, ${getSupplementColor(supplement.name)}CC)`,
+                  borderRadius: "12px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                  fontSize: { xs: "1rem", sm: "1.1rem" },
+                  fontWeight: 700,
+                  boxShadow: `0 4px 12px ${getSupplementColor(supplement.name)}40`,
+                  flexShrink: 0,
+                }}
+              >
+                {consumedToday}
+              </Box>
+              <Box>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "rgba(255,255,255,0.9)",
+                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                    fontWeight: 600,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  Tüketilen
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "rgba(255,255,255,0.6)",
+                    fontSize: { xs: "0.8rem", sm: "0.85rem" },
+                  }}
+                >
+                  Bugün
+                </Typography>
+              </Box>
+            </Box>
+            
+            <Box sx={{ textAlign: "right", flexShrink: 0 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: remainingToday > 0 ? getSupplementColor(supplement.name) : "#4caf50",
+                  fontSize: { xs: "0.9rem", sm: "1rem" },
+                  fontWeight: 700,
+                  lineHeight: 1.2,
+                }}
+              >
+                {remainingToday > 0 ? `${remainingToday} kaldı` : "Tamamlandı! 🎉"}
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "rgba(255,255,255,0.6)",
+                  fontSize: { xs: "0.75rem", sm: "0.8rem" },
+                }}
+              >
+                {Math.round(progress)}% ilerleme
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+
+        {/* Action Button */}
+        <Box sx={{ textAlign: "center", mt: 1 }}>
+          <Button
+            variant="contained"
+            onClick={(e) => {
+              e.stopPropagation();
+              onConsume(supplement.id);
+            }}
+            disabled={supplement.quantity === 0 || remainingToday === 0}
+            sx={{
+              background: supplement.quantity === 0 || remainingToday === 0 
+                ? "rgba(255,255,255,0.2)" 
+                : `linear-gradient(135deg, ${getSupplementColor(supplement.name)}, ${getSupplementColor(supplement.name)}CC)`,
+              color: "#fff",
+              borderRadius: "20px",
+              px: { xs: 3, sm: 4 },
+              py: { xs: 1.2, sm: 1.5 },
+              fontSize: { xs: "0.8rem", sm: "0.9rem" },
+              fontWeight: 700,
+              textTransform: "none",
+              letterSpacing: "0.5px",
+              boxShadow: supplement.quantity === 0 || remainingToday === 0
+                ? "none"
+                : `0 6px 20px ${getSupplementColor(supplement.name)}40`,
+              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+              "&:hover": {
+                background: supplement.quantity === 0 || remainingToday === 0
+                  ? "rgba(255,255,255,0.2)"
+                  : `linear-gradient(135deg, ${getSupplementColor(supplement.name)}CC, ${getSupplementColor(supplement.name)})`,
+                transform: "translateY(-2px)",
+                boxShadow: supplement.quantity === 0 || remainingToday === 0
+                  ? "none"
+                  : `0 8px 25px ${getSupplementColor(supplement.name)}50`,
+              },
+              "&:disabled": {
+                background: "rgba(255,255,255,0.2)",
+                color: "rgba(255,255,255,0.5)",
+                transform: "none",
+                boxShadow: "none",
+              },
+            }}
+          >
+            {supplement.quantity === 0 ? "Tükendi" : 
+             remainingToday === 0 ? "Hedef Tamamlandı ✨" : "Takviyeni Al 💊"}
+          </Button>
+        </Box>
+      </Box>
+    </motion.div>
+  );
 };
 
 const StyledAccordionSummary = styled(AccordionSummary)(({ theme }) => ({
@@ -629,14 +1157,16 @@ const WellnessTracker = ({ user }) => {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        background:
-          "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
-        padding: { xs: 1, sm: 2, md: 4 },
-      }}
-    >
+    <>
+      <style>{globalStyles}</style>
+      <Box
+        sx={{
+          minHeight: "100vh",
+          background:
+            "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)",
+          padding: { xs: 1, sm: 2, md: 4 },
+        }}
+      >
       <Container maxWidth="lg">
         <Box
           sx={{
@@ -773,7 +1303,7 @@ const WellnessTracker = ({ user }) => {
                 </Typography>
               </Box>
             ) : (
-              <Grid container spacing={{ xs: 1, sm: 2, md: 3 }}>
+              <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
                 {supplements.map((supplement) => {
                   const { name, quantity, dailyUsage } = supplement;
                   const consumedToday = supplementConsumptionToday[name] || 0;
@@ -782,266 +1312,18 @@ const WellnessTracker = ({ user }) => {
                   const progress = Math.min(100, (consumedToday / dailyUsage) * 100);
 
                   return (
-                    <Grid item xs={12} sm={6} md={4} key={supplement.id}>
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5 }}
-                      >
-                        <Box
-                          sx={{
-                            background: "rgba(255,255,255,0.1)",
-                            borderRadius: "20px",
-                            p: { xs: 2, sm: 2.5, md: 3 },
-                            backdropFilter: "blur(10px)",
-                            border: "1px solid rgba(255,255,255,0.2)",
-                            position: "relative",
-                            overflow: "hidden",
-                            "&::before": {
-                              content: '""',
-                              position: "absolute",
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              height: "4px",
-                              background: getSupplementColor(name),
-                            },
-                          }}
-                        >
-                          {/* Header */}
-                          <Box
-                            sx={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              mb: { xs: 1.5, sm: 2 },
-                            }}
-                          >
-                            <Box
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: { xs: 1, sm: 1.5 },
-                              }}
-                            >
-                              <Box
-                                sx={{
-                                  width: { xs: 32, sm: 36, md: 40 },
-                                  height: { xs: 32, sm: 36, md: 40 },
-                                  borderRadius: "50%",
-                                  background: getSupplementColor(name),
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
-                                }}
-                              >
-                                {getSupplementIcon(name)}
-                              </Box>
-                              <Typography
-                                variant="h6"
-                                sx={{
-                                  color: "#fff",
-                                  fontWeight: 600,
-                                  fontSize: { xs: "0.9rem", sm: "1rem", md: "1.1rem" },
-                                  lineHeight: 1.2,
-                                }}
-                              >
-                                {name}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: "flex", gap: { xs: 0.5, sm: 1 } }}>
-                              <Tooltip title="Geri Al">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleUndoConsume(supplement)}
-                                  sx={{
-                                    color: "rgba(255,255,255,0.7)",
-                                    "&:hover": { color: "#2196f3" },
-                                    padding: { xs: "4px", sm: "6px" },
-                                  }}
-                                  disabled={!(supplementConsumptionToday[supplement.name] > 0)}
-                                >
-                                  <UndoIcon sx={{ fontSize: { xs: "1rem", sm: "1.2rem" } }} />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Düzenle">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleEditSupplement(supplement)}
-                                  sx={{
-                                    color: "rgba(255,255,255,0.7)",
-                                    "&:hover": { color: "#fff" },
-                                    padding: { xs: "4px", sm: "6px" },
-                                  }}
-                                >
-                                  <EditIcon sx={{ fontSize: { xs: "1rem", sm: "1.2rem" } }} />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Sil">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleDelete(supplement.id)}
-                                  sx={{
-                                    color: "rgba(255,255,255,0.7)",
-                                    "&:hover": { color: "#ff4444" },
-                                    padding: { xs: "4px", sm: "6px" },
-                                  }}
-                                >
-                                  <DeleteIcon sx={{ fontSize: { xs: "1rem", sm: "1.2rem" } }} />
-                                </IconButton>
-                              </Tooltip>
-                            </Box>
-                          </Box>
-
-                          {/* İlerleme Çubuğu */}
-                          <Box sx={{ mt: 2, mb: 2 }}>
-                            <Box
-                              sx={{
-                                height: { xs: 4, sm: 6 },
-                                bgcolor: "rgba(255,255,255,0.15)",
-                                borderRadius: 3,
-                                overflow: "hidden",
-                              }}
-                            >
-                              <Box
-                                sx={{
-                                  width: `${progress}%`,
-                                  height: "100%",
-                                  bgcolor: getSupplementColor(name),
-                                  transition: "width 0.5s ease",
-                                }}
-                              />
-                            </Box>
-                            <Box
-                              sx={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                mt: 1,
-                                color: "rgba(255,255,255,0.8)",
-                                fontSize: { xs: "0.7rem", sm: "0.8rem", md: "0.85rem" },
-                              }}
-                            >
-                              <span>{supplement.quantity} adet</span>
-                              <span>{daysLeft}gün kaldı</span>
-                            </Box>
-                          </Box>
-
-                          {/* Günlük Tüketim */}
-                          <Box
-                            sx={{
-                              bgcolor: "rgba(255,255,255,0.1)",
-                              borderRadius: "14px",
-                              p: { xs: 1.5, sm: 2 },
-                              mt: 2,
-                            }}
-                          >
-                            <Box
-                              sx={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                mb: 1,
-                              }}
-                            >
-                              <Typography
-                                variant="body2"
-                                sx={{ 
-                                  color: "rgba(255,255,255,0.8)",
-                                  fontSize: { xs: "0.75rem", sm: "0.8rem", md: "0.85rem" },
-                                }}
-                              >
-                                Günlük Tüketim
-                              </Typography>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  color: getSupplementColor(name),
-                                  fontWeight: 600,
-                                  fontSize: { xs: "0.75rem", sm: "0.8rem", md: "0.85rem" },
-                                }}
-                              >
-                                {supplement.dailyUsage} adet
-                              </Typography>
-                            </Box>
-
-                            <Box
-                              sx={{
-                                display: "flex",
-                                gap: 1,
-                                alignItems: "center",
-                              }}
-                            >
-                              <Box
-                                sx={{
-                                  width: { xs: 24, sm: 28, md: 30 },
-                                  height: { xs: 24, sm: 28, md: 30 },
-                                  bgcolor: "rgba(255,255,255,0.15)",
-                                  borderRadius: "8px",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  color: "#fff",
-                                  fontSize: { xs: "0.7rem", sm: "0.8rem", md: "0.85rem" },
-                                }}
-                              >
-                                {consumedToday}
-                              </Box>
-                              <Typography
-                                variant="body2"
-                                sx={{ 
-                                  color: "rgba(255,255,255,0.6)",
-                                  fontSize: { xs: "0.7rem", sm: "0.75rem", md: "0.8rem" },
-                                }}
-                              >
-                                Tüketilen
-                              </Typography>
-                              <Box sx={{ flex: 1, textAlign: "right" }}>
-                                <Typography
-                                  variant="body2"
-                                  sx={{
-                                    color: getSupplementColor(name),
-                                    fontWeight: 600,
-                                    fontSize: { xs: "0.7rem", sm: "0.75rem", md: "0.8rem" },
-                                  }}
-                                >
-                                  {remainingToday} adet kaldı
-                                </Typography>
-                              </Box>
-                            </Box>
-                          </Box>
-
-                          {/* Tüket Butonu */}
-                          <Box sx={{ mt: 2, textAlign: "center" }}>
-                            <Button
-                              variant="contained"
-                              onClick={() => handleConsume(supplement.id)}
-                              disabled={supplement.quantity === 0 || remainingToday === 0}
-                              sx={{
-                                background: getSupplementColor(name),
-                                color: "#fff",
-                                borderRadius: "20px",
-                                px: { xs: 2, sm: 3 },
-                                py: { xs: 1, sm: 1.5 },
-                                fontSize: { xs: "0.75rem", sm: "0.8rem", md: "0.9rem" },
-                                fontWeight: 600,
-                                textTransform: "none",
-                                "&:hover": {
-                                  background: getSupplementColor(name),
-                                  opacity: 0.9,
-                                },
-                                "&:disabled": {
-                                  background: "rgba(255,255,255,0.2)",
-                                  color: "rgba(255,255,255,0.5)",
-                                },
-                              }}
-                            >
-                              {supplement.quantity === 0 ? "Tükendi" : 
-                               remainingToday === 0 ? "Günlük Takviye Alındı" : "Takviyeni Al"}
-                            </Button>
-                          </Box>
-                        </Box>
-                      </motion.div>
+                    <Grid item xs={12} sm={6} lg={4} key={supplement.id}>
+                      <ModernSupplementCard
+                        supplement={supplement}
+                        consumedToday={consumedToday}
+                        remainingToday={remainingToday}
+                        progress={progress}
+                        daysLeft={daysLeft}
+                        onConsume={handleConsume}
+                        onEdit={handleEditSupplement}
+                        onDelete={handleDelete}
+                        onUndo={handleUndoConsume}
+                      />
                     </Grid>
                   );
                 })}
@@ -1133,7 +1415,8 @@ const WellnessTracker = ({ user }) => {
           }}
         />
       </Container>
-    </Box>
+      </Box>
+    </>
   );
 };
 

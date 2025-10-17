@@ -583,15 +583,7 @@ const ModernSupplementCard = ({
                 >
                   Tüketilen
                 </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: "rgba(255,255,255,0.6)",
-                    fontSize: { xs: "0.8rem", sm: "0.85rem" },
-                  }}
-                >
-                  Bugün
-                </Typography>
+              
               </Box>
             </Box>
             
@@ -607,15 +599,7 @@ const ModernSupplementCard = ({
               >
                 {remainingToday > 0 ? `${remainingToday} kaldı` : "Tamamlandı! 🎉"}
               </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  color: "rgba(255,255,255,0.6)",
-                  fontSize: { xs: "0.75rem", sm: "0.8rem" },
-                }}
-              >
-                {Math.round(progress)}% ilerleme
-              </Typography>
+          
             </Box>
           </Box>
         </Box>

@@ -256,16 +256,7 @@ const ModernSupplementCard = ({
             >
               {supplement.name}
             </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                color: "rgba(255,255,255,0.7)",
-                fontSize: { xs: "0.85rem", sm: "0.9rem" },
-                fontWeight: 500,
-              }}
-            >
-              {supplement.quantity} adet • {daysLeft} gün kaldı
-            </Typography>
+           
           </Box>
         </Box>
 
@@ -431,6 +422,35 @@ const ModernSupplementCard = ({
 
         {/* Progress Bar */}
         <Box sx={{ mb: 3 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 1,
+            }}
+          >
+            <Typography
+              variant="body2"
+              sx={{
+                color: "rgba(255,255,255,0.8)",
+                fontSize: { xs: "0.8rem", sm: "0.9rem" },
+                fontWeight: 600,
+              }}
+            >
+              {daysLeft} gün kaldı
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                color: "rgba(255,255,255,0.8)",
+                fontSize: { xs: "0.8rem", sm: "0.9rem" },
+                fontWeight: 600,
+              }}
+            >
+              {supplement.quantity} adet
+            </Typography>
+          </Box>
           <Box
             sx={{
               height: { xs: 8, sm: 10 },

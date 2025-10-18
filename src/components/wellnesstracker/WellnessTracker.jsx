@@ -260,14 +260,13 @@ const ModernSupplementCard = ({
           </Box>
         </Box>
 
-        {/* Action Buttons - Ayrı satırda */}
+        {/* Action Buttons - Modern Tasarım */}
         <Box 
           sx={{ 
             display: "flex", 
-            justifyContent: "flex-end", 
             gap: 0.8,
             mb: 2.5,
-            flexWrap: "wrap",
+            width: "100%",
           }}
         >
           {notificationTimes.length > 0 && (
@@ -279,20 +278,28 @@ const ModernSupplementCard = ({
                   setShowNotifications(!showNotifications);
                 }}
                 sx={{
-                  color: "rgba(255,255,255,0.7)",
-                  background: "rgba(255,255,255,0.1)",
-                  "&:hover": { 
-                    color: "#fff",
-                    background: "rgba(255,255,255,0.2)",
-                  },
-                  padding: "8px",
+                  flex: 1,
+                  minWidth: 0,
+                  p: 0.8,
                   borderRadius: "8px",
+                  background: "linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05))",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  color: "rgba(255,255,255,0.9)",
+                  backdropFilter: "blur(10px)",
+                  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                  "&:hover": {
+                    background: "linear-gradient(135deg, rgba(255,255,255,0.25), rgba(255,255,255,0.1))",
+                    border: "1px solid rgba(255,255,255,0.3)",
+                    transform: "translateY(-1px)",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                  },
                 }}
               >
-                <AccessTimeIcon sx={{ fontSize: { xs: "1.1rem", sm: "1.2rem" } }} />
+                <AccessTimeIcon sx={{ fontSize: { xs: "1rem", sm: "1.1rem" } }} />
               </IconButton>
             </Tooltip>
           )}
+          
           <Tooltip title="Geri Al">
             <IconButton
               size="small"
@@ -300,21 +307,44 @@ const ModernSupplementCard = ({
                 e.stopPropagation();
                 onUndo(supplement);
               }}
-              sx={{
-                color: "rgba(255,255,255,0.7)",
-                background: "rgba(255,255,255,0.1)",
-                "&:hover": { 
-                  color: "#2196f3",
-                  background: "rgba(33,150,243,0.2)",
-                },
-                padding: "8px",
-                borderRadius: "8px",
-              }}
               disabled={!(consumedToday > 0)}
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                p: 0.8,
+                borderRadius: "8px",
+                background: consumedToday > 0 
+                  ? "linear-gradient(135deg, rgba(33,150,243,0.2), rgba(33,150,243,0.1))"
+                  : "rgba(255,255,255,0.05)",
+                border: consumedToday > 0 
+                  ? "1px solid rgba(33,150,243,0.3)"
+                  : "1px solid rgba(255,255,255,0.1)",
+                color: consumedToday > 0 
+                  ? "#ffffff" 
+                  : "rgba(255,255,255,0.3)",
+                backdropFilter: "blur(10px)",
+                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                "&:hover": {
+                  background: consumedToday > 0 
+                    ? "linear-gradient(135deg, rgba(33,150,243,0.3), rgba(33,150,243,0.15))"
+                    : "rgba(255,255,255,0.05)",
+                  border: consumedToday > 0 
+                    ? "1px solid rgba(33,150,243,0.4)"
+                    : "1px solid rgba(255,255,255,0.1)",
+                  transform: consumedToday > 0 ? "translateY(-1px)" : "none",
+                  boxShadow: consumedToday > 0 ? "0 4px 12px rgba(33,150,243,0.2)" : "none",
+                },
+                "&:disabled": {
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  color: "rgba(255,255,255,0.3)",
+                },
+              }}
             >
-              <UndoIcon sx={{ fontSize: { xs: "1.1rem", sm: "1.2rem" } }} />
+              <UndoIcon sx={{ fontSize: { xs: "1rem", sm: "1.1rem" } }} />
             </IconButton>
           </Tooltip>
+          
           <Tooltip title="Düzenle">
             <IconButton
               size="small"
@@ -323,19 +353,27 @@ const ModernSupplementCard = ({
                 onEdit(supplement);
               }}
               sx={{
-                color: "rgba(255,255,255,0.7)",
-                background: "rgba(255,255,255,0.1)",
-                "&:hover": { 
-                  color: "#fff",
-                  background: "rgba(255,255,255,0.2)",
-                },
-                padding: "8px",
+                flex: 1,
+                minWidth: 0,
+                p: 0.8,
                 borderRadius: "8px",
+                background: "linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05))",
+                border: "1px solid rgba(255,255,255,0.2)",
+                color: "rgba(255,255,255,0.9)",
+                backdropFilter: "blur(10px)",
+                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                "&:hover": {
+                  background: "linear-gradient(135deg, rgba(255,255,255,0.25), rgba(255,255,255,0.1))",
+                  border: "1px solid rgba(255,255,255,0.3)",
+                  transform: "translateY(-1px)",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                },
               }}
             >
-              <EditIcon sx={{ fontSize: { xs: "1.1rem", sm: "1.2rem" } }} />
+              <EditIcon sx={{ fontSize: { xs: "1rem", sm: "1.1rem" } }} />
             </IconButton>
           </Tooltip>
+          
           <Tooltip title="Sil">
             <IconButton
               size="small"
@@ -344,17 +382,24 @@ const ModernSupplementCard = ({
                 onDelete(supplement.id);
               }}
               sx={{
-                color: "rgba(255,255,255,0.7)",
-                background: "rgba(255,255,255,0.1)",
-                "&:hover": { 
-                  color: "#ff4444",
-                  background: "rgba(255,68,68,0.2)",
-                },
-                padding: "8px",
+                flex: 1,
+                minWidth: 0,
+                p: 0.8,
                 borderRadius: "8px",
+                background: "linear-gradient(135deg, rgba(255,68,68,0.15), rgba(255,68,68,0.05))",
+                border: "1px solid rgba(255,68,68,0.2)",
+                color: "#ff6b6b",
+                backdropFilter: "blur(10px)",
+                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                "&:hover": {
+                  background: "linear-gradient(135deg, rgba(255,68,68,0.25), rgba(255,68,68,0.1))",
+                  border: "1px solid rgba(255,68,68,0.3)",
+                  transform: "translateY(-1px)",
+                  boxShadow: "0 4px 12px rgba(255,68,68,0.2)",
+                },
               }}
             >
-              <DeleteIcon sx={{ fontSize: { xs: "1.1rem", sm: "1.2rem" } }} />
+              <DeleteIcon sx={{ fontSize: { xs: "1rem", sm: "1.1rem" } }} />
             </IconButton>
           </Tooltip>
         </Box>

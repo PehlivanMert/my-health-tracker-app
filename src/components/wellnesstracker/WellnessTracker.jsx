@@ -148,7 +148,9 @@ const ModernSupplementCard = ({
   onConsume,
   onEdit,
   onDelete,
-  onUndo
+  onUndo,
+  isProcessing = false,
+  isUndoProcessing = false
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notificationTimes, setNotificationTimes] = useState([]);
@@ -307,32 +309,32 @@ const ModernSupplementCard = ({
                 e.stopPropagation();
                 onUndo(supplement);
               }}
-              disabled={!(consumedToday > 0)}
+              disabled={!(consumedToday > 0) || isUndoProcessing}
               sx={{
                 flex: 1,
                 minWidth: 0,
                 p: 0.8,
                 borderRadius: "8px",
-                background: consumedToday > 0 
+                background: consumedToday > 0 && !isUndoProcessing
                   ? "linear-gradient(135deg, rgba(33,150,243,0.2), rgba(33,150,243,0.1))"
                   : "rgba(255,255,255,0.05)",
-                border: consumedToday > 0 
+                border: consumedToday > 0 && !isUndoProcessing
                   ? "1px solid rgba(33,150,243,0.3)"
                   : "1px solid rgba(255,255,255,0.1)",
-                color: consumedToday > 0 
+                color: consumedToday > 0 && !isUndoProcessing
                   ? "#ffffff" 
                   : "rgba(255,255,255,0.3)",
                 backdropFilter: "blur(10px)",
                 transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                 "&:hover": {
-                  background: consumedToday > 0 
+                  background: consumedToday > 0 && !isUndoProcessing
                     ? "linear-gradient(135deg, rgba(33,150,243,0.3), rgba(33,150,243,0.15))"
                     : "rgba(255,255,255,0.05)",
-                  border: consumedToday > 0 
+                  border: consumedToday > 0 && !isUndoProcessing
                     ? "1px solid rgba(33,150,243,0.4)"
                     : "1px solid rgba(255,255,255,0.1)",
-                  transform: consumedToday > 0 ? "translateY(-1px)" : "none",
-                  boxShadow: consumedToday > 0 ? "0 4px 12px rgba(33,150,243,0.2)" : "none",
+                  transform: consumedToday > 0 && !isUndoProcessing ? "translateY(-1px)" : "none",
+                  boxShadow: consumedToday > 0 && !isUndoProcessing ? "0 4px 12px rgba(33,150,243,0.2)" : "none",
                 },
                 "&:disabled": {
                   background: "rgba(255,255,255,0.05)",
@@ -657,9 +659,9 @@ const ModernSupplementCard = ({
               e.stopPropagation();
               onConsume(supplement.id);
             }}
-            disabled={supplement.quantity === 0 || remainingToday === 0}
+            disabled={supplement.quantity === 0 || remainingToday === 0 || isProcessing}
             sx={{
-              background: supplement.quantity === 0 || remainingToday === 0 
+              background: supplement.quantity === 0 || remainingToday === 0 || isProcessing
                 ? "rgba(255,255,255,0.2)" 
                 : `linear-gradient(135deg, ${getSupplementColor(supplement.name)}, ${getSupplementColor(supplement.name)}CC)`,
               color: "#fff",
@@ -670,16 +672,16 @@ const ModernSupplementCard = ({
               fontWeight: 700,
               textTransform: "none",
               letterSpacing: "0.5px",
-              boxShadow: supplement.quantity === 0 || remainingToday === 0
+              boxShadow: supplement.quantity === 0 || remainingToday === 0 || isProcessing
                 ? "none"
                 : `0 6px 20px ${getSupplementColor(supplement.name)}40`,
               transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
               "&:hover": {
-                background: supplement.quantity === 0 || remainingToday === 0
+                background: supplement.quantity === 0 || remainingToday === 0 || isProcessing
                   ? "rgba(255,255,255,0.2)"
                   : `linear-gradient(135deg, ${getSupplementColor(supplement.name)}CC, ${getSupplementColor(supplement.name)})`,
                 transform: "translateY(-2px)",
-                boxShadow: supplement.quantity === 0 || remainingToday === 0
+                boxShadow: supplement.quantity === 0 || remainingToday === 0 || isProcessing
                   ? "none"
                   : `0 8px 25px ${getSupplementColor(supplement.name)}50`,
               },
@@ -692,7 +694,8 @@ const ModernSupplementCard = ({
             }}
           >
             {supplement.quantity === 0 ? "Tükendi" : 
-             remainingToday === 0 ? "Hedef Tamamlandı ✨" : "Takviyeni Al 💊"}
+             remainingToday === 0 ? "Hedef Tamamlandı ✨" : 
+             isProcessing ? "Takviye alınıyor..." : "Takviyeni Al 💊"}
           </Button>
         </Box>
       </Box>
@@ -1027,11 +1030,21 @@ const WellnessTracker = ({ user }) => {
     }
   };
 
+  // Hızlı tıklamalara karşı koruma için ref
+  const consumingSupplements = useRef(new Set());
+
   const handleConsume = async (id) => {
+    // Eğer bu takviye zaten işleniyorsa, işlemi engelle
+    if (consumingSupplements.current.has(id)) {
+      return;
+    }
+
     const supplement = supplements.find((s) => s.id === id);
     if (!supplement || supplement.quantity <= 0) return;
 
-    const newQuantity = supplement.quantity - 1;
+    // İşlem başladığını işaretle
+    consumingSupplements.current.add(id);
+
     const supplementRef = doc(db, "users", user.uid, "supplements", id);
     const statsDocRef = doc(db, "users", user.uid, "stats", "supplementConsumption");
     const today = new Date().toLocaleDateString("en-CA", {
@@ -1040,11 +1053,18 @@ const WellnessTracker = ({ user }) => {
 
     try {
       // Transaction ile atomik işlem
-      await runTransaction(db, async (transaction) => {
+      const result = await runTransaction(db, async (transaction) => {
         // Supplement dokümanını oku
         const supplementDoc = await transaction.get(supplementRef);
         if (!supplementDoc.exists()) {
           throw new Error("Supplement bulunamadı");
+        }
+
+        const currentSupplement = supplementDoc.data();
+        
+        // Miktar kontrolü - eğer 0 veya daha az ise işlemi durdur
+        if (currentSupplement.quantity <= 0) {
+          throw new Error("Takviye miktarı yetersiz");
         }
 
         // Stats dokümanını oku
@@ -1054,6 +1074,7 @@ const WellnessTracker = ({ user }) => {
 
         // Yeni tüketim sayısını hesapla
         const newCount = (todayStats[supplement.name] || 0) + 1;
+        const newQuantity = currentSupplement.quantity - 1;
 
         // Supplement miktarını güncelle
         transaction.update(supplementRef, { quantity: newQuantity });
@@ -1067,24 +1088,38 @@ const WellnessTracker = ({ user }) => {
           },
         };
         transaction.set(statsDocRef, updatedStats);
+
+        // Transaction sonucunu döndür
+        return {
+          newQuantity,
+          newCount,
+          supplementName: supplement.name
+        };
       });
 
-      // Local state'i güncelle
+      // Transaction başarılı olduktan sonra local state'i güncelle
       setSupplements(prev =>
         prev.map(s =>
-          s.id === id ? { ...s, quantity: newQuantity } : s
+          s.id === id ? { ...s, quantity: result.newQuantity } : s
         )
       );
 
       setSupplementConsumptionToday(prev => ({
         ...prev,
-        [supplement.name]: (prev[supplement.name] || 0) + 1,
+        [result.supplementName]: result.newCount,
       }));
 
-      toast.success(`${supplement.name} tüketildi!`);
+      toast.success(`${result.supplementName} tüketildi!`);
     } catch (error) {
       console.error("Takviye tüketme hatası:", error);
-      toast.error("Takviye tüketilirken hata oluştu");
+      if (error.message === "Takviye miktarı yetersiz") {
+        toast.warning("Bu takviye tükenmiş!");
+      } else {
+        toast.error("Takviye tüketilirken hata oluştu");
+      }
+    } finally {
+      // İşlem tamamlandığını işaretle
+      consumingSupplements.current.delete(id);
     }
   };
 
@@ -1167,41 +1202,108 @@ const WellnessTracker = ({ user }) => {
     }
   };
 
+  // Geri alma işlemleri için de koruma
+  const undoingSupplements = useRef(new Set());
+
   const handleUndoConsume = async (supplement) => {
-    const ref = getSupplementsRef();
+    // Eğer bu takviye zaten geri alınıyorsa, işlemi engelle
+    if (undoingSupplements.current.has(supplement.id)) {
+      return;
+    }
+
+    // Eğer bugün hiç tüketilmemişse, geri alınacak bir şey yok
+    const consumedToday = supplementConsumptionToday[supplement.name] || 0;
+    if (consumedToday <= 0) {
+      toast.warning("Bu takviye bugün henüz tüketilmemiş!");
+      return;
+    }
+
+    // İşlem başladığını işaretle
+    undoingSupplements.current.add(supplement.id);
+
+    const supplementRef = doc(db, "users", user.uid, "supplements", supplement.id);
+    const statsDocRef = doc(db, "users", user.uid, "stats", "supplementConsumption");
+    const today = new Date().toLocaleDateString("en-CA", {
+      timeZone: "Europe/Istanbul",
+    });
+
     try {
-      // 1. Takviye miktarını Firestore'da 1 artır
-      const supplementRef = doc(ref, supplement.id);
-      
-      // 2. supplementConsumptionToday ve Firestore'daki tüketim kaydını güncelle
-      const suppName = supplement.name;
-      const today = new Date().toLocaleDateString("en-CA", {
-        timeZone: "Europe/Istanbul",
-      });
-      const statsDocRef = doc(db, "users", user.uid, "stats", "supplementConsumption");
-      const statsDocSnap = await getDoc(statsDocRef);
-      let updatedStats = statsDocSnap.exists() ? statsDocSnap.data() : {};
-      if (!updatedStats[today]) updatedStats[today] = {};
-      if (updatedStats[today][suppName] && updatedStats[today][suppName] > 0) {
-        updatedStats[today][suppName] -= 1;
-        if (updatedStats[today][suppName] === 0) {
-          delete updatedStats[today][suppName];
+      // Transaction ile atomik işlem
+      const result = await runTransaction(db, async (transaction) => {
+        // Supplement dokümanını oku
+        const supplementDoc = await transaction.get(supplementRef);
+        if (!supplementDoc.exists()) {
+          throw new Error("Supplement bulunamadı");
         }
-        updatedStats[today].total = Math.max(0, (updatedStats[today].total || 1) - 1);
+
+        // Stats dokümanını oku
+        const statsDoc = await transaction.get(statsDocRef);
+        const currentStats = statsDoc.exists() ? statsDoc.data() : {};
+        const todayStats = currentStats[today] || {};
+
+        // Geri alınacak tüketim var mı kontrol et
+        const currentConsumption = todayStats[supplement.name] || 0;
+        if (currentConsumption <= 0) {
+          throw new Error("Bu takviye bugün henüz tüketilmemiş");
+        }
+
+        // Yeni değerleri hesapla
+        const newConsumption = currentConsumption - 1;
+        const newQuantity = supplement.quantity + 1;
+
+        // Supplement miktarını güncelle
+        transaction.update(supplementRef, { quantity: newQuantity });
+
+        // Stats'ı güncelle
+        const updatedStats = {
+          ...currentStats,
+          [today]: {
+            ...todayStats,
+            [supplement.name]: newConsumption,
+          },
+        };
         
-        // Batch operations ile optimize edilmiş güncelleme
-        const batch = writeBatch(db);
-        batch.update(supplementRef, { quantity: supplement.quantity + 1 });
-        batch.set(statsDocRef, updatedStats);
-        await batch.commit();
+        // Eğer tüketim 0 olduysa, o günü tamamen sil
+        if (newConsumption === 0) {
+          delete updatedStats[today][supplement.name];
+          // Eğer o gün hiç veri kalmadıysa, günü de sil
+          if (Object.keys(updatedStats[today]).length === 0) {
+            delete updatedStats[today];
+          }
+        }
         
-        await fetchSupplements();
-        await fetchSupplementConsumptionToday();
-        // Bildirim zamanını da güncelle
-        await saveNextSupplementReminderTime(user, supplement);
-      }
+        transaction.set(statsDocRef, updatedStats);
+
+        return {
+          newQuantity,
+          newConsumption,
+          supplementName: supplement.name
+        };
+      });
+
+      // Transaction başarılı olduktan sonra local state'i güncelle
+      setSupplements(prev =>
+        prev.map(s =>
+          s.id === supplement.id ? { ...s, quantity: result.newQuantity } : s
+        )
+      );
+
+      setSupplementConsumptionToday(prev => ({
+        ...prev,
+        [result.supplementName]: result.newConsumption,
+      }));
+
+      toast.success(`${result.supplementName} geri alındı!`);
     } catch (error) {
       console.error("Takviye geri alma hatası:", error);
+      if (error.message === "Bu takviye bugün henüz tüketilmemiş") {
+        toast.warning("Bu takviye bugün henüz tüketilmemiş!");
+      } else {
+        toast.error("Takviye geri alınırken hata oluştu");
+      }
+    } finally {
+      // İşlem tamamlandığını işaretle
+      undoingSupplements.current.delete(supplement.id);
     }
   };
 
@@ -1372,6 +1474,8 @@ const WellnessTracker = ({ user }) => {
                         onEdit={handleEditSupplement}
                         onDelete={handleDelete}
                         onUndo={handleUndoConsume}
+                        isProcessing={consumingSupplements.current.has(supplement.id)}
+                        isUndoProcessing={undoingSupplements.current.has(supplement.id)}
                       />
                     </Grid>
                   );

@@ -676,6 +676,16 @@ const resetDailyWaterIntake = async (
     return;
   }
 
+  // Ek güvenlik: Son 1 saat içinde reset yapılmış mı kontrol et
+  const lastResetTimestamp = currentFirestoreData.lastResetTimestamp;
+  if (lastResetTimestamp) {
+    const oneHourAgo = Date.now() - (60 * 60 * 1000);
+    if (lastResetTimestamp > oneHourAgo) {
+      console.log("Son 1 saat içinde reset yapılmış, atlanıyor");
+      return;
+    }
+  }
+
   // Dünkü su tüketimini history'ye kaydet (sadece intake > 0 ise veya her zaman kaydetmek isteniyorsa)
   const yesterday = new Date(getTurkeyTime());
   yesterday.setDate(yesterday.getDate() - 1);
@@ -693,6 +703,7 @@ const resetDailyWaterIntake = async (
       waterIntake: 0,
       yesterdayWaterIntake: currentFirestoreData.waterIntake || 0,
       lastResetDate: todayStr,
+      lastResetTimestamp: Date.now(), // Yeni: Timestamp ekle
       history: arrayUnion(newHistoryEntry),
     });
     await fetchWaterData();

@@ -1084,7 +1084,8 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
       return;
     }
     const glassSize = Number(localGlassSize); // HER ZAMAN GÜNCEL LOCAL STATE
-    const newIntake = Math.max(0, waterData.waterIntake - glassSize);
+    const removedAmount = Math.min(glassSize, waterData.waterIntake);
+    const newIntake = waterData.waterIntake - removedAmount;
     const ref = getWaterDocRef();
 
     setWaterData(prev => ({
@@ -1094,9 +1095,9 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
         ...(prev.drinkHistory || []),
         {
           type: 'water',
-          amount: -glassSize,
+          amount: -removedAmount,
           contribution: 1,
-          addedWater: -glassSize,
+          addedWater: -removedAmount,
           date: new Date().toISOString(),
           action: 'removed',
         },
@@ -1111,9 +1112,9 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
           glassSize: glassSize,
           drinkHistory: arrayUnion({
             type: 'water',
-            amount: -glassSize,
+            amount: -removedAmount,
             contribution: 1,
-            addedWater: -glassSize,
+            addedWater: -removedAmount,
             date: new Date().toISOString(),
             action: 'removed',
           }),

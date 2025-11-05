@@ -7,6 +7,8 @@ import { toast } from "react-toastify";
 const WeatherWidget = () => {
   const [weather, setWeather] = useState(null);
   const [cityName, setCityName] = useState(null);
+  const [loadingDone, setLoadingDone] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.down("md"));
@@ -39,10 +41,12 @@ const WeatherWidget = () => {
 
   const fetchWeather = async (lat, lon) => {
     try {
+      const baseUrl = import.meta.env.VITE_OPEN_METEO_API_URL;
+      if (!baseUrl) {
+        throw new Error("VITE_OPEN_METEO_API_URL tanımlı değil");
+      }
       const weatherResponse = await fetch(
-        `${
-          import.meta.env.VITE_OPEN_METEO_API_URL
-        }?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,apparent_temperature,pressure_msl,cloud_cover,precipitation,rain,showers,snowfall,visibility,uv_index,is_day&timezone=Europe/Istanbul`
+        `${baseUrl}?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,apparent_temperature,pressure_msl,cloud_cover,precipitation,rain,showers,snowfall,visibility,uv_index,is_day&timezone=Europe/Istanbul`
       );
       const weatherData = await weatherResponse.json();
       
@@ -70,8 +74,12 @@ const WeatherWidget = () => {
 
       const city = await getCityFromCoordinates(lat, lon);
       setCityName(city);
+      setLoadingDone(true);
       
     } catch (error) {
+      console.error(error);
+      setLoadError(error?.message || "Hava durumu alınamadı");
+      setLoadingDone(true);
       toast.error("Hava durumu alınamadı");
     }
   };
@@ -79,12 +87,16 @@ const WeatherWidget = () => {
   useEffect(() => {
     if (!navigator.geolocation) {
       toast.error("Tarayıcınız konum servisini desteklemiyor");
+      setLoadError("Konum servisi desteklenmiyor");
+      setLoadingDone(true);
       return;
     }
 
     navigator.permissions.query({ name: 'geolocation' }).then((permissionStatus) => {
       if (permissionStatus.state === 'denied') {
         toast.warning("Konum izni reddedildi. Hava durumu gösterilemiyor.");
+        setLoadError("Konum izni reddedildi");
+        setLoadingDone(true);
         return;
       }
       
@@ -97,16 +109,21 @@ const WeatherWidget = () => {
           switch (error.code) {
             case error.PERMISSION_DENIED:
               toast.warning("Konum izni verilmedi. Hava durumu gösterilemiyor.");
+              setLoadError("Konum izni verilmedi");
               break;
             case error.POSITION_UNAVAILABLE:
               toast.error("Konum bilgisi alınamadı");
+              setLoadError("Konum bilgisi alınamadı");
               break;
             case error.TIMEOUT:
               toast.error("Konum alma zaman aşımına uğradı");
+              setLoadError("Konum zaman aşımı");
               break;
             default:
               toast.error("Konum alınırken bir hata oluştu");
+              setLoadError("Konum hatası");
           }
+          setLoadingDone(true);
         },
         {
           enableHighAccuracy: true,
@@ -118,7 +135,11 @@ const WeatherWidget = () => {
       console.error('İzin sorgulama hatası:', error);
       navigator.geolocation.getCurrentPosition(
         (position) => fetchWeather(position.coords.latitude, position.coords.longitude),
-        (error) => toast.warning("Konum izni verilmedi")
+        (error) => {
+          toast.warning("Konum izni verilmedi");
+          setLoadError("Konum izni verilmedi");
+          setLoadingDone(true);
+        }
       );
     });
   }, []);
@@ -168,7 +189,7 @@ const WeatherWidget = () => {
     }
   };
 
-  if (!weather) {
+  if (!weather && !loadError) {
     return (
       <Box
         sx={{
@@ -187,6 +208,31 @@ const WeatherWidget = () => {
       >
         <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.8)" }}>
           Yükleniyor...
+        </Typography>
+      </Box>
+    );
+  }
+
+  if (!weather && loadError) {
+    // Yükleme başarısızsa widget'ı minimal bir uyarı ile göster
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          p: 1,
+          borderRadius: 2,
+          bgcolor: "rgba(255,255,255,0.08)",
+          backdropFilter: "blur(10px)",
+          border: "1px solid rgba(255,255,255,0.15)",
+          minWidth: isMobile ? "120px" : "140px",
+          height: isMobile ? "60px" : "70px",
+          justifyContent: "center"
+        }}
+      >
+        <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.8)" }}>
+          Hava durumu yok
         </Typography>
       </Box>
     );

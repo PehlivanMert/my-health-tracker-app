@@ -447,25 +447,51 @@ const CalendarComponent = ({ user }) => {
   // Tarih seçildiğinde yeni etkinlik diyalogunu aç
 
   const handleDateSelect = (selectInfo) => {
-    const selectedDate = DateTime.fromJSDate(selectInfo.start);
+    const isAllDaySelection = !!selectInfo.allDay;
+    const startDt = DateTime.fromJSDate(selectInfo.start);
+    const endCandidate = selectInfo.end
+      ? DateTime.fromJSDate(selectInfo.end)
+      : null;
+
+    // Month (all-day) selection: keep default 10:00-12:00 as requested
+    if (isAllDaySelection) {
+      const base = startDt;
+      setNewEvent({
+        title: "",
+        start: base.set({ hour: 10, minute: 0, second: 0, millisecond: 0 }),
+        end: base.set({ hour: 12, minute: 0, second: 0, millisecond: 0 }),
+        allDay: false,
+        color: calendarColors.lavanta,
+        notification: "none",
+        isRecurring: false,
+        recurrenceType: "",
+        recurrenceUntil: base.plus({ months: 1 }).endOf("day"),
+      });
+      setOpenDialog(true);
+      return;
+    }
+
+    // Day/Week time-grid selection: use the clicked slot/time range
+    const start = startDt.set({ second: 0, millisecond: 0 });
+    let end = endCandidate
+      ? endCandidate.set({ second: 0, millisecond: 0 })
+      : start.plus({ hours: 1 });
+
+    // Guard: if end is not after start (e.g., single click), default to 1 hour
+    if (!end.isValid || end <= start) {
+      end = start.plus({ hours: 1 });
+    }
+
     setNewEvent({
       title: "",
-      start: selectedDate.set({
-        hour: 10,
-        minute: 0,
-        second: 0,
-        millisecond: 0,
-      }),
-      end: selectedDate.set({ hour: 12, minute: 0, second: 0, millisecond: 0 }),
-      allDay: false, // her zaman false olarak ayarlandı
+      start,
+      end,
+      allDay: false,
       color: calendarColors.lavanta,
       notification: "none",
       isRecurring: false,
       recurrenceType: "",
-      // Seçilen tarihin sonuna kadar (23:59:59) olacak şekilde ayarlanıyor:
-      recurrenceUntil: DateTime.fromJSDate(selectInfo.start)
-        .plus({ months: 1 })
-        .endOf("day"),
+      recurrenceUntil: start.plus({ months: 1 }).endOf("day"),
     });
     setOpenDialog(true);
   };
@@ -1407,6 +1433,10 @@ const styles = {
       fontFamily: "inherit",
       color: "rgba(0, 0, 0, 0.9)",
       height: "100%",
+        // Slot yüksekliği: zaman slotlarını daha okunur ve dokunulabilir yap
+        "& .fc-timegrid-slot": {
+          height: { xs: 26, sm: 32, md: 38 },
+        },
 
       "& th": {
         background:
@@ -1474,10 +1504,12 @@ const styles = {
           padding: { xs: "2px", sm: "4px", md: "6px" },
         },
         "& .fc-timegrid-slot-label": {
-          fontSize: { xs: "0.6rem", sm: "0.7rem", md: "0.75rem" },
+          fontSize: { xs: "0.65rem", sm: "0.75rem", md: "0.85rem" },
+          paddingTop: { xs: 2, sm: 4, md: 6 },
+          paddingBottom: { xs: 2, sm: 4, md: 6 },
         },
         "& .fc-timegrid-axis": {
-          fontSize: { xs: "0.6rem", sm: "0.7rem", md: "0.75rem" },
+          fontSize: { xs: "0.65rem", sm: "0.75rem", md: "0.85rem" },
         },
       },
     },

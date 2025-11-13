@@ -444,7 +444,6 @@ const CalendarComponent = ({ user }) => {
       toast.error(`Güncelleme hatası: ${error.message}`);
     }
   };
-  // Tarih seçildiğinde yeni etkinlik diyalogunu aç
 
   const handleDateSelect = (selectInfo) => {
     const isAllDaySelection = !!selectInfo.allDay;

@@ -822,8 +822,14 @@ const WellnessTracker = ({ user }) => {
         id: doc.id,
         ...doc.data(),
       }));
-      setSupplements(supplementsData);
-      lastSupplementsState.current = [...supplementsData];
+      // Takviyeleri isme göre alfabetik olarak sırala (Türkçe karakterleri dikkate alarak)
+      const sortedSupplements = supplementsData.sort((a, b) => {
+        const nameA = (a.name || "").toLocaleLowerCase("tr-TR");
+        const nameB = (b.name || "").toLocaleLowerCase("tr-TR");
+        return nameA.localeCompare(nameB, "tr-TR");
+      });
+      setSupplements(sortedSupplements);
+      lastSupplementsState.current = [...sortedSupplements];
       isDataLoading.current = false;
     } catch (error) {
       console.error("Error fetching supplements:", error);

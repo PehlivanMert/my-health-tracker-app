@@ -199,8 +199,15 @@ const SupplementNotificationSettingsDialog = ({
 
   useEffect(() => {
     if (open) {
+      // Takviyeleri isme göre alfabetik olarak sırala (Türkçe karakterleri dikkate alarak)
+      const sortedSupplements = [...supplements].sort((a, b) => {
+        const nameA = (a.name || "").toLocaleLowerCase("tr-TR");
+        const nameB = (b.name || "").toLocaleLowerCase("tr-TR");
+        return nameA.localeCompare(nameB, "tr-TR");
+      });
+      
       setLocalSupps(
-        supplements.map((supp) => ({
+        sortedSupplements.map((supp) => ({
           id: supp.id,
           name: supp.name,
           notificationSchedule: supp.notificationSchedule || [],

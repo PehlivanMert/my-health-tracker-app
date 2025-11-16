@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Box,
   Container,
@@ -25,6 +25,7 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import SortIcon from "@mui/icons-material/Sort";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   collection,
@@ -449,13 +450,13 @@ const ModernSupplementCard = ({
                     <Box
                       key={index}
                       sx={{
-                        background: `linear-gradient(135deg, ${getSupplementColor(supplement.name)}40, ${getSupplementColor(supplement.name)}20)`,
-                        color: getSupplementColor(supplement.name),
+                        background: "rgba(255, 255, 255, 0.1)",
+                        color: "#fff",
                         padding: "4px 8px",
                         borderRadius: "8px",
                         fontSize: "0.75rem",
                         fontWeight: 600,
-                        border: `1px solid ${getSupplementColor(supplement.name)}30`,
+                        border: "1px solid rgba(255, 255, 255, 0.3)",
                       }}
                     >
                       {formatTime(time)}
@@ -804,6 +805,7 @@ const WellnessTracker = ({ user }) => {
     setSupplementNotificationDialogOpen,
   ] = useState(false);
   const [waterNotifDialogOpen, setWaterNotifDialogOpen] = useState(false);
+  const [sortMode, setSortMode] = useState("notification"); // "name", "quantity", "notification"
 
   // Korumalı veri yönetimi için ref'ler
   const lastSupplementsState = useRef([]);
@@ -814,6 +816,88 @@ const WellnessTracker = ({ user }) => {
   const getSupplementsRef = () =>
     collection(db, "users", user.uid, "supplements");
 
+  // Şu anki saatten sonraki en yakın bildirim saatini bul
+  const getNextNotificationTime = useCallback((notificationSchedule) => {
+    if (!notificationSchedule || !Array.isArray(notificationSchedule) || notificationSchedule.length === 0) {
+      return null;
+    }
+
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTimeInMinutes = currentHour * 60 + currentMinute;
+
+    // Bildirim saatlerini dakikaya çevir ve sırala
+    const notificationTimes = notificationSchedule
+      .filter(time => time && typeof time === 'string')
+      .map(time => {
+        const [hours, minutes] = time.split(':').map(Number);
+        return hours * 60 + minutes;
+      })
+      .sort((a, b) => a - b);
+
+    // Şu anki saatten sonraki ilk bildirimi bul
+    const nextNotification = notificationTimes.find(time => time > currentTimeInMinutes);
+    
+    if (nextNotification !== undefined) {
+      return nextNotification;
+    }
+
+    // Eğer bugün için bildirim kalmadıysa, geçmiş bildirimlerden en sonuncusunu döndür
+    // (geçmiş bildirimler, bildirimi olmayanların üzerinde ama gelecek bildirimlerin altında olacak)
+    if (notificationTimes.length > 0) {
+      return notificationTimes[notificationTimes.length - 1] - (24 * 60); // Dünkü saat olarak işaretle
+    }
+
+    return null;
+  }, []);
+
+  // Takviyeleri sıralama fonksiyonu
+  const sortSupplements = useCallback((supplementsData) => {
+    const sorted = [...supplementsData];
+
+    if (sortMode === "name") {
+      // İsme göre sırala
+      sorted.sort((a, b) => {
+        const nameA = (a.name || "").toLocaleLowerCase("tr-TR");
+        const nameB = (b.name || "").toLocaleLowerCase("tr-TR");
+        return nameA.localeCompare(nameB, "tr-TR");
+      });
+    } else if (sortMode === "quantity") {
+      // Kalan miktara göre sırala (azalan)
+      sorted.sort((a, b) => {
+        const quantityA = a.quantity || 0;
+        const quantityB = b.quantity || 0;
+        return quantityB - quantityA;
+      });
+    } else if (sortMode === "notification") {
+      // Bildirim saatine göre sırala
+      sorted.sort((a, b) => {
+        const nextTimeA = getNextNotificationTime(a.notificationSchedule);
+        const nextTimeB = getNextNotificationTime(b.notificationSchedule);
+
+        // Bildirimi olmayanlar en altta
+        if (nextTimeA === null && nextTimeB === null) return 0;
+        if (nextTimeA === null) return 1;
+        if (nextTimeB === null) return -1;
+
+        // Gelecek bildirimler önce, geçmiş bildirimler sonra
+        // (negatif değerler geçmiş bildirimleri temsil eder)
+        if (nextTimeA < 0 && nextTimeB < 0) {
+          // Her ikisi de geçmiş, en son geçen önce
+          return nextTimeB - nextTimeA;
+        }
+        if (nextTimeA < 0) return 1; // A geçmiş, B gelecek -> B önce
+        if (nextTimeB < 0) return -1; // B geçmiş, A gelecek -> A önce
+
+        // Her ikisi de gelecek, en yakın önce
+        return nextTimeA - nextTimeB;
+      });
+    }
+
+    return sorted;
+  }, [sortMode, getNextNotificationTime]);
+
   const fetchSupplements = async () => {
     const ref = getSupplementsRef();
     try {
@@ -822,12 +906,8 @@ const WellnessTracker = ({ user }) => {
         id: doc.id,
         ...doc.data(),
       }));
-      // Takviyeleri isme göre alfabetik olarak sırala (Türkçe karakterleri dikkate alarak)
-      const sortedSupplements = supplementsData.sort((a, b) => {
-        const nameA = (a.name || "").toLocaleLowerCase("tr-TR");
-        const nameB = (b.name || "").toLocaleLowerCase("tr-TR");
-        return nameA.localeCompare(nameB, "tr-TR");
-      });
+      // Sıralama fonksiyonunu kullan
+      const sortedSupplements = sortSupplements(supplementsData);
       setSupplements(sortedSupplements);
       lastSupplementsState.current = [...sortedSupplements];
       isDataLoading.current = false;
@@ -915,6 +995,15 @@ const WellnessTracker = ({ user }) => {
     fetchSupplementConsumptionToday();
     fetchSupplementConsumptionStats().then(setSupplementStatsData);
   }, [user]);
+
+  // sortMode değiştiğinde takviyeleri yeniden sırala
+  useEffect(() => {
+    if (supplements.length > 0) {
+      const sorted = sortSupplements(supplements);
+      setSupplements(sorted);
+      lastSupplementsState.current = [...sorted];
+    }
+  }, [sortMode, sortSupplements]);
 
   // Takviye tüketim verisi değişikliklerini izle ve korumalı güncelleme yap
   useEffect(() => {
@@ -1396,6 +1485,64 @@ const WellnessTracker = ({ user }) => {
               Takviyelerim
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto' }}>
+              <Tooltip 
+                title={
+                  sortMode === "name" ? "İsme göre sıralı (İsme göre → Kalan miktara göre → Bildirim saatine göre)" :
+                  sortMode === "quantity" ? "Kalan miktara göre sıralı (Kalan miktara göre → Bildirim saatine göre → İsme göre)" :
+                  "Bildirim saatine göre sıralı (Bildirim saatine göre → İsme göre → Kalan miktara göre)"
+                }
+                arrow
+              >
+                <span
+                  onClick={e => { 
+                    e.stopPropagation(); 
+                    // Sıralama modunu değiştir: name -> quantity -> notification -> name
+                    if (sortMode === "name") {
+                      setSortMode("quantity");
+                    } else if (sortMode === "quantity") {
+                      setSortMode("notification");
+                    } else {
+                      setSortMode("name");
+                    }
+                  }}
+                  onMouseDown={e => e.stopPropagation()}
+                  onFocus={e => e.stopPropagation()}
+                  style={{ 
+                    color: '#fff', 
+                    background: sortMode === "name" ? 'rgba(33,150,243,0.32)' : 
+                                sortMode === "quantity" ? 'rgba(76,175,80,0.32)' : 
+                                'rgba(255,152,0,0.32)', 
+                    marginLeft: '4px', 
+                    padding: '8px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'background 0.3s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (sortMode === "name") {
+                      e.target.style.background = 'rgba(33,150,243,0.45)';
+                    } else if (sortMode === "quantity") {
+                      e.target.style.background = 'rgba(76,175,80,0.45)';
+                    } else {
+                      e.target.style.background = 'rgba(255,152,0,0.45)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (sortMode === "name") {
+                      e.target.style.background = 'rgba(33,150,243,0.32)';
+                    } else if (sortMode === "quantity") {
+                      e.target.style.background = 'rgba(76,175,80,0.32)';
+                    } else {
+                      e.target.style.background = 'rgba(255,152,0,0.32)';
+                    }
+                  }}
+                >
+                  <SortIcon sx={{ fontSize: { xs: 22, sm: 24, md: 26 } }} />
+                </span>
+              </Tooltip>
               <span
                 onClick={e => { e.stopPropagation(); setOpenSupplementDialog(true); }}
                 onMouseDown={e => e.stopPropagation()}
@@ -1459,7 +1606,119 @@ const WellnessTracker = ({ user }) => {
                   İlk takviyenizi eklemek için "Takviye Ekle" butonuna tıklayın
                 </Typography>
               </Box>
+            ) : sortMode === "notification" ? (
+              // Bildirim saatine göre sıralama modunda kategorilere ayır
+              (() => {
+                const upcoming = [];
+                const past = [];
+                const noNotification = [];
+
+                supplements.forEach((supplement) => {
+                  const nextTime = getNextNotificationTime(supplement.notificationSchedule);
+                  if (nextTime === null) {
+                    noNotification.push(supplement);
+                  } else if (nextTime < 0) {
+                    past.push(supplement);
+                  } else {
+                    upcoming.push(supplement);
+                  }
+                });
+
+                const renderSupplementCard = (supplement) => {
+                  const { name, quantity, dailyUsage } = supplement;
+                  const consumedToday = supplementConsumptionToday[name] || 0;
+                  const remainingToday = Math.max(0, dailyUsage - consumedToday);
+                  const daysLeft = Math.ceil(quantity / dailyUsage);
+                  const progress = Math.min(100, (consumedToday / dailyUsage) * 100);
+
+                  return (
+                    <Grid item xs={12} sm={6} lg={4} key={supplement.id}>
+                      <ModernSupplementCard
+                        supplement={supplement}
+                        consumedToday={consumedToday}
+                        remainingToday={remainingToday}
+                        progress={progress}
+                        daysLeft={daysLeft}
+                        onConsume={handleConsume}
+                        onEdit={handleEditSupplement}
+                        onDelete={handleDelete}
+                        onUndo={handleUndoConsume}
+                        isProcessing={consumingSupplements.current.has(supplement.id)}
+                        isUndoProcessing={undoingSupplements.current.has(supplement.id)}
+                      />
+                    </Grid>
+                  );
+                };
+
+                return (
+                  <Box>
+                    {/* Zamanı Yaklaşan */}
+                    {upcoming.length > 0 && (
+                      <CustomAccordion defaultExpanded={true} sx={{ mb: 2 }}>
+                        <StyledAccordionSummary>
+                          <AccessTimeIcon sx={{ fontSize: { xs: 24, sm: 28, md: 32 }, color: '#4caf50', mr: 1 }} />
+                          <Typography variant="h6" sx={{ 
+                            fontWeight: 700, 
+                            color: "#fff",
+                            fontSize: { xs: "1rem", sm: "1.2rem", md: "1.4rem" },
+                          }}>
+                            Zamanı Yaklaşan ({upcoming.length})
+                          </Typography>
+                        </StyledAccordionSummary>
+                        <CustomAccordionDetails>
+                          <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
+                            {upcoming.map(renderSupplementCard)}
+                          </Grid>
+                        </CustomAccordionDetails>
+                      </CustomAccordion>
+                    )}
+
+                    {/* Zamanı Geçen */}
+                    {past.length > 0 && (
+                      <CustomAccordion defaultExpanded={false} sx={{ mb: 2 }}>
+                        <StyledAccordionSummary>
+                          <AccessTimeIcon sx={{ fontSize: { xs: 24, sm: 28, md: 32 }, color: '#ff9800', mr: 1 }} />
+                          <Typography variant="h6" sx={{ 
+                            fontWeight: 700, 
+                            color: "#fff",
+                            fontSize: { xs: "1rem", sm: "1.2rem", md: "1.4rem" },
+                          }}>
+                            Zamanı Geçen ({past.length})
+                          </Typography>
+                        </StyledAccordionSummary>
+                        <CustomAccordionDetails>
+                          <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
+                            {past.map(renderSupplementCard)}
+                          </Grid>
+                        </CustomAccordionDetails>
+                      </CustomAccordion>
+                    )}
+
+                    {/* Bildirim Ayarlanmamış */}
+                    {noNotification.length > 0 && (
+                      <CustomAccordion defaultExpanded={false} sx={{ mb: 2 }}>
+                        <StyledAccordionSummary>
+                          <NotificationsOffIcon sx={{ fontSize: { xs: 24, sm: 28, md: 32 }, color: '#9e9e9e', mr: 1 }} />
+                          <Typography variant="h6" sx={{ 
+                            fontWeight: 700, 
+                            color: "#fff",
+                            fontSize: { xs: "1rem", sm: "1.2rem", md: "1.4rem" },
+                          }}>
+                            Bildirim Ayarlanmamış ({noNotification.length})
+                          </Typography>
+                        </StyledAccordionSummary>
+                        <CustomAccordionDetails>
+                          <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
+                            {noNotification.map(renderSupplementCard)}
+                          </Grid>
+                        </CustomAccordionDetails>
+                      </CustomAccordion>
+                    )}
+                  </Box>
+                );
+              })()
             ) : (
+              // Diğer sıralama modlarında normal grid
               <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
                 {supplements.map((supplement) => {
                   const { name, quantity, dailyUsage } = supplement;

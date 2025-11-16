@@ -817,6 +817,7 @@ const WellnessTracker = ({ user }) => {
     collection(db, "users", user.uid, "supplements");
 
   // Şu anki saatten sonraki en yakın bildirim saatini bul
+  // Bir takviyede birden fazla bildirim saati varsa, şu anki saatten sonraki en yakın olanı baz alır
   const getNextNotificationTime = useCallback((notificationSchedule) => {
     if (!notificationSchedule || !Array.isArray(notificationSchedule) || notificationSchedule.length === 0) {
       return null;
@@ -827,29 +828,34 @@ const WellnessTracker = ({ user }) => {
     const currentMinute = now.getMinutes();
     const currentTimeInMinutes = currentHour * 60 + currentMinute;
 
-    // Bildirim saatlerini dakikaya çevir ve sırala
+    // Tüm bildirim saatlerini dakikaya çevir ve sırala
     const notificationTimes = notificationSchedule
       .filter(time => time && typeof time === 'string')
       .map(time => {
         const [hours, minutes] = time.split(':').map(Number);
+        if (isNaN(hours) || isNaN(minutes)) return null;
         return hours * 60 + minutes;
       })
+      .filter(time => time !== null)
       .sort((a, b) => a - b);
 
-    // Şu anki saatten sonraki ilk bildirimi bul
+    if (notificationTimes.length === 0) {
+      return null;
+    }
+
+    // Şu anki saatten sonraki ilk bildirimi bul (tüm bildirim saatleri arasından)
     const nextNotification = notificationTimes.find(time => time > currentTimeInMinutes);
     
     if (nextNotification !== undefined) {
+      // Gelecek bir bildirim var
       return nextNotification;
     }
 
-    // Eğer bugün için bildirim kalmadıysa, geçmiş bildirimlerden en sonuncusunu döndür
+    // Eğer bugün için bildirim kalmadıysa (tüm bildirimler geçmişse),
+    // geçmiş bildirimlerden en sonuncusunu döndür
     // (geçmiş bildirimler, bildirimi olmayanların üzerinde ama gelecek bildirimlerin altında olacak)
-    if (notificationTimes.length > 0) {
-      return notificationTimes[notificationTimes.length - 1] - (24 * 60); // Dünkü saat olarak işaretle
-    }
-
-    return null;
+    const lastPastNotification = notificationTimes[notificationTimes.length - 1];
+    return lastPastNotification - (24 * 60); // Dünkü saat olarak işaretle (negatif değer)
   }, []);
 
   // Takviyeleri sıralama fonksiyonu
@@ -1609,18 +1615,40 @@ const WellnessTracker = ({ user }) => {
             ) : sortMode === "notification" ? (
               // Bildirim saatine göre sıralama modunda kategorilere ayır
               (() => {
-                const upcoming = [];
+                const upcoming = []; // Sadece en yakın bildirimi olanlar
+                const later = []; // Diğer gelecek bildirimleri olanlar
                 const past = [];
                 const noNotification = [];
 
-                supplements.forEach((supplement) => {
-                  const nextTime = getNextNotificationTime(supplement.notificationSchedule);
+                // Önce tüm takviyelerin en yakın bildirim saatlerini topla
+                const supplementsWithNextTime = supplements.map((supplement) => ({
+                  supplement,
+                  nextTime: getNextNotificationTime(supplement.notificationSchedule),
+                }));
+
+                // En yakın bildirim saatini bul (tüm takviyeler arasından)
+                const allNextTimes = supplementsWithNextTime
+                  .filter(item => item.nextTime !== null && item.nextTime > 0)
+                  .map(item => item.nextTime);
+                
+                const closestTime = allNextTimes.length > 0 ? Math.min(...allNextTimes) : null;
+
+                // Yaklaşan kategorisi için zaman aralığı (dakika cinsinden)
+                // En yakın bildirimden 1 saat içindeki tüm bildirimler "yaklaşan" kategorisinde
+                const timeWindow = 60; // 1 saat tolerans
+
+                // Kategorilere ayır
+                supplementsWithNextTime.forEach(({ supplement, nextTime }) => {
                   if (nextTime === null) {
                     noNotification.push(supplement);
                   } else if (nextTime < 0) {
                     past.push(supplement);
-                  } else {
+                  } else if (closestTime !== null && nextTime >= closestTime && nextTime <= closestTime + timeWindow) {
+                    // En yakın bildirimden 10 dakika içindeki tüm bildirimler "yaklaşan" kategorisinde
                     upcoming.push(supplement);
+                  } else {
+                    // Diğer gelecek bildirimleri olanlar "sonraki" kategorisinde
+                    later.push(supplement);
                   }
                 });
 
@@ -1652,7 +1680,7 @@ const WellnessTracker = ({ user }) => {
 
                 return (
                   <Box>
-                    {/* Zamanı Yaklaşan */}
+                    {/* Kullanım Zamanı Yaklaşan - Sadece en yakın bildirimi olanlar */}
                     {upcoming.length > 0 && (
                       <CustomAccordion defaultExpanded={true} sx={{ mb: 2 }}>
                         <StyledAccordionSummary>
@@ -1662,7 +1690,7 @@ const WellnessTracker = ({ user }) => {
                             color: "#fff",
                             fontSize: { xs: "1rem", sm: "1.2rem", md: "1.4rem" },
                           }}>
-                            Zamanı Yaklaşan ({upcoming.length})
+                            Kullanım Zamanı Yaklaşan ({upcoming.length})
                           </Typography>
                         </StyledAccordionSummary>
                         <CustomAccordionDetails>
@@ -1673,7 +1701,28 @@ const WellnessTracker = ({ user }) => {
                       </CustomAccordion>
                     )}
 
-                    {/* Zamanı Geçen */}
+                    {/* Sonraki Bildirimler - Diğer gelecek bildirimleri olanlar */}
+                    {later.length > 0 && (
+                      <CustomAccordion defaultExpanded={false} sx={{ mb: 2 }}>
+                        <StyledAccordionSummary>
+                          <AccessTimeIcon sx={{ fontSize: { xs: 24, sm: 28, md: 32 }, color: '#2196f3', mr: 1 }} />
+                          <Typography variant="h6" sx={{ 
+                            fontWeight: 700, 
+                            color: "#fff",
+                            fontSize: { xs: "1rem", sm: "1.2rem", md: "1.4rem" },
+                          }}>
+                            Sonraki Bildirimler ({later.length})
+                          </Typography>
+                        </StyledAccordionSummary>
+                        <CustomAccordionDetails>
+                          <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
+                            {later.map(renderSupplementCard)}
+                          </Grid>
+                        </CustomAccordionDetails>
+                      </CustomAccordion>
+                    )}
+
+                    {/* Kullanım Zamanı Geçen */}
                     {past.length > 0 && (
                       <CustomAccordion defaultExpanded={false} sx={{ mb: 2 }}>
                         <StyledAccordionSummary>
@@ -1683,7 +1732,7 @@ const WellnessTracker = ({ user }) => {
                             color: "#fff",
                             fontSize: { xs: "1rem", sm: "1.2rem", md: "1.4rem" },
                           }}>
-                            Zamanı Geçen ({past.length})
+                            Kullanım Zamanı Geçen ({past.length})
                           </Typography>
                         </StyledAccordionSummary>
                         <CustomAccordionDetails>

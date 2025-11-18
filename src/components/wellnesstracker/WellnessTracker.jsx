@@ -51,6 +51,7 @@ import {
 } from "@mui/icons-material";
 import NotificationsOffIcon from "@mui/icons-material/NotificationsOff";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import ScheduleIcon from "@mui/icons-material/Schedule";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SupplementDialog from "./SupplementDialog";
 import WaterTracker from "./WaterTracker";
@@ -1705,7 +1706,14 @@ const WellnessTracker = ({ user }) => {
                     {later.length > 0 && (
                       <CustomAccordion defaultExpanded={false} sx={{ mb: 2 }}>
                         <StyledAccordionSummary>
-                          <AccessTimeIcon sx={{ fontSize: { xs: 24, sm: 28, md: 32 }, color: '#2196f3', mr: 1 }} />
+                          <ScheduleIcon
+                            sx={{
+                              fontSize: { xs: 24, sm: 28, md: 32 },
+                              color: '#fff',
+                              mr: 1,
+                              textShadow: '0px 0px 6px rgba(0,0,0,0.35)',
+                            }}
+                          />
                           <Typography variant="h6" sx={{ 
                             fontWeight: 700, 
                             color: "#fff",

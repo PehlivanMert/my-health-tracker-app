@@ -26,6 +26,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import SortIcon from "@mui/icons-material/Sort";
+import AccessAlarmIcon from "@mui/icons-material/AccessAlarm";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   collection,
@@ -62,6 +64,7 @@ import { saveNextSupplementReminderTime } from "../notify/SupplementNotification
 import WaterNotificationSettingsDialog from "./WaterNotificationSettingsDialog";
 import UndoIcon from "@mui/icons-material/Undo";
 import { toast } from "react-toastify";
+import { DateTime } from "luxon";
 
 const float = keyframes`
   0% { transform: translateY(0px); }
@@ -824,10 +827,8 @@ const WellnessTracker = ({ user }) => {
       return null;
     }
 
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    const currentTimeInMinutes = currentHour * 60 + currentMinute;
+    const now = DateTime.now().setZone("Europe/Istanbul");
+    const currentTimeInMinutes = now.hour * 60 + now.minute;
 
     // Tüm bildirim saatlerini dakikaya çevir ve sırala
     const notificationTimes = notificationSchedule
@@ -1616,39 +1617,87 @@ const WellnessTracker = ({ user }) => {
             ) : sortMode === "notification" ? (
               // Bildirim saatine göre sıralama modunda kategorilere ayır
               (() => {
-                const upcoming = []; // Sadece en yakın bildirimi olanlar
-                const later = []; // Diğer gelecek bildirimleri olanlar
+                const nowDue = [];
+                const upcoming = [];
+                const later = [];
                 const past = [];
+                const completed = [];
                 const noNotification = [];
 
-                // Önce tüm takviyelerin en yakın bildirim saatlerini topla
-                const supplementsWithNextTime = supplements.map((supplement) => ({
-                  supplement,
-                  nextTime: getNextNotificationTime(supplement.notificationSchedule),
-                }));
+                const turkeyNow = DateTime.now().setZone("Europe/Istanbul");
+                const currentMinutes = turkeyNow.hour * 60 + turkeyNow.minute;
+                const dueWindow = 60; // dakika
+                const soonWindow = 60; // dakika
 
-                // En yakın bildirim saatini bul (tüm takviyeler arasından)
-                const allNextTimes = supplementsWithNextTime
-                  .filter(item => item.nextTime !== null && item.nextTime > 0)
-                  .map(item => item.nextTime);
-                
-                const closestTime = allNextTimes.length > 0 ? Math.min(...allNextTimes) : null;
+                const parseSchedule = (schedule = []) =>
+                  Array.isArray(schedule)
+                    ? schedule
+                        .filter((time) => typeof time === "string" && time.includes(":"))
+                        .map((time) => {
+                          const [hours, minutes] = time.split(":").map(Number);
+                          if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+                          return hours * 60 + minutes;
+                        })
+                        .filter((time) => time !== null)
+                        .sort((a, b) => a - b)
+                    : [];
 
-                // Yaklaşan kategorisi için zaman aralığı (dakika cinsinden)
-                // En yakın bildirimden 1 saat içindeki tüm bildirimler "yaklaşan" kategorisinde
-                const timeWindow = 60; // 1 saat tolerans
+                const expandScheduleForDailyUsage = (times, dailyUsage = 1) => {
+                  if (!Array.isArray(times) || times.length === 0) return [];
+                  if (!dailyUsage || dailyUsage <= times.length) return times;
+                  const expanded = [...times];
+                  let index = 0;
+                  while (expanded.length < dailyUsage) {
+                    expanded.push(times[index % times.length]);
+                    index += 1;
+                  }
+                  return expanded.sort((a, b) => a - b);
+                };
 
-                // Kategorilere ayır
-                supplementsWithNextTime.forEach(({ supplement, nextTime }) => {
-                  if (nextTime === null) {
+                supplements.forEach((supplement) => {
+                  const parsedTimes = parseSchedule(supplement.notificationSchedule);
+                  const scheduleMinutes = expandScheduleForDailyUsage(
+                    parsedTimes,
+                    supplement.dailyUsage || parsedTimes.length || 1
+                  );
+
+                  if (scheduleMinutes.length === 0) {
                     noNotification.push(supplement);
-                  } else if (nextTime < 0) {
-                    past.push(supplement);
-                  } else if (closestTime !== null && nextTime >= closestTime && nextTime <= closestTime + timeWindow) {
-                    // En yakın bildirimden 10 dakika içindeki tüm bildirimler "yaklaşan" kategorisinde
+                    return;
+                  }
+
+                  const consumedCount = Math.min(
+                    supplementConsumptionToday[supplement.name] || 0,
+                    scheduleMinutes.length
+                  );
+
+                  const remainingTimes = scheduleMinutes.slice(consumedCount);
+
+                  if (remainingTimes.length === 0) {
+                    completed.push(supplement);
+                    return;
+                  }
+
+                  const dueTimes = remainingTimes.filter((time) => time <= currentMinutes);
+
+                  if (dueTimes.length > 0) {
+                    const latestDue = dueTimes[dueTimes.length - 1];
+                    const diff = currentMinutes - latestDue;
+
+                    if (diff <= dueWindow) {
+                      nowDue.push(supplement);
+                    } else {
+                      past.push(supplement);
+                    }
+                    return;
+                  }
+
+                  const nextTime = remainingTimes[0];
+                  const timeUntil = nextTime - currentMinutes;
+
+                  if (timeUntil <= soonWindow) {
                     upcoming.push(supplement);
                   } else {
-                    // Diğer gelecek bildirimleri olanlar "sonraki" kategorisinde
                     later.push(supplement);
                   }
                 });
@@ -1681,9 +1730,30 @@ const WellnessTracker = ({ user }) => {
 
                 return (
                   <Box>
-                    {/* Kullanım Zamanı Yaklaşan - Sadece en yakın bildirimi olanlar */}
-                    {upcoming.length > 0 && (
+                    {/* Şimdi Kullanılması Gerekenler */}
+                    {nowDue.length > 0 && (
                       <CustomAccordion defaultExpanded={true} sx={{ mb: 2 }}>
+                        <StyledAccordionSummary>
+                          <AccessAlarmIcon sx={{ fontSize: { xs: 24, sm: 28, md: 32 }, color: '#ff5252', mr: 1 }} />
+                          <Typography variant="h6" sx={{ 
+                            fontWeight: 700, 
+                            color: "#fff",
+                            fontSize: { xs: "1rem", sm: "1.2rem", md: "1.4rem" },
+                          }}>
+                            Şimdi Kullanılması Gerekenler ({nowDue.length})
+                          </Typography>
+                        </StyledAccordionSummary>
+                        <CustomAccordionDetails>
+                          <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
+                            {nowDue.map(renderSupplementCard)}
+                          </Grid>
+                        </CustomAccordionDetails>
+                      </CustomAccordion>
+                    )}
+
+                    {/* Kullanım Zamanı Yaklaşan */}
+                    {upcoming.length > 0 && (
+                      <CustomAccordion defaultExpanded={nowDue.length === 0} sx={{ mb: 2 }}>
                         <StyledAccordionSummary>
                           <AccessTimeIcon sx={{ fontSize: { xs: 24, sm: 28, md: 32 }, color: '#4caf50', mr: 1 }} />
                           <Typography variant="h6" sx={{ 
@@ -1702,7 +1772,7 @@ const WellnessTracker = ({ user }) => {
                       </CustomAccordion>
                     )}
 
-                    {/* Sonraki Bildirimler - Diğer gelecek bildirimleri olanlar */}
+                    {/* Sonraki Bildirimler */}
                     {later.length > 0 && (
                       <CustomAccordion defaultExpanded={false} sx={{ mb: 2 }}>
                         <StyledAccordionSummary>
@@ -1746,6 +1816,29 @@ const WellnessTracker = ({ user }) => {
                         <CustomAccordionDetails>
                           <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
                             {past.map(renderSupplementCard)}
+                          </Grid>
+                        </CustomAccordionDetails>
+                      </CustomAccordion>
+                    )}
+
+                    {/* Bugün Tamamlananlar */}
+                    {completed.length > 0 && (
+                      <CustomAccordion defaultExpanded={false} sx={{ mb: 2 }}>
+                        <StyledAccordionSummary>
+                          <CheckCircleIcon
+                            sx={{ fontSize: { xs: 24, sm: 28, md: 32 }, color: '#81c784', mr: 1 }}
+                          />
+                          <Typography variant="h6" sx={{ 
+                            fontWeight: 700, 
+                            color: "#fff",
+                            fontSize: { xs: "1rem", sm: "1.2rem", md: "1.4rem" },
+                          }}>
+                            Bugün Tamamlananlar ({completed.length})
+                          </Typography>
+                        </StyledAccordionSummary>
+                        <CustomAccordionDetails>
+                          <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
+                            {completed.map(renderSupplementCard)}
                           </Grid>
                         </CustomAccordionDetails>
                       </CustomAccordion>

@@ -233,7 +233,6 @@ const SupplementNotificationSettingsDialog = ({
     setLocalSupps((prev) =>
       prev.map((s) => {
         if (s.id === id && s.newTime) {
-          if (s.notificationSchedule.includes(s.newTime)) return s; // Aynı saat eklenmesin
           const updatedSchedule = [...s.notificationSchedule, s.newTime].sort();
           return { ...s, notificationSchedule: updatedSchedule, newTime: "" };
         }
@@ -242,13 +241,17 @@ const SupplementNotificationSettingsDialog = ({
     );
   };
 
-  const handleDeleteTime = (id, timeToDelete) => {
+  const handleDeleteTime = (id, timeToDelete, occurrenceIndex) => {
     setLocalSupps((prev) =>
       prev.map((s) => {
         if (s.id === id) {
-          const updatedSchedule = s.notificationSchedule.filter(
-            (time) => time !== timeToDelete
-          );
+          const updatedSchedule = [...s.notificationSchedule];
+          if (typeof occurrenceIndex === "number") {
+            updatedSchedule.splice(occurrenceIndex, 1);
+          } else {
+            const firstIndex = updatedSchedule.indexOf(timeToDelete);
+            if (firstIndex !== -1) updatedSchedule.splice(firstIndex, 1);
+          }
           return { ...s, notificationSchedule: updatedSchedule };
         }
         return s;
@@ -545,7 +548,7 @@ const SupplementNotificationSettingsDialog = ({
                           icon={
                             <AccessTimeIcon sx={{ color: "#fff" }} />
                           }
-                          onDelete={() => handleDeleteTime(supp.id, time)}
+                          onDelete={() => handleDeleteTime(supp.id, time, index)}
                           sx={{
                             border: `1px solid rgba(255, 255, 255, 0.3)`,
                             background: "rgba(255, 255, 255, 0.1)",

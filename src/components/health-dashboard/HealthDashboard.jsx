@@ -1009,8 +1009,8 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 21. Eğer kullanıcıdan ilgi alanı veya ruh hali bilgisi gelirse, bunu da dikkate al.
 22. Eğer öneri geçmişi varsa, işte son 10 öneri (tekrar etme!):\n${last10Recommendations}\n23. Son 10 öneride verilen öğünleri tekrar etme. İşte son 10 öğün önerisi: ${last10Meals}\n24. Son 10 okuma önerisindeki kitap ve makaleleri tekrar etme. İşte son 10 okuma önerisi: ${last10Readings}\n25. Son 10 izleme önerisindeki video, belgesel, dizi ve podcastleri tekrar etme. İşte son 10 izleme önerisi: ${last10Watchings}\n`
 
-      // Gemini AI kullanarak öneri oluştur
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp", generationConfig: { temperature: 0.85, topP: 0.95 } });
+      // Gemini AI kullanarak öneri oluştur (GA - Genel Kullanım)
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-001", generationConfig: { temperature: 0.85, topP: 0.95 } });
       const result = await model.generateContent(prompt);
       const response = await result.response;
       const recommendationText = response.text();

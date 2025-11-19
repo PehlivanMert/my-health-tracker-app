@@ -1730,7 +1730,7 @@ const WellnessTracker = ({ user }) => {
 
                 return (
                   <Box>
-                    {/* Şimdi Kullanılması Gerekenler */}
+                    {/* Bekleyen Dozlar */}
                     {nowDue.length > 0 && (
                       <CustomAccordion defaultExpanded={true} sx={{ mb: 2 }}>
                         <StyledAccordionSummary>
@@ -1740,7 +1740,7 @@ const WellnessTracker = ({ user }) => {
                             color: "#fff",
                             fontSize: { xs: "1rem", sm: "1.2rem", md: "1.4rem" },
                           }}>
-                            Şimdi Kullanılması Gerekenler ({nowDue.length})
+                            Bekleyen Dozlar ({nowDue.length})
                           </Typography>
                         </StyledAccordionSummary>
                         <CustomAccordionDetails>
@@ -1751,7 +1751,7 @@ const WellnessTracker = ({ user }) => {
                       </CustomAccordion>
                     )}
 
-                    {/* Kullanım Zamanı Yaklaşan */}
+                    {/* Yaklaşan Dozlar */}
                     {upcoming.length > 0 && (
                       <CustomAccordion defaultExpanded={nowDue.length === 0} sx={{ mb: 2 }}>
                         <StyledAccordionSummary>
@@ -1761,7 +1761,7 @@ const WellnessTracker = ({ user }) => {
                             color: "#fff",
                             fontSize: { xs: "1rem", sm: "1.2rem", md: "1.4rem" },
                           }}>
-                            Kullanım Zamanı Yaklaşan ({upcoming.length})
+                            Yaklaşan Dozlar ({upcoming.length})
                           </Typography>
                         </StyledAccordionSummary>
                         <CustomAccordionDetails>
@@ -1772,7 +1772,7 @@ const WellnessTracker = ({ user }) => {
                       </CustomAccordion>
                     )}
 
-                    {/* Sonraki Bildirimler */}
+                    {/* Planlanan Dozlar */}
                     {later.length > 0 && (
                       <CustomAccordion defaultExpanded={false} sx={{ mb: 2 }}>
                         <StyledAccordionSummary>
@@ -1784,12 +1784,12 @@ const WellnessTracker = ({ user }) => {
                               textShadow: '0px 0px 6px rgba(0,0,0,0.35)',
                             }}
                           />
-                          <Typography variant="h6" sx={{ 
+                          <Typography variant="h6" sx={{
                             fontWeight: 700, 
                             color: "#fff",
                             fontSize: { xs: "1rem", sm: "1.2rem", md: "1.4rem" },
                           }}>
-                            Sonraki Bildirimler ({later.length})
+                            Planlanan Dozlar ({later.length})
                           </Typography>
                         </StyledAccordionSummary>
                         <CustomAccordionDetails>
@@ -1800,7 +1800,7 @@ const WellnessTracker = ({ user }) => {
                       </CustomAccordion>
                     )}
 
-                    {/* Kullanım Zamanı Geçen */}
+                    {/* Kaçırılan Dozlar */}
                     {past.length > 0 && (
                       <CustomAccordion defaultExpanded={false} sx={{ mb: 2 }}>
                         <StyledAccordionSummary>
@@ -1810,7 +1810,7 @@ const WellnessTracker = ({ user }) => {
                             color: "#fff",
                             fontSize: { xs: "1rem", sm: "1.2rem", md: "1.4rem" },
                           }}>
-                            Kullanım Zamanı Geçen ({past.length})
+                            Kaçırılan Dozlar ({past.length})
                           </Typography>
                         </StyledAccordionSummary>
                         <CustomAccordionDetails>

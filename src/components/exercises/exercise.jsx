@@ -335,8 +335,8 @@ const Exercises = ({ exercises, setExercises }) => {
     }
 
     try {
-      // Güncel model adını kullan (GA - Genel Kullanım)
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-001" });
+      // Güncel model adını kullan (GA - Genel Kullanım, Pro model daha güçlü akıl yürütme için)
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
 
       // Vücut kompozisyonu bilgilerini hazırla
       const bodyCompInfo = Object.values(bodyComposition).some(val => val.trim()) 

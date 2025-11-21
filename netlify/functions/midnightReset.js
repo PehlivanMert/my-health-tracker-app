@@ -2,6 +2,47 @@ const { getDatabase, createBatch, admin } = require('./dbConnection');
 
 const db = getDatabase();
 
+// ============================================
+// OPTIMIZATION CONFIGURATION
+// ============================================
+const ENABLE_VERBOSE_LOGGING = process.env.VERBOSE_LOGGING === 'true' || false;
+const MAX_RETRIES = 3; // Hatalı işlemler için retry sayısı
+const RETRY_DELAY_MS = 1000; // Retry arası bekleme süresi (ms)
+
+// Chunk size'ı dinamik ayarla (production'da daha küçük, timeout riskini azaltmak için)
+const getChunkSize = () => {
+  // Production'da 15, development'ta 20 kullanıcı
+  const isProduction = process.env.NETLIFY_ENV === 'production' || process.env.NODE_ENV === 'production';
+  return isProduction ? 15 : 20;
+};
+
+// Retry mekanizması ile işlem yap
+const executeWithRetry = async (operation, operationName, maxRetries = MAX_RETRIES) => {
+  let lastError = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await operation();
+      if (attempt > 1 && ENABLE_VERBOSE_LOGGING) {
+        console.log(`✅ ${operationName} - ${attempt}. denemede başarılı`);
+      }
+      return { success: true, result, attempts: attempt };
+    } catch (error) {
+      lastError = error;
+      if (ENABLE_VERBOSE_LOGGING) {
+        console.warn(`⚠️ ${operationName} - ${attempt}/${maxRetries} deneme başarısız:`, error.message);
+      }
+      
+      // Son deneme değilse, bekle ve tekrar dene
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+      }
+    }
+  }
+  
+  return { success: false, error: lastError, attempts: maxRetries };
+};
+
 // Cache TTL: 10 dakika (600.000 ms)
 const CACHE_TTL = 600000;
 
@@ -855,11 +896,15 @@ const saveNextSupplementReminderTime = async (userId, suppData) => {
       notificationsLastCalculated: new Date(),
     };
     await suppDocRef.update(updateData);
-    console.log(`💊 [${userId}] ${suppData.name} bildirimi kaydedildi: ${nextReminder.toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })}`);
+    if (ENABLE_VERBOSE_LOGGING) {
+      console.log(`💊 [${userId}] ${suppData.name} bildirimi kaydedildi: ${nextReminder.toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })}`);
+    }
     return nextReminder;
   } catch (error) {
-    console.error(`❌ saveNextSupplementReminderTime - [${userId}] ${suppData.name} için hata:`, error);
-    return null;
+    if (ENABLE_VERBOSE_LOGGING) {
+      console.error(`❌ saveNextSupplementReminderTime - [${userId}] ${suppData.name} için hata:`, error);
+    }
+    throw error; // Retry mekanizması için hatayı fırlat
   }
 };
 
@@ -869,7 +914,9 @@ const resetWaterData = async (userId, waterData) => {
   
   // Eğer bugün zaten reset yapılmışsa, tekrar yapma
   if (waterData.lastResetDate === todayStr) {
-    console.log(`🔄 [${userId}] Su verisi zaten bugün sıfırlanmış`);
+    if (ENABLE_VERBOSE_LOGGING) {
+      console.log(`🔄 [${userId}] Su verisi zaten bugün sıfırlanmış`);
+    }
     return false;
   }
 
@@ -894,11 +941,15 @@ const resetWaterData = async (userId, waterData) => {
       serverSideCalculated: true, // Reset sonrası server-side hesaplandığını işaretle
     });
 
-    console.log(`✅ [${userId}] Su verisi sıfırlandı: ${waterData.waterIntake}ml → 0ml`);
+    if (ENABLE_VERBOSE_LOGGING) {
+      console.log(`✅ [${userId}] Su verisi sıfırlandı: ${waterData.waterIntake}ml → 0ml`);
+    }
     return true;
   } catch (error) {
-    console.error(`❌ [${userId}] Su verisi sıfırlama hatası:`, error);
-    return false;
+    if (ENABLE_VERBOSE_LOGGING) {
+      console.error(`❌ [${userId}] Su verisi sıfırlama hatası:`, error);
+    }
+    throw error; // Retry mekanizması için hatayı fırlat
   }
 };
 
@@ -919,6 +970,15 @@ exports.handler = async (event, context) => {
       body: '',
     };
   }
+
+  const startTime = Date.now();
+  const errorSummary = {
+    userErrors: 0,
+    waterResetErrors: 0,
+    waterNotificationErrors: 0,
+    supplementErrors: 0,
+    criticalErrors: [],
+  };
 
   try {
     console.log('🌙 Gece yarısı sıfırlama ve bildirim hesaplama başlatılıyor...');
@@ -949,92 +1009,231 @@ exports.handler = async (event, context) => {
     let waterNotificationCount = 0;
     let supplementNotificationCount = 0;
 
-    // Batch operations için hazırlık
-    const batch = createBatch();
-    const userBatches = new Map(); // Her kullanıcı için ayrı batch
+    // Hava durumu verisini bir kez al ve cache'le (tüm kullanıcılar için paylaşılacak)
+    console.log('🌤️ Hava durumu verisi alınıyor (tüm kullanıcılar için paylaşılacak)...');
+    const weatherResult = await executeWithRetry(
+      () => getDailyAverageWeatherData(),
+      'Hava durumu verisi alma'
+    );
+    const sharedWeatherData = weatherResult.success ? weatherResult.result : null;
+    
+    if (!sharedWeatherData) {
+      console.warn('⚠️ Hava durumu verisi alınamadı, işlem devam edecek (varsayılan değerler kullanılacak)');
+    }
 
-    console.log(`🔄 ${usersDocs.length} kullanıcı işleniyor...`);
-    for (const userDoc of usersDocs) {
-      if (!userDoc || !userDoc.id) {
-        console.warn("⚠️ Geçersiz kullanıcı dokümanı, atlanıyor");
-        continue;
-      }
+    // Kullanıcıları chunk'lara böl (paralel işleme için)
+    const CHUNK_SIZE = getChunkSize(); // Dinamik chunk size
+    const userChunks = [];
+    for (let i = 0; i < usersDocs.length; i += CHUNK_SIZE) {
+      userChunks.push(usersDocs.slice(i, i + CHUNK_SIZE));
+    }
+
+    console.log(`🔄 ${usersDocs.length} kullanıcı ${userChunks.length} chunk'a bölündü (her chunk ${CHUNK_SIZE} kullanıcı, ${ENABLE_VERBOSE_LOGGING ? 'verbose logging açık' : 'verbose logging kapalı'})`);
+
+    // Her chunk'ı paralel işle
+    for (let chunkIndex = 0; chunkIndex < userChunks.length; chunkIndex++) {
+      const chunk = userChunks[chunkIndex];
+      console.log(`📦 Chunk ${chunkIndex + 1}/${userChunks.length} işleniyor (${chunk.length} kullanıcı)...`);
       
-      const userId = userDoc.id;
-      totalUsers++;
+      const chunkStartTime = Date.now();
+      
+      // Chunk içindeki tüm kullanıcıları paralel işle
+      const chunkResults = await Promise.allSettled(
+        chunk.map(async (userDoc) => {
+          if (!userDoc || !userDoc.id) {
+            if (ENABLE_VERBOSE_LOGGING) {
+              console.warn("⚠️ Geçersiz kullanıcı dokümanı, atlanıyor");
+            }
+            return { success: false, skipped: true };
+          }
+          
+          const userId = userDoc.id;
+          const stats = {
+            waterReset: false,
+            waterNotification: false,
+            supplementNotifications: 0,
+          };
 
-      try {
-        // Kullanıcı için batch oluştur
-        if (!userBatches.has(userId)) {
-          userBatches.set(userId, createBatch());
-        }
-        const userBatch = userBatches.get(userId);
+          try {
+            // Paralel veri çekimi: Water ve supplements verilerini birlikte çek (retry ile)
+            const dataFetchResult = await executeWithRetry(async () => {
+              return await Promise.all([
+                db.collection('users').doc(userId).collection('water').doc('current').get(),
+                db.collection('users').doc(userId).collection('supplements').get(),
+              ]);
+            }, `[${userId}] Veri çekimi`);
 
-        // Su verilerini al
-        const waterDoc = await db.collection('users').doc(userId).collection('water').doc('current').get();
-        const waterData = waterDoc.exists ? waterDoc.data() : null;
+            if (!dataFetchResult.success) {
+              throw new Error(`Veri çekilemedi: ${dataFetchResult.error?.message}`);
+            }
 
-        // Su verilerini sıfırla
-        if (waterData) {
-          const waterReset = await resetWaterData(userId, waterData);
-          if (waterReset) waterResetCount++;
-        }
+            const [waterDoc, supplementsSnapshot] = dataFetchResult.result;
+            const waterData = waterDoc.exists ? waterDoc.data() : null;
 
-        // Su bildirimlerini hesapla
-        const waterNotification = await saveNextWaterReminderTime(userId);
-        if (waterNotification) waterNotificationCount++;
+            // Su verilerini sıfırla (retry ile)
+            if (waterData) {
+              const waterResetResult = await executeWithRetry(
+                () => resetWaterData(userId, waterData),
+                `[${userId}] Su verisi sıfırlama`
+              );
 
-        // Takviye bildirimlerini hesapla
-        try {
-          const supplementsSnapshot = await db.collection('users').doc(userId).collection('supplements').get();
-          if (supplementsSnapshot && supplementsSnapshot.docs) {
-            for (const suppDoc of supplementsSnapshot.docs) {
-              try {
-                const suppData = { ...suppDoc.data(), id: suppDoc.id };
-                if (!suppData.name) {
-                  console.warn(`⚠️ [${userId}] Takviye adı bulunamadı, atlanıyor`);
-                  continue;
+              if (waterResetResult.success && waterResetResult.result) {
+                stats.waterReset = true;
+                waterResetCount++;
+              } else if (!waterResetResult.success) {
+                errorSummary.waterResetErrors++;
+                if (ENABLE_VERBOSE_LOGGING) {
+                  console.error(`❌ [${userId}] Su verisi sıfırlama başarısız:`, waterResetResult.error?.message);
                 }
-                
-                const supplementNotification = await saveNextSupplementReminderTime(userId, suppData);
-                if (supplementNotification) {
-                  supplementNotificationCount++;
-                  console.log(`💊 [${userId}] Takviye bildirimi hesaplandı: ${suppData.name} - ${supplementNotification.toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })}`);
-                } else {
-                  console.log(`🔄 [${userId}] Takviye bildirimi hesaplanmadı: ${suppData.name} (günlük hedefe ulaşılmış veya bildirim yok)`);
-                }
-              } catch (suppError) {
-                console.error(`❌ [${userId}] Takviye işleme hatası (${suppDoc.id}):`, suppError);
               }
             }
-          } else {
-            console.log(`ℹ️ [${userId}] Takviye bulunamadı`);
+
+            // Su bildirimlerini hesapla (retry ile)
+            const waterNotificationResult = await executeWithRetry(
+              () => saveNextWaterReminderTime(userId),
+              `[${userId}] Su bildirimi hesaplama`
+            );
+
+            if (waterNotificationResult.success && waterNotificationResult.result) {
+              stats.waterNotification = true;
+              waterNotificationCount++;
+            } else if (!waterNotificationResult.success) {
+              errorSummary.waterNotificationErrors++;
+              if (ENABLE_VERBOSE_LOGGING) {
+                console.error(`❌ [${userId}] Su bildirimi hesaplama başarısız:`, waterNotificationResult.error?.message);
+              }
+            }
+
+            // Takviye bildirimlerini hesapla
+            if (supplementsSnapshot && supplementsSnapshot.docs) {
+              // Takviyeleri de paralel işle
+              const supplementPromises = supplementsSnapshot.docs.map(async (suppDoc) => {
+                try {
+                  const suppData = { ...suppDoc.data(), id: suppDoc.id };
+                  if (!suppData.name) {
+                    if (ENABLE_VERBOSE_LOGGING) {
+                      console.warn(`⚠️ [${userId}] Takviye adı bulunamadı, atlanıyor`);
+                    }
+                    return null;
+                  }
+                  
+                  // Takviye bildirimi hesaplama (retry ile)
+                  const supplementResult = await executeWithRetry(
+                    () => saveNextSupplementReminderTime(userId, suppData),
+                    `[${userId}] ${suppData.name} takviye bildirimi`
+                  );
+
+                  if (supplementResult.success && supplementResult.result) {
+                    stats.supplementNotifications++;
+                    if (ENABLE_VERBOSE_LOGGING) {
+                      console.log(`💊 [${userId}] ${suppData.name} bildirimi kaydedildi`);
+                    }
+                    return { name: suppData.name, time: supplementResult.result };
+                  } else if (!supplementResult.success) {
+                    errorSummary.supplementErrors++;
+                    if (ENABLE_VERBOSE_LOGGING) {
+                      console.error(`❌ [${userId}] ${suppData.name} takviye işleme hatası:`, supplementResult.error?.message);
+                    }
+                  }
+                  return null;
+                } catch (suppError) {
+                  errorSummary.supplementErrors++;
+                  console.error(`❌ [${userId}] Takviye işleme hatası (${suppDoc.id}):`, suppError);
+                  return null;
+                }
+              });
+
+              const supplementResults = await Promise.allSettled(supplementPromises);
+              supplementResults.forEach((result, index) => {
+                if (result.status === 'fulfilled' && result.value) {
+                  supplementNotificationCount++;
+                }
+              });
+            }
+
+            return { success: true, userId, stats };
+          } catch (error) {
+            errorSummary.userErrors++;
+            const errorInfo = {
+              userId,
+              error: error.message,
+              stack: error.stack,
+              timestamp: new Date().toISOString(),
+            };
+            
+            if (ENABLE_VERBOSE_LOGGING) {
+              console.error(`❌ [${userId}] Kullanıcı işleme hatası:`, error);
+            } else {
+              // Sadece kritik hataları logla
+              if (error.message?.includes('permission') || error.message?.includes('quota')) {
+                errorSummary.criticalErrors.push(errorInfo);
+                console.error(`🚨 [${userId}] KRİTİK HATA:`, error.message);
+              }
+            }
+            
+            return { success: false, userId, error: error.message };
           }
-        } catch (supplementsError) {
-          console.error(`❌ [${userId}] Takviye listesi alma hatası:`, supplementsError);
+        })
+      );
+
+      // Chunk sonuçlarını işle
+      chunkResults.forEach((result, index) => {
+        totalUsers++;
+        if (result.status === 'rejected') {
+          errorSummary.userErrors++;
+          console.error(`❌ Chunk ${chunkIndex + 1} - Kullanıcı işleme hatası:`, result.reason);
+        } else if (result.status === 'fulfilled' && result.value && result.value.success && ENABLE_VERBOSE_LOGGING) {
+          // Başarılı işlemler için log (sadece verbose logging açıksa)
+          console.log(`✅ [${result.value.userId}] İşlem tamamlandı`, result.value.stats);
         }
+      });
 
-      } catch (error) {
-        console.error(`❌ [${userId}] Kullanıcı işleme hatası:`, error);
+      const chunkDuration = Date.now() - chunkStartTime;
+      const avgTimePerUser = chunkDuration / chunk.length;
+      console.log(`✅ Chunk ${chunkIndex + 1}/${userChunks.length} tamamlandı (${chunkDuration}ms, ortalama: ${Math.round(avgTimePerUser)}ms/kullanıcı)`);
+      
+      // Netlify timeout riskini azaltmak için: Son chunk değilse ve çok uzun sürdüyse kısa bekleme
+      if (chunkIndex < userChunks.length - 1 && chunkDuration > 5000) {
+        // Chunk 5 saniyeden uzun sürdüyse, 100ms bekle (timeout riskini azalt)
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
 
-    // Tüm batch'leri commit et
-    console.log('🔄 Batch operations commit ediliyor...');
-    for (const [userId, userBatch] of userBatches) {
-      try {
-        await userBatch.commit();
-        console.log(`✅ [${userId}] Batch operations tamamlandı`);
-      } catch (error) {
-        console.error(`❌ [${userId}] Batch commit hatası:`, error);
-      }
-    }
-
+    const totalDuration = Date.now() - startTime;
+    const avgTimePerUser = totalUsers > 0 ? totalDuration / totalUsers : 0;
+    
     console.log(`✅ Gece yarısı işlemleri tamamlandı:`);
-    console.log(`   📊 Toplam kullanıcı: ${totalUsers}`);
-    console.log(`   💧 Su sıfırlama: ${waterResetCount}`);
-    console.log(`   💧 Su bildirim hesaplama: ${waterNotificationCount}`);
-    console.log(`   💊 Takviye bildirim hesaplama: ${supplementNotificationCount} takviye`);
+    console.log(`   ⏱️  Toplam süre: ${totalDuration}ms (${(totalDuration / 1000).toFixed(2)}s)`);
+    console.log(`   📊 Toplam kullanıcı: ${totalUsers} (ortalama: ${Math.round(avgTimePerUser)}ms/kullanıcı)`);
+    console.log(`   💧 Su sıfırlama: ${waterResetCount} (başarılı)`);
+    console.log(`   💧 Su bildirim hesaplama: ${waterNotificationCount} (başarılı)`);
+    console.log(`   💊 Takviye bildirim hesaplama: ${supplementNotificationCount} takviye (başarılı)`);
+    
+    // Hata özeti logla
+    if (errorSummary.userErrors > 0 || errorSummary.waterResetErrors > 0 || 
+        errorSummary.waterNotificationErrors > 0 || errorSummary.supplementErrors > 0) {
+      console.log(`   ⚠️  Hata Özeti:`);
+      if (errorSummary.userErrors > 0) {
+        console.log(`      - Kullanıcı işleme hataları: ${errorSummary.userErrors}`);
+      }
+      if (errorSummary.waterResetErrors > 0) {
+        console.log(`      - Su sıfırlama hataları: ${errorSummary.waterResetErrors}`);
+      }
+      if (errorSummary.waterNotificationErrors > 0) {
+        console.log(`      - Su bildirimi hesaplama hataları: ${errorSummary.waterNotificationErrors}`);
+      }
+      if (errorSummary.supplementErrors > 0) {
+        console.log(`      - Takviye işleme hataları: ${errorSummary.supplementErrors}`);
+      }
+      if (errorSummary.criticalErrors.length > 0) {
+        console.log(`      - 🚨 KRİTİK HATALAR: ${errorSummary.criticalErrors.length}`);
+        errorSummary.criticalErrors.forEach(criticalError => {
+          console.error(`         [${criticalError.userId}]: ${criticalError.error}`);
+        });
+      }
+    } else {
+      console.log(`   ✅ Tüm işlemler başarıyla tamamlandı (hata yok)`);
+    }
 
     return {
       statusCode: 200,
@@ -1047,12 +1246,23 @@ exports.handler = async (event, context) => {
           waterResetCount,
           waterNotificationCount,
           supplementNotificationCount,
+          duration: totalDuration,
+          avgTimePerUser: Math.round(avgTimePerUser),
+          errors: {
+            userErrors: errorSummary.userErrors,
+            waterResetErrors: errorSummary.waterResetErrors,
+            waterNotificationErrors: errorSummary.waterNotificationErrors,
+            supplementErrors: errorSummary.supplementErrors,
+            criticalErrors: errorSummary.criticalErrors.length,
+          },
         },
       }),
     };
 
   } catch (error) {
-    console.error('❌ Gece yarısı işlemleri hatası:', error);
+    const totalDuration = Date.now() - startTime;
+    console.error('❌ Gece yarısı işlemleri kritik hatası:', error);
+    console.error('   Stack:', error.stack);
     
     return {
       statusCode: 500,
@@ -1060,6 +1270,20 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({
         success: false,
         error: error.message,
+        duration: totalDuration,
+        stats: {
+          totalUsers,
+          waterResetCount,
+          waterNotificationCount,
+          supplementNotificationCount,
+        },
+        errorSummary: {
+          userErrors: errorSummary.userErrors,
+          waterResetErrors: errorSummary.waterResetErrors,
+          waterNotificationErrors: errorSummary.waterNotificationErrors,
+          supplementErrors: errorSummary.supplementErrors,
+          criticalErrors: errorSummary.criticalErrors,
+        },
       }),
     };
   }

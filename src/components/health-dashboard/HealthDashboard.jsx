@@ -613,6 +613,77 @@ const HealthDashboard = ({ user }) => {
     generateRecommendationsAsync(customizationInput);
   };
 
+  // Helper function: API çağrısını yapan fonksiyon
+  const callGeminiAPI = async (prompt) => {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro", generationConfig: { temperature: 0.85, topP: 0.95 } });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
+  };
+
+  // Helper function: Bekleme süresi (exponential backoff)
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+  // Helper function: Retry mekanizması ile API çağrısı
+  const callGeminiWithRetry = async (prompt, maxRetries = 3) => {
+    let lastError = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 Gemini API çağrısı - Deneme ${attempt}/${maxRetries}`);
+        
+        if (attempt > 1) {
+          // Exponential backoff: 1s, 2s, 4s
+          const delay = Math.pow(2, attempt - 2) * 1000;
+          updateGlobalState({
+            notificationMessage: `🔄 Bağlantı hatası alındı. ${attempt}/${maxRetries} deneme yapılıyor... (${delay/1000}s bekleniyor)`,
+            showSuccessNotification: true
+          });
+          await sleep(delay);
+        }
+        
+        const result = await callGeminiAPI(prompt);
+        
+        if (result && result.trim()) {
+          console.log(`✅ Gemini API başarılı - Deneme ${attempt}/${maxRetries}`);
+          return result;
+        } else {
+          throw new Error("API boş cevap döndü");
+        }
+      } catch (error) {
+        lastError = error;
+        console.error(`❌ Gemini API hatası - Deneme ${attempt}/${maxRetries}:`, error.message);
+        
+        // Eğer son denemede de hata alındıysa, döngüden çık
+        if (attempt === maxRetries) {
+          break;
+        }
+      }
+    }
+    
+    // Tüm denemeler başarısız oldu
+    throw lastError || new Error("API çağrısı başarısız oldu");
+  };
+
+  // Helper function: Hata mesajını kullanıcı dostu hale getir
+  const getErrorMessage = (error) => {
+    const errorMessage = error?.message || error?.toString() || "Bilinmeyen hata";
+    
+    if (errorMessage.includes("400")) {
+      return "API anahtarı geçersiz veya model bulunamadı. Lütfen ayarları kontrol edin.";
+    } else if (errorMessage.includes("403")) {
+      return "API erişim izni yok. Lütfen API anahtarınızı kontrol edin.";
+    } else if (errorMessage.includes("429")) {
+      return "API kullanım limiti aşıldı. Lütfen daha sonra tekrar deneyin.";
+    } else if (errorMessage.includes("network") || errorMessage.includes("fetch") || errorMessage.includes("timeout")) {
+      return "İnternet bağlantısı hatası. Lütfen bağlantınızı kontrol edip tekrar deneyin.";
+    } else if (errorMessage.includes("quota") || errorMessage.includes("limit")) {
+      return "API kotası dolmuş. Lütfen daha sonra tekrar deneyin.";
+    } else {
+      return "Öneri oluşturulurken bir sorun oluştu. Lütfen daha sonra tekrar deneyin.";
+    }
+  };
+
   const generateRecommendationsAsync = async (customizationInput = customization) => {
     try {
       const age = profileData.age;
@@ -1009,11 +1080,8 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
 21. Eğer kullanıcıdan ilgi alanı veya ruh hali bilgisi gelirse, bunu da dikkate al.
 22. Eğer öneri geçmişi varsa, işte son 10 öneri (tekrar etme!):\n${last10Recommendations}\n23. Son 10 öneride verilen öğünleri tekrar etme. İşte son 10 öğün önerisi: ${last10Meals}\n24. Son 10 okuma önerisindeki kitap ve makaleleri tekrar etme. İşte son 10 okuma önerisi: ${last10Readings}\n25. Son 10 izleme önerisindeki video, belgesel, dizi ve podcastleri tekrar etme. İşte son 10 izleme önerisi: ${last10Watchings}\n`
 
-      // Gemini AI kullanarak öneri oluştur (GA - Genel Kullanım, Pro model karmaşık JSON için daha iyi)
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro", generationConfig: { temperature: 0.85, topP: 0.95 } });
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const recommendationText = response.text();
+      // Retry mekanizması ile Gemini API çağrısı yap
+      const recommendationText = await callGeminiWithRetry(prompt, 3);
 
       if (recommendationText) {
         const newRecommendation = {
@@ -1040,7 +1108,7 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
           recommendationsHistory: updatedHistory,
         }));
 
-        // İşlem başarılıysa Gemini kullanım sayacını artır
+        // İşlem başarılıysa Gemini kullanım sayacını artır (sadece başarılı durumda!)
         incrementGeminiUsage();
 
         setApiCooldown(true);
@@ -1066,30 +1134,29 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
         }, 5000);
       }
     } catch (error) {
-      console.error("Gemini API Hatası:", error);
+      console.error("Gemini API Hatası (Tüm Denemeler Başarısız):", error);
       console.error("Hata Detayları:", error.response || error.message);
+      
+      // Hata durumunda sayacı ARTIRMA (zaten catch bloğunda, başarılı değil)
+      // incrementGeminiUsage() çağrılmıyor - bu doğru!
+      
+      // Kullanıcı dostu hata mesajı
+      const userFriendlyError = getErrorMessage(error);
       
       // Hata bildirimi göster
       updateGlobalState({
         isGenerating: false,
-        notificationMessage: "❌ Öneri oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.",
+        notificationMessage: `❌ ${userFriendlyError}`,
         showSuccessNotification: true
       });
+      
+      // Toast mesajı göster
+      toast.error(userFriendlyError);
       
       // 5 saniye sonra bildirimi kapat
       setTimeout(() => {
         updateGlobalState({ showSuccessNotification: false });
       }, 5000);
-      
-      if (error.message?.includes("400")) {
-        toast.error("API anahtarı geçersiz veya model bulunamadı. Lütfen ayarları kontrol edin.");
-      } else if (error.message?.includes("403")) {
-        toast.error("API erişim izni yok. Lütfen API anahtarınızı kontrol edin.");
-      } else if (error.message?.includes("429")) {
-        toast.error("API kullanım limiti aşıldı. Lütfen daha sonra tekrar deneyin.");
-      } else {
-        toast.error("Öneri oluşturulamadı: " + error.message);
-      }
     }
   };
 

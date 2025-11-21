@@ -2194,43 +2194,54 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
           </Typography>
         </DialogTitle>
         <DialogContent sx={{ py: { xs: 2, sm: 3 }, px: { xs: 1, sm: 4 } }}>
-          {Object.entries(CUSTOMIZABLE_FIELDS).map(([key, field]) => (
-            <FormControl key={key} fullWidth margin="normal" sx={{ mb: { xs: 1.5, sm: 2 } }}>
-              <InputLabel sx={{ color: '#fff', fontWeight: 600, fontSize: { xs: '0.95rem', sm: '1rem' } }}>{field.icon} {field.label}</InputLabel>
-              <Select
-                value={customization[key] || ''}
-                label={field.label}
-                onChange={e => handleCustomizationChange(key, e.target.value)}
-                sx={{
-                  background: 'rgba(255,255,255,0.08)',
-                  color: '#fff',
-                  borderRadius: 2,
-                  fontWeight: 500,
-                  fontSize: { xs: '0.95rem', sm: '1rem' },
-                  '& .MuiSelect-icon': { color: '#fff' },
-                  '& .MuiOutlinedInput-notchedOutline': { borderColor: '#fff' },
-                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#FFD700' },
-                }}
-                MenuProps={{
-                  PaperProps: {
-                    sx: {
-                      bgcolor: '#fff',
-                      color: '#222',
-                      borderRadius: 2,
-                      boxShadow: 6,
-                      maxHeight: 320,
-                      fontSize: { xs: '0.95rem', sm: '1rem' }
+          {Object.entries(CUSTOMIZABLE_FIELDS).map(([key, field]) => {
+            // Options'ları sırala: "Fark etmez" en başta, diğerleri alfabetik
+            const sortedOptions = [...field.options].sort((a, b) => {
+              // "Fark etmez" her zaman en başta
+              if (a === 'Fark etmez') return -1;
+              if (b === 'Fark etmez') return 1;
+              // Diğerleri alfabetik (Türkçe karakterleri de dikkate alarak)
+              return a.localeCompare(b, 'tr', { sensitivity: 'base' });
+            });
+
+            return (
+              <FormControl key={key} fullWidth margin="normal" sx={{ mb: { xs: 1.5, sm: 2 } }}>
+                <InputLabel sx={{ color: '#fff', fontWeight: 600, fontSize: { xs: '0.95rem', sm: '1rem' } }}>{field.icon} {field.label}</InputLabel>
+                <Select
+                  value={customization[key] || ''}
+                  label={field.label}
+                  onChange={e => handleCustomizationChange(key, e.target.value)}
+                  sx={{
+                    background: 'rgba(255,255,255,0.08)',
+                    color: '#fff',
+                    borderRadius: 2,
+                    fontWeight: 500,
+                    fontSize: { xs: '0.95rem', sm: '1rem' },
+                    '& .MuiSelect-icon': { color: '#fff' },
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: '#fff' },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#FFD700' },
+                  }}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        bgcolor: '#fff',
+                        color: '#222',
+                        borderRadius: 2,
+                        boxShadow: 6,
+                        maxHeight: 320,
+                        fontSize: { xs: '0.95rem', sm: '1rem' }
+                      }
                     }
-                  }
-                }}
-              >
-                <MenuItem value="">Seçiniz</MenuItem>
-                {field.options.map(opt => (
-                  <MenuItem key={opt} value={opt}>{opt}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          ))}
+                  }}
+                >
+                  <MenuItem value="">Seçiniz</MenuItem>
+                  {sortedOptions.map(opt => (
+                    <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            );
+          })}
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'space-between', px: { xs: 1, sm: 3 }, pb: { xs: 1.5, sm: 2 } }}>
           <Button onClick={handleCustomizationClear} sx={{ color: '#fff', fontWeight: 600, textTransform: 'none', fontSize: { xs: '0.95rem', sm: '1rem' } }}>Temizle</Button>

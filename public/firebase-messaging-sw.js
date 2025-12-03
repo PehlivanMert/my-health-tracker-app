@@ -87,24 +87,37 @@ self.skipWaiting();
 
 // 3. Fetch event: Önce önbellekten yanıtla, yoksa ağa başvur; navigasyon istekleri offline.html ile yanıtlasın
 self.addEventListener("fetch", (event) => {
-  // Sadece GET isteklerini işle
-  if (event.request.method !== "GET") {
-    return;
-  }
+  const request = event.request;
   
   // Chrome extension isteklerini yok say
-  if (event.request.url.startsWith("chrome-extension://")) {
+  if (request.url.startsWith("chrome-extension://")) {
     return;
   }
   
-  // Firebase isteklerini yok say
-  if (event.request.url.includes("firebase") || event.request.url.includes("googleapis")) {
-    return;
-  }
+  // API isteklerini ve POST/PUT/DELETE isteklerini bypass et (doğrudan ağa git)
+  const isAPIRequest = 
+    request.url.includes("googleapis.com") ||
+    request.url.includes("generativelanguage.googleapis.com") ||
+    request.url.includes("firebase") ||
+    request.url.includes("/api/") ||
+    request.method !== "GET"; // POST/PUT/DELETE isteklerini bypass et
   
-  if (event.request.mode === "navigate") {
+  if (isAPIRequest) {
+    // API isteklerini doğrudan ağa yönlendir, cache'leme
     event.respondWith(
-      fetch(event.request)
+      fetch(request).catch((error) => {
+        console.error("API request failed:", request.url, error);
+        throw error;
+      })
+    );
+    return;
+  }
+  
+  // Sadece GET isteklerini cache ile işle (statik dosyalar için)
+  
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
         .then((response) => {
           // İsteğin başarılı olması durumunda, cache'i de güncelleyebilirsiniz.
           return response;
@@ -116,12 +129,12 @@ self.addEventListener("fetch", (event) => {
     );
   } else {
     event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
+      caches.match(request).then((cachedResponse) => {
         if (cachedResponse) {
           return cachedResponse;
         }
         
-        return fetch(event.request).catch((error) => {
+        return fetch(request).catch((error) => {
           console.log("Fetch error for resource:", error);
           // Eğer fetch başarısız olursa, boş response döndür
           return new Response("", { status: 404, statusText: "Not Found" });

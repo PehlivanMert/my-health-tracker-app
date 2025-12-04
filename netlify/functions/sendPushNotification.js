@@ -18,6 +18,279 @@ const getTurkeyTime = () => {
   );
 };
 
+// Sıvı türü etiketleri (Türkçe)
+const DRINK_LABELS = {
+  water: 'Su',
+  herbalTea: 'Bitki Çayı',
+  blackTea: 'Siyah Çay',
+  greenTea: 'Yeşil Çay',
+  mineralWater: 'Maden Suyu',
+  ayran: 'Ayran',
+  milk: 'Süt',
+  juice: 'Meyve Suyu',
+  vegetableJuice: 'Sebze Suyu',
+  compote: 'Komposto',
+  filterCoffee: 'Filtre Kahve',
+  turkishCoffee: 'Türk Kahvesi',
+  espresso: 'Espresso',
+  americano: 'Americano',
+  milkCoffee: 'Sütlü Kahve',
+};
+
+// Kullanıcının sıvı tüketim geçmişini alır
+const getWaterHistory = async (userId) => {
+  const waterDoc = await db
+    .collection("users")
+    .doc(userId)
+    .collection("water")
+    .doc("current")
+    .get();
+  
+  if (!waterDoc.exists) {
+    return { drinkHistory: [], history: [] };
+  }
+  
+  const waterData = waterDoc.data();
+  return {
+    drinkHistory: waterData.drinkHistory || [],
+    history: waterData.history || [],
+  };
+};
+
+// Belirli bir tarih aralığındaki sıvı tüketim özetini hesaplar
+const calculateDrinkSummary = (drinkHistory, startDate, endDate) => {
+  const summary = {};
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999); // Günün sonuna kadar
+  
+  drinkHistory.forEach((entry) => {
+    const entryDate = new Date(entry.date);
+    if (entryDate >= start && entryDate <= end && entry.amount > 0 && !entry.action) {
+      const drinkType = entry.type || 'water';
+      if (!summary[drinkType]) {
+        summary[drinkType] = {
+          totalAmount: 0,
+          count: 0,
+          label: DRINK_LABELS[drinkType] || drinkType,
+        };
+      }
+      summary[drinkType].totalAmount += Math.abs(entry.amount || 0);
+      summary[drinkType].count += 1;
+    }
+  });
+  
+  return summary;
+};
+
+// Haftalık özet hesaplama (geçen hafta - Pazartesi başlangıçlı)
+const getWeeklySummary = async (userId) => {
+  const turkeyTime = getTurkeyTime();
+  const today = new Date(turkeyTime);
+  
+  // Bugün Pazartesi ise, geçen haftayı (önceki Pazartesi'den önceki Pazar'a kadar) kontrol et
+  // Bu haftanın Pazartesi gününü bul (0 = Pazar, 1 = Pazartesi)
+  const dayOfWeek = today.getDay(); // 0 = Pazar, 1 = Pazartesi, ..., 6 = Cumartesi
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Pazartesi'ye kaç gün var
+  
+  // Bu haftanın Pazartesi günü (bugün dahil)
+  const thisWeekMonday = new Date(today);
+  thisWeekMonday.setDate(today.getDate() - daysToMonday);
+  thisWeekMonday.setHours(0, 0, 0, 0);
+  
+  // Geçen haftanın başlangıç (Pazartesi) ve bitiş (Pazar) tarihleri
+  const lastWeekStart = new Date(thisWeekMonday);
+  lastWeekStart.setDate(thisWeekMonday.getDate() - 7);
+  lastWeekStart.setHours(0, 0, 0, 0);
+  
+  const lastWeekEnd = new Date(lastWeekStart);
+  lastWeekEnd.setDate(lastWeekStart.getDate() + 6);
+  lastWeekEnd.setHours(23, 59, 59, 999);
+  
+  // Önceki hafta (karşılaştırma için)
+  const previousWeekStart = new Date(lastWeekStart);
+  previousWeekStart.setDate(lastWeekStart.getDate() - 7);
+  previousWeekStart.setHours(0, 0, 0, 0);
+  
+  const previousWeekEnd = new Date(previousWeekStart);
+  previousWeekEnd.setDate(previousWeekStart.getDate() + 6);
+  previousWeekEnd.setHours(23, 59, 59, 999);
+  
+  const { drinkHistory } = await getWaterHistory(userId);
+  
+  return {
+    period: {
+      start: lastWeekStart,
+      end: lastWeekEnd,
+      label: 'Geçen Hafta',
+    },
+    previous: {
+      start: previousWeekStart,
+      end: previousWeekEnd,
+      label: 'Önceki Hafta',
+    },
+    summary: calculateDrinkSummary(drinkHistory, lastWeekStart, lastWeekEnd),
+    previousSummary: calculateDrinkSummary(drinkHistory, previousWeekStart, previousWeekEnd),
+  };
+};
+
+// Aylık özet hesaplama (geçen ay)
+const getMonthlySummary = async (userId) => {
+  const turkeyTime = getTurkeyTime();
+  const today = new Date(turkeyTime);
+  
+  // Geçen ayın başlangıç ve bitiş tarihleri
+  const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
+  
+  // Önceki ay (karşılaştırma için)
+  const previousMonthEnd = new Date(lastMonthStart.getFullYear(), lastMonthStart.getMonth(), 0, 23, 59, 59, 999);
+  const previousMonthStart = new Date(previousMonthEnd.getFullYear(), previousMonthEnd.getMonth(), 1);
+  
+  const { drinkHistory } = await getWaterHistory(userId);
+  
+  return {
+    period: {
+      start: lastMonthStart,
+      end: lastMonthEnd,
+      label: 'Geçen Ay',
+    },
+    previous: {
+      start: previousMonthStart,
+      end: previousMonthEnd,
+      label: 'Önceki Ay',
+    },
+    summary: calculateDrinkSummary(drinkHistory, lastMonthStart, lastMonthEnd),
+    previousSummary: calculateDrinkSummary(drinkHistory, previousMonthStart, previousMonthEnd),
+  };
+};
+
+// Yıllık özet hesaplama (geçen yıl)
+const getYearlySummary = async (userId) => {
+  const turkeyTime = getTurkeyTime();
+  const today = new Date(turkeyTime);
+  
+  // Geçen yılın başlangıç ve bitiş tarihleri
+  const lastYearStart = new Date(today.getFullYear() - 1, 0, 1);
+  const lastYearEnd = new Date(today.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
+  
+  // Önceki yıl (karşılaştırma için)
+  const previousYearStart = new Date(today.getFullYear() - 2, 0, 1);
+  const previousYearEnd = new Date(today.getFullYear() - 2, 11, 31, 23, 59, 59, 999);
+  
+  const { drinkHistory } = await getWaterHistory(userId);
+  
+  return {
+    period: {
+      start: lastYearStart,
+      end: lastYearEnd,
+      label: 'Geçen Yıl',
+    },
+    previous: {
+      start: previousYearStart,
+      end: previousYearEnd,
+      label: 'Önceki Yıl',
+    },
+    summary: calculateDrinkSummary(drinkHistory, lastYearStart, lastYearEnd),
+    previousSummary: calculateDrinkSummary(drinkHistory, previousYearStart, previousYearEnd),
+  };
+};
+
+// Motivasyonel mesajlar oluşturur (push notification için kısa ve öz)
+const createMotivationalMessage = (summary, previousSummary, periodType) => {
+  const periodLabels = {
+    weekly: { current: 'bu hafta', previous: 'önceki hafta', period: 'Haftalık' },
+    monthly: { current: 'bu ay', previous: 'önceki ay', period: 'Aylık' },
+    yearly: { current: 'bu yıl', previous: 'önceki yıl', period: 'Yıllık' },
+  };
+  
+  const labels = periodLabels[periodType] || periodLabels.weekly;
+  
+  // Her sıvı türü için mesaj oluştur
+  const allDrinkTypes = new Set([
+    ...Object.keys(summary),
+    ...Object.keys(previousSummary),
+  ]);
+  
+  if (allDrinkTypes.size === 0) {
+    return `${labels.period} özetin hazır! Henüz sıvı tüketim verisi yok. Başlamak için harika bir zaman! 💧`;
+  }
+  
+  // En çok tüketilenleri sırala
+  const sortedDrinks = Array.from(allDrinkTypes)
+    .map(type => ({
+      type,
+      current: summary[type]?.totalAmount || 0,
+      previous: previousSummary[type]?.totalAmount || 0,
+      label: DRINK_LABELS[type] || type,
+      count: summary[type]?.count || 0,
+    }))
+    .filter(item => item.current > 0)
+    .sort((a, b) => b.current - a.current);
+  
+  if (sortedDrinks.length === 0) {
+    return `${labels.period} özetin hazır! Bu dönemde sıvı tüketimi yok. Başlamak için mükemmel bir zaman! 💧`;
+  }
+  
+  // En çok tüketilen 3 sıvıyı göster
+  const topDrinks = sortedDrinks.slice(0, 3);
+  
+  // Toplam su tüketimi hesapla
+  const totalCurrent = Object.values(summary).reduce((sum, item) => sum + item.totalAmount, 0);
+  const totalPrevious = Object.values(previousSummary).reduce((sum, item) => sum + item.totalAmount, 0);
+  const totalDiff = totalCurrent - totalPrevious;
+  const totalDiffPercent = totalPrevious > 0 
+    ? Math.round((totalDiff / totalPrevious) * 100) 
+    : (totalCurrent > 0 ? 100 : 0);
+  
+  // Kısa özet mesajı oluştur (en önemli 2-3 sıvıyı göster)
+  const topDrinksList = topDrinks.slice(0, 3).map(drink => {
+    const diff = drink.current - drink.previous;
+    const diffPercent = drink.previous > 0 
+      ? Math.round((diff / drink.previous) * 100) 
+      : (drink.current > 0 ? 100 : 0);
+    
+    let emoji = '💧';
+    if (drink.type.includes('Coffee') || drink.type.includes('coffee')) emoji = '☕';
+    else if (drink.type.includes('Tea') || drink.type.includes('tea')) emoji = '🍵';
+    else if (drink.type === 'water') emoji = '💧';
+    else if (drink.type === 'juice' || drink.type === 'vegetableJuice') emoji = '🧃';
+    else if (drink.type === 'ayran' || drink.type === 'milk') emoji = '🥛';
+    
+    let trend = '';
+    if (diff > 0 && diffPercent > 5) {
+      trend = ` (+%${diffPercent})`;
+    } else if (diff < 0 && Math.abs(diffPercent) > 5) {
+      trend = ` (-%${Math.abs(diffPercent)})`;
+    }
+    
+    const amountInLiters = (drink.current / 1000).toFixed(1);
+    return `${emoji} ${drink.label}: ${amountInLiters}L${trend}`;
+  }).join(', ');
+  
+  // Toplam tüketim ve trend mesajı
+  const totalInLiters = (totalCurrent / 1000).toFixed(1);
+  const totalPreviousInLiters = totalPrevious > 0 ? (totalPrevious / 1000).toFixed(1) : 0;
+  let overallTrend = '';
+  
+  if (totalPrevious === 0) {
+    // Önceki dönemde veri yoksa
+    overallTrend = `Toplam ${totalInLiters}L tükettin! İlk ${labels.period.toLowerCase()} özetin bu! 🎉`;
+  } else if (totalDiff > 0 && totalDiffPercent > 5) {
+    overallTrend = `Toplam ${totalInLiters}L - ${labels.previous}den %${totalDiffPercent} fazla! Harika! 🎉`;
+  } else if (totalDiff < 0 && Math.abs(totalDiffPercent) > 5) {
+    overallTrend = `Toplam ${totalInLiters}L - ${labels.previous}den %${Math.abs(totalDiffPercent)} az. Biraz daha çaba! 💪`;
+  } else {
+    overallTrend = `Toplam ${totalInLiters}L - ${labels.previous} ile aynı! İstikrarlı devam! ✨`;
+  }
+  
+  // Push notification için kısa ve öz mesaj (maksimum 200 karakter)
+  if (topDrinksList) {
+    return `${topDrinksList}. ${overallTrend}`;
+  }
+  return overallTrend;
+};
+
 // Rutin tamamlanma durumunu kontrol eder
 const getRoutineCompletedStatus = (routine, currentDateStr) => {
   if (routine.repeat && routine.repeat !== "none") {
@@ -549,6 +822,120 @@ exports.handler = async (event, context) => {
           console.log(`⏰ [${userDoc.id}] Varsayılan bildirim penceresi kullanılıyor: ${notificationWindow.start}-${notificationWindow.end}`);
         }
 
+        // ---------- Sıvı Tüketim Özet Bildirimleri (Bildirim penceresi başlangıcında) ----------
+        if (isWithinNotificationWindow) {
+          // Bildirim penceresi başlangıcı kontrolü
+          const isWindowStart = (() => {
+            if (!notificationWindow || !notificationWindow.start) return false;
+            const [nowHour, nowMinute] = now
+              .toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })
+              .split(":")
+              .map(Number);
+            const nowTotalMinutes = nowHour * 60 + nowMinute;
+            const [startH, startM] = notificationWindow.start.split(":").map(Number);
+            const startTotalMinutes = startH * 60 + startM;
+            return nowTotalMinutes === startTotalMinutes;
+          })();
+          
+          if (isWindowStart) {
+            const turkeyTime = getTurkeyTime();
+            const dayOfWeek = turkeyTime.getDay(); // 0 = Pazar, 1 = Pazartesi
+            const dayOfMonth = turkeyTime.getDate();
+            const month = turkeyTime.getMonth() + 1; // 1-12
+            const year = turkeyTime.getFullYear();
+            
+            // Pazartesi kontrolü (haftalık özet)
+            if (dayOfWeek === 1) {
+              try {
+                console.log(`📊 [${userDoc.id}] Haftalık sıvı tüketim özeti hesaplanıyor...`);
+                const weeklyData = await getWeeklySummary(userDoc.id);
+                const message = createMotivationalMessage(
+                  weeklyData.summary,
+                  weeklyData.previousSummary,
+                  'weekly'
+                );
+                
+                const hasCurrentData = Object.keys(weeklyData.summary).length > 0;
+                const hasPreviousData = Object.keys(weeklyData.previousSummary).length > 0;
+                
+                if (hasCurrentData || hasPreviousData) {
+                  notificationsForThisUser.push({
+                    tokens: fcmTokens,
+                    data: {
+                      title: "📅 Geçen Haftanın Sıvı Tüketim Özetin!",
+                      body: message,
+                      type: "water-summary-weekly",
+                    },
+                  });
+                  console.log(`✅ [${userDoc.id}] Haftalık sıvı tüketim özeti bildirimi eklendi`);
+                }
+              } catch (error) {
+                console.error(`❌ [${userDoc.id}] Haftalık özet hatası:`, error);
+              }
+            }
+            
+            // Ayın 1'i kontrolü (aylık özet)
+            if (dayOfMonth === 1) {
+              try {
+                console.log(`📊 [${userDoc.id}] Aylık sıvı tüketim özeti hesaplanıyor...`);
+                const monthlyData = await getMonthlySummary(userDoc.id);
+                const message = createMotivationalMessage(
+                  monthlyData.summary,
+                  monthlyData.previousSummary,
+                  'monthly'
+                );
+                
+                const hasCurrentData = Object.keys(monthlyData.summary).length > 0;
+                const hasPreviousData = Object.keys(monthlyData.previousSummary).length > 0;
+                
+                if (hasCurrentData || hasPreviousData) {
+                  notificationsForThisUser.push({
+                    tokens: fcmTokens,
+                    data: {
+                      title: "📆 Geçen Ayın Sıvı Tüketim Özetin!",
+                      body: message,
+                      type: "water-summary-monthly",
+                    },
+                  });
+                  console.log(`✅ [${userDoc.id}] Aylık sıvı tüketim özeti bildirimi eklendi`);
+                }
+              } catch (error) {
+                console.error(`❌ [${userDoc.id}] Aylık özet hatası:`, error);
+              }
+            }
+            
+            // 1 Ocak kontrolü (yıllık özet)
+            if (dayOfMonth === 1 && month === 1) {
+              try {
+                console.log(`📊 [${userDoc.id}] Yıllık sıvı tüketim özeti hesaplanıyor...`);
+                const yearlyData = await getYearlySummary(userDoc.id);
+                const message = createMotivationalMessage(
+                  yearlyData.summary,
+                  yearlyData.previousSummary,
+                  'yearly'
+                );
+                
+                const hasCurrentData = Object.keys(yearlyData.summary).length > 0;
+                const hasPreviousData = Object.keys(yearlyData.previousSummary).length > 0;
+                
+                if (hasCurrentData || hasPreviousData) {
+                  notificationsForThisUser.push({
+                    tokens: fcmTokens,
+                    data: {
+                      title: "📅 Geçen Yılın Sıvı Tüketim Özetin!",
+                      body: message,
+                      type: "water-summary-yearly",
+                    },
+                  });
+                  console.log(`✅ [${userDoc.id}] Yıllık sıvı tüketim özeti bildirimi eklendi`);
+                }
+              } catch (error) {
+                console.error(`❌ [${userDoc.id}] Yıllık özet hatası:`, error);
+              }
+            }
+          }
+        }
+
         // ---------- Su Bildirimleri (Global bildirim penceresi kontrolü geçerse) ----------
         if (isWithinNotificationWindow && waterSnap && waterSnap.exists) {
           console.log(`💧 [${userDoc.id}] Su bildirimleri kontrol ediliyor`);
@@ -912,85 +1299,92 @@ exports.handler = async (event, context) => {
                   if (hasIncompleteSupplements) {
                 console.log(`✅ [${userDoc.id}] GÜN SONU TAKVİYE ÖZET (${summaryTimeStr}): ${incompleteSupplements.length} takviye tamamlanmadı`);
                 
-                const incompleteList = incompleteSupplements.map(s => `${s.name} (${s.consumed}/${s.daily})`).join(', ');
-                const summaryMessages = [
-                  `📋 Gün sonu özeti: ${incompleteList} - Yarın daha iyi yapabilirsin! 🌅`,
-                  `📊 Bugünkü durum: ${incompleteList} - Sağlığın için düzenli kullanımı unutma! 💪`,
-                  `📈 Günlük hedef: ${incompleteList} - Yarın tamamlamak için motive ol! 🎯`,
-                  `📝 Özet: ${incompleteList} - Sağlıklı yaşam için istikrarlı ol! 🌟`,
-                  `🔍 Günlük kontrol: ${incompleteList} - Yarın daha dikkatli ol! 🎯`,
-                  `📅 Bugünkü performans: ${incompleteList} - İyileştirme zamanı! 🚀`,
-                  `📊 Sağlık raporu: ${incompleteList} - Yarın daha iyi olacak! 🌈`,
-                  `📋 Günlük değerlendirme: ${incompleteList} - Hedeflere odaklan! 🎯`,
-                  `📈 İlerleme durumu: ${incompleteList} - Bir sonraki gün daha iyi! 💪`,
-                  `📝 Günlük notlar: ${incompleteList} - Sağlığın için önemli! 🌟`,
-                  `🔍 Detaylı özet: ${incompleteList} - Yarın tamamla! 🎯`,
-                  `📊 Performans analizi: ${incompleteList} - İyileştirme fırsatı! 🚀`,
-                  `📅 Günlük plan: ${incompleteList} - Yarın daha organize ol! 📋`,
-                  `📈 Hedef takibi: ${incompleteList} - Sağlığın için devam et! 💪`,
-                  `📝 Günlük değerlendirme: ${incompleteList} - Yarın daha iyi yap! 🌟`,
-                  `🔍 Sağlık kontrolü: ${incompleteList} - Düzenli kullanım önemli! 🎯`,
-                  `📊 Günlük istatistik: ${incompleteList} - İyileştirme zamanı! 📈`,
-                  `📅 Sağlık planı: ${incompleteList} - Yarın daha dikkatli ol! 🎯`,
-                  `📈 İlerleme raporu: ${incompleteList} - Hedeflere odaklan! 💪`,
-                  `📝 Günlük özet: ${incompleteList} - Sağlığın için devam et! 🌟`,
-                  `🔍 Detaylı analiz: ${incompleteList} - Yarın tamamla! 🎯`,
-                  `📊 Performans raporu: ${incompleteList} - İyileştirme fırsatı! 🚀`,
-                  `📅 Günlük değerlendirme: ${incompleteList} - Daha organize ol! 📋`,
-                  `📈 Hedef analizi: ${incompleteList} - Sağlığın için önemli! 💪`,
-                  `📝 Günlük kontrol: ${incompleteList} - Yarın daha iyi yap! 🌟`,
-                  `🔍 Sağlık özeti: ${incompleteList} - Düzenli kullanım önemli! 🎯`,
-                  `📊 Günlük değerlendirme: ${incompleteList} - İyileştirme zamanı! 📈`,
-                  `📅 İlerleme planı: ${incompleteList} - Yarın daha dikkatli ol! 🎯`,
-                  `📈 Sağlık takibi: ${incompleteList} - Hedeflere odaklan! 💪`,
-                  `📝 Günlük analiz: ${incompleteList} - Sağlığın için devam et! 🌟`,
-                ];
+                // Push notification limitine uygun kısa mesaj oluştur
+                const maxShowCount = incompleteSupplements.length > 5 ? 2 : 3; // Çok fazla varsa 2 göster
+                const shownSupplements = incompleteSupplements.slice(0, maxShowCount);
+                const remainingCount = incompleteSupplements.length - maxShowCount;
+                
+                // Kısa takviye listesi oluştur (isim kısaltma)
+                const shortenName = (name) => {
+                  if (name.length <= 12) return name;
+                  const words = name.split(' ');
+                  if (words.length > 1) {
+                    // İlk iki kelimeyi al veya sadece ilk kelimeyi
+                    return words.slice(0, 2).join(' ').substring(0, 12) + (words.length > 2 ? '...' : '');
+                  }
+                  return name.substring(0, 12) + '...';
+                };
+                
+                const shortList = shownSupplements.map(s => {
+                  const shortName = shortenName(s.name);
+                  // Sadece eksik miktarı göster (örn: "D Vitamini (1 eksik)")
+                  const missing = s.daily - s.consumed;
+                  return missing > 0 ? `${shortName} (${missing} eksik)` : shortName;
+                }).join(', ');
+                
+                let supplementList = shortList;
+                if (remainingCount > 0) {
+                  supplementList = `${shortList} +${remainingCount}`;
+                }
+                
+                // Eğer çok fazla takviye varsa (5'ten fazla), sadece sayı göster
+                if (incompleteSupplements.length > 5) {
+                  supplementList = `${incompleteSupplements.length} takviye eksik`;
+                }
+                
+                // Mesaj oluştur (push notification limitine uygun - max 180 karakter)
+                let selectedMessage;
+                
+                if (incompleteSupplements.length > 5) {
+                  // Çok fazla takviye varsa sadece sayı göster
+                  const countMessages = [
+                    `${incompleteSupplements.length} takviye eksik. Yarın tamamla! 💪`,
+                    `${incompleteSupplements.length} takviye tamamlanmadı. Hedeflerine ulaş! 🎯`,
+                    `${incompleteSupplements.length} takviye kaldı. Yarın daha iyi yap! 🌟`,
+                  ];
+                  selectedMessage = countMessages[Math.floor(Math.random() * countMessages.length)];
+                } else {
+                  // Az takviye varsa detayları göster
+                  const detailMessages = [
+                    `${incompleteSupplements.length} takviye eksik: ${supplementList}. Yarın tamamla! 💪`,
+                    `Tamamlanmayan: ${supplementList}. Hedeflerine ulaş! 🎯`,
+                    `${incompleteSupplements.length} takviye kaldı: ${supplementList}. Yarın daha iyi yap! 🌟`,
+                    `Gün sonu: ${supplementList}. Düzenli kullanım önemli! 💊`,
+                  ];
+                  
+                  // En kısa mesajı seç (180 karakter limitine uygun)
+                  selectedMessage = detailMessages
+                    .filter(msg => msg.length <= 180)
+                    .sort((a, b) => a.length - b.length)[0] 
+                    || `${incompleteSupplements.length} takviye eksik. Yarın tamamla! 💪`;
+                }
                 
                 notificationsForThisUser.push({
                   tokens: fcmTokens,
                   data: {
-                    title: "Günlük Takviye Özeti",
-                    body: summaryMessages[Math.floor(Math.random() * summaryMessages.length)],
+                    title: incompleteSupplements.length === 1 
+                      ? "💊 1 Takviye Eksik" 
+                      : `💊 ${incompleteSupplements.length} Takviye Eksik`,
+                    body: selectedMessage,
                     type: "supplement-summary",
                   },
                 });
               } else {
                 console.log(`✅ [${userDoc.id}] GÜN SONU TAKVİYE ÖZET (${summaryTimeStr}): Tüm takviyeler tamamlandı!`);
                 
-                // Tüm takviyeler tamamlandığında da bildirim gönder
+                // Tüm takviyeler tamamlandığında da bildirim gönder (kısa ve öz)
+                const totalSupplementsCount = activeSupplements.length;
                 const successMessages = [
-                  `🎉 Mükemmel! Bugün tüm takviyelerini tamamladın! Sağlığın için harika bir gün! 🌟`,
-                  `🏆 Harika performans! Günlük takviye hedeflerinin hepsine ulaştın! 💪`,
-                  `⭐ Süper! Bugün tüm takviyelerini aldın, vücudun sana teşekkür ediyor! 🎯`,
-                  `🌟 İnanılmaz! Günlük takviye rutinini mükemmel şekilde tamamladın! 🏅`,
-                  `🎊 Tebrikler! Bugün tüm takviyelerini başarıyla aldın! Sağlıklı yaşam için büyük adım! 🌈`,
-                  `💎 Mükemmel disiplin! Günlük takviye hedeflerinin hepsini gerçekleştirdin! ✨`,
-                  `🏅 Harika! Bugün tüm takviyelerini tamamladın, sağlığın için en iyisini yapıyorsun! 🌟`,
-                  `🎯 Süper başarı! Günlük takviye rutinini kusursuz şekilde tamamladın! 💎`,
-                  `🚀 Fantastik! Tüm takviyelerini tamamladın, vücudun sana minnettar! 🌟`,
-                  `✨ Muhteşem! Günlük takviye hedeflerinin hepsine ulaştın! 💪`,
-                  `🌟 Harika! Bugün tüm takviyelerini aldın, sağlığın için en iyisini yapıyorsun! 🎯`,
-                  `🏆 Mükemmel! Günlük takviye rutinini başarıyla tamamladın! 🏅`,
-                  `🎊 Süper! Bugün tüm takviyelerini tamamladın! Sağlıklı yaşam için büyük başarı! 🌈`,
-                  `💎 İnanılmaz! Günlük takviye hedeflerinin hepsini gerçekleştirdin! ✨`,
-                  `🏅 Fantastik! Bugün tüm takviyelerini aldın, vücudun sana teşekkür ediyor! 🌟`,
-                  `🎯 Mükemmel! Günlük takviye rutinini kusursuz şekilde tamamladın! 💎`,
-                  `🚀 Harika! Tüm takviyelerini tamamladın, sağlığın için en iyisini yapıyorsun! 🌟`,
-                  `✨ Muhteşem! Günlük takviye hedeflerinin hepsine ulaştın! 💪`,
-                  `🌟 Süper! Bugün tüm takviyelerini aldın, vücudun sana minnettar! 🎯`,
-                  `🏆 İnanılmaz! Günlük takviye rutinini başarıyla tamamladın! 🏅`,
-                  `🎊 Fantastik! Bugün tüm takviyelerini tamamladın! Sağlıklı yaşam için büyük başarı! 🌈`,
-                  `💎 Mükemmel! Günlük takviye hedeflerinin hepsini gerçekleştirdin! ✨`,
-                  `🏅 Harika! Bugün tüm takviyelerini aldın, vücudun sana teşekkür ediyor! 🌟`,
-                  `🎯 Süper! Günlük takviye rutinini kusursuz şekilde tamamladın! 💎`,
-                  `🚀 Muhteşem! Tüm takviyelerini tamamladın, sağlığın için en iyisini yapıyorsun! 🌟`,
-                  `✨ İnanılmaz! Günlük takviye hedeflerinin hepsine ulaştın! 💪`,
-                  `🌟 Fantastik! Bugün tüm takviyelerini aldın, vücudun sana minnettar! 🎯`,
-                  `🏆 Mükemmel! Günlük takviye rutinini başarıyla tamamladın! 🏅`,
-                  `🎊 Harika! Bugün tüm takviyelerini tamamladın! Sağlıklı yaşam için büyük başarı! 🌈`,
-                  `💎 Süper! Günlük takviye hedeflerinin hepsini gerçekleştirdin! ✨`,
-                  `🏅 İnanılmaz! Bugün tüm takviyelerini aldın, vücudun sana teşekkür ediyor! 🌟`,
-                  `🎯 Fantastik! Günlük takviye rutinini kusursuz şekilde tamamladın! 💎`,
+                  `🎉 Mükemmel! Bugün tüm ${totalSupplementsCount} takviyeni tamamladın! Harika! 🌟`,
+                  `🏆 Harika performans! ${totalSupplementsCount} takviye hedefini tamamladın! 💪`,
+                  `⭐ Süper! Tüm takviyelerini aldın, vücudun sana teşekkür ediyor! 🎯`,
+                  `🌟 İnanılmaz! ${totalSupplementsCount} takviye rutinini mükemmel tamamladın! 🏅`,
+                  `🎊 Tebrikler! Tüm takviyelerini başarıyla tamamladın! 🎉`,
+                  `💎 Mükemmel disiplin! ${totalSupplementsCount} takviye hedefini gerçekleştirdin! ✨`,
+                  `🏅 Harika! Bugün tüm takviyelerini tamamladın! 🌟`,
+                  `🎯 Süper başarı! Takviye rutinini kusursuz tamamladın! 💎`,
+                  `🚀 Fantastik! ${totalSupplementsCount} takviye tamamlandı! Vücudun mutlu! 🌟`,
+                  `✨ Muhteşem! Tüm takviye hedeflerine ulaştın! 💪`,
                 ];
                 
                 notificationsForThisUser.push({

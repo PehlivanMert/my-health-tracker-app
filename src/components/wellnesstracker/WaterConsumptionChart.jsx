@@ -175,28 +175,84 @@ const WaterConsumptionChart = ({ waterHistory, nextReminder, onRefresh }) => {
     const maxIntake = Math.max(...filteredData.map(entry => entry.intake));
     const minIntake = Math.min(...filteredData.map(entry => entry.intake));
     
-    // Trend hesaplama (son 7 gün vs önceki 7 gün)
-    const recentDays = filteredData.slice(-7);
-    const previousDays = filteredData.slice(-14, -7);
+    // Akıllı trend hesaplama - Time range'e göre dinamik
+    let trendComparisonDays = 7; // Varsayılan
     
-    const recentAvg = recentDays.length > 0 
-      ? recentDays.reduce((sum, entry) => sum + entry.intake, 0) / recentDays.length 
-      : 0;
-    const previousAvg = previousDays.length > 0 
-      ? previousDays.reduce((sum, entry) => sum + entry.intake, 0) / previousDays.length 
-      : 0;
+    // Time range'e göre karşılaştırma gün sayısını belirle
+    switch (timeRange) {
+      case "week":
+        // Haftalık görünüm: Son 3 gün vs önceki 3 gün
+        trendComparisonDays = 3;
+        break;
+      case "month":
+        // Aylık görünüm: Son 7 gün vs önceki 7 gün
+        trendComparisonDays = 7;
+        break;
+      case "year":
+        // Yıllık görünüm: Son 30 gün vs önceki 30 gün
+        trendComparisonDays = 30;
+        break;
+      case "current":
+        // Mevcut ay: Son 7 gün vs önceki 7 gün
+        trendComparisonDays = 7;
+        break;
+      default:
+        trendComparisonDays = 7;
+    }
     
-    const trend = previousAvg > 0 ? ((recentAvg - previousAvg) / previousAvg * 100) : 0;
+    // Eğer yeterli veri yoksa trend hesaplanamaz
+    const minRequiredDays = trendComparisonDays * 2; // Hem recent hem previous için yeterli veri olmalı
+    
+    let trend = 0;
+    let canCalculateTrend = false;
+    
+    if (filteredData.length >= minRequiredDays) {
+      // Son N gün
+      const recentDays = filteredData.slice(-trendComparisonDays);
+      // Önceki N gün (N gün öncesinden 2N gün öncesine kadar)
+      const previousDays = filteredData.slice(-trendComparisonDays * 2, -trendComparisonDays);
+      
+      const recentAvg = recentDays.length > 0 
+        ? recentDays.reduce((sum, entry) => sum + entry.intake, 0) / recentDays.length 
+        : 0;
+      const previousAvg = previousDays.length > 0 
+        ? previousDays.reduce((sum, entry) => sum + entry.intake, 0) / previousDays.length 
+        : 0;
+      
+      // Trend hesapla (sadece önceki dönem 0'dan büyükse)
+      if (previousAvg > 0 && recentDays.length > 0 && previousDays.length > 0) {
+        trend = ((recentAvg - previousAvg) / previousAvg) * 100;
+        canCalculateTrend = true;
+      }
+    } else if (filteredData.length >= trendComparisonDays) {
+      // Yeterli veri yoksa ama en az N gün varsa, ilk yarı vs ikinci yarı karşılaştırması yap
+      const midPoint = Math.floor(filteredData.length / 2);
+      const recentDays = filteredData.slice(midPoint);
+      const previousDays = filteredData.slice(0, midPoint);
+      
+      const recentAvg = recentDays.length > 0 
+        ? recentDays.reduce((sum, entry) => sum + entry.intake, 0) / recentDays.length 
+        : 0;
+      const previousAvg = previousDays.length > 0 
+        ? previousDays.reduce((sum, entry) => sum + entry.intake, 0) / previousDays.length 
+        : 0;
+      
+      if (previousAvg > 0 && recentDays.length > 0 && previousDays.length > 0) {
+        trend = ((recentAvg - previousAvg) / previousAvg) * 100;
+        canCalculateTrend = true;
+      }
+    }
     
     return {
       average: averageIntake,
       total: totalIntake,
       max: maxIntake,
       min: minIntake,
-      trend: trend.toFixed(1),
-      isTrendUp: trend > 0
+      trend: canCalculateTrend ? trend.toFixed(1) : "0.0",
+      isTrendUp: trend > 0,
+      canCalculateTrend
     };
-  }, [filteredData]);
+  }, [filteredData, timeRange]);
 
   const handleRefresh = () => {
     setIsLoading(true);
@@ -283,7 +339,13 @@ const WaterConsumptionChart = ({ waterHistory, nextReminder, onRefresh }) => {
                     • <strong>En Yüksek:</strong> Tek günde tüketilen en fazla su miktarı
                   </Typography>
                   <Typography variant="body2" sx={{ mb: 1, fontSize: isMobile ? "0.75rem" : "0.875rem" }}>
-                    • <strong>Trend:</strong> Son 7 gün vs önceki 7 gün karşılaştırması
+                    • <strong>Trend:</strong> {
+                      timeRange === "week" 
+                        ? "Son 3 gün vs önceki 3 gün karşılaştırması" 
+                        : timeRange === "year"
+                        ? "Son 30 gün vs önceki 30 gün karşılaştırması"
+                        : "Son 7 gün vs önceki 7 gün karşılaştırması"
+                    }
                   </Typography>
                   <Typography variant="body2" sx={{ fontSize: isMobile ? "0.75rem" : "0.875rem" }}>
                     📊 Grafik türlerini değiştirerek verilerinizi farklı açılardan inceleyebilirsiniz.
@@ -359,20 +421,27 @@ const WaterConsumptionChart = ({ waterHistory, nextReminder, onRefresh }) => {
                   <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.7)", fontSize: "0.75rem" }}>
                     Trend
                   </Typography>
-                  {stats.isTrendUp ? (
-                    <TrendingUpIcon sx={{ fontSize: 16, color: "#4CAF50" }} />
+                  {stats.canCalculateTrend ? (
+                    stats.isTrendUp ? (
+                      <TrendingUpIcon sx={{ fontSize: 16, color: "#4CAF50" }} />
+                    ) : (
+                      <TrendingDownIcon sx={{ fontSize: 16, color: "#f44336" }} />
+                    )
                   ) : (
-                    <TrendingDownIcon sx={{ fontSize: 16, color: "#f44336" }} />
+                    <InfoOutlinedIcon sx={{ fontSize: 16, color: "rgba(255,255,255,0.5)" }} />
                   )}
                 </Box>
                 <Typography 
                   variant="h6" 
                   sx={{ 
-                    color: stats.isTrendUp ? "#4CAF50" : "#f44336", 
-                    fontWeight: 600 
+                    color: stats.canCalculateTrend 
+                      ? (stats.isTrendUp ? "#4CAF50" : "#f44336")
+                      : "rgba(255,255,255,0.5)", 
+                    fontWeight: 600,
+                    fontSize: stats.canCalculateTrend ? undefined : "0.875rem"
                   }}
                 >
-                  %{stats.trend}
+                  {stats.canCalculateTrend ? `%${stats.trend}` : "Yetersiz Veri"}
                 </Typography>
               </StatsCard>
             </Box>

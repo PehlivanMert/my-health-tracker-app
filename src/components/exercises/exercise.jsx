@@ -315,6 +315,59 @@ const Exercises = ({ exercises, setExercises }) => {
     console.log("🧪 Test: geminiUsage =", geminiUsage);
   };
 
+  // Helper function: API çağrısını yapan fonksiyon
+  const callGeminiAPI = async (prompt) => {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { temperature: 0.85, topP: 0.95 } });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
+  };
+
+  // Helper function: Bekleme süresi (exponential backoff)
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+  // Helper function: Retry mekanizması ile API çağrısı
+  const callGeminiWithRetry = async (prompt, maxRetries = 3) => {
+    let lastError = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 Gemini API çağrısı - Deneme ${attempt}/${maxRetries}`);
+        
+        if (attempt > 1) {
+          // Exponential backoff: 1s, 2s, 4s
+          const delay = Math.pow(2, attempt - 2) * 1000;
+          setExerciseAIState({
+            isGenerating: true,
+            showSuccessNotification: true,
+            notificationMessage: `🔄 Bağlantı hatası alındı. ${attempt}/${maxRetries} deneme yapılıyor... (${delay/1000}s bekleniyor)`
+          });
+          await sleep(delay);
+        }
+        
+        const result = await callGeminiAPI(prompt);
+        
+        if (result && result.trim()) {
+          console.log(`✅ Gemini API başarılı - Deneme ${attempt}/${maxRetries}`);
+          return result;
+        } else {
+          throw new Error("API boş cevap döndü");
+        }
+      } catch (error) {
+        lastError = error;
+        console.error(`❌ Gemini API hatası - Deneme ${attempt}/${maxRetries}:`, error.message);
+        
+        // Eğer son denemede de hata alındıysa, döngüden çık
+        if (attempt === maxRetries) {
+          break;
+        }
+      }
+    }
+    
+    // Tüm denemeler başarısız oldu
+    throw lastError || new Error("API çağrısı başarısız oldu");
+  };
+
   const generatePersonalizedProgramAsync = async () => {
     if (!canUseGemini()) {
       setExerciseAIState({
@@ -335,9 +388,6 @@ const Exercises = ({ exercises, setExercises }) => {
     }
 
     try {
-      // Güncel model adını kullan (GA - Genel Kullanım, Pro model daha güçlü akıl yürütme için)
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
-
       // Vücut kompozisyonu bilgilerini hazırla
       const bodyCompInfo = Object.values(bodyComposition).some(val => val.trim()) 
         ? `\nVÜCUT KOMPOZİSYONU:
@@ -677,9 +727,13 @@ BESLENME PROGRAMI TALİMATLARI:
 
       const finalPrompt = fullPrompt + nutritionInstructions;
 
-      const result = await model.generateContent(finalPrompt);
-      const response = await result.response;
-      const programText = response.text();
+      // Retry mekanizması ile Gemini API çağrısı yap
+      const programText = await callGeminiWithRetry(finalPrompt, 3);
+
+      // Sadece başarılı cevap alındığında devam et
+      if (!programText || !programText.trim()) {
+        throw new Error("API boş cevap döndü");
+      }
 
       // Geliştirme için Gemini'den gelen cevabı console'a yazdır
       console.log("=== GEMINI RESPONSE ===");
@@ -714,7 +768,7 @@ BESLENME PROGRAMI TALİMATLARI:
       // Cache'i temizle
       invalidateUserCache(auth.currentUser?.uid);
 
-      // Gemini kullanım sayacını artır
+      // Gemini kullanım sayacını artır (sadece başarılı durumda)
       await incrementGeminiUsage();
 
       setExerciseAIState({
@@ -745,21 +799,37 @@ BESLENME PROGRAMI TALİMATLARI:
       // Daha detaylı hata mesajları
       let errorMessage = "Program oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.";
       
-      if (error.message?.includes("API_KEY")) {
+      // Hata kodlarına göre özel mesajlar
+      if (error.message?.includes("503") || error.message?.includes("overloaded")) {
+        errorMessage = "Gemini API şu anda yoğun. Lütfen birkaç dakika sonra tekrar deneyin.";
+      } else if (error.message?.includes("429") || error.message?.includes("quota") || error.message?.includes("Quota exceeded")) {
+        // Retry süresini parse et (varsa)
+        const retryMatch = error.message?.match(/retry in (\d+\.?\d*)s/i);
+        if (retryMatch) {
+          const retrySeconds = Math.ceil(parseFloat(retryMatch[1]));
+          errorMessage = `API kotası dolmuş. Lütfen ${retrySeconds} saniye sonra tekrar deneyin.`;
+        } else {
+          errorMessage = "API kullanım limiti aşıldı. Lütfen daha sonra tekrar deneyin.";
+        }
+      } else if (error.message?.includes("400")) {
+        errorMessage = "Geçersiz istek. Lütfen girdilerinizi kontrol edip tekrar deneyin.";
+      } else if (error.message?.includes("403")) {
+        errorMessage = "API erişim izni reddedildi. Lütfen API anahtarınızı kontrol edin.";
+      } else if (error.message?.includes("API_KEY")) {
         errorMessage = "Gemini API anahtarı bulunamadı. Lütfen .env dosyasını kontrol edin.";
       } else if (error.message?.includes("404")) {
         errorMessage = "Gemini API modeli bulunamadı. Lütfen daha sonra tekrar deneyin.";
-      } else if (error.message?.includes("429")) {
-        errorMessage = "API kullanım limiti aşıldı. Lütfen daha sonra tekrar deneyin.";
+      } else if (error.message?.includes("API çağrısı başarısız oldu")) {
+        errorMessage = "3 deneme sonrası bağlantı kurulamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.";
       }
       
       setExerciseAIState({
         isGenerating: false,
-        showSuccessNotification: true,
+        showSuccessNotification: false,
         notificationMessage: errorMessage
       });
       
-      console.error("Gemini API hatası:", error);
+      console.error("Program oluşturma hatası:", error);
     }
   };
 

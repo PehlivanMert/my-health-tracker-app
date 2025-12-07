@@ -615,7 +615,7 @@ const HealthDashboard = ({ user }) => {
 
   // Helper function: API çağrısını yapan fonksiyon
   const callGeminiAPI = async (prompt) => {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro", generationConfig: { temperature: 0.85, topP: 0.95 } });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig: { temperature: 0.85, topP: 0.95 } });
     const result = await model.generateContent(prompt);
     const response = await result.response;
     return response.text();
@@ -673,12 +673,16 @@ const HealthDashboard = ({ user }) => {
       return "API anahtarı geçersiz veya model bulunamadı. Lütfen ayarları kontrol edin.";
     } else if (errorMessage.includes("403")) {
       return "API erişim izni yok. Lütfen API anahtarınızı kontrol edin.";
-    } else if (errorMessage.includes("429")) {
+    } else if (errorMessage.includes("429") || errorMessage.includes("quota") || errorMessage.includes("Quota exceeded")) {
+      // Retry süresini parse et (varsa)
+      const retryMatch = errorMessage.match(/retry in (\d+\.?\d*)s/i);
+      if (retryMatch) {
+        const retrySeconds = Math.ceil(parseFloat(retryMatch[1]));
+        return `API kotası dolmuş. Lütfen ${retrySeconds} saniye sonra tekrar deneyin.`;
+      }
       return "API kullanım limiti aşıldı. Lütfen daha sonra tekrar deneyin.";
     } else if (errorMessage.includes("network") || errorMessage.includes("fetch") || errorMessage.includes("timeout")) {
       return "İnternet bağlantısı hatası. Lütfen bağlantınızı kontrol edip tekrar deneyin.";
-    } else if (errorMessage.includes("quota") || errorMessage.includes("limit")) {
-      return "API kotası dolmuş. Lütfen daha sonra tekrar deneyin.";
     } else {
       return "Öneri oluşturulurken bir sorun oluştu. Lütfen daha sonra tekrar deneyin.";
     }

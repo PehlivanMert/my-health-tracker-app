@@ -546,18 +546,18 @@ const SupplementNotificationSettingsDialog = ({
                           key={index}
                           label={time}
                           icon={
-                            <AccessTimeIcon sx={{ color: "#fff" }} />
+                            <AccessTimeIcon sx={{ color: "#000" }} />
                           }
                           onDelete={() => handleDeleteTime(supp.id, time, index)}
                           sx={{
-                            border: `1px solid rgba(255, 255, 255, 0.3)`,
-                            background: "rgba(255, 255, 255, 0.1)",
-                            color: "#fff",
+                            border: `1px solid rgba(0, 0, 0, 0.3)`,
+                            background: "rgba(0, 0, 0, 0.05)",
+                            color: "#000",
                             fontWeight: 500,
                             "& .MuiChip-deleteIcon": {
-                              color: "#fff",
+                              color: "#000",
                               "&:hover": {
-                                color: "rgba(255, 255, 255, 0.8)",
+                                color: "rgba(0, 0, 0, 0.7)",
                               },
                             },
                           }}

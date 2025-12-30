@@ -662,73 +662,6 @@ const getTurkeyTime = () =>
 // ─── YENİ RESET İŞLEVİ ─────────────────────────────────────────────
 // Bu versiyonda, Firestore'dan çekilen en güncel veriyi (currentFirestoreData) kullanıyoruz
 // ve arrayUnion ile history dizisine yeni entry ekleyerek, eski kayıtların silinmesini engelliyoruz.
-const resetDailyWaterIntake = async (
-  getWaterDocRef,
-  currentFirestoreData,
-  fetchWaterData,
-  user
-) => {
-  const ref = getWaterDocRef();
-  const todayStr = getTurkeyTime().toLocaleDateString("en-CA");
-
-  // Eğer bugün zaten reset yapılmışsa, tekrar yapma
-  if (currentFirestoreData.lastResetDate === todayStr) {
-    return;
-  }
-
-  // Ek güvenlik: Son 1 saat içinde reset yapılmış mı kontrol et
-  const lastResetTimestamp = currentFirestoreData.lastResetTimestamp;
-  if (lastResetTimestamp) {
-    const oneHourAgo = Date.now() - (60 * 60 * 1000);
-    if (lastResetTimestamp > oneHourAgo) {
-      console.log("Son 1 saat içinde reset yapılmış, atlanıyor");
-      return;
-    }
-  }
-
-  // Dünkü su tüketimini history'ye kaydet (sadece intake > 0 ise veya her zaman kaydetmek isteniyorsa)
-  const yesterday = new Date(getTurkeyTime());
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toLocaleDateString("en-CA");
-
-  // Sadece dünkü intake'i kaydet, yeni gün için 0'lı kayıt eklenmesin
-  const newHistoryEntry = {
-    date: yesterdayStr,
-    intake: currentFirestoreData.waterIntake || 0,
-  };
-
-  try {
-    // Sadece dünkü intake'i, dünkü tarih ile kaydet
-    await updateDoc(ref, {
-      waterIntake: 0,
-      yesterdayWaterIntake: currentFirestoreData.waterIntake || 0,
-      lastResetDate: todayStr,
-      lastResetTimestamp: Date.now(), // Yeni: Timestamp ekle
-      history: arrayUnion(newHistoryEntry),
-    });
-    await fetchWaterData();
-    // Sıfırlama sonrası yeni hedef hesaplanıp kaydedildiyse, tekrar fetch et
-    try {
-      // 1. Server-side hesaplama
-      await updateServerSideCalculations(user);
-      await fetchWaterData();
-    } catch (e) { /* ignore */ }
-    try {
-      // 2. Client-side hesaplama (Water sayfası açıkken)
-      await scheduleWaterNotifications(user);
-      await fetchWaterData();
-    } catch (e) { /* ignore */ }
-    // Gün sonu özeti bildirimi gönder
-    const waterIntake = currentFirestoreData.waterIntake || 0;
-    const dailyTarget = currentFirestoreData.dailyWaterTarget || 2000;
-    if (process.env.NODE_ENV === 'development') {
-    console.log(`Gün sonu özeti: ${waterIntake}ml`);
-    }
-  } catch (error) {
-    console.error("Reset işlemi sırasında hata oluştu:", error);
-  }
-};
-
 // ─────────────────────────────────────────────────────────────────
 
 // Modern bardak ve şişe ikonları
@@ -887,32 +820,6 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
 
   const getWaterDocRef = () => doc(db, "users", user.uid, "water", "current");
 
-  const checkIfResetNeeded = async (data) => {
-    const todayStr = getTurkeyTime().toLocaleDateString("en-CA", {
-      timeZone: "Europe/Istanbul",
-    });
-    
-    // Eğer lastResetDate yoksa veya bugünden farklıysa reset yap
-    if (!data.lastResetDate || data.lastResetDate !== todayStr) {
-      // PWA cache kontrolü - eğer veri çok eskiyse (24 saatten fazla) reset yapma
-      const lastUpdate = data.lastUpdate ? new Date(data.lastUpdate) : null;
-      const now = new Date();
-      const hoursSinceLastUpdate = lastUpdate ? (now - lastUpdate) / (1000 * 60 * 60) : 0;
-      
-      if (hoursSinceLastUpdate > 24) {
-        console.warn("PWA Cache problemi tespit edildi - Reset atlanıyor");
-        // Sadece lastUpdate'i güncelle, reset yapma
-        const ref = getWaterDocRef();
-        await updateDoc(ref, {
-          lastUpdate: new Date().toISOString()
-        });
-        return;
-      }
-      
-      // NOT: Burada state'deki waterData yerine, Firestore'dan çekilen data (en güncel veri) kullanılıyor.
-      await resetDailyWaterIntake(getWaterDocRef, data, fetchWaterData, user);
-    }
-  };
 
   const fetchWaterData = async () => {
     const ref = getWaterDocRef();
@@ -944,7 +851,6 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
       lastWaterDataState.current = { ...newWaterData };
       setDataFetched(true);
       isDataLoading.current = false;
-      await checkIfResetNeeded(data);
       
       // Server-side hesaplanmış verileri kontrol et ve güncelle
       if (data.serverSideCalculated === true) {
@@ -1235,29 +1141,6 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
   const isGoalAchieved = useMemo(() => {
     return waterData.waterIntake >= waterData.dailyWaterTarget;
   }, [waterData.waterIntake, waterData.dailyWaterTarget]);
-
-  // ─── GECE YARISI RESET LOGİĞİ ─────────────────────────────
-  // Bu useEffect, gün değişiminde (gece yarısı) sıfırlama işlemini tetikler.
-  useEffect(() => {
-    const scheduleReset = () => {
-      const now = getTurkeyTime();
-      const tomorrow = new Date(now);
-      tomorrow.setDate(now.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0); // Gece yarısı
-      const msUntilMidnight = tomorrow.getTime() - now.getTime();
-
-      const timeoutId = setTimeout(async () => {
-        // Burada state'deki waterData yerine, fetchWaterData ile çekilen en güncel veriyi kullanmak daha sağlıklı olabilir.
-        await resetDailyWaterIntake(getWaterDocRef, waterData, fetchWaterData, user);
-        scheduleReset(); // Bir sonraki gün için yeniden zamanla
-      }, msUntilMidnight);
-
-      return timeoutId;
-    };
-
-    const resetTimeout = scheduleReset();
-    return () => clearTimeout(resetTimeout);
-  }, [user]);
 
   useEffect(() => {
     if (!user?.uid || !dataFetched) return;

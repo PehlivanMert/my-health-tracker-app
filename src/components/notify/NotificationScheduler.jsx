@@ -49,12 +49,22 @@ export const calculateBMR = (gender, weight, height, age) => {
 
 /**
  * BMR değeri ve çarpan üzerinden günlük su hedefini (ml) hesaplar.
+ * Minimum değerler: Kadınlar için 2000ml, Erkekler için 2500ml
  */
-export const calculateDailyWaterTarget = (bmr, multiplier = 1.4) => {
-  const dailyWaterTarget = Math.round(bmr * multiplier);
+export const calculateDailyWaterTarget = (bmr, multiplier = 1.4, gender = "male") => {
+  const calculatedTarget = Math.round(bmr * multiplier);
+  // Sağlık önerilerine göre minimum değerler
+  const MINIMUM_WOMEN = 2000; // 2 litre
+  const MINIMUM_MEN = 2500; // 2.5 litre
+  const minimum = gender === "female" ? MINIMUM_WOMEN : MINIMUM_MEN;
+  const dailyWaterTarget = Math.max(calculatedTarget, minimum);
   if (process.env.NODE_ENV === 'development') {
   console.log(
-    "calculateDailyWaterTarget - Günlük su hedefi:",
+    "calculateDailyWaterTarget - Hesaplanan:",
+    calculatedTarget,
+    "Minimum:",
+    minimum,
+    "Final günlük su hedefi:",
     dailyWaterTarget
   );
   }
@@ -745,7 +755,7 @@ export const computeWaterReminderTimes = async (user) => {
       dayNightMultiplier;
       
     // --- GÜNLÜK SU HEDEFİ ARTIK SABİT ---
-    const dailyWaterTarget = calculateDailyWaterTarget(bmr, finalMultiplier);
+    const dailyWaterTarget = calculateDailyWaterTarget(bmr, finalMultiplier, gender);
     const waterIntake = data.waterIntake || 0;
     const remainingTarget = Math.max(dailyWaterTarget - waterIntake, 0);
     if (process.env.NODE_ENV === 'development') {

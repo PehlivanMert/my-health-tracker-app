@@ -86,8 +86,14 @@ const calculateBMR = (gender, weight, height, age) => {
 };
 
 // Günlük su hedefi hesaplama (NotificationScheduler.jsx ile birebir aynı)
-const calculateDailyWaterTarget = (bmr, multiplier = 1.4) => {
-  const dailyWaterTarget = Math.round(bmr * multiplier);
+// Minimum değerler: Kadınlar için 2000ml, Erkekler için 2500ml
+const calculateDailyWaterTarget = (bmr, multiplier = 1.4, gender = "male") => {
+  const calculatedTarget = Math.round(bmr * multiplier);
+  // Sağlık önerilerine göre minimum değerler
+  const MINIMUM_WOMEN = 2000; // 2 litre
+  const MINIMUM_MEN = 2500; // 2.5 litre
+  const minimum = gender === "female" ? MINIMUM_WOMEN : MINIMUM_MEN;
+  const dailyWaterTarget = Math.max(calculatedTarget, minimum);
   return dailyWaterTarget;
 };
 
@@ -559,7 +565,7 @@ const computeWaterReminderTimes = async (userId) => {
       dayNightMultiplier;
       
     // --- GÜNLÜK SU HEDEFİ ARTIK SABİT ---
-    const dailyWaterTarget = calculateDailyWaterTarget(bmr, finalMultiplier);
+    const dailyWaterTarget = calculateDailyWaterTarget(bmr, finalMultiplier, gender);
     const waterIntake = 0; // Gece yarısı sıfırlandığı için 0
     const remainingTarget = Math.max(dailyWaterTarget - waterIntake, 0);
 

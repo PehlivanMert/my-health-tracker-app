@@ -56,10 +56,16 @@ export const calculateBMR = (gender, weight, height, age) => {
  * Günlük su hedefi hesaplama
  * @param {number} bmr - BMR değeri
  * @param {number} multiplier - Çarpan (varsayılan 1.4)
- * @returns {number} Günlük su hedefi (ml)
+ * @param {string} gender - Cinsiyet ('male' veya 'female', varsayılan 'male')
+ * @returns {number} Günlük su hedefi (ml) - Minimum: Kadınlar 2000ml, Erkekler 2500ml
  */
-export const calculateDailyWaterTarget = (bmr, multiplier = 1.4) => {
-  const dailyWaterTarget = Math.round(bmr * multiplier);
+export const calculateDailyWaterTarget = (bmr, multiplier = 1.4, gender = "male") => {
+  const calculatedTarget = Math.round(bmr * multiplier);
+  // Sağlık önerilerine göre minimum değerler
+  const MINIMUM_WOMEN = 2000; // 2 litre
+  const MINIMUM_MEN = 2500; // 2.5 litre
+  const minimum = gender === "female" ? MINIMUM_WOMEN : MINIMUM_MEN;
+  const dailyWaterTarget = Math.max(calculatedTarget, minimum);
   return dailyWaterTarget;
 };
 

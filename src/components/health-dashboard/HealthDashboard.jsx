@@ -1533,7 +1533,20 @@ Aşağıdaki JSON formatında kesinlikle 3000 karakteri geçmeyen bir sağlık r
                           {rec.displayDate || new Date(rec.date).toLocaleDateString("tr-TR")}
                         </Typography>
                         <Typography variant="body2" color="textSecondary" sx={{ fontSize: "0.8rem" }}>
-                          {rec.content.substring(0, 100)}...
+                          {(() => {
+                            try {
+                              let cleanText = rec.content.trim();
+                              const jsonStart = cleanText.indexOf('{');
+                              const jsonEnd = cleanText.lastIndexOf('}');
+                              if (jsonStart !== -1 && jsonEnd !== -1) {
+                                cleanText = cleanText.substring(jsonStart, jsonEnd + 1);
+                              }
+                              const parsed = JSON.parse(cleanText);
+                              return (parsed.summary || parsed.title || rec.content).substring(0, 100) + "...";
+                            } catch(e) {
+                              return rec.content.substring(0, 100).replace(/[{}"\\[\\]]/g, ' ') + "...";
+                            }
+                          })()}
                         </Typography>
                       </Box>
                     ))

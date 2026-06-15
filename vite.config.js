@@ -1,10 +1,48 @@
 // vite.config.js
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { VitePWA } from "vite-plugin-pwa";
 import { resolve } from "path";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'public',
+      filename: 'firebase-messaging-sw.js',
+      registerType: 'autoUpdate',
+      devOptions: {
+        enabled: true,
+        type: 'module',
+      },
+      injectManifest: {
+        injectionPoint: 'self.__WB_MANIFEST',
+      },
+      manifest: {
+        short_name: "StayHealthyWith.me",
+        name: "StayHealthyWith.me - Kişisel Sağlık ve Rutin Takip Sistemi",
+        icons: [
+          {
+            src: "/logo4.jpeg",
+            type: "image/jpeg",
+            sizes: "192x192",
+            purpose: "any maskable"
+          },
+          {
+            src: "/logo4.jpeg",
+            type: "image/jpeg",
+            sizes: "512x512",
+            purpose: "any maskable"
+          }
+        ],
+        start_url: "/",
+        display: "standalone",
+        theme_color: "#1976d2",
+        background_color: "#ffffff"
+      }
+    })
+  ],
   resolve: {
     alias: {
       // react/jsx-runtime modülünü doğru dosyaya yönlendiriyoruz:
@@ -16,6 +54,7 @@ export default defineConfig({
         __dirname,
         "node_modules/react/jsx-dev-runtime.js"
       ),
+      "@": resolve(__dirname, "./src"),
     },
   },
   optimizeDeps: {
@@ -57,4 +96,17 @@ export default defineConfig({
   server: {
     force: true,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
+          'calendar': ['@fullcalendar/react', '@fullcalendar/daygrid', '@fullcalendar/timegrid', '@fullcalendar/interaction', '@fullcalendar/multimonth', '@fullcalendar/rrule'],
+          'charts': ['recharts'],
+          'ui': ['@mui/material', '@mui/icons-material', 'framer-motion', 'lucide-react'],
+        }
+      }
+    },
+    chunkSizeWarningLimit: 800,
+  }
 });

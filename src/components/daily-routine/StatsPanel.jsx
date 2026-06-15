@@ -1,358 +1,111 @@
-// src/components/daily-routine/StatsPanel.jsx
 import React from "react";
-import { Grid, Box, Typography, useTheme, useMediaQuery } from "@mui/material";
-import {
-  DoneAll,
-  CheckCircleOutline,
-  NotificationsActive,
-} from "@mui/icons-material";
-import { styled } from "@mui/material/styles";
-import { motion } from "framer-motion";
+import { DoneAll, CheckCircleOutline, TrendingUp } from "@mui/icons-material";
 
-// Modern glassmorphism kart bileşeni
-const GlowingCard = styled(motion.div)(({ theme, glowcolor }) => ({
-  position: "relative",
-  background: "linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(63, 81, 181, 0.1) 100%)",
-  backdropFilter: "blur(16px)",
-  borderRadius: "24px",
-  overflow: "hidden",
-  border: "1px solid rgba(255, 255, 255, 0.2)",
-  boxShadow: `0 10px 30px ${glowcolor}22, inset 0 0 20px rgba(255, 255, 255, 0.05)`,
-  padding: theme.spacing(3),
-  height: "100%",
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "center",
-  transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-  "&::before": {
-    content: '""',
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: "4px",
-    background: `linear-gradient(90deg, transparent, ${glowcolor}, transparent)`,
-    opacity: 0.8,
-  },
-  "&:hover": {
-    transform: "translateY(-5px)",
-    boxShadow: `0 15px 35px ${glowcolor}33, inset 0 0 20px rgba(255, 255, 255, 0.08)`,
-  },
-}));
-
-// Modern neon gradient progress ring
-const ProgressRing = styled(Box)(({ theme, progress, color }) => ({
-  position: "relative",
-  width: "100%",
-  height: "100%",
-  borderRadius: "50%",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  "&::before": {
-    content: '""',
-    position: "absolute",
-    inset: 0,
-    borderRadius: "50%",
-    padding: "4px",
-    background: `conic-gradient(${color} ${progress}%, transparent ${progress}%)`,
-    WebkitMask:
-      "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-    WebkitMaskComposite: "xor",
-    maskComposite: "exclude",
-  },
-}));
-
-// İç icon container
-const IconContainer = styled(Box)(({ theme, color }) => ({
-  width: "65%",
-  height: "65%",
-  borderRadius: "50%",
-  background: `linear-gradient(135deg, ${color}bb 0%, ${color}55 100%)`,
-  backdropFilter: "blur(5px)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  boxShadow: `0 8px 32px ${color}66`,
-}));
-
-const StatsPanel = ({ routines, weeklyStats, monthlyStats }) => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const isMedium = useMediaQuery(theme.breakpoints.down("md"));
-
-  // Mobilde kartları yan yana göstermek için grid xs değeri
-  const gridXS = isMobile ? 4 : 12;
-
-  // Bugünün tarihini al (Türkiye saati)
+const StatsPanel = ({ routines = [], weeklyStats, monthlyStats }) => {
   const getTurkeyLocalDateString = (date = new Date()) =>
-    new Date(
-      date.toLocaleString("en-US", { timeZone: "Europe/Istanbul" })
-    ).toLocaleDateString("en-CA");
+    new Date(date.toLocaleString("en-US", { timeZone: "Europe/Istanbul" })).toLocaleDateString("en-CA");
   
   const todayStr = getTurkeyLocalDateString();
 
-  // Tamamlanma durumunu doğru hesaplayan yardımcı fonksiyon
   const getRoutineCompletedStatus = (routine) => {
     if (routine.repeat && routine.repeat !== "none") {
-      // Tekrarlanan rutinler için bugünün tarihini completedDates'te kontrol et
       return routine.completedDates && routine.completedDates.includes(todayStr);
-    } else {
-      // Tekrarlanmayan rutinler için normal completed alanını kullan
-      return routine.completed;
     }
+    return routine.completed;
   };
 
-  // Günlük başarı: bugünün tarihine sahip rutinlerde tamamlanma durumuna göre
-  const dailyCompleted = routines.filter(
-    (r) => r.date === todayStr && getRoutineCompletedStatus(r)
-  ).length;
-  const dailyTotal = routines.filter(
-    (r) => r.date === todayStr
-  ).length;
+  const completedToday = routines.filter(r => getRoutineCompletedStatus(r)).length;
+  const activeTodayCount = routines.filter(r => {
+    if (r.date && r.date !== todayStr && r.repeat === "none") return false;
+    return true;
+  }).length;
 
-  const statsData = [
-    {
-      title: "Günlük Başarı",
-      value: dailyCompleted,
-      total: dailyTotal,
-      icon: <DoneAll />,
-      color: "#4caf50",
-    },
-    {
-      title: "Haftalık Başarı",
-      value: weeklyStats.completed,
-      total: weeklyStats.added,
-      icon: <CheckCircleOutline />,
-      color: "#2196F3",
-    },
-    {
-      title: "Aylık Başarı",
-      value: monthlyStats.completed,
-      total: monthlyStats.added,
-      icon: <NotificationsActive />,
-      color: "#9C27B0",
-    },
-  ];
-
-  // Kart animasyon ayarları
-  const cardVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: (i) => ({
-      y: 0,
-      opacity: 1,
-      transition: {
-        delay: i * 0.1,
-        duration: 0.6,
-        ease: [0.6, -0.05, 0.01, 0.99],
-      },
-    }),
+  const calculateProgress = (completed, total) => {
+    if (total === 0) return 0;
+    return Math.round((completed / total) * 100);
   };
+
+  const dailyProgress = calculateProgress(completedToday, activeTodayCount);
+  const weeklyProgress = calculateProgress(weeklyStats.completed, weeklyStats.added);
+  const monthlyProgress = calculateProgress(monthlyStats.completed, monthlyStats.added);
+
+  const StatCard = ({ title, completed, total, progress, icon, colorClass, gradientClass }) => (
+    <div className={`relative overflow-hidden rounded-3xl p-6 ${gradientClass} backdrop-blur-xl border border-white/20 dark:border-slate-700/50 shadow-lg hover:-translate-y-1 hover:shadow-xl transition-all duration-300`}>
+      {/* Decorative background circle */}
+      <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full ${colorClass} opacity-20 blur-xl`}></div>
+      
+      <div className="relative z-10 flex items-center justify-between">
+        <div>
+          <h3 className="text-slate-600 dark:text-slate-300 font-medium text-sm md:text-base mb-1">{title}</h3>
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-bold text-slate-800 dark:text-white">{completed}</span>
+            <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">/ {total}</span>
+          </div>
+        </div>
+        
+        {/* Progress Ring */}
+        <div className="relative w-16 h-16 flex items-center justify-center">
+          <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+            <path
+              className="text-slate-200 dark:text-slate-700/50"
+              strokeWidth="3"
+              stroke="currentColor"
+              fill="none"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            />
+            <path
+              className={colorClass.replace('bg-', 'text-')}
+              strokeWidth="3"
+              strokeDasharray={`${progress}, 100`}
+              strokeLinecap="round"
+              stroke="currentColor"
+              fill="none"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            {icon}
+          </div>
+        </div>
+      </div>
+      
+      <div className="mt-4 flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+        <TrendingUp fontSize="inherit" className={colorClass.replace('bg-', 'text-')} />
+        <span>%{progress} başarı oranı</span>
+      </div>
+    </div>
+  );
 
   return (
-    <Grid container spacing={isMobile ? 2 : 3} sx={{ mb: 4 }}>
-      {statsData.map((stat, index) => {
-        const progressPercentage =
-          Math.round((stat.total > 0 ? stat.value / stat.total : 0) * 100) || 0;
-
-        return (
-          <Grid item xs={gridXS} sm={6} md={4} key={index}>
-            <GlowingCard
-              glowcolor={stat.color}
-              variants={cardVariants}
-              initial="hidden"
-              animate="visible"
-              custom={index}
-              whileHover={{
-                y: -10,
-                boxShadow: `0 15px 40px ${stat.color}44, inset 0 0 20px rgba(255, 255, 255, 0.1)`,
-              }}
-            >
-              {isMobile ? (
-                <Box sx={{ textAlign: "center" }}>
-                  <Box
-                    sx={{
-                      width: "70px",
-                      height: "70px",
-                      margin: "0 auto",
-                      position: "relative",
-                    }}
-                  >
-                    <ProgressRing
-                      progress={progressPercentage}
-                      color={stat.color}
-                    >
-                      <IconContainer color={stat.color}>
-                        {React.cloneElement(stat.icon, {
-                          sx: { fontSize: "1.8rem", color: "white" },
-                        })}
-                      </IconContainer>
-                    </ProgressRing>
-                  </Box>
-                  <Typography
-                    variant="subtitle1"
-                    sx={{
-                      mt: 2,
-                      fontWeight: 600,
-                      letterSpacing: "0.5px",
-                      fontSize: "0.95rem",
-                      background: "linear-gradient(90deg, #ffffff, #ffffffaa)",
-                      WebkitBackgroundClip: "text",
-                      WebkitTextFillColor: "transparent",
-                    }}
-                  >
-                    {stat.title}
-                  </Typography>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      mt: 1,
-                    }}
-                  >
-                    <Typography
-                      variant="h4"
-                      component={motion.div}
-                      initial={{ scale: 0.5, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ delay: index * 0.2 + 0.3, duration: 0.5 }}
-                      sx={{
-                        fontWeight: 700,
-                        background: `linear-gradient(90deg, ${stat.color}, ${stat.color}aa)`,
-                        WebkitBackgroundClip: "text",
-                        WebkitTextFillColor: "transparent",
-                      }}
-                    >
-                      {stat.value}
-                    </Typography>
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        color: "rgba(255,255,255,0.6)",
-                        ml: 0.5,
-                        fontWeight: 300,
-                        display: "inline-flex",
-                        alignItems: "center",
-                      }}
-                    >
-                      / {stat.total}
-                    </Typography>
-                  </Box>
-                  <Typography
-                    variant="caption"
-                    component={motion.div}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 0.6 }}
-                    transition={{ delay: index * 0.2 + 0.5 }}
-                    sx={{
-                      mt: 1,
-                      display: "block",
-                      color: "rgba(255,255,255,0.6)",
-                      fontWeight: 300,
-                    }}
-                  >
-                    {progressPercentage}% tamamlandı
-                  </Typography>
-                </Box>
-              ) : (
-                <Box
-                  sx={{ display: "flex", alignItems: "center", height: "100%" }}
-                >
-                  <Box
-                    sx={{
-                      mr: isMedium ? 2 : 3,
-                      position: "relative",
-                      width: isMedium ? 80 : 100,
-                      height: isMedium ? 80 : 100,
-                    }}
-                  >
-                    <ProgressRing
-                      progress={progressPercentage}
-                      color={stat.color}
-                    >
-                      <IconContainer color={stat.color}>
-                        {React.cloneElement(stat.icon, {
-                          sx: {
-                            fontSize: isMedium ? "2rem" : "2.5rem",
-                            color: "white",
-                          },
-                        })}
-                      </IconContainer>
-                    </ProgressRing>
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography
-                      variant="subtitle2"
-                      sx={{
-                        textTransform: "uppercase",
-                        letterSpacing: "1px",
-                        fontWeight: 500,
-                        fontSize: "0.85rem",
-                        color: "rgba(255,255,255,0.75)",
-                        mb: 0.5,
-                      }}
-                    >
-                      {stat.title}
-                    </Typography>
-                    <Box sx={{ display: "flex", alignItems: "baseline" }}>
-                      <Typography
-                        variant={isMedium ? "h4" : "h3"}
-                        component={motion.div}
-                        initial={{ y: 20, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        transition={{ delay: index * 0.2 + 0.3, duration: 0.5 }}
-                        sx={{
-                          fontWeight: 700,
-                          background: `linear-gradient(135deg, ${stat.color} 0%, ${stat.color}aa 100%)`,
-                          WebkitBackgroundClip: "text",
-                          WebkitTextFillColor: "transparent",
-                        }}
-                      >
-                        {stat.value}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          ml: 1,
-                          color: "rgba(255,255,255,0.6)",
-                          fontWeight: 300,
-                        }}
-                      >
-                        / {stat.total}
-                      </Typography>
-                    </Box>
-                    <Typography
-                      variant="body2"
-                      component={motion.div}
-                      initial={{ width: 0 }}
-                      animate={{ width: "100%" }}
-                      transition={{ delay: index * 0.2 + 0.5, duration: 0.8 }}
-                      sx={{
-                        mt: 1,
-                        height: "4px",
-                        background: `linear-gradient(90deg, ${stat.color}aa, ${stat.color}22)`,
-                        borderRadius: "4px",
-                        position: "relative",
-                        "&::after": {
-                          content: `"${progressPercentage}%"`,
-                          position: "absolute",
-                          right: 0,
-                          top: "-18px",
-                          fontSize: "0.75rem",
-                          color: "rgba(255,255,255,0.6)",
-                          fontWeight: 300,
-                        },
-                      }}
-                    />
-                  </Box>
-                </Box>
-              )}
-            </GlowingCard>
-          </Grid>
-        );
-      })}
-    </Grid>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+      <StatCard 
+        title="Günlük İlerleme" 
+        completed={completedToday} 
+        total={activeTodayCount} 
+        progress={dailyProgress} 
+        icon={<CheckCircleOutline className="text-blue-500" fontSize="small" />}
+        colorClass="bg-blue-500"
+        gradientClass="bg-gradient-to-br from-blue-50/80 to-blue-100/50 dark:from-blue-900/20 dark:to-slate-900/40"
+      />
+      <StatCard 
+        title="Haftalık İlerleme" 
+        completed={weeklyStats.completed} 
+        total={weeklyStats.added} 
+        progress={weeklyProgress} 
+        icon={<DoneAll className="text-indigo-500" fontSize="small" />}
+        colorClass="bg-indigo-500"
+        gradientClass="bg-gradient-to-br from-indigo-50/80 to-indigo-100/50 dark:from-indigo-900/20 dark:to-slate-900/40"
+      />
+      <StatCard 
+        title="Aylık İlerleme" 
+        completed={monthlyStats.completed} 
+        total={monthlyStats.added} 
+        progress={monthlyProgress} 
+        icon={<CheckCircleOutline className="text-teal-500" fontSize="small" />}
+        colorClass="bg-teal-500"
+        gradientClass="bg-gradient-to-br from-teal-50/80 to-teal-100/50 dark:from-teal-900/20 dark:to-slate-900/40"
+      />
+    </div>
   );
 };
 

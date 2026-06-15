@@ -101,7 +101,7 @@ const StatsCard = styled(Box)(({ theme }) => ({
   },
 }));
 
-const WaterConsumptionChart = ({ waterHistory, nextReminder, onRefresh }) => {
+const WaterConsumptionChart = ({ waterHistory = [], nextReminder, onRefresh }) => {
   const [timeRange, setTimeRange] = useState("month");
   const [displayType, setDisplayType] = useState("area");
   const [isLoading, setIsLoading] = useState(false);
@@ -110,7 +110,7 @@ const WaterConsumptionChart = ({ waterHistory, nextReminder, onRefresh }) => {
   const now = new Date();
   
   // Su geçmişi verilerini düzgün şekilde filtrele ve işle
-  const filteredData = waterHistory
+  const filteredData = (waterHistory || [])
     .filter((entry) => {
       // Tarih formatını kontrol et ve düzelt
       let entryDate;

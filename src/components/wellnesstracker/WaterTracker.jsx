@@ -636,6 +636,12 @@ const WaterContainer = styled(Box)(({ theme }) => ({
   position: "relative",
   width: "100%",
   height: "500px",
+  [theme.breakpoints.down("md")]: {
+    height: "400px",
+  },
+  [theme.breakpoints.down("sm")]: {
+    height: "300px",
+  },
   borderRadius: "30px",
   overflow: "hidden",
   background: "rgba(0, 0, 0, 0.2)",

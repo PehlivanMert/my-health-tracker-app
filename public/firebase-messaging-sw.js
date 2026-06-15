@@ -5,15 +5,14 @@ importScripts(
   "https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js"
 );
 
+import { precacheAndRoute } from 'workbox-precaching';
+
+// Inject point for VitePWA
+precacheAndRoute(self.__WB_MANIFEST || []);
+
+// Eski statik dizi yerine workbox kullanacağız
 const CACHE_VERSION = new Date().getTime();
 const CACHE_NAME = `wellness-tracker-v${CACHE_VERSION}`;
-const ASSETS = [
-  "/",
-  "/index.html",
-  "/manifest.json",
-  "/logo4.jpeg",
-  "/offline.html",
-];
 
 // Firebase konfigürasyon bilgilerini kopyalayın
 const firebaseConfig = {
@@ -28,121 +27,6 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
-
-/* =======================
-   Caching Mekanizması
-   ======================= */
-
-// 1. Install event: ASSETS dizisindeki dosyaları önbelleğe ekle
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      const cachePromises = ASSETS.map((url) =>
-        fetch(url)
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error(`Failed to fetch ${url}`);
-            }
-            return cache.put(url, response);
-          })
-          .catch((error) => {
-            // console.error(`Caching failed for ${url}:`, error);
-          })
-      );
-      return Promise.allSettled(cachePromises);
-    })
-  );
-  self.skipWaiting();
-});
-
-// 2. Activate event: Eski önbellekleri temizle
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches
-      .keys()
-      .then((cacheNames) => {
-        return Promise.all(
-          cacheNames.map((cacheName) => {
-            if (cacheName !== CACHE_NAME) {
-              return caches.delete(cacheName);
-            }
-          })
-        );
-      })
-      .then(() => {
-        return self.clients
-          .claim()
-          .then(() => {
-            return self.clients.matchAll({ type: "window" });
-          })
-          .then((clients) => {
-            clients.forEach((client) => client.navigate(client.url));
-          });
-      })
-  );
-});
-
-// Eski SW'nin beklemeden yenisiyle değişmesini sağlar
-self.skipWaiting();
-
-// 3. Fetch event: Önce önbellekten yanıtla, yoksa ağa başvur; navigasyon istekleri offline.html ile yanıtlasın
-self.addEventListener("fetch", (event) => {
-  const request = event.request;
-  
-  // Chrome extension isteklerini yok say
-  if (request.url.startsWith("chrome-extension://")) {
-    return;
-  }
-  
-  // API isteklerini ve POST/PUT/DELETE isteklerini bypass et (doğrudan ağa git)
-  const isAPIRequest = 
-    request.url.includes("googleapis.com") ||
-    request.url.includes("generativelanguage.googleapis.com") ||
-    request.url.includes("firebase") ||
-    request.url.includes("/api/") ||
-    request.method !== "GET"; // POST/PUT/DELETE isteklerini bypass et
-  
-  if (isAPIRequest) {
-    // API isteklerini doğrudan ağa yönlendir, cache'leme
-    event.respondWith(
-      fetch(request).catch((error) => {
-        console.error("API request failed:", request.url, error);
-        throw error;
-      })
-    );
-    return;
-  }
-  
-  // Sadece GET isteklerini cache ile işle (statik dosyalar için)
-  
-  if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // İsteğin başarılı olması durumunda, cache'i de güncelleyebilirsiniz.
-          return response;
-        })
-        .catch((error) => {
-          console.log("Fetch error for navigation:", error);
-          return caches.match("/offline.html");
-        })
-    );
-  } else {
-    event.respondWith(
-      caches.match(request).then((cachedResponse) => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        
-        return fetch(request).catch((error) => {
-          console.log("Fetch error for resource:", error);
-          // Eğer fetch başarısız olursa, boş response döndür
-          return new Response("", { status: 404, statusText: "Not Found" });
-        });
-      })
-    );
-  }
-});
 
 /* =======================
    Firebase Background Messaging

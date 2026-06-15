@@ -173,7 +173,7 @@ const SupplementDialog = ({
 
   return (
     <Dialog
-      open={openSupplementDialog}
+      open={!!openSupplementDialog}
       onClose={() => {
         setOpenSupplementDialog(false);
         setEditingSupplement(null);

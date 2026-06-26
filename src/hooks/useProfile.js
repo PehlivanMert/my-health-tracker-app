@@ -77,7 +77,7 @@ export const useProfile = (user) => {
         const completionDismissedKey = `profile_completion_dismissed_${user.uid}`;
         const alreadyDismissed = localStorage.getItem(completionDismissedKey);
 
-        if (!alreadyDismissed && (!prof.username || !prof.gender || !prof.birthDate || !prof.height || !prof.weight)) {
+        if (!prof.isProfileCompleted && !alreadyDismissed && (!prof.username || !prof.gender || !prof.birthDate || !prof.height || !prof.weight)) {
           setOpenProfileCompletionModal(true);
         }
       } catch (error) {
@@ -96,7 +96,7 @@ export const useProfile = (user) => {
     if (user && user.uid) {
       try {
         const userRef = doc(db, "users", user.uid);
-        const profileToSave = { ...updatedData };
+        const profileToSave = { ...updatedData, isProfileCompleted: true };
         if (profileToSave.birthDate instanceof Date) {
           profileToSave.birthDate = profileToSave.birthDate.toISOString();
         }

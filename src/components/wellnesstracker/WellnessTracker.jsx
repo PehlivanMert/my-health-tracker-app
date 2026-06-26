@@ -26,18 +26,17 @@ import SupplementNotificationSettingsDialog from "./SupplementNotificationSettin
 import WaterNotificationSettingsDialog from "./WaterNotificationSettingsDialog";
 import { DateTime } from "luxon";
 
-// Tailwind Tab Button
 const TabButton = ({ active, onClick, icon, label, colorClass }) => (
   <button
     onClick={onClick}
-    className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all ${
+    className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all flex-1 sm:flex-none justify-center ${
       active
-        ? `bg-gradient-to-r ${colorClass} text-white shadow-lg`
-        : "bg-white/10 text-slate-300 hover:bg-white/20 hover:text-white"
+        ? `bg-gradient-to-r ${colorClass} text-white shadow-md`
+        : "bg-transparent text-slate-400 hover:bg-white/10 hover:text-white"
     }`}
   >
-    {icon}
-    <span className="hidden sm:inline">{label}</span>
+    {React.cloneElement(icon, { sx: { fontSize: "1.1rem" } })}
+    <span>{label}</span>
   </button>
 );
 
@@ -48,15 +47,15 @@ const AccordionSection = ({ title, icon, count, children, defaultExpanded = fals
     <div className="mb-4 rounded-3xl overflow-hidden shadow-md">
       <button
         onClick={() => setExpanded(!expanded)}
-        className={`w-full flex items-center justify-between p-4 sm:p-5 bg-gradient-to-r ${colorClass} text-white transition-all hover:brightness-110`}
+        className={`w-full flex items-center justify-between p-3 bg-gradient-to-r ${colorClass} text-white transition-all hover:brightness-110`}
       >
-        <div className="flex items-center gap-3">
-          {icon}
-          <span className="font-bold text-lg">
+        <div className="flex items-center gap-2">
+          {React.cloneElement(icon, { sx: { fontSize: "1.2rem" } })}
+          <span className="font-semibold text-sm">
             {title} ({count})
           </span>
         </div>
-        {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        {expanded ? <ExpandLessIcon sx={{ fontSize: "1.2rem" }} /> : <ExpandMoreIcon sx={{ fontSize: "1.2rem" }} />}
       </button>
       <AnimatePresence>
         {expanded && (
@@ -230,24 +229,23 @@ const WellnessTracker = ({ user }) => {
         backgroundAttachment: "fixed",
       }}
     >
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-4">
         
-        {/* Header */}
-        <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-2xl">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <WaterDropIcon className="text-white text-3xl" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-extrabold text-white">Yaşam Takibi</h1>
-                <p className="text-slate-400 font-medium">Su ve takviye hedeflerinizi yönetin</p>
-              </div>
+        {/* Kompakt Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+              <WaterDropIcon className="text-white text-xl" />
             </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">Yaşam Takibi</h1>
+              <p className="text-xs text-slate-400">Su ve takviye hedefleriniz</p>
+            </div>
+          </div>
 
-            <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10">
-              <TabButton
-                active={activeTab === 0}
+          <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 self-stretch sm:self-auto">
+            <TabButton
+              active={activeTab === 0}
                 onClick={() => setActiveTab(0)}
                 icon={<WaterDropIcon />}
                 label="Su Takibi"
@@ -261,7 +259,6 @@ const WellnessTracker = ({ user }) => {
                 colorClass="from-blue-500 to-indigo-600"
               />
             </div>
-          </div>
         </div>
 
         {/* Content Area */}

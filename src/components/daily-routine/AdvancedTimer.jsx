@@ -1060,97 +1060,65 @@ const AdvancedTimer = ({ user }) => {
           >
             Bugün Toplam: {calculateDailyTotal()}
           </Typography>
-          {/* Timer Görseli */}
+          {/* Timer Görseli - Kompakt Dijital Saat */}
           <Box
             sx={{
-              position: "relative",
               display: "flex",
               justifyContent: "center",
-              mb: 3,
+              alignItems: "center",
+              flexDirection: "column",
+              mb: 4,
+              mt: 2,
+              position: "relative",
               zIndex: 1,
             }}
           >
-            <Box sx={{ position: "relative", width: 200, height: 200 }}>
-              <CircularProgress
-                variant="determinate"
-                value={100}
-                size={200}
-                thickness={6}
-                sx={{ 
-                  position: "absolute", 
-                  color: darkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
-                  filter: "drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2))",
-                }}
-              />
-              <CircularProgress
-                variant={
-                  mode === TIMER_MODES.FLOWTIME && isWorking
-                    ? "indeterminate"
-                    : "determinate"
-                }
-                value={
-                  mode === TIMER_MODES.FLOWTIME && isWorking
-                    ? 100
-                    : (timer / initialTimer) * 100
-                }
-                size={200}
-                thickness={6}
+            <motion.div
+              key={timer}
+              initial={{ scale: 0.95, opacity: 0.8 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Typography 
+                variant="h1" 
+                fontWeight="900"
                 sx={{
-                  position: "absolute",
-                  color: isWorking
-                    ? "#2196F3"
-                    : isLongBreak
-                    ? "#4caf50"
-                    : "#3F51B5",
-                  filter: "drop-shadow(0 4px 8px rgba(33, 150, 243, 0.3))",
-                  animation: "none",
-                }}
-              />
-              <Box
-                sx={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  bottom: 0,
-                  right: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexDirection: "column",
+                  fontSize: { xs: "4rem", sm: "5rem" },
+                  fontFamily: "'Inter', sans-serif",
+                  letterSpacing: "-0.05em",
+                  color: isWorking ? "#38bdf8" : (isLongBreak ? "#4ade80" : "#a78bfa"),
+                  textShadow: isWorking 
+                    ? "0 0 40px rgba(56,189,248,0.4)" 
+                    : "0 0 40px rgba(167,139,250,0.4)",
+                  lineHeight: 1,
                 }}
               >
-                <motion.div
-                  key={timer}
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Typography 
-                    variant="h3" 
-                    fontWeight="bold"
-                    sx={{
-                      color: darkMode ? "#ffffff" : theme.palette.text.primary,
-                      textShadow: darkMode ? "0 2px 4px rgba(0,0,0,0.3)" : "none",
-                    }}
-                  >
-                    {formatTime(timer)}
-                  </Typography>
-                </motion.div>
-                <Typography
-                  variant="body2"
-                  sx={{ 
-                    mt: 1, 
-                    fontWeight: "medium",
-                    color: darkMode ? "rgba(255, 255, 255, 0.8)" : theme.palette.text.secondary,
-                  }}
-                >
-                  {isWorking
-                    ? "Odaklanın"
-                    : isLongBreak
-                    ? "Uzun molada rahatlayın"
-                    : "Kısa mola"}
-                </Typography>
-              </Box>
+                {formatTime(timer)}
+              </Typography>
+            </motion.div>
+            <Typography
+              variant="subtitle1"
+              sx={{ 
+                mt: 1, 
+                fontWeight: "600",
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                color: darkMode ? "rgba(255, 255, 255, 0.5)" : theme.palette.text.secondary,
+              }}
+            >
+              {isWorking ? "ODAKLAN" : (isLongBreak ? "UZUN MOLA" : "KISA MOLA")}
+            </Typography>
+
+            {/* İnce İlerleme Çizgisi */}
+            <Box sx={{ width: "100%", maxWidth: 280, height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 2, mt: 3, overflow: "hidden" }}>
+              <Box 
+                sx={{ 
+                  height: "100%", 
+                  width: mode === TIMER_MODES.FLOWTIME && isWorking ? "100%" : `${(timer / initialTimer) * 100}%`,
+                  background: isWorking ? "#38bdf8" : (isLongBreak ? "#4ade80" : "#a78bfa"),
+                  transition: "width 1s linear",
+                }} 
+              />
             </Box>
           </Box>
           {/* Kontrol Butonları */}
@@ -1168,26 +1136,32 @@ const AdvancedTimer = ({ user }) => {
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button
                 variant="contained"
-                color={isRunning ? "warning" : "primary"}
                 onClick={handleStartPause}
                 startIcon={isRunning ? <Pause /> : <PlayArrow />}
                 sx={{
-                  minWidth: 120,
+                  minWidth: 140,
+                  borderRadius: "50px",
+                  py: 1.5,
+                  fontSize: "1rem",
                   background: isRunning
-                    ? "linear-gradient(45deg, #ff9800 30%, #f57c00 90%)"
-                    : "linear-gradient(45deg, #2196F3 30%, #1976D2 90%)",
+                    ? "linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)"
+                    : "linear-gradient(135deg, #38bdf8 0%, #3b82f6 100%)",
                   color: "#ffffff",
-                  fontWeight: 600,
-                  boxShadow: "0 4px 12px rgba(33, 150, 243, 0.3)",
+                  fontWeight: 700,
+                  boxShadow: isRunning 
+                    ? "0 8px 24px rgba(234,88,12,0.3)" 
+                    : "0 8px 24px rgba(56,189,248,0.3)",
                   "&:hover": {
                     background: isRunning
-                      ? "linear-gradient(45deg, #f57c00 30%, #ef6c00 90%)"
-                      : "linear-gradient(45deg, #1976D2 30%, #1565C0 90%)",
-                    boxShadow: "0 6px 20px rgba(33, 150, 243, 0.4)",
+                      ? "linear-gradient(135deg, #d97706 0%, #c2410c 100%)"
+                      : "linear-gradient(135deg, #0284c7 0%, #2563eb 100%)",
+                    boxShadow: isRunning
+                      ? "0 10px 30px rgba(234,88,12,0.4)"
+                      : "0 10px 30px rgba(56,189,248,0.4)",
                   },
                 }}
               >
-                {isRunning ? "Duraklat" : "Başlat"}
+                {isRunning ? "DURAKLAT" : "BAŞLAT"}
               </Button>
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
@@ -1197,17 +1171,20 @@ const AdvancedTimer = ({ user }) => {
                 startIcon={<SkipNext />}
                 disabled={mode === TIMER_MODES.FLOWTIME && isWorking}
                 sx={{
-                  border: "1px solid rgba(255, 255, 255, 0.3)",
+                  borderRadius: "50px",
+                  py: 1.5,
+                  px: 3,
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                  border: "2px solid rgba(255, 255, 255, 0.15)",
                   color: darkMode ? "#ffffff" : theme.palette.text.primary,
-                  background: "rgba(255, 255, 255, 0.1)",
-                  backdropFilter: "blur(10px)",
                   "&:hover": {
-                    background: "rgba(255, 255, 255, 0.2)",
-                    border: "1px solid rgba(255, 255, 255, 0.4)",
+                    border: "2px solid rgba(255, 255, 255, 0.3)",
+                    background: "rgba(255, 255, 255, 0.05)",
                   },
                 }}
               >
-                Atla
+                GEÇ
               </Button>
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>

@@ -21,41 +21,37 @@ const RoutineHeader = ({ onNewRoutine, user, newRoutineButtonRef }) => {
   return (
     <div className="mb-8 relative z-10">
       <div
-        className="flex flex-col md:flex-row items-center justify-between gap-6 rounded-3xl p-6 md:p-8 border border-white/10 shadow-xl"
-        style={{ background: "rgba(255,255,255,0.07)", backdropFilter: "blur(16px)" }}
+        className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-xl p-3 border border-white/10 shadow-lg"
+        style={{ background: "rgba(10,15,30,0.5)", backdropFilter: "blur(16px)" }}
       >
-        <div className="flex items-center gap-4">
-          <div className="p-4 rounded-2xl shadow-lg" style={{ background: "linear-gradient(135deg, #6366f1, #06b6d4)" }}>
-            <Clock className="h-8 w-8 text-white" />
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="p-2 rounded-lg shadow-md" style={{ background: "linear-gradient(135deg, #6366f1, #06b6d4)" }}>
+            <Clock className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-              Günlük Rutinler
-            </h2>
-            <p className="text-white/40 font-medium mt-1 text-sm">
-              Alışkanlıklarınızı takip edin ve hedeflerinize ulaşın.
-            </p>
+            <h2 className="text-lg font-bold text-white tracking-tight">Günlük Rutinler</h2>
+            <p className="text-white/40 font-semibold text-[10px] uppercase tracking-wider mt-0.5">Alışkanlık Takibi</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <Button
             onClick={handleOpenTimer}
             variant="outline"
             ref={timerButtonRef}
-            className="flex-1 md:flex-none rounded-xl h-11 px-5 shadow-sm bg-white/8 hover:bg-white/14 transition-all border-white/10 text-white/70 hover:text-white"
+            className="flex-1 sm:flex-none rounded-lg h-9 px-4 text-xs bg-white/5 hover:bg-white/10 border-white/10 text-white/70 hover:text-white"
           >
-            <Timer className="mr-2 h-4 w-4 text-cyan-400" />
+            <Timer className="mr-1.5 h-4 w-4 text-cyan-400" />
             Sayaç
           </Button>
           <Button
             onClick={onNewRoutine}
             ref={newRoutineButtonRef}
-            className="flex-1 md:flex-none rounded-xl h-11 px-5 text-white shadow-md transition-all"
-            style={{ background: "linear-gradient(135deg, #6366f1, #06b6d4)", boxShadow: "0 4px 16px rgba(99,102,241,0.35)" }}
+            className="flex-1 sm:flex-none rounded-lg h-9 px-4 text-xs text-white shadow-md"
+            style={{ background: "linear-gradient(135deg, #6366f1, #06b6d4)" }}
           >
-            <Plus className="mr-2 h-4 w-4" />
-            Yeni Ekle
+            <Plus className="mr-1.5 h-4 w-4" />
+            Yeni
           </Button>
         </div>
       </div>

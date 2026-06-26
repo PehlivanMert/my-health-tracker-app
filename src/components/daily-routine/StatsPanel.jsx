@@ -64,57 +64,40 @@ const StatsPanel = ({ routines = [], weeklyStats, monthlyStats }) => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {CARDS.map(({ title, completed, total, progress, icon, ringColor, glowColor, borderHover }) => (
+      {CARDS.map(({ title, completed, total, progress, icon, ringColor, borderHover }) => (
         <div
           key={title}
-          className={`relative overflow-hidden rounded-3xl p-5 border border-white/10 ${borderHover} transition-all duration-300 hover:-translate-y-1 hover:shadow-xl`}
-          style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(16px)" }}
+          className={`relative overflow-hidden rounded-xl p-3 border border-white/10 ${borderHover} transition-all duration-300 flex items-center justify-between`}
+          style={{ background: "rgba(10,15,30,0.5)", backdropFilter: "blur(16px)" }}
         >
-          {/* Subtle inner glow on hover */}
-          <div
-            className="absolute inset-0 rounded-3xl opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-            style={{ background: `radial-gradient(ellipse at top right, ${glowColor}, transparent 70%)` }}
-          />
-
-          <div className="relative z-10 flex items-center justify-between">
-            <div>
-              <p className="text-slate-400 text-sm font-medium mb-2">{title}</p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold text-white">{completed}</span>
-                <span className="text-sm text-slate-500 font-medium">/ {total}</span>
-              </div>
+          <div>
+            <p className="text-slate-400 text-[10px] uppercase tracking-wider font-semibold mb-0.5">{title}</p>
+            <div className="flex items-baseline gap-1">
+              <span className="text-lg font-bold text-white">{completed}</span>
+              <span className="text-[10px] text-slate-500 font-medium">/ {total}</span>
             </div>
-
-            {/* SVG Progress Ring */}
-            <div className="relative w-16 h-16 flex items-center justify-center shrink-0">
-              <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                <path
-                  strokeWidth="3"
-                  stroke="rgba(255,255,255,0.08)"
-                  fill="none"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-                <path
-                  strokeWidth="3"
-                  strokeDasharray={`${progress}, 100`}
-                  strokeLinecap="round"
-                  stroke={ringColor}
-                  fill="none"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  style={{ filter: `drop-shadow(0 0 3px ${ringColor}80)` }}
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                {icon}
-              </div>
+            <div className="flex items-center gap-1 mt-1 text-[10px] font-medium" style={{ color: ringColor }}>
+              <TrendingUp sx={{ fontSize: 12 }} />
+              <span>%{progress} başarı</span>
             </div>
           </div>
 
-          {/* Progress text */}
-          <div className="relative z-10 mt-4 flex items-center gap-1.5 text-xs font-medium text-slate-500">
-            <TrendingUp sx={{ fontSize: 14, color: ringColor }} />
-            <span style={{ color: ringColor }}>%{progress}</span>
-            <span>başarı oranı</span>
+          {/* SVG Progress Ring */}
+          <div className="relative w-10 h-10 flex items-center justify-center shrink-0">
+            <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+              <path strokeWidth="3" stroke="rgba(255,255,255,0.08)" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              <path
+                strokeWidth="3"
+                strokeDasharray={`${progress}, 100`}
+                strokeLinecap="round"
+                stroke={ringColor}
+                fill="none"
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center scale-75">
+              {icon}
+            </div>
           </div>
         </div>
       ))}

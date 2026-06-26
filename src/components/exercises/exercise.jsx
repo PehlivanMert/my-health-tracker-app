@@ -45,7 +45,7 @@ const Exercises = ({ user }) => {
   const handleDelete = async (exerciseId) => {
     const updatedExercises = exercises.filter((e) => e.id !== exerciseId);
     setExercises(updatedExercises);
-    
+
     try {
       const userDocRef = doc(db, "users", user.uid);
       await safeUpdateDoc(userDocRef, {
@@ -60,15 +60,9 @@ const Exercises = ({ user }) => {
   if (!user) return <div className="text-center p-8 text-white">Lütfen giriş yapın</div>;
 
   return (
-    <div 
-      className="min-h-screen bg-slate-900 p-4 sm:p-6 lg:p-8"
-      style={{
-        background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
-        backgroundAttachment: "fixed",
-      }}
-    >
+    <div className="min-h-screen p-4 sm:p-6 lg:p-8">
       <Container maxWidth="lg" className="space-y-8">
-        
+
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -91,15 +85,14 @@ const Exercises = ({ user }) => {
             <button
               onClick={() => setOpenModal(true)}
               disabled={!canUseGemini() || exerciseAIState?.isGenerating}
-              className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all shadow-lg ${
-                !canUseGemini() || exerciseAIState?.isGenerating
+              className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all shadow-lg ${!canUseGemini() || exerciseAIState?.isGenerating
                   ? "bg-slate-700 text-slate-400 cursor-not-allowed"
                   : "bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white hover:shadow-blue-500/25"
-              }`}
+                }`}
             >
               <AddIcon />
-              {exerciseAIState?.isGenerating ? "Oluşturuluyor..." : 
-               canUseGemini() ? "Yeni Program Oluştur" : "Günlük Limit Doldu"}
+              {exerciseAIState?.isGenerating ? "Oluşturuluyor..." :
+                canUseGemini() ? "Yeni Program Oluştur" : "Günlük Limit Doldu"}
             </button>
           </div>
 

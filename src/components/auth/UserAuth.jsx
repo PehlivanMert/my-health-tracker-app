@@ -126,43 +126,58 @@ const IOSCard = styled(motion.div, {
 // =====================
 const GlowingTextField = styled(TextField, {
   shouldForwardProp: (prop) => prop !== "$focusColor",
-})(({ theme, $focusColor = "#2196F3" }) => ({
+})(({ theme, $focusColor = "#6366f1" }) => ({
   marginBottom: theme.spacing(3),
   "& .MuiOutlinedInput-root": {
     borderRadius: "16px",
-    // iOS için arka plan rengini değiştirmedik, çünkü alanın tutarlılığı önemli
-    background: "rgba(255, 255, 255, 0.09)",
-    backdropFilter: "blur(5px)",
-    WebkitBackdropFilter: "blur(5px)",
-    color: $focusColor,
+    background: "rgba(255, 255, 255, 0.10)",
+    backdropFilter: "blur(8px)",
+    WebkitBackdropFilter: "blur(8px)",
     transition: "all 0.3s ease",
     "& fieldset": {
-      borderColor: "rgba(255, 255, 255, 0.15)",
+      borderColor: "rgba(255, 255, 255, 0.18)",
       transition: "all 0.3s ease",
     },
     "&:hover fieldset": {
-      borderColor: "rgba(255, 255, 255, 0.3)",
+      borderColor: "rgba(255, 255, 255, 0.35)",
     },
     "&.Mui-focused": {
-      boxShadow: `0 0 12px ${$focusColor}66`,
+      boxShadow: `0 0 16px ${$focusColor}55`,
+      background: "rgba(255, 255, 255, 0.13)",
     },
     "&.Mui-focused fieldset": {
       borderColor: $focusColor,
     },
+    // Input metin rengi — her zaman beyaz
+    "& input": {
+      color: "#ffffff",
+      WebkitTextFillColor: "#ffffff",
+      fontSize: "0.95rem",
+    },
+    // Autofill arka plan hack
     "& input:-webkit-autofill": {
-      WebkitBoxShadow: `0 0 0 100px rgba(255, 255, 255, 0.09) inset`,
-      WebkitTextFillColor: $focusColor,
+      WebkitBoxShadow: `0 0 0 100px rgba(15, 23, 42, 0.95) inset`,
+      WebkitTextFillColor: "#ffffff",
+      caretColor: "#ffffff",
       transition: "background-color 5000s ease-in-out 0s",
     },
   },
   "& .MuiInputLabel-root": {
-    color: $focusColor,
+    color: "rgba(255, 255, 255, 0.55)",
+    fontSize: "0.9rem",
   },
   "& .MuiInputLabel-root.Mui-focused": {
     color: $focusColor,
   },
   "& .MuiInputAdornment-root": {
-    color: $focusColor,
+    color: "rgba(255, 255, 255, 0.45)",
+  },
+  "& .MuiFormHelperText-root": {
+    color: "rgba(255, 100, 100, 0.9)",
+    fontSize: "0.78rem",
+  },
+  "& .MuiSvgIcon-root": {
+    color: "rgba(255, 255, 255, 0.45)",
   },
 }));
 
@@ -339,13 +354,13 @@ const UserAuth = ({ setUser }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (process.env.NODE_ENV === 'development') {
-    console.log("Form gönderildi, isResetting:", isResetting);
-    console.log("Form verileri:", loginData);
+      console.log("Form gönderildi, isResetting:", isResetting);
+      console.log("Form verileri:", loginData);
     }
 
     if (!validate()) {
       if (process.env.NODE_ENV === 'development') {
-      console.log("Form validasyonu başarısız");
+        console.log("Form validasyonu başarısız");
       }
       return;
     }
@@ -355,7 +370,7 @@ const UserAuth = ({ setUser }) => {
     try {
       if (isResetting) {
         if (process.env.NODE_ENV === 'development') {
-        console.log("Şifre sıfırlama işlemi başlatılıyor...");
+          console.log("Şifre sıfırlama işlemi başlatılıyor...");
         }
         await handlePasswordReset(loginData.username);
         setIsResetting(false);
@@ -401,9 +416,8 @@ const UserAuth = ({ setUser }) => {
   return (
     <AnimatePresence mode="wait">
       <ContainerCard
-        key={`${isRegister ? "register" : "login"}-${
-          isResetting ? "reset" : "normal"
-        }`}
+        key={`${isRegister ? "register" : "login"}-${isResetting ? "reset" : "normal"
+          }`}
         initial="initial"
         animate="in"
         exit="out"
@@ -443,8 +457,8 @@ const UserAuth = ({ setUser }) => {
               {isResetting
                 ? "Şifre Sıfırlama"
                 : isRegister
-                ? "Yeni Hesap"
-                : "Hoş Geldiniz"}
+                  ? "Yeni Hesap"
+                  : "Hoş Geldiniz"}
             </Typography>
           </motion.div>
           <Typography
@@ -454,8 +468,8 @@ const UserAuth = ({ setUser }) => {
             {isResetting
               ? "E-posta adresinizi girin"
               : isRegister
-              ? "Bilgilerinizi doldurun"
-              : "Hesabınıza giriş yapın"}
+                ? "Bilgilerinizi doldurun"
+                : "Hesabınıza giriş yapın"}
           </Typography>
         </motion.div>
 

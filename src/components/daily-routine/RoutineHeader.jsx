@@ -20,16 +20,19 @@ const RoutineHeader = ({ onNewRoutine, user, newRoutineButtonRef }) => {
 
   return (
     <div className="mb-8 relative z-10">
-      <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white/10 dark:bg-slate-900/40 backdrop-blur-md rounded-3xl p-6 md:p-8 border border-white/20 dark:border-slate-800/50 shadow-xl">
+      <div
+        className="flex flex-col md:flex-row items-center justify-between gap-6 rounded-3xl p-6 md:p-8 border border-white/10 shadow-xl"
+        style={{ background: "rgba(255,255,255,0.07)", backdropFilter: "blur(16px)" }}
+      >
         <div className="flex items-center gap-4">
-          <div className="p-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg">
+          <div className="p-4 rounded-2xl shadow-lg" style={{ background: "linear-gradient(135deg, #6366f1, #06b6d4)" }}>
             <Clock className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-800 dark:text-white tracking-tight">
+            <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
               Günlük Rutinler
             </h2>
-            <p className="text-slate-500 dark:text-slate-400 font-medium mt-1">
+            <p className="text-white/40 font-medium mt-1 text-sm">
               Alışkanlıklarınızı takip edin ve hedeflerinize ulaşın.
             </p>
           </div>
@@ -40,17 +43,18 @@ const RoutineHeader = ({ onNewRoutine, user, newRoutineButtonRef }) => {
             onClick={handleOpenTimer}
             variant="outline"
             ref={timerButtonRef}
-            className="flex-1 md:flex-none rounded-xl h-12 px-6 shadow-sm bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-700 transition-all border-slate-200 dark:border-slate-700"
+            className="flex-1 md:flex-none rounded-xl h-11 px-5 shadow-sm bg-white/8 hover:bg-white/14 transition-all border-white/10 text-white/70 hover:text-white"
           >
-            <Timer className="mr-2 h-5 w-5 text-indigo-500" />
+            <Timer className="mr-2 h-4 w-4 text-cyan-400" />
             Sayaç
           </Button>
           <Button
             onClick={onNewRoutine}
             ref={newRoutineButtonRef}
-            className="flex-1 md:flex-none rounded-xl h-12 px-6 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-md shadow-indigo-500/25 transition-all"
+            className="flex-1 md:flex-none rounded-xl h-11 px-5 text-white shadow-md transition-all"
+            style={{ background: "linear-gradient(135deg, #6366f1, #06b6d4)", boxShadow: "0 4px 16px rgba(99,102,241,0.35)" }}
           >
-            <Plus className="mr-2 h-5 w-5" />
+            <Plus className="mr-2 h-4 w-4" />
             Yeni Ekle
           </Button>
         </div>

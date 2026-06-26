@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useDailyRoutineData } from "../../hooks/useDailyRoutineData";
 import { useDailyRoutineForm } from "../../hooks/useDailyRoutineForm";
 import { motion } from "framer-motion";
@@ -28,6 +28,12 @@ const DailyRoutine = ({ user }) => {
   const [filterCategory, setFilterCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [timeFilter, setTimeFilter] = useState("Today");
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   const {
     modalOpen,
@@ -115,18 +121,18 @@ const DailyRoutine = ({ user }) => {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
   };
-  
+
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
   };
 
   return (
-    <motion.div 
+    <motion.div
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="w-full max-w-5xl mx-auto space-y-6"
+      className="w-full max-w-5xl mx-auto space-y-6 px-2 py-4"
     >
       {/* Header */}
       <motion.div variants={itemVariants}>
@@ -139,7 +145,11 @@ const DailyRoutine = ({ user }) => {
       </motion.div>
 
       {/* Filters and Actions */}
-      <motion.div variants={itemVariants} className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white/40 dark:bg-slate-900/40 backdrop-blur-md p-4 rounded-3xl shadow-sm border border-white/20 dark:border-slate-700/50">
+      <motion.div
+        variants={itemVariants}
+        className="flex flex-col md:flex-row gap-4 justify-between items-center rounded-3xl p-5 border border-white/10 shadow-lg"
+        style={{ background: "rgba(10,15,30,0.5)", backdropFilter: "blur(20px)" }}
+      >
         <FilterBar
           filterCategory={filterCategory}
           setFilterCategory={setFilterCategory}
@@ -160,10 +170,11 @@ const DailyRoutine = ({ user }) => {
         <RoutineLists
           activeRoutines={activeRoutines}
           completedRoutines={completedRoutines}
+          currentTime={currentTime}
           onCheck={toggleRoutineCompletion}
           onEdit={handleEditRoutine}
           onDelete={handleRequestDelete}
-          onToggleNotification={() => {}} 
+          onToggleNotification={() => { }}
         />
       </motion.div>
 

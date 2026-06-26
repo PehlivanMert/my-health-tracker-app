@@ -210,12 +210,12 @@ const AdvancedTimer = ({ user }) => {
           root: {
             transition: "all 0.3s ease",
             background: darkMode 
-              ? "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)"
-              : "#ffffff",
-            backdropFilter: "blur(10px)",
+              ? "rgba(15, 23, 42, 0.85)"
+              : "rgba(255, 255, 255, 0.8)",
+            backdropFilter: "blur(20px)",
             border: darkMode 
-              ? "1px solid rgba(255, 255, 255, 0.15)"
-              : "1px solid rgba(0, 0, 0, 0.1)",
+              ? "1px solid rgba(255, 255, 255, 0.1)"
+              : "1px solid rgba(0, 0, 0, 0.05)",
             boxShadow: darkMode
               ? "0 8px 32px rgba(0, 0, 0, 0.4)"
               : "0 8px 32px rgba(0, 0, 0, 0.1)",
@@ -897,15 +897,15 @@ const AdvancedTimer = ({ user }) => {
             mx: "auto",
             mt: 4,
             background: darkMode 
-              ? "linear-gradient(135deg, #1a2a6c 0%, #2196F3 50%, #3F51B5 100%)"
-              : "linear-gradient(135deg, #f5f5f5 0%, #e3f2fd 50%, #f3e5f5 100%)",
+              ? "rgba(10, 15, 30, 0.75)"
+              : "rgba(255, 255, 255, 0.7)",
             borderRadius: "24px",
-            backdropFilter: "blur(10px)",
+            backdropFilter: "blur(24px)",
             border: darkMode 
-              ? "1px solid rgba(255, 255, 255, 0.15)"
-              : "1px solid rgba(0, 0, 0, 0.1)",
+              ? "1px solid rgba(255, 255, 255, 0.08)"
+              : "1px solid rgba(0, 0, 0, 0.05)",
             boxShadow: darkMode
-              ? "0 8px 32px rgba(0, 0, 0, 0.4)"
+              ? "0 16px 40px rgba(0, 0, 0, 0.5)"
               : "0 8px 32px rgba(0, 0, 0, 0.1)",
             color: darkMode ? "#ffffff" : theme.palette.text.primary,
             position: "relative",
@@ -917,7 +917,7 @@ const AdvancedTimer = ({ user }) => {
               right: 0,
               bottom: 0,
               background: darkMode 
-                ? "rgba(255, 255, 255, 0.05)"
+                ? "rgba(255, 255, 255, 0.03)"
                 : "rgba(255, 255, 255, 0.3)",
               borderRadius: "24px",
               zIndex: 0,

@@ -34,7 +34,7 @@ const RoutineLists = ({
     <div className="space-y-8 mt-4">
       {/* Active Routines */}
       <div>
-        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4 text-center">
+        <h2 className="text-base font-semibold text-white/60 mb-4 uppercase tracking-widest text-center">
           Aktif Rutinler
         </h2>
 
@@ -47,8 +47,8 @@ const RoutineLists = ({
               exit={{ opacity: 0 }}
               className="flex flex-col items-center justify-center py-8"
             >
-              <img src="/empty-state.svg" alt="Boş" className="w-32 h-32 opacity-50 mb-4" />
-              <p className="text-slate-400 italic">Planlanmış aktif rutin bulunmamaktadır.</p>
+              <img src="/empty-state.svg" alt="Boş" className="w-32 h-32 opacity-40 mb-4" />
+              <p className="text-white/50 italic text-sm font-medium">Planlanmış aktif rutin bulunmamaktadır.</p>
             </motion.div>
           ) : (
             <motion.div
@@ -75,15 +75,15 @@ const RoutineLists = ({
       </div>
 
       {/* Completed Routines */}
-      <div className="pt-6 border-t border-slate-200 dark:border-slate-800">
+      <div className="pt-6 border-t border-white/8">
         <button
           onClick={() => setShowCompleted(!showCompleted)}
-          className="flex items-center justify-center w-full gap-2 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors"
+          className="flex items-center justify-center w-full gap-2 text-white/30 hover:text-white/60 transition-colors duration-200"
         >
-          <span className="text-lg font-semibold">
+          <span className="text-sm font-semibold uppercase tracking-widest">
             Tamamlanan Rutinler ({completedRoutines.length})
           </span>
-          {showCompleted ? <ExpandLess /> : <ExpandMore />}
+          {showCompleted ? <ExpandLess sx={{ fontSize: 18 }} /> : <ExpandMore sx={{ fontSize: 18 }} />}
         </button>
 
         <AnimatePresence>
@@ -95,7 +95,7 @@ const RoutineLists = ({
               className="overflow-hidden mt-4"
             >
               {completedRoutines.length === 0 ? (
-                <div className="text-center py-4 text-slate-400 italic">
+                <div className="text-center py-4 text-white/40 italic text-sm">
                   Henüz tamamlanmış rutin yok.
                 </div>
               ) : (

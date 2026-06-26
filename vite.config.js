@@ -101,7 +101,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           'firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
-          'calendar': ['@fullcalendar/react', '@fullcalendar/daygrid', '@fullcalendar/timegrid', '@fullcalendar/interaction', '@fullcalendar/multimonth', '@fullcalendar/rrule'],
+          'datetime': ['luxon', 'date-fns'],
           'charts': ['recharts'],
           'ui': ['@mui/material', '@mui/icons-material', 'framer-motion', 'lucide-react'],
         }

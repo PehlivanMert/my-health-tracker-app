@@ -277,7 +277,8 @@ const WellnessTracker = ({ user }) => {
               <div className="flex justify-end">
                 <button
                   onClick={() => setWaterNotifDialogOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all border border-white/20 shadow-md"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white/70 hover:text-white transition-all border border-white/10 hover:border-indigo-500/40 hover:bg-indigo-500/10"
+                  style={{ background: "rgba(255,255,255,0.06)" }}
                 >
                   <NotificationsIcon fontSize="small" />
                   <span>Su Bildirimleri</span>

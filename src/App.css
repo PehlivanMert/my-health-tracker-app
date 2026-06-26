@@ -1,53 +1,32 @@
-/* Genel ayarlar */
-* {
+/* App.css — Yalnızca global utility animasyonları içerir.
+   Tasarım token'ları index.css'de tanımlı.
+   Bileşene özgü stiller kendi dosyalarında veya Tailwind className ile yönetilir. */
+
+/* ─── Box Sizing ─── */
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  transition: background-color var(--transition-speed),
-    color var(--transition-speed), border var(--transition-speed);
 }
 
-/* Örnek Skeleton Loader (App.css) */
-.skeleton-loader {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-  from {
-    background-position: -200% 0;
-  }
-  to {
-    background-position: 200% 0;
-  }
-}
-
+/* ─── Slide-in Keyframe ─── */
 @keyframes slideIn {
   from {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-/* 4. Bildirim Stilleri */
-.notification-badge {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background: var(--primary-accent);
-  color: var(--body-color);
-  padding: 15px;
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-  animation: ping 1.5s infinite;
-}
-
+/* ─── Ping Keyframe (bildirim badge'i) ─── */
 @keyframes ping {
+
   75%,
   100% {
     transform: scale(1.5);
@@ -55,9 +34,10 @@
   }
 }
 
+/* ─── FullCalendar mobil düzeltmesi ─── */
 @media (max-width: 600px) {
   .fc .fc-toolbar .fc-button {
     font-size: 0.7rem !important;
-    padding: 10px 5px !important;
+    padding: 8px 5px !important;
   }
 }

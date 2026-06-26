@@ -78,123 +78,129 @@ const ModernHealthDashboard = ({ user }) => {
   };
 
   return (
-    <motion.div 
-      className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8 font-sans"
+    <motion.div
+      className="min-h-screen p-4 md:p-8 font-sans"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
       <div className="max-w-7xl mx-auto space-y-8">
-        
-        {/* Header Section with Glassmorphism */}
-        <motion.div variants={itemVariants} className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 p-8 text-white shadow-2xl">
-          <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
-          
-          {/* Decorative shapes */}
-          <div className="absolute -right-10 -top-24 h-64 w-64 rounded-full bg-white/10 blur-3xl"></div>
-          <div className="absolute -left-10 -bottom-24 h-64 w-64 rounded-full bg-blue-400/20 blur-3xl"></div>
+
+        {/* ── Hero Header ── */}
+        <motion.div
+          variants={itemVariants}
+          className="relative overflow-hidden rounded-3xl p-8 text-white shadow-2xl"
+          style={{ background: "linear-gradient(135deg, #4f46e5 0%, #0891b2 100%)" }}
+        >
+          {/* Decorative blobs */}
+          <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/10 blur-3xl pointer-events-none" />
+          <div className="absolute -left-16 -bottom-16 h-64 w-64 rounded-full bg-cyan-400/15 blur-3xl pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
 
           <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <HeartPulse className="h-10 w-10 text-red-400 animate-pulse" />
-                <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">Sağlık Panosu</h1>
+                <HeartPulse className="h-9 w-9 text-red-300 animate-pulse" />
+                <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Sağlık Panosu</h1>
               </div>
-              <p className="text-blue-100 font-medium text-lg ml-2">
+              <p className="text-blue-100/80 font-medium ml-2">
                 {format(new Date(), "dd MMMM yyyy, EEEE", { locale: tr })}
               </p>
-              <h2 className="text-2xl font-semibold mt-4 text-white/90">
-                Merhaba, <span className="text-white">{profileData.firstName || "Kullanıcı"}!</span>
+              <h2 className="text-xl font-semibold mt-3 text-white/90">
+                Merhaba, <span className="text-white font-bold">{profileData.firstName || "Kullanıcı"}! 👋</span>
               </h2>
             </div>
-            
-            <div className="flex flex-col gap-3 w-full md:w-auto">
-              <div className="bg-white/20 text-white border-none shadow-lg backdrop-blur-md rounded-xl py-3 px-6 text-center transition-all duration-300">
-                <span className="block text-sm font-medium opacity-80">Bugünkü Hedefiniz</span>
-                <span className="block text-xl font-bold">Sağlıklı Kal!</span>
-              </div>
+
+            <div className="bg-white/15 backdrop-blur-md border border-white/20 rounded-2xl py-4 px-6 text-center w-full md:w-auto">
+              <span className="block text-sm font-medium text-white/70 mb-1">Bugünkü Hedefiniz</span>
+              <span className="block text-xl font-bold text-white">Sağlıklı Kal! 💪</span>
             </div>
           </div>
         </motion.div>
 
-        {/* Stats Grid */}
-        <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          
-          {/* Water Intake Card */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-md transition-shadow">
+        {/* ── Stats Grid ── */}
+        <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+
+          {/* Su Tüketimi */}
+          <div className="group relative overflow-hidden rounded-3xl p-6 border border-white/10 hover:border-blue-500/30 transition-all duration-300 hover:-translate-y-1"
+            style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(16px)" }}>
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-3xl" />
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-500 dark:text-slate-400">Su Tüketimi</h3>
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-2xl">
-                <Droplets className="h-6 w-6 text-blue-500" />
+              <h3 className="font-semibold text-slate-400 text-sm">Su Tüketimi</h3>
+              <div className="p-2.5 bg-blue-500/15 rounded-2xl border border-blue-500/20">
+                <Droplets className="h-5 w-5 text-blue-400" />
               </div>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-slate-800 dark:text-white">
+            <div className="flex items-baseline gap-2 mb-4">
+              <span className="text-4xl font-bold text-white">
                 {healthData.waterData?.waterIntake || 0}
               </span>
-              <span className="text-sm font-medium text-slate-500">
+              <span className="text-sm text-slate-400 font-medium">
                 / {healthData.waterData?.dailyWaterTarget || 2000} ml
               </span>
             </div>
-            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 mt-4 overflow-hidden">
-              <div 
-                className="bg-blue-500 h-2 rounded-full transition-all duration-1000" 
-                style={{ width: `${Math.min(((healthData.waterData?.waterIntake || 0) / (healthData.waterData?.dailyWaterTarget || 2000)) * 100, 100)}%` }}
-              ></div>
+            <div className="w-full bg-white/8 rounded-full h-2 overflow-hidden">
+              <div
+                className="h-2 rounded-full transition-all duration-1000"
+                style={{
+                  width: `${Math.min(((healthData.waterData?.waterIntake || 0) / (healthData.waterData?.dailyWaterTarget || 2000)) * 100, 100)}%`,
+                  background: "linear-gradient(90deg, #60a5fa, #06b6d4)",
+                }}
+              />
             </div>
           </div>
 
-          {/* BMI Card */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-md transition-shadow">
+          {/* VKİ */}
+          <div className="group relative overflow-hidden rounded-3xl p-6 border border-white/10 hover:border-indigo-500/30 transition-all duration-300 hover:-translate-y-1"
+            style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(16px)" }}>
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-3xl" />
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-500 dark:text-slate-400">Vücut Kitle İndeksi</h3>
-              <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl">
-                <Activity className="h-6 w-6 text-indigo-500" />
+              <h3 className="font-semibold text-slate-400 text-sm">Vücut Kitle İndeksi</h3>
+              <div className="p-2.5 bg-indigo-500/15 rounded-2xl border border-indigo-500/20">
+                <Activity className="h-5 w-5 text-indigo-400" />
               </div>
             </div>
             {healthData.bmi ? (
               <>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-bold text-slate-800 dark:text-white">
-                    {healthData.bmi.value}
-                  </span>
-                </div>
-                <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
-                  <TrendingUp className="h-4 w-4" />
-                  Durum: {healthData.bmi.status}
+                <span className="text-4xl font-bold text-white">{healthData.bmi.value}</span>
+                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/20">
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  {healthData.bmi.status}
                 </div>
               </>
             ) : (
-              <div className="flex flex-col gap-2 mt-2">
-                <span className="text-sm text-slate-400">BMI hesaplanamadı.</span>
-                <span className="text-xs text-slate-500">Lütfen profilinizden boy ve kilo bilgilerinizi güncelleyin.</span>
+              <div className="mt-2">
+                <p className="text-sm text-slate-400">BMI hesaplanamadı.</p>
+                <p className="text-xs text-slate-500 mt-1">Profil &gt; Boy/Kilo bilgilerini girin.</p>
               </div>
             )}
           </div>
 
-          {/* Supplement Card */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-md transition-shadow">
+          {/* Takviye Serisi */}
+          <div className="group relative overflow-hidden rounded-3xl p-6 border border-white/10 hover:border-amber-500/30 transition-all duration-300 hover:-translate-y-1"
+            style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(16px)" }}>
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-3xl" />
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-500 dark:text-slate-400">Takviye İstatistikleri</h3>
-              <div className="p-3 bg-amber-50 dark:bg-amber-900/30 rounded-2xl">
-                <Flame className="h-6 w-6 text-amber-500" />
+              <h3 className="font-semibold text-slate-400 text-sm">Takviye İstatistikleri</h3>
+              <div className="p-2.5 bg-amber-500/15 rounded-2xl border border-amber-500/20">
+                <Flame className="h-5 w-5 text-amber-400" />
               </div>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-slate-800 dark:text-white">
+            <div className="flex items-baseline gap-2 mb-3">
+              <span className="text-4xl font-bold text-white">
                 {healthData.supplementStats?.currentStreak || 0}
               </span>
-              <span className="text-sm font-medium text-slate-500">günlük seri</span>
+              <span className="text-sm text-slate-400 font-medium">günlük seri</span>
             </div>
-            <div className="mt-4 text-sm text-slate-500 flex items-center gap-2">
+            <div className="flex items-center gap-1.5 text-sm text-slate-400">
               <AlertCircle className="h-4 w-4" />
-              Toplam tüketim: {healthData.supplementStats?.totalConsumed || 0} adet
+              Toplam: {healthData.supplementStats?.totalConsumed || 0} adet
             </div>
           </div>
 
         </motion.div>
 
-        {/* Modern Charts & AI Recommendations */}
+        {/* ── AI + Charts ── */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <AiRecommendationsCard user={user} profileData={profileData} healthData={healthData} />

@@ -268,7 +268,7 @@ const ModernParticle = styled(Box)(({ theme, delay, duration, size }) => ({
 
 const ModernAchievementAnimation = ({ message, onComplete }) => {
   const theme = useTheme();
-  
+
   return (
     <ModernAchievementOverlay onClick={onComplete}>
       {/* Enhanced Particle System */}
@@ -284,7 +284,7 @@ const ModernAchievementAnimation = ({ message, onComplete }) => {
           }}
         />
       ))}
-      
+
       {/* Floating Icons */}
       {["💧", "🚀", "🎉", "🌊", "⭐"].map((icon, i) => (
         <Box
@@ -318,11 +318,11 @@ const ModernAchievementAnimation = ({ message, onComplete }) => {
             🎯
           </Box>
         </ModernIconContainer>
-        
+
         <ModernNeonText variant="h2">
           {message}
         </ModernNeonText>
-        
+
         <Typography
           variant="body1"
           sx={{
@@ -334,7 +334,7 @@ const ModernAchievementAnimation = ({ message, onComplete }) => {
         >
           Tebrikler! Hedefinize ulaştınız! 🎊
         </Typography>
-        
+
         <Box
           sx={{
             mt: 3,
@@ -356,7 +356,7 @@ const ModernAchievementAnimation = ({ message, onComplete }) => {
             </Box>
           ))}
         </Box>
-        
+
         <Typography
           variant="caption"
           sx={{
@@ -503,10 +503,10 @@ const WaterDropSVG = () => (
         <stop offset="100%" stopColor="#1976D2" stopOpacity="0.1" />
       </radialGradient>
       <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
-        <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+        <feGaussianBlur stdDeviation="8" result="coloredBlur" />
         <feMerge>
-          <feMergeNode in="coloredBlur"/>
-          <feMergeNode in="SourceGraphic"/>
+          <feMergeNode in="coloredBlur" />
+          <feMergeNode in="SourceGraphic" />
         </feMerge>
       </filter>
     </defs>
@@ -673,51 +673,51 @@ const getTurkeyTime = () =>
 // Modern bardak ve şişe ikonları
 const TeaCupIcon = (props) => (
   <SvgIcon {...props} viewBox="0 0 24 24">
-    <path d="M7 2h10c1.1 0 2 .9 2 2v2c0 .55-.45 1-1 1h-1v9c0 1.1-.9 2-2 2H9c-1.1 0-2-.9-2-2V7H6c-.55 0-1-.45-1-1V4c0-1.1.9-2 2-2z" fill="#1976d2"/>
-    <path d="M9 7v9h6V7H9z" fill="#fff" opacity="0.2"/>
-    <circle cx="17" cy="19" r="2" fill="#1976d2"/>
+    <path d="M7 2h10c1.1 0 2 .9 2 2v2c0 .55-.45 1-1 1h-1v9c0 1.1-.9 2-2 2H9c-1.1 0-2-.9-2-2V7H6c-.55 0-1-.45-1-1V4c0-1.1.9-2 2-2z" fill="#1976d2" />
+    <path d="M9 7v9h6V7H9z" fill="#fff" opacity="0.2" />
+    <circle cx="17" cy="19" r="2" fill="#1976d2" />
   </SvgIcon>
 );
 
 const SmallGlassIcon = (props) => (
   <SvgIcon {...props} viewBox="0 0 24 24">
-    <path d="M8 3h8c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H8c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2z" fill="#2196f3"/>
-    <path d="M9 6h6v8H9V6z" fill="#fff" opacity="0.2"/>
-    <path d="M12 3v2" stroke="#fff" strokeWidth="1" opacity="0.3"/>
+    <path d="M8 3h8c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H8c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2z" fill="#2196f3" />
+    <path d="M9 6h6v8H9V6z" fill="#fff" opacity="0.2" />
+    <path d="M12 3v2" stroke="#fff" strokeWidth="1" opacity="0.3" />
   </SvgIcon>
 );
 
 const MediumGlassIcon = (props) => (
   <SvgIcon {...props} viewBox="0 0 24 24">
-    <path d="M7 2h10c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2z" fill="#00bcd4"/>
-    <path d="M8 4h8v12H8V4z" fill="#fff" opacity="0.2"/>
-    <path d="M12 2v3" stroke="#fff" strokeWidth="1.5" opacity="0.4"/>
+    <path d="M7 2h10c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2z" fill="#00bcd4" />
+    <path d="M8 4h8v12H8V4z" fill="#fff" opacity="0.2" />
+    <path d="M12 2v3" stroke="#fff" strokeWidth="1.5" opacity="0.4" />
   </SvgIcon>
 );
 
 const MugIcon = (props) => (
   <SvgIcon {...props} viewBox="0 0 24 24">
-    <path d="M6 2h10c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H6c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2z" fill="#43a047"/>
-    <path d="M7 4h8v10H7V4z" fill="#fff" opacity="0.2"/>
-    <path d="M18 8h2v4h-2z" fill="#43a047"/>
-    <circle cx="19" cy="6" r="1" fill="#fff" opacity="0.6"/>
+    <path d="M6 2h10c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H6c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2z" fill="#43a047" />
+    <path d="M7 4h8v10H7V4z" fill="#fff" opacity="0.2" />
+    <path d="M18 8h2v4h-2z" fill="#43a047" />
+    <circle cx="19" cy="6" r="1" fill="#fff" opacity="0.6" />
   </SvgIcon>
 );
 
 const PetBottleIcon = (props) => (
   <SvgIcon {...props} viewBox="0 0 24 24">
-    <path d="M9 2c0-.55.45-1 1-1h4c.55 0 1 .45 1 1v2.5c0 .28.22.5.5.5s.5.22.5.5V7c0 .28-.22.5-.5.5s-.5.22-.5.5V9c0 .55-.45 1-1 1h-2c-.55 0-1-.45-1-1V8c0-.28-.22-.5-.5-.5S9 7.28 9 7V5.5c0-.28.22-.5.5-.5s.5-.22.5-.5V2zm2 0v2h2V2h-2zm-2 7v13c0 1.1.9 2 2 2s2-.9 2-2V9h-4z" fill="#1976d2"/>
-    <path d="M10 4h4v1h-4z" fill="#fff" opacity="0.3"/>
-    <path d="M11 10h2v8h-2z" fill="#fff" opacity="0.1"/>
+    <path d="M9 2c0-.55.45-1 1-1h4c.55 0 1 .45 1 1v2.5c0 .28.22.5.5.5s.5.22.5.5V7c0 .28-.22.5-.5.5s-.5.22-.5.5V9c0 .55-.45 1-1 1h-2c-.55 0-1-.45-1-1V8c0-.28-.22-.5-.5-.5S9 7.28 9 7V5.5c0-.28.22-.5.5-.5s.5-.22.5-.5V2zm2 0v2h2V2h-2zm-2 7v13c0 1.1.9 2 2 2s2-.9 2-2V9h-4z" fill="#1976d2" />
+    <path d="M10 4h4v1h-4z" fill="#fff" opacity="0.3" />
+    <path d="M11 10h2v8h-2z" fill="#fff" opacity="0.1" />
   </SvgIcon>
 );
 
 const GlassBottleIcon = (props) => (
   <SvgIcon {...props} viewBox="0 0 24 24">
-    <path d="M10 2c0-.55.45-1 1-1h2c.55 0 1 .45 1 1v2.5c0 .28.22.5.5.5s.5.22.5.5V7c0 .28-.22.5-.5.5s-.5.22-.5.5V9c0 .55-.45 1-1 1h-2c-.55 0-1-.45-1-1V8c0-.28-.22-.5-.5-.5S10 7.28 10 7V5.5c0-.28.22-.5.5-.5s.5-.22.5-.5V2zm2 0v2h2V2h-2zm-2 7v13c0 1.1.9 2 2 2s2-.9 2-2V9h-4z" fill="#ff9800"/>
-    <path d="M11 3h2v1h-2z" fill="#fff" opacity="0.4"/>
-    <path d="M12 10h1v8h-1z" fill="#fff" opacity="0.2"/>
-    <path d="M10 6h4v1h-4z" fill="#fff" opacity="0.1"/>
+    <path d="M10 2c0-.55.45-1 1-1h2c.55 0 1 .45 1 1v2.5c0 .28.22.5.5.5s.5.22.5.5V7c0 .28-.22.5-.5.5s-.5.22-.5.5V9c0 .55-.45 1-1 1h-2c-.55 0-1-.45-1-1V8c0-.28-.22-.5-.5-.5S10 7.28 10 7V5.5c0-.28.22-.5.5-.5s.5-.22.5-.5V2zm2 0v2h2V2h-2zm-2 7v13c0 1.1.9 2 2 2s2-.9 2-2V9h-4z" fill="#ff9800" />
+    <path d="M11 3h2v1h-2z" fill="#fff" opacity="0.4" />
+    <path d="M12 10h1v8h-1z" fill="#fff" opacity="0.2" />
+    <path d="M10 6h4v1h-4z" fill="#fff" opacity="0.1" />
   </SvgIcon>
 );
 
@@ -782,11 +782,11 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
     nextWaterReminderMessage: null,
     activityLevel: "orta",
   });
-  
+
   // Local state for input fields to prevent immediate updates
   const [localGlassSize, setLocalGlassSize] = useState("250");
   const [localDailyTarget, setLocalDailyTarget] = useState("2000");
-  
+
   const [dataFetched, setDataFetched] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [achievement, setAchievement] = useState(null);
@@ -794,7 +794,7 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
   const [weatherSuggestion, setWeatherSuggestion] = useState("");
   const [waterNotifDialogOpen, setWaterNotifDialogOpen] = useState(false);
   const [drinkHistoryDialogOpen, setDrinkHistoryDialogOpen] = useState(false);
-  
+
   // Su ekleme modalı için state
   const [addDrinkOpen, setAddDrinkOpen] = useState(false);
   const [selectedDrink, setSelectedDrink] = useState('herbalTea'); // su dışı varsayılan
@@ -857,7 +857,7 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
       lastWaterDataState.current = { ...newWaterData };
       setDataFetched(true);
       isDataLoading.current = false;
-      
+
       // Server-side hesaplanmış verileri kontrol et ve güncelle
       if (data.serverSideCalculated === true) {
         console.log("WaterTracker - Server-side hesaplanmış veriler tespit edildi, güncelleniyor...");
@@ -869,7 +869,7 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
           console.error("WaterTracker - Server-side güncelleme hatası:", error);
         }
       }
-      
+
       if (onWaterDataChange) onWaterDataChange(data);
     } else {
       // Doküman yoksa default değerlerle state'i güncelle
@@ -954,7 +954,7 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
     try {
       // Batch operations ile optimize edilmiş yazma
       const batch = writeBatch(db);
-      
+
       const drinkHistoryEntry = {
         type: 'water',
         amount: glassSize,
@@ -975,7 +975,7 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
       }, { merge: true });
 
       await batch.commit();
-      
+
       const result = await scheduleWaterNotifications(user);
       setNextReminder(result.nextReminder);
     } catch (error) {
@@ -1050,11 +1050,11 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
     const amount = Number(drinkAmount);
     if (!amount || amount <= 0) return;
     if (selectedDrink === 'water') return; // su eklenemez
-    
+
     // HEMEN EKLENDİ DURUMUNU GÖSTER
     setDrinkAdded(true);
     setTimeout(() => setDrinkAdded(false), 1500); // 1.5 sn sonra eski haline dön
-    
+
     const contribution = DRINK_WATER_CONTRIBUTION[selectedDrink] || 1;
     const addedWater = Math.round(amount * contribution);
     const newIntake = waterData.waterIntake + addedWater;
@@ -1155,7 +1155,7 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
     if (
       waterData.nextWaterReminderTime &&
       new Date(waterData.nextWaterReminderTime).getTime() >
-        now.getTime() + 60000
+      now.getTime() + 60000
     ) {
       setNextReminder({
         time: waterData.nextWaterReminderTime,
@@ -1165,7 +1165,7 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
       saveNextWaterReminderTime(user)
         .then((next) => {
           if (process.env.NODE_ENV === 'development') {
-          console.log("WaterTracker - nextReminder hesaplandı:", next);
+            console.log("WaterTracker - nextReminder hesaplandı:", next);
           }
           setNextReminder(next);
         })
@@ -1189,10 +1189,10 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
   // Su verisi değişikliklerini izle ve korumalı güncelleme yap
   useEffect(() => {
     if (!user || isInitialLoad.current || isDataLoading.current) return;
-    
+
     // Sadece gerçek değişiklik varsa güncelle
     const hasRealChange = JSON.stringify(waterData) !== JSON.stringify(lastWaterDataState.current);
-    
+
     if (hasRealChange) {
       const updateWaterDataInFirestore = async () => {
         try {
@@ -1221,7 +1221,7 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
   const handleRemoveDrinkHistory = async (drinkRecord) => {
     const ref = getWaterDocRef();
     const newIntake = Math.max(0, waterData.waterIntake - drinkRecord.addedWater);
-    
+
     try {
       await setDoc(
         ref,
@@ -1231,18 +1231,18 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
         },
         { merge: true }
       );
-      
+
       // Local state'i güncelle - optimize edilmiş array işlemi
       setWaterData(prev => ({
         ...prev,
         waterIntake: newIntake,
-        drinkHistory: prev.drinkHistory.filter(item => 
-          !(item.date === drinkRecord.date && 
-            item.type === drinkRecord.type && 
+        drinkHistory: prev.drinkHistory.filter(item =>
+          !(item.date === drinkRecord.date &&
+            item.type === drinkRecord.type &&
             item.amount === drinkRecord.amount)
         ),
       }));
-      
+
       setTimeout(fetchWaterData, 300);
       const result = await scheduleWaterNotifications(user);
       setNextReminder(result.nextReminder);
@@ -1252,462 +1252,340 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
   };
 
   return (
-    <Box sx={{ textAlign: "center", mb: 6 }}>
+    <Box sx={{ width: '100%', maxWidth: 480, mx: 'auto' }}>
+      {/* Confetti Achievement */}
       {showConfetti && (
         <Confetti
           recycle={false}
-          numberOfPieces={300} // 800'den 300'e düşürüldü - performans için
-          colors={[
-            "#2196F3", 
-            "#64B5F6", 
-            "#BBDEFB", 
-            "#E3F2FD", 
-            "#FFFFFF",
-            "#4CAF50",
-            "#81C784",
-            "#C8E6C9",
-            "#FF9800",
-            "#FFB74D"
-          ]}
-          drawShape={(ctx) => {
-            // Basitleştirilmiş şekil çizimi - performans için
-            ctx.beginPath();
-            ctx.arc(0, 0, 3, 0, 2 * Math.PI); // Sadece daire
-            ctx.fill();
-          }}
-          gravity={0.15} // Biraz daha hızlı düşsün
-          wind={0.02}
-          initialVelocityY={10}
-          initialVelocityX={1}
-          confettiSource={{
-            x: window.innerWidth / 2,
-            y: window.innerHeight,
-            w: 0,
-            h: 0,
-          }}
+          numberOfPieces={280}
+          colors={["#6366f1", "#818cf8", "#06b6d4", "#22d3ee", "#4ade80", "#fff"]}
+          drawShape={(ctx) => { ctx.beginPath(); ctx.arc(0, 0, 3, 0, 2 * Math.PI); ctx.fill(); }}
+          gravity={0.15}
+          style={{ pointerEvents: "none", position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", zIndex: 9998 }}
           onConfettiComplete={() => setShowConfetti(false)}
-          tweenDuration={3000} // 4000'den 3000'e düşürüldü
-          style={{ 
-            pointerEvents: "none",
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            zIndex: 9998
-          }}
         />
       )}
       {achievement && (
         <ImpactfulAchievementAnimation
           message={achievement}
-          onComplete={() => {
-            setAchievement(null);
-            setShowConfetti(false);
-          }}
+          onComplete={() => { setAchievement(null); setShowConfetti(false); }}
         />
       )}
 
-      <Typography
-        variant="h4"
+      {/* ── Ana Su Kartı ── */}
+      <Box
         sx={{
-          fontWeight: 700,
-          color: "#fff",
-          mb: 2,
-          textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
+          borderRadius: '28px',
+          p: { xs: 3, sm: 4 },
+          background: 'linear-gradient(145deg, #1e3a5f 0%, #0f2944 100%)',
+          border: '1px solid rgba(99,102,241,0.25)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)',
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
-        Su Tüketimi
-      </Typography>
-      <WaterContainer className={waterPercentage === 100 ? "goal-achieved" : ""}>
-        <Box
-          sx={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            transition: "transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
-            transform: `scaleY(${waterPercentage / 100})`,
-            transformOrigin: "bottom",
-            overflow: "hidden",
-          }}
-        >
-          <Lottie
-            animationData={waterAnimation}
-            loop={true}
-            className={styles.lottieContainer}
-          />
-        </Box>
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            zIndex: 2,
-            textAlign: "center",
-            width: "100%",
-            padding: "20px",
-          }}
-        >
-          <Typography
-            variant="h2"
-            sx={{
-              fontWeight: 700,
-              color: "#fff",
-              textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
-              mb: 3,
-              animation: `${pulse} 2s infinite`,
-            }}
-          >
-            {waterData.waterIntake} / {waterData.dailyWaterTarget} ml
+        {/* Arka plan dekorasyon */}
+        <Box sx={{
+          position: 'absolute', top: -60, right: -60, width: 200, height: 200,
+          borderRadius: '50%', background: 'rgba(6,182,212,0.08)', pointerEvents: 'none',
+        }} />
+        <Box sx={{
+          position: 'absolute', bottom: -40, left: -40, width: 160, height: 160,
+          borderRadius: '50%', background: 'rgba(99,102,241,0.08)', pointerEvents: 'none',
+        }} />
+
+        {/* Başlık */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography sx={{ color: 'rgba(255,255,255,0.9)', fontWeight: 700, fontSize: '1.1rem', letterSpacing: '-0.01em' }}>
+            💧 Su Tüketimi
           </Typography>
-          <Box
-            sx={{
-              mt: 2,
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 1,
-            }}
-          >
+          <Box sx={{ display: 'flex', gap: 0.5 }}>
             <Tooltip title="İçecek Geçmişi">
               <IconButton
                 onClick={() => setDrinkHistoryDialogOpen(true)}
-                sx={{
-                  color: "#fff",
-                  "&:hover": {
-                    color: "#21CBF3",
-                    transform: "scale(1.1)",
-                  },
-                }}
+                size="small"
+                sx={{ color: 'rgba(255,255,255,0.4)', '&:hover': { color: '#06b6d4', background: 'rgba(6,182,212,0.12)' }, borderRadius: '10px', p: 1 }}
               >
-                <HistoryIcon />
+                <HistoryIcon sx={{ fontSize: 20 }} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Su Bildirim Ayarları">
               <IconButton
                 onClick={() => setWaterNotifDialogOpen(true)}
-                sx={{
-                  color: "#fff",
-                  "&:hover": {
-                    color: "#FFD700",
-                    transform: "scale(1.1)",
-                  },
-                }}
+                size="small"
+                sx={{ color: 'rgba(255,255,255,0.4)', '&:hover': { color: '#818cf8', background: 'rgba(99,102,241,0.12)' }, borderRadius: '10px', p: 1 }}
               >
-                {waterData.waterNotificationOption === "none" ? (
-                  <NotificationsOffIcon />
-                ) : (
-                  <NotificationsIcon />
-                )}
+                {waterData.waterNotificationOption === 'none' ? <NotificationsOffIcon sx={{ fontSize: 20 }} /> : <NotificationsIcon sx={{ fontSize: 20 }} />}
               </IconButton>
             </Tooltip>
           </Box>
-          <Box sx={{ display: "flex", justifyContent: "center", gap: 3, mt: 2 }}>
-            <Tooltip title="Su Eksilt" placement="left">
-              <IconButton
-                onClick={handleRemoveWater}
-                sx={{
-                  backgroundColor: "rgba(255,255,255,0.2)",
-                  backdropFilter: "blur(10px)",
-                  "&:hover": {
-                    backgroundColor: "rgba(255,255,255,0.3)",
-                    transform: "scale(1.1)",
-                  },
-                  transition: "all 0.3s ease",
-                  padding: "15px",
-                }}
-              >
-                <RemoveIcon sx={{ fontSize: 35, color: "#fff" }} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="İçecek Ekle" placement="top">
-              <IconButton
-                onClick={handleAddDrink}
-                sx={{
-                  backgroundColor: "rgba(255,255,255,0.2)",
-                  backdropFilter: "blur(10px)",
-                  mx: 1,
-                  "&:hover": {
-                    backgroundColor: "rgba(255,255,255,0.3)",
-                    transform: "scale(1.1)",
-                  },
-                  transition: "all 0.3s ease",
-                  padding: "15px",
-                }}
-              >
-                <EmojiFoodBeverageIcon sx={{ fontSize: 30, color: "#21CBF3" }} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Su Ekle" placement="right">
-              <IconButton
-                onClick={handleAddWater}
-                sx={{
-                  backgroundColor: "rgba(255,255,255,0.2)",
-                  backdropFilter: "blur(10px)",
-                  "&:hover": {
-                    backgroundColor: "rgba(255,255,255,0.3)",
-                    transform: "scale(1.1)",
-                  },
-                  transition: "all 0.3s ease",
-                  padding: "15px",
-                }}
-              >
-                <AddIcon sx={{ fontSize: 35, color: "#fff" }} />
-              </IconButton>
-            </Tooltip>
-          </Box>
-          <Typography variant="subtitle1" sx={{ color: "#fff", mt: 2 }}>
-            Sonraki bildirim:{" "}
-            {isGoalAchieved &&
-            waterData.waterNotificationOption !== "none"
-              ? "Tebrikler hedefe ulaştınız"
-              : waterData.waterNotificationOption === "none"
-              ? "Bildirim Kapalı"
-              : nextReminder
-              ? new Date(nextReminder.time).toLocaleTimeString("tr-TR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : "Belirlenmedi"}
-          </Typography>
         </Box>
-      </WaterContainer>
 
-      <Box sx={{ mt: 3, maxWidth: 500, mx: "auto" }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={6}>
-            <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-              <TextField
-                fullWidth
-                label="Bardak Boyutu"
-                type="number"
-                value={localGlassSize}
-                onChange={(e) => handleGlassSizeChange(e.target.value)}
-                onBlur={handleGlassSizeBlur}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleGlassSizeBlur();
-                  }
-                }}
-                variant="filled"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SportsBar sx={{ color: "#21CBF3", fontSize: 28, filter: "drop-shadow(0 2px 4px rgba(33,203,243,0.3))" }} />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <InputAdornment position="end">ml</InputAdornment>
-                  ),
-                  sx: {
-                    background: "rgba(255,255,255,0.1)",
-                    borderRadius: "12px",
-                    border: "1px solid rgba(33,203,243,0.3)",
-                    color: "#fff",
-                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                    "&:hover": {
-                      background: "rgba(255,255,255,0.15)",
-                      transform: "translateY(-2px)",
-                    },
-                    "&.Mui-focused": {
-                      boxShadow: "0 0 15px rgba(33,203,243,0.4)",
-                      borderColor: "#21CBF3",
-                    },
-                    minWidth: 0,
-                    flex: 1,
-                  },
-                }}
-                InputLabelProps={{
-                  sx: {
-                    color: "rgba(255,255,255,0.7)",
-                    "&.Mui-focused": { color: "#21CBF3" },
-                  },
-                }}
-              />
-              {/* Her zaman ... menüsü */}
-              <IconButton onClick={handleMenuOpen} sx={{ ml: 1, color: "#21CBF3", width: 36, height: 36 }}>
-                <MoreVertIcon />
-              </IconButton>
-              <Menu 
-                anchorEl={anchorEl} 
-                open={Boolean(anchorEl)} 
-                onClose={handleMenuClose}
-                anchorOrigin={{
-                  vertical: 'bottom',
-                  horizontal: 'right',
-                }}
-                transformOrigin={{
-                  vertical: 'top',
-                  horizontal: 'right',
-                }}
-                PaperProps={{
-                  sx: {
-                    background: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)',
-                    borderRadius: 3,
-                    boxShadow: '0 8px 32px rgba(33,150,243,0.18)',
-                    backdropFilter: 'blur(10px)',
-                    p: 1,
-                    minWidth: 180,
-                  }
-                }}
-              >
-  {STANDARD_GLASS_SIZES.map((glass) => (
-    <MenuItem
-      key={glass.value}
-      onClick={() => handleStandardGlassSelect(glass.value)}
-      selected={waterData.glassSize === glass.value}
-      sx={{
-        color: '#fff',
-        fontWeight: 700,
-        fontSize: { xs: '1rem', sm: '1.1rem' },
-        borderRadius: 2,
-        my: 0.5,
-        px: 2,
-        py: 1.2,
-        background: waterData.glassSize === glass.value ? 'rgba(33,203,243,0.25)' : 'transparent',
-        boxShadow: waterData.glassSize === glass.value ? '0 2px 8px #21CBF3' : 'none',
-        '&:hover': {
-          background: 'linear-gradient(90deg, #21CBF3 0%, #2196F3 100%)',
-          color: '#fff',
-          boxShadow: '0 4px 16px #21CBF3',
-        },
-        transition: 'all 0.2s',
-      }}
-    >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        {glass.icon}
-        <Box>
-          <Typography variant="body2" sx={{ fontWeight: 700, color: '#fff' }}>{glass.label}</Typography>
-          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>{glass.desc}</Typography>
-        </Box>
-      </Box>
-    </MenuItem>
-  ))}
-</Menu>
-            </Box>
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <Tooltip
-              title={
-                waterData.waterNotificationOption === "smart"
-                  ? "Günlük hedef, hava ve aktiviteye göre otomatik hesaplanıyor."
-                  : "Günlük hedefi kendin belirleyebilirsin."
-              }
-              arrow
-              placement="top"
+        {/* Dairesel Progress + Lottie */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
+          <Box sx={{ position: 'relative', width: 200, height: 200 }}>
+            {/* SVG Dairesel progress */}
+            <svg
+              width="200" height="200" viewBox="0 0 200 200"
+              style={{ position: 'absolute', top: 0, left: 0, transform: 'rotate(-90deg)' }}
             >
-              <span>
-                <TextField
-                  fullWidth
-                  label="Günlük Hedef"
-                  type="number"
-                  value={localDailyTarget}
-                  onChange={(e) => {
-                    if (waterData.waterNotificationOption === "custom") {
-                      handleDailyTargetChange(e.target.value);
-                    }
-                  }}
-                  onBlur={() => {
-                    if (waterData.waterNotificationOption === "custom") {
-                      handleDailyTargetBlur();
-                    }
-                  }}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && waterData.waterNotificationOption === "custom") {
-                      handleDailyTargetBlur();
-                    }
-                  }}
-                  variant="filled"
-                  disabled={waterData.waterNotificationOption === "smart"}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <CheckCircle
-                          sx={{
-                            color: "#4CAF50",
-                            fontSize: 28,
-                            filter: "drop-shadow(0 2px 4px rgba(76,175,80,0.3))",
-                          }}
-                        />
-                      </InputAdornment>
-                    ),
-                    endAdornment: (
-                      <InputAdornment position="end">ml</InputAdornment>
-                    ),
-                    sx: {
-                      background: "rgba(255,255,255,0.1)",
-                      borderRadius: "12px",
-                      border: "1px solid rgba(76,175,80,0.3)",
-                      color: "#fff",
-                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                      "&:hover": {
-                        background: "rgba(255,255,255,0.15)",
-                        transform: "translateY(-2px)",
-                      },
-                      "&.Mui-focused": {
-                        boxShadow: "0 0 15px rgba(76,175,80,0.4)",
-                        borderColor: "#4CAF50",
-                      },
-                    },
-                  }}
-                  InputLabelProps={{
-                    sx: {
-                      color: "rgba(255,255,255,0.7)",
-                      "&.Mui-focused": { color: "#4CAF50" },
-                    },
-                  }}
-                />
-              </span>
-            </Tooltip>
-          </Grid>
-        </Grid>
+              {/* Arka track */}
+              <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="10" />
+              {/* Progress arc */}
+              <circle
+                cx="100" cy="100" r="88" fill="none"
+                stroke="url(#waterGrad)" strokeWidth="10"
+                strokeLinecap="round"
+                strokeDasharray={`${2 * Math.PI * 88}`}
+                strokeDashoffset={`${2 * Math.PI * 88 * (1 - waterPercentage / 100)}`}
+                style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1)' }}
+              />
+              <defs>
+                <linearGradient id="waterGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#6366f1" />
+                  <stop offset="100%" stopColor="#06b6d4" />
+                </linearGradient>
+              </defs>
+            </svg>
+
+            {/* Lottie animasyonu — daire içinde */}
+            <Box sx={{
+              position: 'absolute',
+              top: '50%', left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: 110, height: 110,
+              borderRadius: '50%',
+              overflow: 'hidden',
+              opacity: Math.max(0.3, waterPercentage / 100),
+              transition: 'opacity 0.5s',
+            }}>
+              <Lottie animationData={waterAnimation} loop className={styles.lottieContainer} />
+            </Box>
+
+            {/* Merkez metin */}
+            <Box sx={{
+              position: 'absolute', top: '50%', left: '50%',
+              transform: 'translate(-50%, -50%)',
+              textAlign: 'center',
+              width: '100%',
+            }}>
+              <Typography sx={{
+                color: '#fff', fontWeight: 800, fontSize: '1.6rem', lineHeight: 1,
+                textShadow: '0 2px 8px rgba(0,0,0,0.5)',
+              }}>
+                {Math.round(waterPercentage)}%
+              </Typography>
+              <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.68rem', mt: 0.5 }}>
+                {waterData.waterIntake} ml
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* Miktar etiketi */}
+          <Box sx={{ mt: 2, textAlign: 'center' }}>
+            <Typography sx={{ color: 'rgba(255,255,255,0.85)', fontWeight: 700, fontSize: '1.1rem' }}>
+              {waterData.waterIntake} / {waterData.dailyWaterTarget} ml
+            </Typography>
+            <Typography sx={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.78rem', mt: 0.5 }}>
+              {isGoalAchieved
+                ? '🎉 Günlük hedefe ulaştın!'
+                : `${waterData.dailyWaterTarget - waterData.waterIntake} ml daha iç`}
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* ── Kontrol Butonları ── */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, mb: 3 }}>
+          {/* Çıkar */}
+          <Tooltip title="Su Eksilt">
+            <IconButton
+              onClick={handleRemoveWater}
+              sx={{
+                width: 56, height: 56,
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                color: '#f87171',
+                borderRadius: '16px',
+                transition: 'all 0.2s',
+                '&:hover': { background: 'rgba(248,113,113,0.15)', borderColor: 'rgba(248,113,113,0.35)', transform: 'scale(1.08)' },
+                '&:active': { transform: 'scale(0.95)' },
+              }}
+            >
+              <RemoveIcon sx={{ fontSize: 24 }} />
+            </IconButton>
+          </Tooltip>
+
+          {/* Ana: Su Ekle */}
+          <Tooltip title="Su Ekle">
+            <IconButton
+              onClick={handleAddWater}
+              sx={{
+                width: 72, height: 72,
+                background: 'linear-gradient(135deg, #6366f1, #06b6d4)',
+                boxShadow: '0 6px 24px rgba(99,102,241,0.4)',
+                color: '#fff',
+                borderRadius: '22px',
+                transition: 'all 0.2s',
+                '&:hover': { transform: 'scale(1.08)', boxShadow: '0 8px 32px rgba(99,102,241,0.55)' },
+                '&:active': { transform: 'scale(0.95)' },
+              }}
+            >
+              <AddIcon sx={{ fontSize: 30 }} />
+            </IconButton>
+          </Tooltip>
+
+          {/* İçecek Ekle */}
+          <Tooltip title="İçecek Ekle">
+            <IconButton
+              onClick={handleAddDrink}
+              sx={{
+                width: 56, height: 56,
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                color: '#06b6d4',
+                borderRadius: '16px',
+                transition: 'all 0.2s',
+                '&:hover': { background: 'rgba(6,182,212,0.15)', borderColor: 'rgba(6,182,212,0.35)', transform: 'scale(1.08)' },
+                '&:active': { transform: 'scale(0.95)' },
+              }}
+            >
+              <EmojiFoodBeverageIcon sx={{ fontSize: 22 }} />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        {/* Bardak boyutu hızlı seçimi */}
+        <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center', mb: 3, flexWrap: 'wrap' }}>
+          {STANDARD_GLASS_SIZES.map((glass) => {
+            const isSelected = Number(localGlassSize) === glass.value;
+            return (
+              <Box
+                key={glass.value}
+                onClick={() => handleStandardGlassSelect(glass.value)}
+                sx={{
+                  px: 2, py: 1.2,
+                  borderRadius: '14px',
+                  cursor: 'pointer',
+                  border: `1px solid ${isSelected ? 'rgba(99,102,241,0.6)' : 'rgba(255,255,255,0.10)'}`,
+                  background: isSelected ? 'rgba(99,102,241,0.20)' : 'rgba(255,255,255,0.05)',
+                  color: isSelected ? '#818cf8' : 'rgba(255,255,255,0.45)',
+                  fontWeight: isSelected ? 700 : 500,
+                  fontSize: '0.8rem',
+                  transition: 'all 0.18s',
+                  userSelect: 'none',
+                  textAlign: 'center',
+                  minWidth: 60,
+                  '&:hover': { background: 'rgba(99,102,241,0.14)', borderColor: 'rgba(99,102,241,0.4)', color: '#818cf8' },
+                  '&:active': { transform: 'scale(0.96)' },
+                }}
+              >
+                {glass.icon}
+                <Typography sx={{ fontSize: '0.72rem', mt: 0.3, color: 'inherit', fontWeight: 'inherit' }}>
+                  {glass.value}ml
+                </Typography>
+              </Box>
+            );
+          })}
+        </Box>
+
+        {/* Özel bardak boyutu input */}
+        <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+          <TextField
+            fullWidth
+            label="Özel bardak (ml)"
+            type="number"
+            value={localGlassSize}
+            onChange={(e) => handleGlassSizeChange(e.target.value)}
+            onBlur={handleGlassSizeBlur}
+            onKeyPress={(e) => { if (e.key === 'Enter') handleGlassSizeBlur(); }}
+            size="small"
+            variant="outlined"
+            InputProps={{
+              startAdornment: <InputAdornment position="start"><SportsBar sx={{ color: 'rgba(255,255,255,0.3)', fontSize: 18 }} /></InputAdornment>,
+              endAdornment: <InputAdornment position="end"><Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem' }}>ml</Typography></InputAdornment>,
+              sx: {
+                color: '#fff',
+                '& input': { color: '#fff', WebkitTextFillColor: '#fff' },
+                '& fieldset': { borderColor: 'rgba(255,255,255,0.12)', borderRadius: '12px' },
+                '&:hover fieldset': { borderColor: 'rgba(99,102,241,0.4)' },
+                '&.Mui-focused fieldset': { borderColor: '#6366f1' },
+                background: 'rgba(255,255,255,0.05)',
+                borderRadius: '12px',
+              },
+            }}
+            InputLabelProps={{ sx: { color: 'rgba(255,255,255,0.4)', '&.Mui-focused': { color: '#818cf8' } } }}
+          />
+          <TextField
+            fullWidth
+            label="Günlük hedef (ml)"
+            type="number"
+            value={localDailyTarget}
+            disabled={waterData.waterNotificationOption === 'smart'}
+            onChange={(e) => { if (waterData.waterNotificationOption === 'custom') handleDailyTargetChange(e.target.value); }}
+            onBlur={() => { if (waterData.waterNotificationOption === 'custom') handleDailyTargetBlur(); }}
+            size="small"
+            variant="outlined"
+            InputProps={{
+              startAdornment: <InputAdornment position="start"><CheckCircle sx={{ color: isGoalAchieved ? '#4ade80' : 'rgba(255,255,255,0.3)', fontSize: 18 }} /></InputAdornment>,
+              endAdornment: <InputAdornment position="end"><Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem' }}>ml</Typography></InputAdornment>,
+              sx: {
+                color: '#fff',
+                '& input': { color: '#fff', WebkitTextFillColor: '#fff' },
+                '& fieldset': { borderColor: 'rgba(255,255,255,0.12)', borderRadius: '12px' },
+                '&:hover fieldset': { borderColor: 'rgba(74,222,128,0.4)' },
+                '&.Mui-focused fieldset': { borderColor: '#4ade80' },
+                background: 'rgba(255,255,255,0.05)',
+                borderRadius: '12px',
+              },
+            }}
+            InputLabelProps={{ sx: { color: 'rgba(255,255,255,0.4)', '&.Mui-focused': { color: '#4ade80' } } }}
+          />
+        </Box>
+
+        {/* Sonraki bildirim + hava durumu satırı */}
+        <Box sx={{
+          display: 'flex', gap: 1.5, flexWrap: 'wrap',
+          background: 'rgba(255,255,255,0.04)',
+          borderRadius: '16px', p: 2, border: '1px solid rgba(255,255,255,0.07)',
+        }}>
+          {/* Bildirim */}
+          <Box sx={{ flex: 1, minWidth: 140 }}>
+            <Typography sx={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', mb: 0.5 }}>
+              Sonraki Bildirim
+            </Typography>
+            <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 600, fontSize: '0.9rem' }}>
+              {isGoalAchieved && waterData.waterNotificationOption !== 'none'
+                ? '🎯 Hedefe ulaştın!'
+                : waterData.waterNotificationOption === 'none'
+                  ? '🔕 Kapalı'
+                  : nextReminder
+                    ? `🔔 ${new Date(nextReminder.time).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`
+                    : '—'}
+            </Typography>
+          </Box>
+          {/* Hava öneri */}
+          {weatherSuggestion && (
+            <Box sx={{ flex: 2, minWidth: 160 }}>
+              <Typography sx={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', mb: 0.5 }}>
+                Öneri
+              </Typography>
+              <Typography sx={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.8rem', lineHeight: 1.4 }}>
+                {weatherSuggestion}
+              </Typography>
+            </Box>
+          )}
+        </Box>
       </Box>
 
-      {/* Responsive ve başlıksız hava durumu önerisi kutusu */}
-      <Box
-        sx={{
-          maxWidth: { xs: '100%', sm: 400 },
-          mx: "auto",
-          mt: 2,
-          position: "relative",
-          borderRadius: "16px",
-          background: "linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)",
-          boxShadow: "0 6px 24px rgba(33,150,243,0.15)",
-          p: { xs: 2, sm: 3 },
-          color: "#fff",
-          textAlign: "center",
-          fontSize: { xs: "1rem", sm: "1.1rem" },
-          fontWeight: 500,
-          mb: 2,
-        }}
-      >
-        {weatherSuggestion}
-      </Box>
-
+      {/* ── Bildirim Dialogları ── */}
       <WaterNotificationSettingsDialog
         open={waterNotifDialogOpen}
         onClose={() => setWaterNotifDialogOpen(false)}
         waterSettings={waterData}
         onSave={(newSettings) => {
-          handleWaterSettingChange(
-            "waterNotificationOption",
-            newSettings.waterNotificationOption
-          );
-          handleWaterSettingChange(
-            "customNotificationInterval",
-            newSettings.customNotificationInterval
-          );
-          if (newSettings.activityLevel) {
-            handleWaterSettingChange(
-              "activityLevel",
-              newSettings.activityLevel
-            );
-          }
+          handleWaterSettingChange('waterNotificationOption', newSettings.waterNotificationOption);
+          handleWaterSettingChange('customNotificationInterval', newSettings.customNotificationInterval);
+          if (newSettings.activityLevel) handleWaterSettingChange('activityLevel', newSettings.activityLevel);
         }}
       />
 
@@ -1718,82 +1596,130 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
         onRemoveDrinkHistory={handleRemoveDrinkHistory}
       />
 
-      <Dialog open={addDrinkOpen} onClose={() => { setAddDrinkOpen(false); setDrinkAmount(200); setDrinkAdded(false); }} maxWidth="xs" fullWidth
-  PaperProps={{
-    sx: {
-      background: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)',
-      borderRadius: 4,
-      boxShadow: '0 12px 48px rgba(33,150,243,0.18)',
-      backdropFilter: 'blur(12px)',
-      p: { xs: 1, sm: 3 },
-      m: 0,
-      maxWidth: { xs: '95vw', sm: 400 },
-      width: { xs: '95vw', sm: 'auto' },
-    }
-  }}
->
-  <Box sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }}>
-    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-      <EmojiFoodBeverageIcon sx={{ fontSize: 32, color: '#fff', mr: 1, filter: 'drop-shadow(0 2px 8px #21CBF3)' }} />
-      <Typography variant="h6" sx={{ fontWeight: 800, color: '#fff', letterSpacing: 0.5, textShadow: '0 2px 8px #21CBF3' }}>
-        İçecek Ekle
-      </Typography>
-    </Box>
-    <TextField
-      select
-      label="İçecek Tipi"
-      value={selectedDrink}
-      onChange={e => setSelectedDrink(e.target.value)}
-      fullWidth
-      sx={{ mb: 2, background: 'rgba(255,255,255,0.12)', borderRadius: 2, input: { color: '#fff' }, label: { color: '#fff' } }}
-      InputLabelProps={{ sx: { color: '#fff', fontWeight: 600 } }}
-      SelectProps={{
-        MenuProps: {
-          PaperProps: {
-            sx: {
-              bgcolor: 'transparent',
-              background: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)',
-              borderRadius: 3,
-              boxShadow: '0 8px 32px rgba(33,150,243,0.18)',
-              backdropFilter: 'blur(10px)',
-              p: 1,
-              minWidth: 180,
-            }
+      {/* ── İçecek Ekle Dialog ── */}
+      <Dialog
+        open={addDrinkOpen}
+        onClose={() => { setAddDrinkOpen(false); setDrinkAmount(200); setDrinkAdded(false); }}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'rgba(10, 15, 30, 0.96)',
+            backdropFilter: 'blur(24px)',
+            borderRadius: '24px',
+            border: '1px solid rgba(255,255,255,0.10)',
+            boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
+            m: 2,
+            maxWidth: { xs: '95vw', sm: 420 },
           }
-        }
-      }}
-    >
-      {DRINK_OPTIONS.filter(opt => opt.value !== 'water').map(opt => (
-        <MenuItem key={opt.value} value={opt.value} sx={{ color: '#fff', fontWeight: 600 }}>
-          {opt.icon} <span style={{ color: '#fff', fontWeight: 600, marginLeft: 6 }}>{opt.label}</span>
-        </MenuItem>
-      ))}
-    </TextField>
-    <TextField
-      label="Miktar (ml)"
-      type="number"
-      value={drinkAmount}
-      onChange={e => setDrinkAmount(e.target.value)}
-      fullWidth
-      InputProps={{ endAdornment: <InputAdornment position="end">ml</InputAdornment> }}
-      sx={{ mb: 2, background: 'rgba(255,255,255,0.12)', borderRadius: 2, input: { color: '#fff' }, label: { color: '#fff' } }}
-      InputLabelProps={{ sx: { color: '#fff', fontWeight: 600 } }}
-    />
-    <Box sx={{ mb: 2, p: 2, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', gap: 1 }}>
-      <Typography variant="body2" sx={{ color: '#fff', fontWeight: 500 }}>
-        {selectedDrink && `Bu içecek suya %${Math.round((DRINK_WATER_CONTRIBUTION[selectedDrink] || 1)*100)} oranında katkı sağlar.`}
-      </Typography>
-    </Box>
-    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 1 }}>
-      <Button onClick={() => { setAddDrinkOpen(false); setDrinkAmount(200); setDrinkAdded(false); }} color="inherit" sx={{ fontWeight: 700, borderRadius: 2, px: 3, py: 1, bgcolor: 'rgba(255,255,255,0.12)', color: '#fff', '&:hover': { bgcolor: 'rgba(255,255,255,0.22)' } }}>İptal</Button>
-      <Button onClick={handleConfirmAddDrink} variant="contained" color="primary" sx={{ fontWeight: 700, borderRadius: 2, px: 3, py: 1, boxShadow: '0 4px 16px #21CBF3', background: 'linear-gradient(90deg, #21CBF3 0%, #2196F3 100%)' }} disabled={drinkAdded}>
-        {drinkAdded ? 'Eklendi' : 'Ekle'}
-      </Button>
-    </Box>
-  </Box>
-</Dialog>
+        }}
+      >
+        <Box sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+            <Box sx={{ p: 1.5, borderRadius: '14px', background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.25)' }}>
+              <EmojiFoodBeverageIcon sx={{ fontSize: 24, color: '#06b6d4' }} />
+            </Box>
+            <Typography sx={{ fontWeight: 800, color: '#fff', fontSize: '1.1rem' }}>İçecek Ekle</Typography>
+          </Box>
+
+          <TextField
+            select
+            label="İçecek Tipi"
+            value={selectedDrink}
+            onChange={e => setSelectedDrink(e.target.value)}
+            fullWidth
+            size="small"
+            sx={{ mb: 2 }}
+            InputProps={{
+              sx: {
+                color: '#fff',
+                '& input': { color: '#fff', WebkitTextFillColor: '#fff' },
+                '& fieldset': { borderColor: 'rgba(255,255,255,0.12)', borderRadius: '12px' },
+                background: 'rgba(255,255,255,0.05)', borderRadius: '12px',
+              }
+            }}
+            InputLabelProps={{ sx: { color: 'rgba(255,255,255,0.45)' } }}
+            SelectProps={{
+              MenuProps: {
+                PaperProps: {
+                  sx: {
+                    background: 'rgba(10,15,30,0.98)',
+                    backdropFilter: 'blur(20px)',
+                    borderRadius: '16px',
+                    border: '1px solid rgba(255,255,255,0.10)',
+                  }
+                }
+              }
+            }}
+          >
+            {DRINK_OPTIONS.filter(opt => opt.value !== 'water').map(opt => (
+              <MenuItem key={opt.value} value={opt.value} sx={{ color: '#fff', fontWeight: 600, '&:hover': { background: 'rgba(99,102,241,0.12)' } }}>
+                {opt.icon} <span style={{ marginLeft: 8 }}>{opt.label}</span>
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <TextField
+            label="Miktar (ml)"
+            type="number"
+            value={drinkAmount}
+            onChange={e => setDrinkAmount(e.target.value)}
+            fullWidth
+            size="small"
+            sx={{ mb: 2 }}
+            InputProps={{
+              endAdornment: <InputAdornment position="end"><Typography sx={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.8rem' }}>ml</Typography></InputAdornment>,
+              sx: {
+                color: '#fff',
+                '& input': { color: '#fff', WebkitTextFillColor: '#fff' },
+                '& fieldset': { borderColor: 'rgba(255,255,255,0.12)', borderRadius: '12px' },
+                background: 'rgba(255,255,255,0.05)', borderRadius: '12px',
+              }
+            }}
+            InputLabelProps={{ sx: { color: 'rgba(255,255,255,0.45)' } }}
+          />
+
+          {selectedDrink && (
+            <Box sx={{ mb: 3, p: 2, borderRadius: '12px', background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.15)' }}>
+              <Typography sx={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.82rem' }}>
+                💧 Bu içecek suya <strong style={{ color: '#06b6d4' }}>%{Math.round((DRINK_WATER_CONTRIBUTION[selectedDrink] || 1) * 100)}</strong> oranında katkı sağlar
+                {drinkAmount > 0 && <> &mdash; yaklaşık <strong style={{ color: '#22d3ee' }}>{Math.round(Number(drinkAmount) * (DRINK_WATER_CONTRIBUTION[selectedDrink] || 1))} ml</strong> su</>}
+              </Typography>
+            </Box>
+          )}
+
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              onClick={() => { setAddDrinkOpen(false); setDrinkAmount(200); setDrinkAdded(false); }}
+              fullWidth
+              sx={{
+                borderRadius: '14px', py: 1.5, fontWeight: 700,
+                color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.10)',
+                '&:hover': { background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.8)' },
+              }}
+            >
+              İptal
+            </Button>
+            <Button
+              onClick={handleConfirmAddDrink}
+              fullWidth
+              disabled={drinkAdded}
+              sx={{
+                borderRadius: '14px', py: 1.5, fontWeight: 700, color: '#fff',
+                background: 'linear-gradient(135deg, #6366f1, #06b6d4)',
+                boxShadow: '0 4px 16px rgba(99,102,241,0.35)',
+                '&:hover': { boxShadow: '0 6px 24px rgba(99,102,241,0.5)', transform: 'translateY(-1px)' },
+                '&:disabled': { background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.35)', boxShadow: 'none' },
+              }}
+            >
+              {drinkAdded ? '✓ Eklendi' : 'Ekle'}
+            </Button>
+          </Box>
+        </Box>
+      </Dialog>
     </Box>
   );
 });
 
 export default WaterTracker;
+

@@ -73,7 +73,11 @@ export const useProfile = (user) => {
           waterGoal: prof.waterGoal || 2000,
         }));
 
-        if (!prof.username || !prof.gender || !prof.birthDate || !prof.height || !prof.weight) {
+        // Profil tamamlama dialogu: sadece bu oturumda gösterilmediyse aç
+        const completionDismissedKey = `profile_completion_dismissed_${user.uid}`;
+        const alreadyDismissed = localStorage.getItem(completionDismissedKey);
+
+        if (!alreadyDismissed && (!prof.username || !prof.gender || !prof.birthDate || !prof.height || !prof.weight)) {
           setOpenProfileCompletionModal(true);
         }
       } catch (error) {
@@ -104,10 +108,14 @@ export const useProfile = (user) => {
           await updateDoc(userRef, { profile: profileToSave });
         }
 
-        invalidateUserCache("user_profile");
+        invalidateUserCache(`users/${user.uid}/profile`);
         setProfileData(updatedData);
         setOpenProfileModal(false);
         setOpenProfileCompletionModal(false);
+
+        // Profil tamamlandı olarak işaretle — bir daha otomatik açılmasın
+        localStorage.setItem(`profile_completion_dismissed_${user.uid}`, "true");
+
         toast.success("Profil başarıyla güncellendi!");
       } catch (error) {
         console.error("Profil güncellenirken hata:", error);

@@ -58,12 +58,17 @@ export const useProfile = (user) => {
       try {
         const profileDataRes = await cachedFirestoreGet(
           `users/${user.uid}/profile`,
-          () => getDoc(doc(db, "users", user.uid))
+          async () => {
+            const docSnap = await getDoc(doc(db, "users", user.uid));
+            return docSnap.exists() ? docSnap.data() : null;
+          }
         );
 
         let prof = {};
         if (profileDataRes && profileDataRes.profile) {
           prof = profileDataRes.profile;
+        } else if (profileDataRes && Object.keys(profileDataRes).length > 0) {
+          prof = profileDataRes; // Fallback to root level if no nested profile exists
         }
 
         setProfileData((prev) => ({

@@ -101,180 +101,140 @@ const SupplementCard = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      className="relative overflow-hidden rounded-3xl p-4 sm:p-5 md:p-6 backdrop-blur-xl border border-white/20 transition-all duration-300 hover:shadow-2xl group"
+      transition={{ duration: 0.3 }}
+      className="relative overflow-hidden rounded-xl p-3 backdrop-blur-xl border border-white/10 transition-all duration-300 hover:shadow-lg group flex flex-col sm:flex-row items-center sm:items-stretch gap-3 sm:gap-4 flex-wrap"
       style={{
-        background: "linear-gradient(145deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)",
+        background: "rgba(15,23,42,0.6)",
       }}
     >
+      {/* Sol kenar renk çizgisi */}
       <div
-        className="absolute top-0 left-0 right-0 h-1 rounded-t-3xl"
-        style={{ background: `linear-gradient(90deg, ${cardColor}, ${cardColor}80)` }}
+        className="absolute left-0 top-0 bottom-0 w-1"
+        style={{ background: `linear-gradient(180deg, ${cardColor}, ${cardColor}80)` }}
       />
 
-      {/* Header */}
-      <div className="flex items-center gap-3 sm:gap-4 mb-4">
+      {/* İkon ve İsim (Sol taraf) */}
+      <div className="flex items-center gap-3 w-full sm:w-auto sm:flex-1 pl-2">
         <div
-          className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shadow-lg relative shrink-0"
-          style={{ background: `linear-gradient(135deg, ${cardColor}, ${cardColor}CC)`, boxShadow: `0 8px 24px ${cardColor}40` }}
+          className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+          style={{ background: `linear-gradient(135deg, ${cardColor}20, ${cardColor}40)` }}
         >
-          {cardIcon}
-          <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/20 to-transparent pointer-events-none" />
+          {React.cloneElement(cardIcon, { sx: { color: cardColor, fontSize: "1.2rem" } })}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-white font-bold text-lg sm:text-xl md:text-2xl leading-tight truncate drop-shadow-md">
+          <h3 className="text-white font-bold text-sm sm:text-base truncate">
             {supplement.name}
           </h3>
+          <p className="text-[10px] sm:text-xs text-slate-400">
+            {daysLeft} gün kaldı • Toplam {supplement.quantity}
+          </p>
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex gap-2 mb-4 w-full">
-        {notificationTimes.length > 0 && (
-          <Tooltip title={`${notificationTimes.length} bildirim saati`}>
-            <IconButton
-              size="small"
-              onClick={(e) => { e.stopPropagation(); setShowNotifications(!showNotifications); }}
-              className="flex-1 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white/90 transition-all"
-            >
-              <AccessTimeIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        )}
-
-        <Tooltip title="Geri Al">
-          <IconButton
-            size="small"
-            onClick={(e) => { e.stopPropagation(); onUndo(supplement); }}
-            disabled={!(consumedToday > 0) || isUndoProcessing}
-            className="flex-1 rounded-xl border transition-all"
-            style={{
-              background: consumedToday > 0 && !isUndoProcessing ? "rgba(33,150,243,0.2)" : "rgba(255,255,255,0.05)",
-              borderColor: consumedToday > 0 && !isUndoProcessing ? "rgba(33,150,243,0.3)" : "rgba(255,255,255,0.1)",
-              color: consumedToday > 0 && !isUndoProcessing ? "#fff" : "rgba(255,255,255,0.3)",
-            }}
-          >
-            <UndoIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-
-        <Tooltip title="Düzenle">
-          <IconButton
-            size="small"
-            onClick={(e) => { e.stopPropagation(); onEdit(supplement); }}
-            className="flex-1 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white/90 transition-all"
-          >
-            <EditIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-
-        <Tooltip title="Sil">
-          <IconButton
-            size="small"
-            onClick={(e) => { e.stopPropagation(); onDelete(supplement.id); }}
-            className="flex-1 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 hover:text-red-300 transition-all"
-          >
-            <DeleteIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+      {/* Tüketim Durumu (Orta kısım) */}
+      <div className="flex items-center justify-between w-full sm:w-auto gap-4 px-2 sm:px-0">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2">
+          <div className="flex gap-1">
+            {[...Array(supplement.dailyUsage)].map((_, i) => (
+              <div 
+                key={i} 
+                className="w-4 sm:w-5 h-1.5 rounded-full" 
+                style={{ background: i < consumedToday ? cardColor : "rgba(255,255,255,0.1)" }}
+              />
+            ))}
+          </div>
+          <span className="text-[10px] font-bold text-white/70 whitespace-nowrap hidden sm:inline">
+            {consumedToday} / {supplement.dailyUsage} Tüketildi
+          </span>
+        </div>
       </div>
 
-      {/* Notification Times (Expandable) */}
+      {/* Aksiyon Butonları (Sağ Taraf) */}
+      <div className="flex items-center justify-between sm:justify-end gap-1 sm:gap-1.5 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t border-white/5 sm:border-0">
+        <div className="flex items-center">
+          {notificationTimes.length > 0 && (
+            <Tooltip title={`${notificationTimes.length} bildirim saati`}>
+              <IconButton
+                size="small"
+                onClick={(e) => { e.stopPropagation(); setShowNotifications(!showNotifications); }}
+                sx={{ color: "rgba(255,255,255,0.5)", "&:hover": { color: "#fff", background: "rgba(255,255,255,0.1)" } }}
+              >
+                <AccessTimeIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+
+          <Tooltip title="Geri Al">
+            <IconButton
+              size="small"
+              onClick={(e) => { e.stopPropagation(); onUndo(supplement); }}
+              disabled={!(consumedToday > 0) || isUndoProcessing}
+              sx={{ 
+                color: consumedToday > 0 ? "#3b82f6" : "rgba(255,255,255,0.2)",
+                "&:hover": { background: "rgba(59,130,246,0.1)" }
+              }}
+            >
+              <UndoIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Düzenle">
+            <IconButton
+              size="small"
+              onClick={(e) => { e.stopPropagation(); onEdit(supplement); }}
+              sx={{ color: "rgba(255,255,255,0.5)", "&:hover": { color: "#fff", background: "rgba(255,255,255,0.1)" } }}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Sil">
+            <IconButton
+              size="small"
+              onClick={(e) => { e.stopPropagation(); onDelete(supplement.id); }}
+              sx={{ color: "rgba(239,68,68,0.5)", "&:hover": { color: "#ef4444", background: "rgba(239,68,68,0.1)" } }}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </div>
+
+        {/* Ana Aksiyon: Takviye Al */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onConsume(supplement.id); }}
+          disabled={supplement.quantity === 0 || remainingToday === 0 || isProcessing}
+          className="ml-1 px-4 py-1.5 rounded-lg text-white text-[11px] font-bold transition-all disabled:opacity-50 shadow-md"
+          style={{
+            background: supplement.quantity === 0 || remainingToday === 0 || isProcessing
+              ? "rgba(255,255,255,0.1)"
+              : `linear-gradient(135deg, ${cardColor}, ${cardColor}CC)`,
+          }}
+        >
+          {supplement.quantity === 0 ? "BİTTİ" : remainingToday === 0 ? "TAMAM" : "AL"}
+        </button>
+      </div>
+
+      {/* Bildirim listesi detaylı */}
       <AnimatePresence>
         {showNotifications && notificationTimes.length > 0 && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
-            className="overflow-hidden"
+            className="w-full basis-full mt-2"
           >
-            <div className="bg-white/10 rounded-xl p-3 mb-4 border border-white/10">
-              <div className="flex items-center gap-2 text-white/90 text-xs font-semibold mb-2">
-                <AccessTimeIcon fontSize="inherit" /> Bildirim Saatleri
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {notificationTimes.map((time, index) => (
-                  <span key={index} className="bg-white/10 text-white px-2 py-1 rounded-lg text-xs font-semibold border border-white/30">
-                    {formatTime(time)}
-                  </span>
-                ))}
-              </div>
+            <div className="flex gap-2 flex-wrap bg-white/5 p-2 rounded-lg ml-2">
+               {notificationTimes.map((time, index) => (
+                 <span key={index} className="text-[10px] bg-white/10 border border-white/10 px-2 py-0.5 rounded text-white/80 font-medium">
+                   {formatTime(time)}
+                 </span>
+               ))}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Progress Bar */}
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-1.5">
-          <span className="text-white/80 text-xs sm:text-sm font-semibold">{daysLeft} gün kaldı</span>
-          <span className="text-white/80 text-xs sm:text-sm font-semibold">{supplement.quantity} adet</span>
-        </div>
-        <div className="h-2.5 sm:h-3 bg-white/10 rounded-full overflow-hidden relative shadow-inner">
-          <div
-            className="h-full rounded-full transition-all duration-700 relative"
-            style={{ width: `${progress}%`, background: `linear-gradient(90deg, ${cardColor}, ${cardColor}CC)`, boxShadow: `0 2px 8px ${cardColor}30` }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent w-full animate-[shimmer_2s_infinite]" />
-          </div>
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="text-[10px] font-bold text-white drop-shadow-md">{Math.round(progress)}%</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Daily Consumption Stats */}
-      <div className="bg-white/5 rounded-2xl p-4 mb-4 border border-white/10">
-        <div className="flex justify-between items-center mb-3">
-          <span className="text-white/90 text-sm font-semibold">Günlük Tüketim</span>
-          <span className="font-bold text-sm" style={{ color: cardColor }}>{supplement.dailyUsage} adet</span>
-        </div>
-
-        <div className="flex justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-white text-base sm:text-lg font-bold shadow-lg"
-              style={{ background: `linear-gradient(135deg, ${cardColor}, ${cardColor}CC)` }}
-            >
-              {consumedToday}
-            </div>
-            <span className="text-white/90 text-sm font-semibold">Tüketilen</span>
-          </div>
-          <div className="text-right">
-            <span
-              className="text-sm font-bold"
-              style={{ color: remainingToday > 0 ? cardColor : "#4caf50" }}
-            >
-              {remainingToday > 0 ? `${remainingToday} kaldı` : "Tamamlandı! 🎉"}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Consume Action Button */}
-      <div className="text-center">
-        <button
-          onClick={(e) => { e.stopPropagation(); onConsume(supplement.id); }}
-          disabled={supplement.quantity === 0 || remainingToday === 0 || isProcessing}
-          className="w-full py-2.5 sm:py-3 rounded-full text-white text-sm sm:text-base font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 shadow-lg"
-          style={{
-            background: supplement.quantity === 0 || remainingToday === 0 || isProcessing
-              ? "rgba(255,255,255,0.2)"
-              : `linear-gradient(135deg, ${cardColor}, ${cardColor}CC)`,
-            boxShadow: supplement.quantity === 0 || remainingToday === 0 || isProcessing
-              ? "none"
-              : `0 6px 20px ${cardColor}40`,
-          }}
-        >
-          {supplement.quantity === 0 ? "Tükendi" :
-            remainingToday === 0 ? "Hedef Tamamlandı ✨" :
-              isProcessing ? "Takviye alınıyor..." : "Takviyeni Al 💊"}
-        </button>
-      </div>
 
     </motion.div>
   );

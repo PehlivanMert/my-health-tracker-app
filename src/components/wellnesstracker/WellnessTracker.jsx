@@ -271,16 +271,7 @@ const WellnessTracker = ({ user }) => {
               exit={{ opacity: 0, x: 20 }}
               className="space-y-6"
             >
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setWaterNotifDialogOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white/70 hover:text-white transition-all border border-white/10 hover:border-indigo-500/40 hover:bg-indigo-500/10"
-                  style={{ background: "rgba(255,255,255,0.06)" }}
-                >
-                  <NotificationsIcon fontSize="small" />
-                  <span>Su Bildirimleri</span>
-                </button>
-              </div>
+
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-xl">
@@ -299,38 +290,38 @@ const WellnessTracker = ({ user }) => {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-4 sm:p-6 border border-white/10 shadow-xl">
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <LocalPharmacyIcon className="text-indigo-400" />
-                    Günlük Takviyeler
+              <div className="bg-white/5 backdrop-blur-xl rounded-xl p-3 border border-white/10 shadow-lg">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <LocalPharmacyIcon className="text-indigo-400" fontSize="small" />
+                    Takviyeler
                   </h2>
                   <div className="flex gap-2 w-full sm:w-auto">
                     <Tooltip title="Sıralama Değiştir">
                       <button
                         onClick={handleSortToggle}
-                        className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl border border-white/20 transition-all flex-1 sm:flex-none flex justify-center"
+                        className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20 transition-all flex justify-center items-center"
                       >
-                        <SortIcon />
+                        <SortIcon fontSize="small" />
                       </button>
                     </Tooltip>
                     <button
                       onClick={handleOpenSupplementDialog}
-                      className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl shadow-lg transition-all flex-[2] sm:flex-none"
+                      className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-lg shadow-sm transition-all text-xs"
                     >
-                      <AddIcon />
-                      <span className="font-bold">Yeni Takviye</span>
+                      <AddIcon fontSize="small" />
+                      <span className="font-bold">Yeni</span>
                     </button>
                     <button
                       onClick={() => setSupplementNotificationDialogOpen(true)}
-                      className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl border border-white/20 transition-all flex-1 sm:flex-none flex justify-center"
+                      className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20 transition-all flex justify-center items-center"
                     >
-                      <NotificationsIcon />
+                      <NotificationsIcon fontSize="small" />
                     </button>
                   </div>
                 </div>
 
-                <div className="mt-6">
+                <div className="mt-4">
                   {supplements.length === 0 ? (
                     <div className="text-center py-12 text-slate-400">
                       <p className="text-lg">Henüz takviye eklenmemiş</p>

@@ -61,7 +61,7 @@ const Exercises = ({ user }) => {
 
   return (
     <div className="min-h-screen p-4 sm:p-6 lg:p-8">
-      <Container maxWidth="lg" className="space-y-8">
+      <div className="w-full max-w-screen-2xl mx-auto space-y-8">
 
         {/* Header */}
         <motion.div
@@ -137,7 +137,7 @@ const Exercises = ({ user }) => {
           )}
         </div>
 
-      </Container>
+      </div>
 
       {/* Program Oluşturma Modalı */}
       <AnimatePresence>

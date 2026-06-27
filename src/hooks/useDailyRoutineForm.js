@@ -32,7 +32,7 @@ export const categoryNames = {
   Other: "Diğer", Default: "Diğer",
 };
 
-export const useDailyRoutineForm = (addRoutine, updateRoutine, timeFilter) => {
+export const useDailyRoutineForm = (addRoutine, saveRoutineGroup, updateRoutine, timeFilter) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRoutine, setEditingRoutine] = useState(null);
   const [newRoutineDate, setNewRoutineDate] = useState("");
@@ -56,17 +56,79 @@ export const useDailyRoutineForm = (addRoutine, updateRoutine, timeFilter) => {
   };
 
   const handleSaveRoutine = (routineData) => {
+    const baseRoutine = {
+      title: routineData.title,
+      time: routineData.time,
+      endTime: routineData.endTime,
+      category: routineData.category,
+      icon: routineData.icon,
+      notificationEnabled: false,
+      completed: false,
+      completedDates: routineData.repeat && routineData.repeat !== "none" ? [] : undefined,
+      createdAt: editingRoutine ? editingRoutine.createdAt || new Date().toISOString() : new Date().toISOString(),
+      repeat: routineData.repeat,
+      repeatCount: routineData.repeatCount,
+    };
+
     if (editingRoutine) {
-      updateRoutine(editingRoutine.id, routineData);
+      if (routineData.repeat && routineData.repeat !== "none") {
+        const groupId = editingRoutine.groupId || uuidv4();
+        const count = Number(routineData.repeatCount) || 1;
+        const startDate = new Date(routineData.date);
+        let newGroupRoutines = [];
+        for (let i = 0; i < count; i++) {
+          let occurrenceDate = new Date(startDate);
+          if (routineData.repeat === "daily") {
+            occurrenceDate.setDate(startDate.getDate() + i);
+          } else if (routineData.repeat === "weekly") {
+            occurrenceDate.setDate(startDate.getDate() + i * 7);
+          } else if (routineData.repeat === "monthly") {
+            occurrenceDate.setMonth(startDate.getMonth() + i);
+          }
+          newGroupRoutines.push({
+            ...baseRoutine,
+            id: uuidv4(),
+            date: getTurkeyLocalDateString(occurrenceDate),
+            groupId,
+          });
+        }
+        saveRoutineGroup(newGroupRoutines, groupId);
+      } else {
+        updateRoutine(editingRoutine.id, {
+          ...baseRoutine,
+          date: getTurkeyLocalDateString(new Date(routineData.date))
+        });
+      }
     } else {
-      const newRoutine = {
-        ...routineData,
-        id: uuidv4(),
-        completed: false,
-        notificationEnabled: false,
-        completedDates: routineData.repeat && routineData.repeat !== "none" ? [] : undefined,
-      };
-      addRoutine(newRoutine);
+      if (routineData.repeat && routineData.repeat !== "none") {
+        const groupId = uuidv4();
+        const count = Number(routineData.repeatCount) || 1;
+        const startDate = new Date(routineData.date);
+        let newGroupRoutines = [];
+        for (let i = 0; i < count; i++) {
+          let occurrenceDate = new Date(startDate);
+          if (routineData.repeat === "daily") {
+            occurrenceDate.setDate(startDate.getDate() + i);
+          } else if (routineData.repeat === "weekly") {
+            occurrenceDate.setDate(startDate.getDate() + i * 7);
+          } else if (routineData.repeat === "monthly") {
+            occurrenceDate.setMonth(startDate.getMonth() + i);
+          }
+          newGroupRoutines.push({
+            ...baseRoutine,
+            id: uuidv4(),
+            date: getTurkeyLocalDateString(occurrenceDate),
+            groupId,
+          });
+        }
+        saveRoutineGroup(newGroupRoutines, null);
+      } else {
+        addRoutine({
+          ...baseRoutine,
+          id: uuidv4(),
+          date: getTurkeyLocalDateString(new Date(routineData.date)),
+        });
+      }
     }
     handleCloseModal();
   };

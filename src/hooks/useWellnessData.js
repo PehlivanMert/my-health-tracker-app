@@ -120,6 +120,10 @@ export const useWellnessData = (user, sortMode = "notification") => {
       setSupplementConsumptionToday({});
       lastSupplementConsumptionState.current = {};
     }
+    // İlk yükleme tamamlandı: artık kullanıcı değişiklikleri Firestore'a yazılabilir
+    setTimeout(() => {
+      isInitialLoad.current = false;
+    }, 500);
   };
 
   const refreshWaterData = async () => {
@@ -176,6 +180,9 @@ export const useWellnessData = (user, sortMode = "notification") => {
 
   useEffect(() => {
     if (!user) return;
+    // Her yeni kullanıcı oturumunda initial flag'leri sıfırla
+    isInitialLoad.current = true;
+    isDataLoading.current = true;
     fetchSupplements();
     fetchSupplementConsumptionToday();
     fetchSupplementConsumptionStats().then(setSupplementStatsData);

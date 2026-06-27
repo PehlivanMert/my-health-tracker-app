@@ -23,7 +23,6 @@ import WaterTracker from "./WaterTracker";
 import WaterConsumptionChart from "./WaterConsumptionChart";
 import SupplementConsumptionChart from "./SupplementConsumptionChart";
 import SupplementNotificationSettingsDialog from "./SupplementNotificationSettingsDialog";
-import WaterNotificationSettingsDialog from "./WaterNotificationSettingsDialog";
 import { DateTime } from "luxon";
 
 const TabButton = ({ active, onClick, icon, label, colorClass }) => (
@@ -275,7 +274,7 @@ const WellnessTracker = ({ user }) => {
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-xl">
-                  <WaterTracker user={user} onDataUpdate={refreshWaterData} />
+                  <WaterTracker user={user} onWaterDataChange={refreshWaterData} />
                 </div>
                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-xl">
                   <WaterConsumptionChart user={user} />
@@ -361,7 +360,7 @@ const WellnessTracker = ({ user }) => {
                       )}
                     </div>
                   ) : (
-                    renderGrid(organized.list)
+                    renderGrid(supplements)
                   )}
                 </div>
               </div>
@@ -393,12 +392,6 @@ const WellnessTracker = ({ user }) => {
         onClose={() => setSupplementNotificationDialogOpen(false)}
         supplements={supplements}
         onSave={handleSaveSupplementNotifications}
-        user={user}
-      />
-
-      <WaterNotificationSettingsDialog
-        open={waterNotifDialogOpen}
-        onClose={() => setWaterNotifDialogOpen(false)}
         user={user}
       />
 

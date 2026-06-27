@@ -857,6 +857,10 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
       lastWaterDataState.current = { ...newWaterData };
       setDataFetched(true);
       isDataLoading.current = false;
+      // İlk yükleme tamamlandı: artık su kaydetme işlemleri Firestore'a yazılabilir
+      setTimeout(() => {
+        isInitialLoad.current = false;
+      }, 500);
 
       // Server-side hesaplanmış verileri kontrol et ve güncelle
       if (data.serverSideCalculated === true) {
@@ -896,12 +900,19 @@ const WaterTracker = React.memo(({ user, onWaterDataChange }) => {
       lastWaterDataState.current = { ...defaultWaterData };
       setDataFetched(true);
       isDataLoading.current = false;
+      // İlk yükleme tamamlandı (boş doküman durumu)
+      setTimeout(() => {
+        isInitialLoad.current = false;
+      }, 500);
       if (onWaterDataChange) onWaterDataChange(defaultWaterData);
     }
   };
 
   useEffect(() => {
     if (!user) return;
+    // Yeni oturumda flag'leri sıfırla
+    isInitialLoad.current = true;
+    isDataLoading.current = true;
     fetchWaterData();
     // 5 saniye sonra bir kez daha fetch (kısa polling)
     const timeoutId = setTimeout(() => {

@@ -18,6 +18,7 @@ const DailyRoutine = ({ user }) => {
     monthlyStats,
     loading,
     addRoutine,
+    saveRoutineGroup,
     updateRoutine,
     deleteRoutine,
     deleteRoutineGroup,
@@ -44,7 +45,7 @@ const DailyRoutine = ({ user }) => {
     handleCloseModal,
     handleSaveRoutine,
     handleEditRoutine,
-  } = useDailyRoutineForm(addRoutine, updateRoutine, timeFilter);
+  } = useDailyRoutineForm(addRoutine, saveRoutineGroup, updateRoutine, timeFilter);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [routineToDelete, setRoutineToDelete] = useState(null);

@@ -71,6 +71,14 @@ const ModernHealthDashboard = ({ user }) => {
     visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return "Günaydın";
+    if (hour >= 12 && hour < 18) return "İyi Günler";
+    if (hour >= 18 && hour < 22) return "İyi Akşamlar";
+    return "İyi Geceler";
+  };
+
   return (
     <motion.div
       className="min-h-screen p-3 md:p-6 font-sans"
@@ -84,7 +92,7 @@ const ModernHealthDashboard = ({ user }) => {
         <motion.div variants={itemVariants} className="flex items-center justify-between">
           <div>
             <h2 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
-              Günaydın, <span className="text-cyan-400">{profileData.firstName || "Kullanıcı"}</span> 👋
+              {getGreeting()}, <span className="text-cyan-400">{profileData.firstName || "Kullanıcı"}</span> 👋
             </h2>
             <p className="text-xs md:text-sm text-slate-400 font-medium">
               {format(new Date(), "dd MMMM yyyy, EEEE", { locale: tr })}

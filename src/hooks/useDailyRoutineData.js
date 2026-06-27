@@ -201,6 +201,18 @@ export const useDailyRoutineData = (user) => {
     setMonthlyStats(prev => ({ ...prev, added: prev.added + 1 }));
   };
 
+  const saveRoutineGroup = (newRoutines, editingGroupId = null) => {
+    setRoutines(prev => {
+      let updated = prev;
+      if (editingGroupId) {
+        updated = updated.filter(r => r.groupId !== editingGroupId);
+      }
+      return [...updated, ...newRoutines].sort((a, b) => a.time.localeCompare(b.time));
+    });
+    setWeeklyStats(prev => ({ ...prev, added: prev.added + newRoutines.length }));
+    setMonthlyStats(prev => ({ ...prev, added: prev.added + newRoutines.length }));
+  };
+
   const updateRoutine = (id, updatedFields) => {
     setRoutines(prev => prev.map(r => r.id === id ? { ...r, ...updatedFields } : r));
   };
@@ -295,6 +307,7 @@ export const useDailyRoutineData = (user) => {
     monthlyStats, setMonthlyStats,
     loading,
     addRoutine,
+    saveRoutineGroup,
     updateRoutine,
     deleteRoutine,
     deleteRoutineGroup,

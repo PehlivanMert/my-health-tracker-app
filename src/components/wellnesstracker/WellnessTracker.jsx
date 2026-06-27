@@ -222,7 +222,7 @@ const WellnessTracker = ({ user }) => {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen bg-slate-900 text-slate-100 p-4 sm:p-6 lg:p-8"
+      className="min-h-screen bg-slate-900 text-slate-100 pt-2 sm:p-6 lg:p-8"
       style={{
         background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
         backgroundAttachment: "fixed",
@@ -273,10 +273,10 @@ const WellnessTracker = ({ user }) => {
 
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-xl">
+                <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-3 sm:p-6 shadow-xl">
                   <WaterTracker user={user} onWaterDataChange={refreshWaterData} />
                 </div>
-                <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-xl">
+                <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-3 sm:p-6 shadow-xl">
                   <WaterConsumptionChart user={user} />
                 </div>
               </div>
@@ -289,7 +289,7 @@ const WellnessTracker = ({ user }) => {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <div className="bg-white/5 backdrop-blur-xl rounded-xl p-3 border border-white/10 shadow-lg">
+              <div className="bg-white/5 backdrop-blur-xl rounded-xl p-2 sm:p-3 border border-white/10 shadow-lg">
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
                     <LocalPharmacyIcon className="text-indigo-400" fontSize="small" />
@@ -366,7 +366,7 @@ const WellnessTracker = ({ user }) => {
               </div>
 
               {/* Chart section for Supplements */}
-              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-xl">
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-3 sm:p-6 shadow-xl">
                 <SupplementConsumptionChart
                   data={supplementStatsData}
                   supplements={supplements}

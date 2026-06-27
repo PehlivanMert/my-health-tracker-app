@@ -229,7 +229,7 @@ const CalendarComponent = ({ user }) => {
         }}
       >
         {/* Calendar Header */}
-        <Box sx={{ p: 2.5, display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}>
+        <Box sx={{ p: { xs: 1.5, sm: 2.5 }, display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
             <Box sx={{ p: 1, borderRadius: "10px", background: "linear-gradient(135deg, #6366f1, #06b6d4)", display: "flex" }}>
               <CalendarMonth sx={{ fontSize: 20, color: "#fff" }} />
@@ -256,7 +256,7 @@ const CalendarComponent = ({ user }) => {
         </Box>
 
         {/* Calendar Body */}
-        <Box sx={{ p: 2 }}>
+        <Box sx={{ p: { xs: 1, sm: 2 } }}>
           {/* Weekdays */}
           <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", mb: 1 }}>
             {WEEKDAYS.map(day => (
@@ -336,7 +336,7 @@ const CalendarComponent = ({ user }) => {
           minHeight: { xs: "300px", md: "auto" }
         }}
       >
-        <Box sx={{ p: 2.5, display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+        <Box sx={{ p: { xs: 1.5, sm: 2.5 }, display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
           <Typography sx={{ fontWeight: 600, color: "#fff", fontSize: "1rem" }}>
             {selectedDate.toFormat("d MMMM yyyy", { locale: "tr" })}
           </Typography>
@@ -353,7 +353,7 @@ const CalendarComponent = ({ user }) => {
           </Button>
         </Box>
 
-        <Box sx={{ p: 2, flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 1.5 }}>
+        <Box sx={{ p: { xs: 1, sm: 2 }, flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 1.5 }}>
           <AnimatePresence mode="popLayout">
             {selectedDateEvents.length === 0 ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>

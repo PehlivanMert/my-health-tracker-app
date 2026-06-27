@@ -342,7 +342,7 @@ const ExerciseCard = ({ exercise, onDelete, expandedId, setExpandedId }) => {
     <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-xl transition-all hover:shadow-cyan-500/10 hover:border-cyan-500/20">
       {/* Card Header */}
       <div
-        className="flex justify-between items-center p-4 sm:p-6 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 cursor-pointer"
+        className="flex justify-between items-center p-3 sm:p-6 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 cursor-pointer"
         onClick={() => setExpandedId(isExpanded ? null : exercise.id)}
       >
         <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -383,7 +383,7 @@ const ExerciseCard = ({ exercise, onDelete, expandedId, setExpandedId }) => {
             exit={{ height: 0, opacity: 0 }}
             className="border-t border-white/5"
           >
-            <div className="p-4 sm:p-6">
+            <div className="p-3 sm:p-6">
               {exercise.type === "ai-generated" && exercise.parsedContent ? (
                 <ProgramDisplay program={exercise.parsedContent} />
               ) : (

@@ -81,7 +81,7 @@ const ModernHealthDashboard = ({ user }) => {
 
   return (
     <motion.div
-      className="min-h-screen p-3 md:p-6 font-sans"
+      className="min-h-screen pt-2 sm:p-3 md:p-6 font-sans"
       variants={containerVariants}
       initial="hidden"
       animate="visible"

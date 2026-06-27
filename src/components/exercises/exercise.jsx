@@ -60,7 +60,7 @@ const Exercises = ({ user }) => {
   if (!user) return <div className="text-center p-8 text-white">Lütfen giriş yapın</div>;
 
   return (
-    <div className="min-h-screen p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen pt-2 sm:p-6 lg:p-8">
       <div className="w-full max-w-screen-2xl mx-auto space-y-8">
 
         {/* Header */}
@@ -77,7 +77,7 @@ const Exercises = ({ user }) => {
         </motion.div>
 
         {/* Main Content Area */}
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl p-6 sm:p-8">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl sm:rounded-3xl p-3 sm:p-8">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-6 mb-8">
             <h2 className="text-2xl font-bold text-white text-center sm:text-left">
               Programlarınız

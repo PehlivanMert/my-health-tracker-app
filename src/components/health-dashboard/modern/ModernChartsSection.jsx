@@ -38,7 +38,7 @@ const ModernChartsSection = ({ user }) => {
 
   return (
     <div className="flex flex-col gap-6 h-full">
-      <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 shadow-xl shadow-cyan-500/10 border border-white/10">
+      <div className="bg-white/5 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-3 sm:p-6 shadow-xl shadow-cyan-500/10 border border-white/10">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-3 bg-gradient-to-br from-green-400 to-teal-500 rounded-2xl shadow-md">
             <Activity className="h-6 w-6 text-white" />

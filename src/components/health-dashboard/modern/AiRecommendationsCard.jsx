@@ -154,7 +154,7 @@ const AiRecommendationsCard = ({ user, profileData, healthData }) => {
   };
 
   return (
-    <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-5 sm:p-7 shadow-xl shadow-cyan-500/10 border border-white/10 flex flex-col h-full relative overflow-hidden group">
+    <div className="bg-white/5 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-3 sm:p-7 shadow-xl shadow-cyan-500/10 border border-white/10 flex flex-col h-full relative overflow-hidden group">
       <div className="absolute top-0 right-0 p-32 bg-blue-500/5 rounded-full blur-3xl -mr-16 -mt-16 transition-all duration-700 group-hover:bg-blue-500/10"></div>
 
       <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">

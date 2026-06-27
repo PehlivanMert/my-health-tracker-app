@@ -74,8 +74,8 @@ const AiRecommendationsCard = ({ user, profileData, healthData }) => {
 
   const renderContent = () => {
     if (!recommendations) return (
-      <div className="flex flex-col items-center justify-center h-40 text-slate-500">
-        <Sparkles className="h-10 w-10 text-slate-300 dark:text-slate-600 mb-3" />
+      <div className="flex flex-col items-center justify-center h-40 text-slate-400">
+        <Sparkles className="h-10 w-10 text-slate-500 mb-3" />
         <p className="italic font-medium">Henüz bir öneri oluşturulmadı.</p>
       </div>
     );
@@ -103,7 +103,7 @@ const AiRecommendationsCard = ({ user, profileData, healthData }) => {
     const formatText = (text) => {
       let formatted = text.replace(/^[-*]\s*/, '').trim();
       // Highlight bold text with vibrant color
-      formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-indigo-700 dark:text-indigo-300">$1</strong>');
+      formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-blue-400">$1</strong>');
       return { __html: formatted };
     };
 
@@ -115,8 +115,8 @@ const AiRecommendationsCard = ({ user, profileData, healthData }) => {
 
           if (isHeading) {
             return (
-              <h4 key={idx} className="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 text-lg sm:text-xl mt-6 mb-3 flex items-center gap-2 drop-shadow-sm">
-                <Sparkles className="h-5 w-5 text-blue-500 shrink-0" />
+              <h4 key={idx} className="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 text-lg sm:text-xl mt-6 mb-3 flex items-center gap-2 drop-shadow-sm">
+                <Sparkles className="h-5 w-5 text-blue-400 shrink-0" />
                 {section.replace(/[*#]/g, '').trim()}
               </h4>
             );
@@ -126,12 +126,12 @@ const AiRecommendationsCard = ({ user, profileData, healthData }) => {
             return (
               <ul key={idx} className="space-y-3">
                 {section.split('\n').filter(Boolean).map((item, i) => (
-                  <li key={idx + "-" + i} className="flex items-start gap-3 bg-white dark:bg-slate-800/90 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-all group/item">
-                    <div className="bg-emerald-100 dark:bg-emerald-900/40 p-1.5 rounded-full shrink-0 group-hover/item:scale-110 group-hover/item:bg-emerald-200 dark:group-hover/item:bg-emerald-800/50 transition-all mt-0.5">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  <li key={idx + "-" + i} className="flex items-start gap-3 bg-white/5 p-4 rounded-2xl border border-white/10 shadow-sm hover:bg-white/10 transition-all group/item">
+                    <div className="bg-emerald-500/20 p-1.5 rounded-full shrink-0 group-hover/item:scale-110 group-hover/item:bg-emerald-500/30 transition-all mt-0.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                     </div>
                     <span
-                      className="text-slate-700 dark:text-slate-300 leading-relaxed text-sm sm:text-base flex-1"
+                      className="text-slate-200 leading-relaxed text-sm sm:text-base flex-1"
                       dangerouslySetInnerHTML={formatText(item)}
                     />
                   </li>
@@ -141,9 +141,9 @@ const AiRecommendationsCard = ({ user, profileData, healthData }) => {
           }
 
           return (
-            <div key={idx} className="bg-blue-50/70 dark:bg-slate-800/50 p-5 rounded-2xl border border-blue-100/50 dark:border-slate-700/50 shadow-sm">
+            <div key={idx} className="bg-white/5 p-5 rounded-2xl border border-white/10 shadow-sm">
               <p
-                className="text-slate-700 dark:text-slate-300 leading-relaxed text-sm sm:text-base"
+                className="text-slate-200 leading-relaxed text-sm sm:text-base"
                 dangerouslySetInnerHTML={formatText(section)}
               />
             </div>
@@ -154,8 +154,8 @@ const AiRecommendationsCard = ({ user, profileData, healthData }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-7 shadow-xl shadow-slate-200/40 dark:shadow-none border border-slate-100 dark:border-slate-800 flex flex-col h-full relative overflow-hidden group">
-      <div className="absolute top-0 right-0 p-32 bg-blue-50 dark:bg-blue-900/10 rounded-full blur-3xl -mr-16 -mt-16 transition-all duration-700 group-hover:bg-blue-100/80 dark:group-hover:bg-blue-900/20"></div>
+    <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-5 sm:p-7 shadow-xl shadow-cyan-500/10 border border-white/10 flex flex-col h-full relative overflow-hidden group">
+      <div className="absolute top-0 right-0 p-32 bg-blue-500/5 rounded-full blur-3xl -mr-16 -mt-16 transition-all duration-700 group-hover:bg-blue-500/10"></div>
 
       <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
         <div className="flex items-center gap-3">
@@ -163,8 +163,8 @@ const AiRecommendationsCard = ({ user, profileData, healthData }) => {
             <Bot className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h3 className="font-extrabold text-xl sm:text-2xl text-slate-800 dark:text-white tracking-tight">AI Önerileri</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Size özel günlük analiz</p>
+            <h3 className="font-extrabold text-xl sm:text-2xl text-white tracking-tight">AI Önerileri</h3>
+            <p className="text-xs text-slate-400 font-medium">Size özel günlük analiz</p>
           </div>
         </div>
 
@@ -184,12 +184,12 @@ const AiRecommendationsCard = ({ user, profileData, healthData }) => {
 
       <div className="relative z-10 flex-grow rounded-2xl overflow-y-auto max-h-[450px] custom-scrollbar">
         {isGenerating ? (
-          <div className="flex flex-col items-center justify-center h-48 bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-700/50">
+          <div className="flex flex-col items-center justify-center h-48 bg-white/5 rounded-2xl border border-white/10">
             <div className="relative">
-              <div className="absolute inset-0 bg-indigo-500 rounded-full blur-xl opacity-20 animate-pulse"></div>
-              <Sparkles className="h-10 w-10 text-indigo-500 animate-pulse mb-4 relative z-10" />
+              <div className="absolute inset-0 bg-blue-500 rounded-full blur-xl opacity-20 animate-pulse"></div>
+              <Sparkles className="h-10 w-10 text-blue-400 animate-pulse mb-4 relative z-10" />
             </div>
-            <p className="animate-pulse font-bold text-slate-600 dark:text-slate-300">Sağlık verileriniz inceleniyor...</p>
+            <p className="animate-pulse font-bold text-slate-300">Sağlık verileriniz inceleniyor...</p>
             <p className="text-sm text-slate-400 mt-2">Bu işlem birkaç saniye sürebilir</p>
           </div>
         ) : (

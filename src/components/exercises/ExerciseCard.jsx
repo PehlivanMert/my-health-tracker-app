@@ -287,6 +287,54 @@ const ProgramDisplay = ({ program }) => {
   );
 };
 
+const MarkdownRenderer = ({ content }) => {
+  if (!content) return null;
+  const textToRender = typeof content === "string" ? content.replace(/```markdown/gi, '').replace(/```json/gi, '').replace(/```/g, '').trim() : String(content);
+  const sections = textToRender.split(/\n\n+/);
+
+  const formatText = (text) => {
+    let formatted = text.replace(/^[-*]\s*/, '').trim();
+    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-blue-400">$1</strong>');
+    return { __html: formatted };
+  };
+
+  return (
+    <div className="space-y-4">
+      {sections.map((section, idx) => {
+        const isHeading = section.startsWith('**') || section.startsWith('##') || section.startsWith('###');
+        const isList = section.startsWith('-') || section.startsWith('*');
+
+        if (isHeading) {
+          return (
+            <h4 key={idx} className="font-bold text-xl text-orange-400 mt-6 mb-3 flex items-center gap-2">
+              {section.replace(/[*#]/g, '').trim()}
+            </h4>
+          );
+        }
+
+        if (isList) {
+          return (
+            <ul key={idx} className="space-y-3">
+              {section.split('\n').filter(Boolean).map((item, i) => (
+                <li key={idx + "-" + i} className="flex items-start gap-3 bg-white/5 p-4 rounded-xl border border-white/10 shadow-sm hover:bg-white/10 transition-all">
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500/50 mt-2 shrink-0"></span>
+                  <span className="text-slate-300 leading-relaxed flex-1" dangerouslySetInnerHTML={formatText(item)} />
+                </li>
+              ))}
+            </ul>
+          );
+        }
+
+        return (
+          <div key={idx} className="bg-white/5 p-4 rounded-xl border border-white/10 shadow-sm">
+            <p className="text-slate-300 leading-relaxed" dangerouslySetInnerHTML={formatText(section)} />
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 const ExerciseCard = ({ exercise, onDelete, expandedId, setExpandedId }) => {
   const isExpanded = expandedId === exercise.id;
 
@@ -338,10 +386,8 @@ const ExerciseCard = ({ exercise, onDelete, expandedId, setExpandedId }) => {
             <div className="p-4 sm:p-6">
               {exercise.type === "ai-generated" && exercise.parsedContent ? (
                 <ProgramDisplay program={exercise.parsedContent} />
-              ) : exercise.type === "ai-generated" && exercise.content ? (
-                <div className="text-slate-300 whitespace-pre-wrap">{exercise.content}</div>
               ) : (
-                <div className="text-slate-300 whitespace-pre-wrap">{exercise.content}</div>
+                <MarkdownRenderer content={exercise.content} />
               )}
             </div>
           </motion.div>
